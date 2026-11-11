@@ -30,11 +30,9 @@ setAsk(on)                        // unclear letters wait for an elf to ask the 
 setChecking(level)                // which parcels go to the checking pile: 0 a few, 1 the risky ones, 2 all
 bypass()                          // let the parcels waiting for a check go through unchecked
 train()                           // train the checkers
-rollback()                        // stop the faulty update reaching new toys
-quarantine()                      // send the suspect batch waiting at dispatch to be remade
-recall()                          // bring wrong gifts back off the sleigh to be remade
 resolve(caseId, optionId)         // answer a case a checker brought to the player
 acknowledge(momentId)             // close a tutorial moment without acting
+skipGuidance()                    // unlock everything now and show no more tutorial moments
 ```
 
 Each action returns `true` when it took effect and `false` when it is locked or not possible.
@@ -78,18 +76,18 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
   short reason such as "nobody here to ask". Station 0 works `letters` and `clarify`; station 1
   works `orders`; station 2 works `check`, `pass` (parcels going straight through) and `rework`.
 - `levers.ai0` and `levers.ai1` each hold three entries
-  `{ name, who, perMinute, costPerMinute, mistakesFrom }`. `who` says who does the work at that
-  level and what any elves there do. `mistakesFrom` says where mistakes would come from now, in the
-  player's words and from the current state, such as "tired elves: yours are at 62" or "unclear
-  wishes: 4 in the pile". `levers.checking` holds three entries `{ name, sends, per100 }`: which
-  parcels go to the checking pile and how many in a hundred that is now.
+  `{ name, who, speed, risk, perMinute, costPerMinute }`. The three text fields are written to be
+  read at a glance, six words at most each: `who` says who does the work ("AI drafts, an elf
+  confirms"), `speed` compares it with working by hand ("about twice as fast"), and `risk` says
+  what to watch for now, from the current state ("guesses unclear wishes: 4 waiting").
+  `levers.checking` holds three entries `{ name, sends, per100 }`: which parcels the elves check
+  and how many in a hundred that is now.
 - `vigilance.state` is `"careful"`, `"relaxing"` or `"waving through"`. `cleanRun` is how many
   clean AI-made parcels the checkers have seen in a row, `secondsPerCheck` what a check takes them
   now, `skipped` how many checks they have skipped, and `trained` whether training has been done.
 - `pace.projected` is the right gifts expected at departure at the current pace, `behind` whether
   that is short of the target, and `slowest` the station holding things up.
-- `actions` has a key for each of `ai0`, `ai1`, `ask`, `checking`, `bypass`, `train`, `rollback`,
-  `quarantine` and `recall`. `unlocked` says whether the guided run has introduced the control,
+- `actions` has a key for each of `ai0`, `ai1`, `ask`, `checking`, `bypass` and `train`. `unlocked` says whether the guided run has introduced the control,
   `available` whether it can be used now, `why` is one short phrase when it cannot, and `cost` is
   what using it costs in time, money and parcels covered, in the player's words.
 - `end.costs` is `{ people, ai, checking, fixing, mistakes, prevented, total, budget }`. `mistakes`
@@ -110,13 +108,31 @@ A parcel is `{ id, wish, big, unclear, wanted, made, suspect, result }`.
 
 ### Cases
 
-A case is `{ id, kind, text, evidence, affected, options, resolving }`.
+A case is `{ id, kind, step, text, facts, evidence, affected, options, resolving }`.
 
-- `kind` is `"judge"` (an unsure checker asks the player to judge one toy against its wish),
-  `"unclear"` (an unclear wish for a big gift) or `"pattern"` (the same wrong toy has turned up more
-  than once).
-- `evidence` is `[{ parcelId, wish, made }]`: what the checker has seen. It never includes `wanted`
-  or `result`.
+- `kind` is one of:
+  - `"judge"`: an unsure checker asks the player to judge one toy against its wish.
+  - `"unclear"`: an unclear wish for a big gift. The evidence shows the wish and how the AI reads
+    it, so the player can accept that reading or have an elf ask the child.
+  - `"pattern"`: the same wrong toy has turned up more than once.
+  - `"update"`: a new AI update is offered for the toy machine, with what it promises. The player
+    installs it now, tests it first (takes time while the old version keeps working) or skips it.
+    Some updates are good and some are faulty. `step` is `"offered"`, or `"tested"` when the case
+    comes back after a test with the finding added to `facts` and the options install or skip.
+  - `"incident"`: a faulty update that was installed. It comes as up to three cases in turn, told apart by `step`:
+    `"source"` (the toy machine is still making the wrong toy: roll the update back or keep it
+    running), `"made"` (parcels made during the update are still in the workshop: remake them all,
+    check each one, or let them go) and `"aboard"` (wrong gifts are already on the sleigh: bring
+    them back or leave them). A step that does not apply is skipped. A `"source"` case the player
+    answered with keep running comes back while the fault lasts.
+- `step` is set on update and incident cases and is `null` on the others.
+- `facts` is `[{ label, value }]`: the few figures the decision turns on, shown before the choice.
+  For an update: what it promises, what is known about it, what a test costs and how far to trust a
+  test. For an incident: how many parcels, how many of them big gifts, what stopping costs. For a
+  judged parcel: what the gift is worth and why the checker was unsure.
+- `evidence` is `[{ parcelId, wish, made, reading }]`: what the checker has seen. `made` is the toy,
+  when there is one. `reading` is how the AI reads the wish, on unclear cases. It never includes
+  `wanted` or `result`.
 - `affected` is `{ count, ids }`: the parcels an option could cover.
 - `options` is `[{ id, label, seconds, money, scope, available, why }]`. The options depend on the
   kind. `scope` is how many parcels that option covers, in words. `available` is `false` with a
@@ -127,7 +143,20 @@ A case is `{ id, kind, text, evidence, affected, options, resolving }`.
   case at once.
 - The parcel in a `"judge"` case is held aside. Until the case is resolved it shows `wanted` and
   `result` as `null` everywhere in `view()`, and no news item or consequence gives its answer away.
-- At most one case is open and one waiting. Cases appear only in the versions that have them.
+- At most one case is open. Update and incident cases appear in every version and always get their
+  turn; of
+  the other kinds at most one waits, and they appear only in the versions that have them.
+- No option wins whatever the situation. The better choice depends on what the case shows before
+  the player chooses (the evidence, how sure it is, what is at stake) and on what the workshop can
+  spare at that moment (elves, time, money). A player who reads the case can choose well; a player
+  who always picks the same option cannot. The outcome is never a coin toss that only hindsight
+  explains.
+- An open case is never replaced and a held parcel stays held until its case is resolved. Waiting
+  cases take their turn in this order: incident source, made, aboard, then update, then the other
+  kinds. A source case answered with keep running comes back only after that incident's made and
+  aboard cases have had their turn.
+- Every option says what it costs. No option is free of consequence: keeping the update running,
+  letting parcels go and leaving wrong gifts aboard all carry a cost that the `scope` text names.
 
 ### Tutorial moments
 
@@ -151,7 +180,7 @@ Every item has `id`, `t`, `kind` and `text`. Some carry more:
 | `loaded`      | `check: { wish, wanted, made, result }`, only when wrong                         | A wrong gift landed on the sleigh                |
 | `consequence` | `about`, `facts: { seconds, checked, caught, estimatedAvoided, waiting, money }` | An assurance decision reports what it did        |
 | `case`        | `caseId`                                                                         | A checker brought a case to the player           |
-| `resolved`    | `caseId`, `option`, `check` when one parcel was judged                           | The player answered a case                       |
+| `resolved`    | `caseId`, `option`, `outcome`, `check` when one parcel was judged                | The player answered a case                       |
 | `bypassed`    | `count`                                                                          | The player let waiting parcels through unchecked |
 | `timmy`       |                                                                                  | Timmy's letter arrives                           |
 | `update`      |                                                                                  | The faulty AI update lands                       |
@@ -168,6 +197,10 @@ Every item has `id`, `t`, `kind` and `text`. Some carry more:
 | `lost`        | `count`                                                                          | Letters were lost to a full pile                 |
 | `behind`      | `station`                                                                        | The pace first falls short of the target         |
 
+A `resolved` item's `text` says what the choice did, with the time, money and parcels involved, and
+`outcome` is `{ seconds, money, parcels, gained }` with the figures that apply. Testing a good update,
+for example, reports both the delay and the speed gained.
+
 A `check` is a copy taken when the check finished, so it still shows the toy as the AI made it after
 the parcel has been remade or moved. `by` is `"elf"` or `"player"`. A `consequence` leaves out the
 facts that do not apply to it. `about` is the `actions` key or `"case"`.
@@ -176,7 +209,7 @@ facts that do not apply to it. `about` is the `actions` key or `"case"`.
 
 | `version` | What differs                                                               |
 | --------- | -------------------------------------------------------------------------- |
-| `"piles"` | Assurance as piles only. No cases are brought to the player.               |
+| `"piles"` | Assurance as piles only. The only cases are update and incident cases.     |
 | `"cases"` | Piles, plus cases.                                                         |
 | `"calm"`  | As `"cases"`, with fewer letters arriving and the target lowered to match. |
 
@@ -190,10 +223,23 @@ preselects one.
 - When the checking pile is full the line waits; a full pile never lets parcels through by itself.
   Parcels miss a check in two ways, both visible: the player calls `bypass()`, counted in
   `bypassed`, or relaxed checkers wave a parcel through, counted in `vigilance.skipped`.
-- `quarantine` takes the `"batch"` parcels waiting at dispatch and is available once the update is
-  known. `recall` unlocks at the first wrong gift aboard after the update lands.
+- The faulty update is handled through incident cases, not through standing controls. Outside the
+  update, an `"aboard"` case is raised when the wrong gifts on the sleigh reach five.
+- Tutorial moments name their cause: what the player just did or what just happened. `skipGuidance()`
+  is how a returning player leaves the guided run.
 - `budget.left` can go below zero. Wages, AI and the elves' checks keep costing; the one-off actions
   stop until there is money.
 - A `tired` news item means an elf burnt out. A burnt-out elf comes back to its station by itself;
   sending an elf for cocoa earlier is quicker.
 - `pace.projected` is smoothed over about fifteen seconds.
+- `casesWaiting` can be more than 1 when several update or incident cases wait.
+- Options that take no time close the case at once: roll back, hold, let go, leave, install, skip,
+  accept and carry on. Test, remake, check each, bring back, ask and investigate count down in
+  `resolving`.
+- An `update` news item means an update was installed, good or faulty. The `rolledBack`,
+  `quarantined` and `recalled` items come from the answers to incident cases.
+- A `resolved` item for a choice whose result is not yet known (install, accept, carry on, keep
+  running, let go, leave) states the time, money, parcels and risk taken, and does not say whether
+  it was right.
+- Updates are offered at 50, 100 and 150 seconds. Asking a child takes an elf 12 seconds. The budget
+  is 1,000.

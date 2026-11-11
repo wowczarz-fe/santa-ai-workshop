@@ -696,14 +696,15 @@ class Workshop {
     );
   }
 
-  // A cargo as the page sees it, with one plain sentence a player can act on.
+  // A cargo as the page sees it, with a few plain words a player can act on, short enough to sit in a
+  // heading after the cargo's name.
   cargoView(id) {
     const c = CARGO[id];
     const text = {
-      everyday: `Everyday gifts: a wrong one costs ${money(WRONG_PRICE.everyday)}, a wrong big one ${money(WRONG_PRICE.big)}.`,
-      big: `Mostly big gifts: the AI slips more on them, and a wrong one costs ${money(WRONG_PRICE.big)}.`,
-      unclear: `Letters from little ones: about ${Math.round(c.unclear * 10)} in 10 wishes are unclear, and the AI guesses them.`,
-      rush: `A rush: letters come about ${c.rate} times as fast.`,
+      everyday: `A wrong gift costs ${money(WRONG_PRICE.everyday)}, a big one ${money(WRONG_PRICE.big)}.`,
+      big: `The AI slips more, and a wrong one costs ${money(WRONG_PRICE.big)}.`,
+      unclear: `${Math.round(c.unclear * 10)} in 10 wishes unclear: the AI guesses them.`,
+      rush: `Letters come ${c.rate} times as fast.`,
     }[id];
     return { id, name: c.name, icon: c.icon, text };
   }
@@ -3017,11 +3018,10 @@ class Workshop {
   // The first goal a run missed, in the player's words, or null when it earned all three.
   missedGoal(goals) {
     const [full, right, cost] = goals;
-    if (!full.met)
-      return `${plural(full.need - full.now, "gift")} short of a full sleigh`;
+    if (!full.met) return `${plural(full.need - full.now, "gift")} short`;
     if (!right.met)
       return `${plural(right.now - right.need, "wrong gift")} too many`;
-    if (!cost.met) return `${money(cost.now - cost.need)} over the allowance`;
+    if (!cost.met) return `${money(cost.now - cost.need)} over budget`;
     return null;
   }
 
@@ -3125,15 +3125,15 @@ class Workshop {
     const u = this.updates[report.run - 1];
     const fact = (label, value) => ({ label, value: String(value) });
     const pct = Math.round(u.promise * 100);
-    const signs = `It changes ${u.bigChange ? "a large" : "a small"} part of the machine and the supplier tested it ${u.briefTesting ? "briefly" : "thoroughly"}.`;
+    const signs = `It changes ${u.bigChange ? "a large" : "a small"} part of the machine; the supplier tested it ${u.briefTesting ? "briefly" : "thoroughly"}.`;
     const update = {
       id: "update",
       kind: "update",
-      label: "Install the AI update",
-      text: `An update for the toy machine promises toys ${pct}% faster. ${signs}`,
+      label: "Install the update",
+      text: `Toys ${pct}% faster. ${signs}`,
       facts: [
         fact("Gives", `toys ${pct}% faster`),
-        fact("Risk", `goes wrong ${chance(this.failChance(u))}`),
+        fact("Risk", `may be faulty, ${chance(this.failChance(u))}`),
         fact("Costs", money(BREAK_PRICE.update)),
       ],
     };
@@ -3141,26 +3141,29 @@ class Workshop {
       id: "tested",
       kind: "tested",
       label: "Test the update first",
-      text: `The update is tried on a few toys first. If they come out right it goes in ${TEST_DELAY} s into the next run; if not, nothing is installed.`,
+      text: `${TEST_TOYS} test toys first. If they pass, it goes in ${TEST_DELAY} s into the run; if not, nothing is installed. A good update fails the test 1 in ${Math.round(1 / (1 - (1 - RISK.aiMake) ** TEST_TOYS))} times.`,
       facts: [
-        fact("Gives", `the same, ${TEST_DELAY} s later, if clean`),
         fact(
-          "Risk",
-          `a good update fails 1 in ${Math.round(1 / (1 - (1 - RISK.aiMake) ** TEST_TOYS))}`,
+          "Gives",
+          `installs ${TEST_DELAY} s into the run if the test toys pass`,
         ),
+        fact("Stops", "a bad update"),
         fact("Costs", money(BREAK_PRICE.tested)),
       ],
     };
     const state = this.vigilance().name;
+    const toCome = this.aiParcelsToCome();
     const train = {
       id: "train",
       kind: "train",
       label: "Train the checkers",
-      text: `The checkers are ${state} and have skipped ${plural(this.vig.skipped, "check")}; about ${this.aiParcelsToCome()} AI parcels are still to come.`,
+      text: `Checkers ${state}: ${plural(this.vig.skipped, "check")} skipped so far.`,
       facts: [
         fact(
           "Gives",
-          `careful checks on about ${this.aiParcelsToCome()} AI parcels`,
+          toCome
+            ? `sharp checks on about ${toCome} AI gifts`
+            : "sharp checks once the AI helps",
         ),
         fact("Checkers now", state),
         fact("Costs", money(BREAK_PRICE.train)),
@@ -3172,7 +3175,7 @@ class Workshop {
       id: "rest",
       kind: "rest",
       label: "Cocoa for everyone",
-      text: `The elves average ${average} tiredness, and ${tired.filter((t) => t >= 60).length} are over 60.`,
+      text: `Elves average ${average} tired; ${tired.filter((t) => t >= 60).length} over 60.`,
       facts: [
         fact("Gives", "every elf half as tired"),
         fact("Elves now", `${average} tired on average`),
@@ -3181,7 +3184,10 @@ class Workshop {
     };
     const options = [
       ...(this.aiUsed ? [update, tested] : []),
-      ...(this.vig.trained ? [] : [train]),
+      // Training pays back only on AI gifts still to come: with the AI switched off after a run that
+      // used it, the update options fill the break and training is not offered. A break with no AI in
+      // use keeps it, so it still has two options and no update.
+      ...(this.vig.trained || (this.aiUsed && !toCome) ? [] : [train]),
       rest,
     ];
     // With no AI in use there is no update to offer, unless the break would otherwise have one option.
@@ -3194,8 +3200,8 @@ class Workshop {
         cargo: this.cargoView(this.cargo[report.run]),
         target: this.runTargets[report.run],
       },
-      title: `Sleigh run ${report.run} has left`,
-      text: `Pick one thing to do before run ${report.run + 1}.`,
+      title: `Sleigh ${report.run} is away`,
+      text: `Pick one for run ${report.run + 1}.`,
       options,
     };
   }
@@ -3212,7 +3218,7 @@ class Workshop {
     if (optionId === "update") {
       this.pay("ai", BREAK_PRICE.update);
       this.install(u);
-      text = `Installed: the toy machine can now make ${machine(this.machineSpeed)} toys a minute instead of ${before}.`;
+      text = `Installed: the toy machine makes ${machine(this.machineSpeed)} toys a minute, up from ${before}.`;
       outcome = {
         money: BREAK_PRICE.update,
         gained: machine(this.machineSpeed) - before,
@@ -3221,18 +3227,15 @@ class Workshop {
       this.pay("ai", BREAK_PRICE.tested);
       this.used.tested = true;
       this.pendingTest = { u, at: this.t + TEST_DELAY };
-      text = `The update will be tried on a few toys; it goes in ${TEST_DELAY} s into the next run if they come out right.`;
+      text = `Testing the update: it goes in ${TEST_DELAY} s into the run if the test toys pass.`;
       outcome = { money: BREAK_PRICE.tested, seconds: TEST_DELAY };
     } else if (optionId === "train") {
       this.pay("people", BREAK_PRICE.train);
       this.assure.trainCost += BREAK_PRICE.train;
       this.used.trained = true;
       this.vig.trained = true;
-      this.say(
-        "trained",
-        "Training done. The checkers stay careful however clean the AI looks.",
-      );
-      text = `Trained the checkers for ${money(BREAK_PRICE.train)}: they will check properly however clean the AI looks.`;
+      this.say("trained", "Checkers trained: they stay sharp.");
+      text = `Trained the checkers for ${money(BREAK_PRICE.train)}: they stay sharp however clean the AI looks.`;
       outcome = { money: BREAK_PRICE.train };
     } else {
       this.pay("people", BREAK_PRICE.rest);
@@ -3243,7 +3246,7 @@ class Workshop {
           rest: 0,
           station: e.station === BREAK && e.rest > 0 ? e.home : e.station,
         });
-      text = `Cocoa for everyone for ${money(BREAK_PRICE.rest)}: every elf starts the next run half as tired.`;
+      text = `Cocoa for everyone for ${money(BREAK_PRICE.rest)}: every elf half as tired.`;
       outcome = { money: BREAK_PRICE.rest };
     }
     this.say("chose", text, { choiceId, option: optionId, outcome });
@@ -3261,7 +3264,7 @@ class Workshop {
     if (!found) return this.install(u);
     this.consequence(
       "tested",
-      `The test found ${found} of ${TEST_TOYS} trial toys wrong, so the update was not installed.`,
+      `Test failed: ${found} of ${TEST_TOYS} test toys wrong, so the update was not installed.`,
       { money: BREAK_PRICE.tested },
     );
   }

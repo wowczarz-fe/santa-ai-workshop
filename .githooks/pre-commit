@@ -1,0 +1,4 @@
+#!/bin/sh
+# Refuse a commit whose staged files are not formatted. Fix with: npx prettier --write .
+git diff --cached --name-only --diff-filter=ACMR -z |
+  xargs -0 -r npx --no-install prettier --check --ignore-unknown

@@ -1,0 +1,10 @@
+{
+  "name": "santa-ai-workshop",
+  "private": true,
+  "scripts": {
+    "prepare": "git config core.hooksPath .githooks"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10"
+  }
+}

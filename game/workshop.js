@@ -3,11 +3,7 @@
 const ELF_NAMES = "Pip Holly Jingle Noel Ivy Fig Tinsel Coco".split(" ");
 const CONTROLS = "ai0 ai1 ask checking bypass".split(" ");
 const BREAK = 3;
-const STATION_NAMES = [
-  "Reading letters",
-  "Making toys",
-  "Checking and dispatch",
-];
+const STATION_NAMES = ["Reading", "Toy making", "Checking"];
 const LEVELS = ["By hand", "Assist", "Automate"];
 
 // One game, kept under a version name so a build can still be picked by address. `kinds` are the cases
@@ -29,6 +25,15 @@ const QUEUES = {
   check: { name: "To check", station: 2, limit: 10 },
   pass: { name: "Straight through", station: 2, limit: 12 },
   rework: { name: "To remake", station: 2, limit: 30 },
+};
+// What the player calls each pile, for the line that says a full pile has cleared.
+const PILE_NAMES = {
+  letters: "Letter pile",
+  clarify: "Asking pile",
+  orders: "Toy pile",
+  check: "Checking pile",
+  pass: "Straight-through pile",
+  rework: "Remake pile",
 };
 const STATION_QUEUES = [
   ["letters", "clarify"],
@@ -1099,7 +1104,7 @@ class Workshop {
     this.spent[kind] += amount;
     if (this.left() <= 0 && this.stats.brokeAt === null) {
       this.stats.brokeAt = this.t;
-      this.say("broke", "The money has run out. Paid actions have stopped.");
+      this.say("broke", "Money ran out: paid actions stopped.");
     }
   }
 
@@ -1165,7 +1170,7 @@ class Workshop {
     at(rushRun * RUN_SECONDS, "rush", () =>
       this.say(
         "rush",
-        `The rush is on! Letters now arrive about ${CARGO.rush.rate} times as fast.`,
+        `The rush: letters come ${CARGO.rush.rate} times as fast.`,
       ),
     );
     if (this.pendingTest && this.t >= this.pendingTest.at) this.finishTest();
@@ -1383,8 +1388,8 @@ class Workshop {
     }
     this.reveal(x);
     const text = x.wrong
-      ? `A checker caught a mistake: ${x.w.child} wished for ${a(x.w.wanted.name)} and got ${a(x.made.name)}.`
-      : `A checker opened ${x.w.child}'s ${x.w.wanted.name}: just right.`;
+      ? `Caught: ${x.w.child} got ${a(x.made.name)}, not ${a(x.w.wanted.name)}.`
+      : `Checked: ${x.w.child}'s ${x.w.wanted.name} is right.`;
     this.say("checked", text, {
       check: this.copy(x, Math.round(this.secondsPerCheck() * 10) / 10, "elf"),
     });
@@ -1407,7 +1412,7 @@ class Workshop {
         20,
         "relaxed",
         "relaxed",
-        `After ${this.vig.cleanRun} clean AI parcels in a row the checkers have started to skim and skip.`,
+        `Checkers drifting after ${this.vig.cleanRun} clean AI gifts: some go unchecked.`,
       );
   }
 
@@ -1475,12 +1480,7 @@ class Workshop {
     this.reveal(x);
     this.aboard.push(x);
     if (!x.wrong) return;
-    const slipped = x.slipped
-      ? " It slipped past a checker."
-      : x.exit === "skipped"
-        ? " A relaxed checker waved it through."
-        : "";
-    const text = `Wrong gift aboard! ${x.w.child} wished for ${a(x.w.wanted.name)} and got ${a(x.made.name)}.${slipped}`;
+    const text = `Wrong gift: ${x.w.child} got ${a(x.made.name)}, not ${a(x.w.wanted.name)}.`;
     const cause = this.causeId(x);
     const waiting = this.waitingCause(x);
     // Remembered for the end lesson: this gift went aboard while its decision waited.
@@ -1498,7 +1498,7 @@ class Workshop {
         20,
         "waved",
         "relaxed",
-        `${elf} waved ${x.w.child}'s ${x.made.name} through without opening it. Training at the next break would stop that.`,
+        `${elf} waved ${x.w.child}'s ${x.made.name} through unopened. Training at a break stops this.`,
       );
     }
     this.sighting(x, "sleigh");
@@ -1560,16 +1560,14 @@ class Workshop {
     if (!this.incident || this.incident.known) return;
     this.incident.known = true;
     const who = {
-      watcher: "An elf confirming the AI's toys",
-      checker: "The checkers",
-      sleigh: "The sleigh crew",
-      case: "Your investigation",
+      watcher: "an elf confirming toys",
+      checker: "the checkers",
+      sleigh: "the sleigh crew",
+      case: "your investigation",
     }[by];
-    this.say(
-      "noticed",
-      `${who} spotted it: the new update keeps making full-sized trains.`,
-      { by },
-    );
+    this.say("noticed", `Faulty update: ${who} spotted full-sized trains.`, {
+      by,
+    });
   }
 
   copy(x, seconds, by) {
@@ -2112,7 +2110,7 @@ class Workshop {
         sourceRaised: false,
         keptAt: null,
       };
-    this.say("update", "The new update is running on the toy machine.");
+    this.say("update", "Update installed on the toy machine.");
   }
 
   closeIncident(c, optionId, tell) {
@@ -2155,7 +2153,7 @@ class Workshop {
         this.pay("fixing", PRICE.made);
         this.say(
           "quarantined",
-          `${plural(n, "parcel")} from the update went to be remade. Dispatch waits for them.`,
+          `${plural(n, "gift")} from the faulty update sent to be remade.`,
           { count: n },
         );
         tell(
@@ -2211,7 +2209,7 @@ class Workshop {
         this.pay("fixing", recallPrice(list) - n * PRICE.remake);
         this.say(
           "recalled",
-          `${plural(n, "wrong gift")} came back off the sleigh to be remade.`,
+          `${plural(n, "wrong gift")} brought back to be remade.`,
           { count: n },
         );
         tell(
@@ -2262,10 +2260,7 @@ class Workshop {
     ) {
       inc.fault = false;
       this.machineSpeed = inc.speedBefore;
-      this.say(
-        "rolledBack",
-        "Rollback done. The toy machine makes proper toys again.",
-      );
+      this.say("rolledBack", "Rollback done: proper toys again.");
     }
   }
 
@@ -2323,11 +2318,9 @@ class Workshop {
       Object.assign(e, { home: s, station: BREAK, rest: BURNOUT_SECONDS });
       this.stats.burnouts++;
       if (s === 2) this.stats.checkerBurnouts++;
-      this.say(
-        "tired",
-        `${e.name} burnt out and walked off for a long cocoa break.`,
-        { elf: i },
-      );
+      this.say("tired", `${e.name} burnt out: off for a long cocoa break.`, {
+        elf: i,
+      });
     });
   }
 
@@ -2346,7 +2339,7 @@ class Workshop {
         10,
         "blocked0",
         "blocked",
-        "Reading stopped: the toy pile is full.",
+        "Reading stopped: toy pile full.",
         { station: 0 },
       );
     if (this.stationBlocked(1))
@@ -2354,7 +2347,7 @@ class Workshop {
         10,
         "blocked1",
         "blocked",
-        `The toy line stopped: ${this.stationBlocked(1)}.`,
+        `Toy making stopped: ${this.full("check") ? "checking" : "straight-through"} pile full.`,
         { station: 1 },
       );
     const count = this.unreportedLost;
@@ -2364,7 +2357,7 @@ class Workshop {
         5,
         "lost",
         "lost",
-        `${count} ${count === 1 ? "letter was" : "letters were"} lost: the letter pile is full.`,
+        `Letter pile full: ${plural(count, "letter")} lost.`,
         { count },
       )
     )
@@ -2378,11 +2371,17 @@ class Workshop {
     this.slowest = now.slowest;
     if (this.slowest !== null) this.stats.holding[this.slowest] += dt;
     const pace = this.pace();
-    if (this.t >= 20 && pace.behind && !this.behindNoted) {
+    // Said only when a station is holding things up, so the line always names a move to make.
+    if (
+      this.t >= 20 &&
+      pace.behind &&
+      pace.slowest !== null &&
+      !this.behindNoted
+    ) {
       this.behindNoted = true;
       this.say(
         "behind",
-        `At this pace Santa leaves with about ${pace.projected} right gifts.${pace.slowest === null ? "" : ` ${STATION_NAMES[pace.slowest]} is holding things up.`}`,
+        `${STATION_NAMES[pace.slowest]} is holding things up. Move an elf there.`,
         { station: pace.slowest },
       );
     }
@@ -2393,7 +2392,7 @@ class Workshop {
     const r = this.report.checking;
     const seconds = this.t - r.since;
     if (r.checked && seconds >= 5) {
-      const text = `${["A few checks", "Risky checks", "Checking everything"][this.checking]}, last ${Math.round(seconds)} seconds: ${r.checked} checked, ${r.caught} caught, about ${money(r.avoided)} of mistakes avoided, ${this.q.check.length} waiting, ${money(r.money)} spent.`;
+      const text = `Checking ${["a few", "the risky ones", "all"][this.checking]}, last ${Math.round(seconds)} s: ${r.caught} of ${r.checked} wrong, about ${money(r.avoided)} saved for ${money(r.money)}.`;
       this.consequence("checking", text, {
         seconds,
         checked: r.checked,
@@ -2413,9 +2412,9 @@ class Workshop {
     if (r.asked && seconds >= 5) {
       const avoided =
         r.asked *
-        [RISK.elfGuess, RISK.aiGuess, RISK.aiGuess][this.ai[0]] *
+        [RISK.elfRead, RISK.aiGuess, RISK.aiGuess][this.ai[0]] *
         AVERAGE_PRICE;
-      const text = `Asking, last ${Math.round(seconds)} seconds: ${r.asked} children asked, about ${money(avoided)} of wrong guesses avoided, ${this.q.clarify.length} letters waiting to be asked.`;
+      const text = `Asking, last ${Math.round(seconds)} s: ${r.asked} ${r.asked === 1 ? "child" : "children"} asked, about ${money(avoided)} of wrong guesses avoided.`;
       this.consequence("ask", text, {
         seconds,
         checked: r.asked,
@@ -2436,11 +2435,7 @@ class Workshop {
       if (ids.size > QUEUES[id].limit / 2) flow.halfFull = true;
       if (!ids.size && flow.halfFull) {
         flow.halfFull = false;
-        this.say(
-          "cleared",
-          `The ${QUEUES[id].name.toLowerCase()} pile is clear.`,
-          { queue: id },
-        );
+        this.say("cleared", `${PILE_NAMES[id]} clear.`, { queue: id });
       }
     }
     if (this.t - this.secondAt < 1 - 1e-9) return;
@@ -2458,8 +2453,8 @@ class Workshop {
       this.say(
         "milestone",
         n === this.target
-          ? `${n} right gifts: the target is met!`
-          : `${n} right gifts are on the sleigh.`,
+          ? `${n} right gifts: every target met!`
+          : `${n} right gifts so far this Christmas.`,
         { right: n },
       );
     }
@@ -2971,7 +2966,7 @@ class Workshop {
       },
       {
         id: "right",
-        name: "Right gifts",
+        name: "Few mistakes",
         now: wrong,
         need: allowed,
         text: `at most ${plural(allowed, "wrong gift")}`,
@@ -2982,7 +2977,7 @@ class Workshop {
         name: "Within budget",
         now: spent,
         need: allowance,
-        text: `spend at most ${money(allowance)}, wrong gifts included`,
+        text: `at most ${money(allowance)}, wrong gifts count`,
         ...counted(spent <= allowance),
       },
     ];
@@ -3114,12 +3109,9 @@ class Workshop {
     this.delivered.push(...this.aboard);
     this.aboard = [];
     this.aboardSeen = 0;
-    const wrongText = wrongGifts.length
-      ? ` and ${plural(wrongGifts.length, "wrong one")}`
-      : "";
     this.say(
       "departed",
-      `Sleigh run ${n} left with ${right} right gifts${wrongText}: ${plural(stars, "star")}.`,
+      `Sleigh ${n} is away: ${right} right, ${wrongGifts.length} wrong, ${plural(stars, "star")}.`,
       { run: n, right, wrong: wrongGifts.length, target, stars },
     );
     if (n === RUNS) return this.finish();
@@ -3492,12 +3484,12 @@ class Workshop {
     this.bypassed += waiting.length;
     this.say(
       "bypassed",
-      `${waiting.length} parcels went through without a check.`,
+      `${plural(waiting.length, "gift")} went through without a check.`,
       { count: waiting.length },
     );
     this.consequence(
       "bypass",
-      `Let ${waiting.length} parcels through unchecked. At the catch rate so far, about ${Math.round(waiting.length * rate)} of them could be wrong, about ${money(waiting.length * rate * AVERAGE_PRICE)} at risk.`,
+      `Let ${plural(waiting.length, "gift")} through unchecked: about ${Math.round(waiting.length * rate)} may be wrong, ${money(waiting.length * rate * AVERAGE_PRICE)} at risk.`,
       { checked: 0, waiting: 0 },
     );
     // Straight onto the sleigh: whatever was wrong in them, a faulty batch included, ships.

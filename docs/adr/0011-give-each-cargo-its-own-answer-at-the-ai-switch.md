@@ -44,9 +44,10 @@ is faster and frees them.
 
 ## Consequences
 
-Over six seeds a player who switches set-up for each cargo scores 13% more points and 14% more
-stars than the best single fixed set-up, where the cargo change alone gave 2%. That player
-averages 9.5 stars.
+A player who switches set-up for each cargo scores 0 to 4% more stars than the best single fixed
+set-up (Assist at both stations, check a few): 10.0 against 9.6 stars over 16 seeds, and 9.7
+against 9.7 over 40, measured in the review of 2026-11-11. The 14% first recorded here came from
+six seeds and a narrower set of fixed set-ups. That player averages 9.5 to 10 stars.
 
 Three results are thin. On the rush, Assist at both stations trails Automate by a small margin,
 so automation is better there without being clearly so. The switching player reads "about right"

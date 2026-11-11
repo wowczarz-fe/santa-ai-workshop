@@ -140,6 +140,80 @@ body[data-look="polish"] #countdownRing {
 body[data-look="polish"] #countdownRing .countdown-hand {
   stroke: #f0cf6c;
 }
+/* The decision cue: the only gold button, pulsing until its decision is opened */
+body[data-look="polish"] .dashboard .case-cue {
+  height: 35px;
+  max-width: 280px;
+  padding: 0 12px 0 10px;
+  gap: 0;
+  border: 2px solid #c78d2a;
+  border-radius: 9px;
+  background: #f0cf6c;
+  color: #3a2a00;
+  font:
+    700 13px Arial,
+    sans-serif;
+  white-space: nowrap;
+  align-self: center;
+}
+body[data-look="polish"] .dashboard .case-cue:hover:not(:disabled) {
+  background: #f5da85;
+}
+body[data-look="polish"] .dashboard .case-cue span,
+body[data-look="polish"] .dashboard .case-cue b {
+  display: inline;
+  color: inherit;
+  font-size: inherit;
+}
+body[data-look="polish"] .dashboard .case-cue .cue-icon {
+  margin-right: 6px;
+}
+body[data-look="polish"] .dashboard .case-cue .cue-icon .ui-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+body[data-look="polish"] .dashboard .case-cue .cue-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: normal;
+}
+body[data-look="polish"] .dashboard .case-cue .cue-count {
+  margin-left: 6px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: #3a2a00;
+  color: #f0cf6c;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+body[data-look="polish"] .dashboard .case-cue[data-pulse="true"] {
+  animation: cue-pulse 1.4s ease-out infinite;
+}
+@keyframes cue-pulse {
+  0% {
+    box-shadow: 0 0 0 0 #f0cf6ccc;
+  }
+  100% {
+    box-shadow: 0 0 0 10px #f0cf6c00;
+  }
+}
+body[data-look="polish"] .dashboard .case-cue[data-resolving="true"] {
+  border-color: #ffffff55;
+  background: #ffffff1a;
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-look="polish"] .dashboard .case-cue[data-pulse="true"] {
+    animation: none;
+  }
+}
+body.reduce-motion[data-look="polish"] .dashboard .case-cue[data-pulse="true"] {
+  animation: none;
+}
 body[data-look="polish"] #adventRuns {
   display: flex;
   gap: 4px;

@@ -71,6 +71,9 @@
     drag = null,
     suppressClick = 0,
     nativeDragElf = null;
+  let openedCases = new Set(),
+    resolvedAt = -Infinity,
+    ignoreClicksUntil = 0;
   let lastChoice = null,
     observedRight = 0,
     observedRun = null,
@@ -530,6 +533,8 @@
     caseOpen = false;
     lastMoment = null;
     lastCase = null;
+    openedCases.clear();
+    resolvedAt = -Infinity;
     ended = false;
     lastWrong = null;
     lastArrival = null;
@@ -1335,6 +1340,8 @@
   function handleNews(news) {
     if (!started) return;
     if (news.kind === "loaded" && news.control) showMistakeHint(news.control);
+    if (news.kind === "loaded" && news.caseId != null)
+      openedCases.delete(news.caseId);
     if (news.kind === "milestone") {
       iconText($("milestoneToast"), "gift", news.text);
       toastUntil = performance.now() + 3500;
@@ -1482,7 +1489,11 @@
       x: horizontal,
       y: Math.max(12, Math.min(r.bottom + gap, h - p.height - 12)),
     };
-    panel.style.left = `${Math.max(12, Math.min(fit.x, w - p.width - 12))}px`;
+    // On a phone a card is as wide as the screen allows, so it sits centred.
+    panel.style.left =
+      w < 600 && panel !== $("infoPopover")
+        ? `${(w - p.width) / 2}px`
+        : `${Math.max(12, Math.min(fit.x, w - p.width - 12))}px`;
     panel.style.top = `${Math.max(12, Math.min(fit.y, h - p.height - 12))}px`;
     drawPopupPointer(panel, anchor);
   }
@@ -1666,6 +1677,64 @@
     if (o.seconds) chips.push(["chip-time", "clock", `${o.seconds} s`]);
     return chips;
   }
+  const caseHeadings = {
+    update: { offered: "AI update offer", tested: "Update test result" },
+    incident: {
+      source: "Stop new mistakes",
+      made: "Gifts in the workshop",
+      aboard: "Wrong gifts on sleigh",
+    },
+    judge: "Checker question",
+    unclear: "Clarify this wish",
+    pattern: "Repeated mistake",
+  };
+  const caseHeading = (c) =>
+    typeof caseHeadings[c.kind] === "string"
+      ? caseHeadings[c.kind]
+      : caseHeadings[c.kind]?.[c.step] || "Workshop decision";
+  // The decision cue is gold and pulses until its case is opened; a wrong gift caused by that
+  // case going aboard makes it pulse again. Built once, so later frames change only its words.
+  $("caseCue").innerHTML =
+    '<span class="cue-icon" aria-hidden="true"></span><span class="cue-verb"></span><span class="cue-name"></span><b class="cue-count" hidden></b>';
+  function paintCue(c) {
+    const cue = $("caseCue"),
+      resolving = !!c.resolving,
+      art = resolving ? "clock" : "ask",
+      waiting = (view.casesWaiting ?? 0) + 1;
+    if (cue.dataset.icon !== art) {
+      cue.dataset.icon = art;
+      cue.querySelector(".cue-icon").innerHTML = icon(art);
+    }
+    const verb = resolving ? `${Math.ceil(c.resolving.remaining)} s` : "Decide";
+    const name = resolving ? " in progress" : `: ${caseHeading(c)}`;
+    if (cue.querySelector(".cue-verb").textContent !== verb)
+      cue.querySelector(".cue-verb").textContent = verb;
+    if (cue.querySelector(".cue-name").textContent !== name)
+      cue.querySelector(".cue-name").textContent = name;
+    cue.querySelector(".cue-count").hidden = waiting < 2;
+    cue.querySelector(".cue-count").textContent = waiting;
+    cue.dataset.resolving = String(resolving);
+    cue.dataset.pulse = String(!resolving && !openedCases.has(c.id));
+    cue.setAttribute(
+      "aria-label",
+      resolving
+        ? `Decision in progress, ${verb} left`
+        : `Decision waiting: ${caseHeading(c)}${waiting > 1 ? `, ${waiting} in all` : ""}`,
+    );
+  }
+  function focusCase() {
+    (
+      $("caseOptions").querySelector(".case-choice:not(:disabled)") ||
+      $("closeCase")
+    ).focus({ preventScroll: true });
+  }
+  // After a decision closes, the keyboard goes back to the cue, or to Pause when none waits.
+  function returnFocus() {
+    if (!$("casePanel").hidden) return focusCase();
+    ($("caseCue").hidden ? $("pause") : $("caseCue")).focus({
+      preventScroll: true,
+    });
+  }
   function paintCase() {
     const c = view.case;
     $("caseCue").hidden = !started || !c || !!view.end;
@@ -1677,37 +1746,20 @@
       delete $("casePanel").dataset.anchorVisit;
       return;
     }
-    const cue = c.resolving
-      ? ["clock", `${Math.ceil(c.resolving.remaining)}s · decision in progress`]
-      : ["ask", "Decision waiting"];
-    if ($("caseCue").textContent !== cue[1]) iconText($("caseCue"), ...cue);
     if (lastCase !== c.id) {
       lastCase = c.id;
-      caseOpen = false;
+      // The next step of an incident follows straight on from the answer to the last one.
+      caseOpen = c.kind === "incident" && performance.now() - resolvedAt < 1000;
     }
+    if (caseOpen) openedCases.add(c.id);
+    paintCue(c);
     $("casePanel").hidden = !started || !caseOpen || !!view.end;
     if ($("casePanel").hidden) {
       hidePopupPointer("casePanel");
       delete $("casePanel").dataset.anchorVisit;
       return;
     }
-    const headings = {
-      update: { offered: "AI update offer", tested: "Update test result" },
-      incident: {
-        source: "Stop new mistakes",
-        made: "Gifts in the workshop",
-        aboard: "Wrong gifts on sleigh",
-      },
-      judge: "Checker question",
-      unclear: "Clarify this wish",
-      pattern: "Repeated mistake",
-    };
-    text(
-      "caseTitle",
-      typeof headings[c.kind] === "string"
-        ? headings[c.kind]
-        : headings[c.kind]?.[c.step] || "Workshop decision",
-    );
+    text("caseTitle", caseHeading(c));
     text("caseText", c.text);
     $("casePanel").dataset.kind = c.kind;
     // Evidence as drawings: the child's words beside the toy the workshop made.
@@ -2113,9 +2165,15 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeInfo();
+      const wasOpen = !$("casePanel").hidden;
       caseOpen = false;
       $("casePanel").hidden = true;
       hidePopupPointer("casePanel");
+      if (wasOpen) returnFocus();
+      if (selected !== null) {
+        selected = null;
+        paint();
+      }
     }
   });
   document.addEventListener("click", (e) => {
@@ -2165,10 +2223,25 @@
       return;
     }
     if (target.dataset.resolve) {
+      // A double-click must not land on whatever sits under the closed panel.
+      resolvedAt = performance.now();
+      ignoreClicksUntil = resolvedAt + 400;
       perform(() => game.resolve(view.case.id, target.dataset.resolve));
+      if (!document.activeElement?.offsetParent || target.disabled)
+        returnFocus();
       return;
     }
   });
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (performance.now() < ignoreClicksUntil) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    },
+    true,
+  );
   document.querySelectorAll("[data-destination]").forEach((node) => {
     node.addEventListener("click", (e) => {
       if (selected !== null && !e.target.closest("button"))
@@ -2305,11 +2378,13 @@
         anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
     paint();
+    if (caseOpen) focusCase();
   };
   $("closeCase").onclick = () => {
     caseOpen = false;
     if (view.moment?.control === "case") acknowledge();
     paint();
+    returnFocus();
   };
   $("guidanceToggle").onclick = () => {
     if (!started) {

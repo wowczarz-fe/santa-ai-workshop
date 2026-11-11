@@ -314,20 +314,31 @@
         ><button id="closeReport">View workshop</button>
       </div>
       <div class="end-grid">
-        <section class="end-hero" aria-labelledby="resultTitle">
+        <section class="end-hero end-wide" aria-labelledby="resultTitle">
           <div id="endScene" class="end-scene" aria-hidden="true"></div>
           <div class="end-score">
             <strong id="endStars"></strong>
             <div class="end-score-copy">
               <h2 id="resultTitle"></h2>
-              <p><b id="endPoints"></b> <span id="personalBest"></span></p>
+              <p id="lessonText" class="end-lesson"></p>
+              <p class="end-points">
+                <b id="endPoints"></b> <span id="personalBest"></span>
+              </p>
             </div>
           </div>
-          <div id="endRuns" class="end-runs"></div>
+        </section>
+        <section
+          id="practices"
+          class="end-card end-wide"
+          hidden
+          aria-labelledby="practicesTitle"
+        >
+          <h3 id="practicesTitle">Real-world practices in this game</h3>
+          <div id="practiceTiles"></div>
         </section>
         <section
           id="assurance"
-          class="end-card dial-card"
+          class="end-card end-wide dial-card"
           hidden
           aria-labelledby="assuranceVerdict"
         >
@@ -340,53 +351,30 @@
           <div class="assurance-dial" role="img" id="assuranceDial"></div>
           <div class="assurance-costs">
             <div class="cost-under">
-              <span>Unchecked mistakes and late fixes</span
-              ><strong id="underCost"></strong><em>actual</em>
+              <span>Wrong gifts that skipped a check</span
+              ><strong id="underCost"></strong>
             </div>
             <div class="cost-over">
-              <span>Over-checking</span><strong id="overCost"></strong
+              <span>Extra checks</span><strong id="overCost"></strong
               ><em>estimate</em>
             </div>
           </div>
           <p id="assuranceText"></p>
         </section>
         <section
-          id="practices"
-          class="end-card end-wide"
-          hidden
-          aria-labelledby="practicesTitle"
+          id="endCausesBox"
+          class="end-card end-wide end-causes"
+          aria-labelledby="endCausesTitle"
         >
-          <h3 id="practicesTitle">What you just did, in the real world</h3>
-          <div id="practiceTiles"></div>
-          <div class="practices-foot">
-            <p>
-              Deciding how much assurance is worth it is what Frontier Economics
-              does
-            </p>
-            <a href="#article" class="article-link">Read the article</a>
-          </div>
+          <h3 id="endCausesTitle">Costliest causes</h3>
+          <ol id="endCauses" class="cause-list"></ol>
         </section>
-        <div class="end-stack">
-          <div id="resultSummary" class="end-tiles"></div>
-          <section class="end-card lesson">
-            <h3 id="lessonTitle"></h3>
-            <p id="lessonText"></p>
-          </section>
-          <section
-            id="endCausesBox"
-            class="end-card"
-            aria-labelledby="endCausesTitle"
-          >
-            <h3 id="endCausesTitle">Where the wrong gifts came from</h3>
-            <ol id="endCauses" class="cause-list"></ol>
-          </section>
-        </div>
-        <section class="end-card end-account" aria-labelledby="accountTitle">
-          <h3 id="accountTitle">The Christmas account</h3>
-          <table id="account"></table>
-          <p class="account-note">
-            Prevented losses estimate what caught mistakes would have cost.
-          </p>
+        <section
+          class="end-card end-wide end-account"
+          aria-labelledby="accountTitle"
+        >
+          <h3 id="accountTitle" class="visually-hidden">The money</h3>
+          <dl id="account" class="account-row"></dl>
         </section>
         <section
           id="checkingPaid"
@@ -395,21 +383,37 @@
           aria-labelledby="checkingPaidTitle"
         >
           <h3 id="checkingPaidTitle">Was checking worth it?</h3>
-          <div id="assuranceGroups" class="assurance-groups"></div>
-          <p id="noChecks"></p>
-          <details class="estimate-help">
-            <summary>How these estimates work</summary>
-            <p>
-              Without checks assumes every wrong toy made would have shipped. It
-              is not a simulated alternative policy. Prevented losses estimate
-              the cost of caught mistakes. Estimated overchecking combines
-              checking spend above estimated losses prevented with the estimated
-              value of gifts left waiting for checks. Underchecking counts wrong
-              gifts delivered without a check and their late recall or remake
-              costs. Mistakes missed by a checker who looked are included in
-              wrong gifts shipped, not in this underchecking cost.
+          <p id="checkingAnswer" class="checking-answer"></p>
+          <details class="checking-detail">
+            <summary>By kind of gift</summary>
+            <div id="assuranceGroups" class="assurance-groups"></div>
+            <p id="noChecks"></p>
+            <p class="estimate-help">
+              Mistakes stopped: about what the wrong gifts caught would have
+              cost. Extra checks: checks that cost more than they stopped, and
+              gifts held up while every parcel was checked. With no checks:
+              every wrong toy made, had it shipped.
             </p>
           </details>
+        </section>
+        <section class="end-wide" aria-label="The four runs">
+          <div id="endRuns" class="end-runs"></div>
+        </section>
+        <section class="end-card end-wide end-offer" aria-label="Frontier">
+          <p>
+            Deciding how much assurance is worth it is what Frontier Economics
+            does.
+          </p>
+          <div class="end-offer-links">
+            <a href="#article" class="article-link">Read the article</a>
+            <a
+              class="explore-link"
+              href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Data Science & AI at Frontier</a
+            >
+          </div>
         </section>
         <section
           class="end-card end-wide collection"
@@ -419,15 +423,6 @@
           <div id="blunderCollection"></div>
         </section>
       </div>
-      <p class="end-foot">
-        <a
-          class="explore-link"
-          href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Explore Data Science & AI at Frontier</a
-        >
-      </p>
       <div class="end-actions">
         <button id="replay" class="primary"></button
         ><button id="copyResult">Copy result</button>

@@ -3188,8 +3188,7 @@ dialog p {
   box-shadow: none;
 }
 .end-top,
-.end-grid,
-.end-foot {
+.end-grid {
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -3240,17 +3239,20 @@ dialog p {
   background: linear-gradient(180deg, var(--bc-hero2), var(--bc-hero1));
   color: var(--bc-hero-ink);
 }
-.end-scene,
-.end-snow {
+.end-scene {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
 }
-.end-snow {
-  fill: var(--bc-snow);
-  opacity: 0.35;
+#report .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .end-sleigh {
   position: absolute;
@@ -3308,6 +3310,13 @@ dialog p {
   font-size: 13px;
   color: var(--bc-hero-muted);
 }
+#report .end-score-copy .end-lesson {
+  max-width: 62ch;
+  margin-bottom: 8px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--bc-hero-ink);
+}
 #endPoints {
   color: var(--bc-hero-ink);
   font-size: 15px;
@@ -3319,19 +3328,32 @@ dialog p {
 #personalBest:empty {
   display: none;
 }
+/* The four runs: a row of small cards on the page, below the money. */
 .end-runs {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 .run-report {
+  --bc-hero-muted: var(--bc-muted);
+  --bc-mini-off: var(--bc-off);
+  --bc-mini-on: var(--bc-gold);
   display: grid;
   align-content: start;
   gap: 6px;
-  padding: 9px 10px;
-  border-radius: 10px;
-  background: var(--bc-run-bg);
+  padding: 10px 12px;
+  border: 1px solid var(--bc-line);
+  border-radius: 12px;
+  background: var(--bc-card);
+}
+.run-report .run-bonus {
+  justify-self: start;
+  padding: 0 8px;
+  border-radius: 20px;
+  background: var(--bc-ok-soft);
+  color: var(--bc-ok);
+  font-weight: 700;
 }
 .run-head {
   display: grid;
@@ -3369,15 +3391,11 @@ dialog p {
   gap: 2px;
   color: var(--bc-mini-off);
 }
-.goal-mini-mark svg:first-child {
-  width: 22px;
-  height: 22px;
+.goal-mini-mark svg {
+  width: 20px;
+  height: 20px;
 }
-.goal-mini-mark svg + svg {
-  width: 13px;
-  height: 13px;
-}
-.goal-mini-mark[data-waiting="true"] svg:first-child {
+.goal-mini-mark[data-waiting="true"] svg {
   color: var(--bc-mini-on);
   opacity: 0.6;
 }
@@ -3394,15 +3412,17 @@ dialog p {
   line-height: 1.25;
   color: var(--bc-hero-muted);
 }
+/* The dial across the page: the gauge on the left, its verdict and two figures beside it. */
 .dial-card {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
   grid-template-areas:
     "dial head"
     "dial costs"
-    "text text";
-  gap: 10px 16px;
+    "dial text";
+  gap: 10px 24px;
   align-content: start;
+  align-items: start;
 }
 .dial-head {
   grid-area: head;
@@ -3422,6 +3442,21 @@ dialog p {
 }
 #assurance[data-verdict="too much"] #assuranceVerdict {
   color: var(--bc-blue);
+}
+#assurance[data-verdict="bottleneck"] #assuranceVerdict {
+  color: var(--bc-gold-ink);
+}
+/* A bottleneck: the zones fade and a full-pile mark sits where the needle would be. */
+.dial-stuck .dial-zone,
+.dial-stuck .dial-word,
+.dial-stuck .dial-end {
+  opacity: 0.35;
+}
+.dial-stuck-mark circle {
+  fill: var(--bc-gold);
+}
+.dial-stuck-mark svg {
+  color: #2b2005;
 }
 .assurance-dial {
   grid-area: dial;
@@ -3509,6 +3544,7 @@ dialog p {
 .assurance-costs {
   grid-area: costs;
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
   gap: 8px;
 }
 .assurance-costs > div {
@@ -3553,124 +3589,85 @@ dialog p {
   font-size: 13px;
   line-height: 1.45;
 }
-.end-stack {
-  display: grid;
-  align-content: start;
-  gap: 14px;
-}
-.end-tiles {
-  display: grid;
+/* The costliest causes side by side, so the card stays one row high. */
+#endCauses {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px 18px;
 }
-.end-tile {
+#endCauses .cause + .cause {
+  padding-top: 0;
+  border-top: 0;
+}
+/* The money: one row of figures, always visible. */
+#report .account-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 0;
+}
+.account-item {
   display: grid;
-  align-content: start;
   gap: 2px;
-  padding: 10px 14px;
-  border: 1px solid var(--bc-line);
-  border-radius: 12px;
-  background: var(--bc-card);
 }
-.end-tile-label {
+.account-item dt {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
+  gap: 5px;
+  font-size: 12px;
   color: var(--bc-muted);
 }
-.end-tile-icon svg {
-  width: 17px;
-  height: 17px;
-}
-.end-tile b {
+.account-item dd {
+  margin: 0;
   font:
-    600 30px/1.1 var(--bc-serif),
+    600 19px/1.15 var(--bc-serif),
     serif;
   font-variant-numeric: tabular-nums;
-}
-.tile-right b {
-  color: var(--bc-accent-deep);
-}
-.tile-wrong b {
-  color: var(--bc-red-deep);
-}
-.tile-lost b {
-  color: var(--bc-gold-ink);
-}
-.end-tile small {
-  font-size: 11.5px;
-  color: var(--bc-muted);
-}
-#report .lesson {
-  border-left: 5px solid var(--bc-accent);
-}
-#report .lesson h3 {
-  margin-bottom: 4px;
-}
-#report .lesson p {
-  margin: 0;
-  font-size: 13px;
-}
-.end-account {
-  align-self: start;
-}
-#account {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13.5px;
-}
-#account th,
-#account td {
-  padding: 7px 0;
-  border-bottom: 1px solid var(--bc-line);
-  font-weight: 400;
-  text-align: left;
-}
-#account td {
-  padding-left: 12px;
-  text-align: right;
-  font-weight: 700;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 .account-icon {
-  display: inline-block;
-  margin-right: 8px;
-  vertical-align: -3px;
   color: var(--bc-accent-deep);
 }
 .account-icon svg {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
 }
-#account .account-total th,
-#account .account-total td {
-  border-top: 2px solid var(--bc-ink);
-  border-bottom: 0;
-  font-size: 15px;
-  font-weight: 800;
+.account-total {
+  padding-right: 22px;
+  border-right: 1px solid var(--bc-line);
 }
-#account .account-loss th,
-#account .account-loss td {
-  padding-top: 16px;
-  border-top: 1px dashed var(--bc-line);
+.account-total dd {
+  font-weight: 700;
 }
-#account .account-loss td {
-  color: var(--bc-red-deep);
-}
-#account .account-saved td {
-  color: var(--bc-ok);
-}
+.account-loss dd,
 .account-loss .account-icon {
   color: var(--bc-red-deep);
 }
+.account-saved dd,
 .account-saved .account-icon {
   color: var(--bc-ok);
 }
-#report .account-note {
-  margin: 8px 0 0;
-  font-size: 12px;
+/* Was checking worth it: the answer in one line, the bars folded away. */
+#report .checking-answer {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.checking-detail {
+  margin-top: 8px;
+  font-size: 13px;
+}
+.checking-detail summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--bc-muted);
+}
+.checking-detail[open] summary {
+  margin-bottom: 10px;
+}
+#report .group-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.35;
   color: var(--bc-muted);
 }
 .assurance-groups {
@@ -3781,16 +3778,11 @@ dialog p {
   margin: 12px 0 6px;
   font-size: 13px;
 }
-.estimate-help {
+#report .estimate-help {
+  margin: 0;
   font-size: 12px;
+  line-height: 1.4;
   color: var(--bc-muted);
-}
-.estimate-help summary {
-  cursor: pointer;
-  font-weight: 600;
-}
-#report .estimate-help p {
-  font-size: 12px;
 }
 #practices {
   padding: 20px 22px;
@@ -3884,18 +3876,26 @@ dialog p {
 .practice-tile[data-used="true"] .practice-action[data-used="false"] {
   opacity: 0.7;
 }
-.practices-foot {
+/* The firm's offer: the last card, with the article and the practice link together. */
+.end-offer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px 16px;
-  margin-top: 14px;
+  border: 2px solid var(--bc-accent);
+  background: var(--bc-accent-soft);
 }
-#report .practices-foot p {
+#report .end-offer p {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
+}
+.end-offer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
 }
 .article-link {
   display: inline-flex;
@@ -3951,12 +3951,9 @@ dialog p {
     serif;
   color: var(--bc-muted);
 }
-.end-foot {
-  padding: 0 18px 14px;
-  font-size: 13px;
-}
 .explore-link {
-  color: var(--bc-accent);
+  color: var(--bc-accent-deep);
+  font-size: 14px;
   font-weight: 600;
 }
 .end-actions {
@@ -4151,19 +4148,28 @@ dialog p {
   .assurance-costs strong {
     font-size: 21px;
   }
-  .end-tiles {
-    gap: 6px;
+  #report .account-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
   }
-  .end-tile {
-    padding: 8px 10px;
+  .account-total {
+    padding-right: 0;
+    border-right: 0;
   }
-  .end-tile-label {
-    align-items: flex-start;
-    font-size: 11.5px;
-    line-height: 1.2;
+  #endCauses {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
-  .end-tile b {
-    font-size: 24px;
+  #endCauses .cause + .cause {
+    padding-top: 8px;
+    border-top: 1px solid var(--bc-line);
+  }
+  .account-item dd {
+    font-size: 17px;
+  }
+  #report .checking-answer {
+    font-size: 14px;
   }
   .assurance-groups {
     grid-template-columns: minmax(0, 1fr);
@@ -4201,11 +4207,27 @@ dialog p {
     grid-column: 2;
     margin: 0;
   }
+  /* A practice not used is one short row on a phone: icon, name and badge. */
+  .practice-tile[data-used="false"] {
+    padding: 8px 12px;
+  }
+  .practice-tile[data-used="false"] .practice-icon {
+    grid-row: 1 / span 2;
+    width: 36px;
+    height: 36px;
+  }
+  .practice-tile[data-used="false"] .practice-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+  #report .practice-tile[data-used="false"] .practice-name {
+    font-size: 14.5px;
+  }
+  #report .practice-tile[data-used="false"] .practice-action {
+    display: none;
+  }
   #blunderCollection {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  }
-  .end-foot {
-    padding: 0 12px 12px;
   }
   .end-actions {
     padding: 10px 12px;

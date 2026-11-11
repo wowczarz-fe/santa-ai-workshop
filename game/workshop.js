@@ -2912,7 +2912,7 @@ class Workshop {
       "too little": `Too little checking. Unchecked mistakes cost ${under}, ${extra} only ${over}.`,
       "about right": `Checking was about right. Unchecked mistakes cost ${under}, ${extra} ${over}.`,
       "too much": `Too much checking. ${extra[0].toUpperCase() + extra.slice(1)} cost ${over}, unchecked mistakes ${under}.`,
-      bottleneck: `Checking was the bottleneck: it held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh. Move an elf to checking when its pile fills.`,
+      bottleneck: `Checking held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh: move an elf to checking when its pile fills.`,
     }[verdict];
     return {
       verdict,

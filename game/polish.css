@@ -1624,6 +1624,9 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"] #stationPicker {
     height: 40px;
   }
+  body[data-look="polish"] #stationPicker button.focus-tab {
+    box-shadow: inset 0 -4px 0 #d9a636;
+  }
   body[data-look="polish"] #stationPicker button.destination-tab {
     outline: 3px solid #d9a636;
     outline-offset: -3px;

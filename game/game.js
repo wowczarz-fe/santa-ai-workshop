@@ -1042,6 +1042,17 @@
     elfNodes.forEach((wrap, i) =>
       wrap.classList.toggle("needs-rest", i === tiredElf),
     );
+    // On a phone the station tab of the outlined thing is marked too, as it may be a page away.
+    const focusColumn = (walkTarget || focusTarget)?.closest(".station");
+    $("stationPicker")
+      .querySelectorAll("[data-station-page]")
+      .forEach((tab, page) =>
+        tab.classList.toggle(
+          "focus-tab",
+          !!focusColumn &&
+            focusColumn === (page === 3 ? $("sleigh") : $(`station${page}`)),
+        ),
+      );
     text("sleighRight", view.sleigh.right);
     const arrivals = view.sleigh.parcels;
     const newest = arrivals.at(-1);

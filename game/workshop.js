@@ -92,13 +92,13 @@ const RUNS = 4;
 const RUN_SECONDS = 60;
 const POINTS = { right: 10, star: 20, clean: 50, budgetLeft: 0.2 };
 // Each sleigh run has three goals, one star each. full: the right gifts aboard reach the target.
-// right: wrong gifts aboard, a big one counting BIG_WRONG_WEIGHT, stay within one for every
-// WRONG_PER gifts of target, at least one. cost: the money spent during the run, the break before it
+// right: wrong gifts aboard stay within one for every WRONG_PER gifts of target, and never below
+// WRONG_MIN. cost: the money spent during the run, the break before it
 // included, stays within ALLOWANCE.base plus ALLOWANCE.perGift for each gift of target. The right
 // and cost goals count only once the sleigh holds GOALS_FROM of its target, so a near-empty sleigh
 // earns nothing.
 const WRONG_PER = 12;
-const BIG_WRONG_WEIGHT = 2;
+const WRONG_MIN = 1;
 const ALLOWANCE = { base: 300, perGift: 4 };
 const GOALS_FROM = 2 / 3;
 // Where a wrong gift that reached the sleigh came from, and the control that would have stopped it.
@@ -2789,44 +2789,48 @@ class Workshop {
   goals(n = this.runNumber) {
     const target = this.runTargets[n - 1];
     const right = this.aboard.filter((x) => !x.wrong).length;
-    const wrong = sum(
-      this.aboard
-        .filter((x) => x.wrong)
-        .map((x) => (x.w.big ? BIG_WRONG_WEIGHT : 1)),
-    );
-    const allowed = Math.max(1, Math.floor(target / WRONG_PER));
+    const wrong = this.aboard.filter((x) => x.wrong).length;
+    const allowed = Math.max(WRONG_MIN, Math.floor(target / WRONG_PER));
     const allowance = Math.round(ALLOWANCE.base + ALLOWANCE.perGift * target);
     const spent = Math.round(
       sum(
         Object.keys(this.spent).map((k) => this.spent[k] - this.spentAtRun[k]),
       ),
     );
-    const loaded = right >= target * GOALS_FROM;
-    const counts = BIG_WRONG_WEIGHT === 2 ? "double" : `as ${BIG_WRONG_WEIGHT}`;
+    const from = Math.ceil(target * GOALS_FROM);
+    const loaded = right >= from;
+    // A goal whose figures are within its limit waits, unlit, until the sleigh holds enough gifts.
+    const counted = (within) => ({
+      met: loaded && within,
+      waiting: !loaded && within,
+      note: !loaded && within ? `counts from ${from} right gifts` : null,
+    });
     return [
       {
         id: "full",
         name: "Full sleigh",
         now: right,
         need: target,
-        met: right >= target,
         text: `${target} right gifts`,
+        met: right >= target,
+        waiting: false,
+        note: null,
       },
       {
         id: "right",
         name: "Right gifts",
         now: wrong,
         need: allowed,
-        met: loaded && wrong <= allowed,
-        text: `at most ${plural(allowed, "wrong gift")}, big ones count ${counts}`,
+        text: `at most ${plural(allowed, "wrong gift")}`,
+        ...counted(wrong <= allowed),
       },
       {
         id: "cost",
         name: "Within budget",
         now: spent,
         need: allowance,
-        met: loaded && spent <= allowance,
         text: `spend at most ${money(allowance)}`,
+        ...counted(spent <= allowance),
       },
     ];
   }

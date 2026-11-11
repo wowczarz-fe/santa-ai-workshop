@@ -32,7 +32,8 @@ Each sleigh run has three goals worth one star each, shown live during the run:
 
 - Full sleigh: the right gifts aboard reach the run's target.
 - Right gifts: wrong gifts aboard stay within a limit of one for every twelve gifts of target,
-  with a wrong big gift counting double.
+  at least one. Every wrong gift counts as one, so the figure on the page is the number a player
+  can see aboard; the dearer big gifts already cost more in points and in the bill.
 - Within budget: money spent in the run stays within an allowance of £300 plus £4 for each gift
   of target.
 

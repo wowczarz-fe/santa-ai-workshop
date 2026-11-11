@@ -238,6 +238,36 @@ function checkGate(w) {
   );
 }
 
+// An open moment points at something that is there in the same view.
+function checkMoment(v) {
+  const m = v.moment;
+  const everywhere = [
+    ...Object.values(v.queues).flatMap((q) => q.parcels),
+    ...v.sleigh.parcels,
+    ...(v.case?.evidence ?? []).map((e) => ({ id: e.parcelId })),
+  ];
+  if (m.parcelId !== null)
+    assert(
+      everywhere.some((p) => p.id === m.parcelId),
+      `moment ${m.id} points at a parcel that is gone`,
+    );
+  if (m.control in v.actions)
+    assert(
+      v.actions[m.control].unlocked,
+      `moment ${m.id} points at a locked control`,
+    );
+  const live = {
+    case: () => v.case,
+    cocoa: () => v.elves.some((e) => e.station < 3 && e.tired >= 60),
+    bypass: () => v.queues.check.parcels.length >= v.queues.check.limit,
+    recall: () => v.sleigh.wrong > 0,
+    quarantine: () => v.incident?.suspectWaiting > 0,
+    rollback: () => v.actions.rollback.available,
+    train: () => v.vigilance.state !== "careful",
+  }[m.id];
+  assert(!live || live(), `moment ${m.id} shown after its example has gone`);
+}
+
 function play(name, seed, version, guided = false) {
   const w = new Workshop({ seed, guided, version });
   const run = {
@@ -306,6 +336,7 @@ function play(name, seed, version, guided = false) {
         run.caseKinds.push(v.case.kind);
       }
       while (v.moment) {
+        checkMoment(v);
         run.moments.push({ t: v.t, id: v.moment.id });
         assert(w.acknowledge(v.moment.id));
         v = w.view();
@@ -582,6 +613,7 @@ for (const version of ["piles", "cases"]) {
   const memo = {};
   while (!w.end) {
     const v = w.view();
+    if (v.moment) checkMoment(v);
     if (v.moment && completeMoment(w, v)) {
       assert.notStrictEqual(
         w.view().moment?.id,

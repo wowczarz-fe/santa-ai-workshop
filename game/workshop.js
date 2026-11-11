@@ -435,17 +435,31 @@ class Workshop {
     this.showMoment();
   }
 
+  // A moment whose example has gone closes, or never shows, and waits for the next real example.
   showMoment() {
     if (
-      this.moment ||
-      !this.momentQueue.length ||
-      this.t - this.lastMomentAt < MOMENT_GAP
-    )
-      return;
-    const next = FIRST_MOMENTS.find((id) => !this.shown.has(id));
-    const i = next ? this.momentQueue.findIndex((q) => q.id === next) : 0;
-    if (i < 0) return;
-    const [{ id, parcelId }] = this.momentQueue.splice(i, 1);
+      this.moment &&
+      this.example(this.moment.id, this.moment.parcelId) === false
+    ) {
+      this.forget(this.moment.id);
+      this.moment = null;
+    }
+    if (this.moment || this.t - this.lastMomentAt < MOMENT_GAP) return;
+    let id;
+    let parcelId;
+    while (this.momentQueue.length) {
+      const next = FIRST_MOMENTS.find((id) => !this.shown.has(id));
+      const i = next ? this.momentQueue.findIndex((q) => q.id === next) : 0;
+      if (i < 0) return;
+      const [q] = this.momentQueue.splice(i, 1);
+      parcelId = this.example(q.id, q.parcelId);
+      if (parcelId !== false) {
+        id = q.id;
+        break;
+      }
+      this.forget(q.id);
+    }
+    if (!id) return;
     const m = MOMENTS[id];
     for (const control of m.unlocks) {
       this.unlocked.add(control);
@@ -461,6 +475,38 @@ class Workshop {
       parcelId,
       completes: [...m.completes],
     };
+  }
+
+  forget(id) {
+    this.happened.delete("moment:" + id);
+    this.shown.delete(id);
+  }
+
+  // The parcel a moment points at now, null when it points at no parcel, or false when its example has gone.
+  example(id, parcelId) {
+    const inc = this.incident;
+    switch (id) {
+      case "bypass":
+        return this.full("check") ? this.q.check[0].id : false;
+      case "cocoa":
+        return this.elves.some((e) => e.station < BREAK && e.tired >= 60)
+          ? null
+          : false;
+      case "case":
+        return this.cases.length ? null : false;
+      case "rollback":
+        return inc?.fault && !inc.rollingBack ? null : false;
+      case "quarantine":
+        return this.marked()[0]?.id ?? false;
+      case "recall":
+        return this.aboard.find((x) => x.wrong)?.id ?? false;
+      case "train":
+        return this.vigilance().state !== "careful" && !this.training
+          ? null
+          : false;
+      default:
+        return parcelId;
+    }
   }
 
   did(call) {
@@ -1969,10 +2015,11 @@ class Workshop {
       duration: this.duration,
       target: this.target,
       version: { id: this.versionId, name: this.v.name, text: this.v.text },
-      moment: this.moment && {
-        ...this.moment,
-        completes: [...this.moment.completes],
-      },
+      moment:
+        this.moment &&
+        this.example(this.moment.id, this.moment.parcelId) !== false
+          ? { ...this.moment, completes: [...this.moment.completes] }
+          : null,
       elves: this.elves.map((e) => ({
         name: e.name,
         station: e.station,

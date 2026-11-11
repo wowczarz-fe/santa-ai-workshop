@@ -179,7 +179,7 @@ function rests(w, v, m) {
 }
 
 // Moves one elf every few seconds to the station whose piles are fullest, keeping one asker,
-// one watcher and two checkers. With toDispatch false it never adds checkers.
+// one elf at toys and two checkers. With toDispatch false it never adds checkers.
 function balance(w, v, m, keep = [1, 1, 2], toDispatch = true) {
   if (v.t - (m.moved ?? -9) < 3) return;
   const need = [
@@ -222,11 +222,15 @@ const sensible = (
   const cargo = v.run.cargo.id;
   w.setAsk(ask);
   w.setChecking(checking ?? 1);
-  w.setAi(0, cargo === "unclear" ? 1 : 2);
-  // The machine alone until an update makes it faster than elves confirming its drafts.
+  w.setAi(0, ["unclear", "big"].includes(cargo) ? 1 : 2);
+  // Elves confirm big gifts at the source; otherwise the machine alone until an update makes it
+  // faster than elves confirming its drafts.
   w.setAi(
     1,
-    toys ?? (v.levers.ai1[2].perMinute >= v.levers.ai1[1].perMinute ? 2 : 1),
+    toys ??
+      (cargo !== "big" && v.levers.ai1[2].perMinute >= v.levers.ai1[1].perMinute
+        ? 2
+        : 1),
   );
   if (rest) rests(w, v, m);
   balance(w, v, m, [1, watch ? 1 : 0, 2], staffCheck);
@@ -265,14 +269,14 @@ const players = {
   // Never adds checkers and lets the checking pile through whenever anything waits.
   bypassHeavy: (w, v, m) =>
     sensible(w, v, m, { staffCheck: false, bypass: true }),
-  // Nobody watches the toy machine, so only checkers, cases or the sleigh can notice a faulty update.
+  // Keeps no elf at toys: they all go to checking.
   noWatcher: (w, v, m) => sensible(w, v, m, { watch: false }),
   // Toys stay on Assist, so confirming elves catch most of a faulty update's trains.
   assistToys: (w, v, m) => sensible(w, v, m, { toys: 1 }),
   askAll: (w, v, m) => sensible(w, v, m, { ask: true }),
   checkFew: (w, v, m) => sensible(w, v, m, { checking: 0 }),
   checkEverything: (w, v, m) => sensible(w, v, m, { checking: 2 }),
-  // Toy mistakes: tired elves by hand against the machine with rested watchers.
+  // Toy mistakes: tired elves by hand against the machine left alone.
   toysByHandTired: (w, v, m) => (w.setAi(0, 1), answer(w, v, m)),
   toysAutomatedWatched(w, v, m) {
     rests(w, v, m);
@@ -888,9 +892,9 @@ function assuranceOf(seed, plan) {
 }
 const BY_CARGO = {
   everyday: { ai: [1, 1], ask: true, checking: 0, staff: [3, 3, 2] },
-  big: { ai: [2, 2], checking: 1, staff: [0, 0, 8] },
+  big: { ai: [1, 1], checking: 0, staff: [3, 3, 2] },
   unclear: { ai: [1, 2], checking: 0, staff: [3, 0, 5] },
-  rush: { ai: [2, 2], ask: true, checking: 0, staff: [0, 0, 8] },
+  rush: { ai: [2, 2], ask: true, checking: 1, staff: [2, 0, 6] },
 };
 for (const seed of SEEDS.slice(0, 3)) {
   const few = assuranceOf(seed, () => ({

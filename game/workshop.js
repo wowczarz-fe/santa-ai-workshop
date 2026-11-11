@@ -62,14 +62,16 @@ const RISK = {
   aiGuess: 0.8,
   asked: 0.01,
   elfMake: 0.005,
-  aiMake: 0.05,
-  aiMakeBig: 0.3,
+  aiMake: 0.03,
+  aiMakeBig: 0.45,
   fault: 0.65,
   perStrain: 0.008, // per point of tiredness above SLIPS_FROM
 };
-const CONFIRM_CATCH = 0.85; // an elf confirming an AI draft spots a wrong one
-const WATCH_CATCH = 0.4; // a watching elf spots one faulty toy
+const CONFIRM_CATCH = 0.95; // an elf confirming an AI draft spots a wrong one
 const CHECK_CATCH = 0.9;
+// A checker cannot tell whether an unclear wish nobody asked about was read right, so checking catches
+// fewer of those mistakes; asking the child, or an elf confirming the reading, fixes them at the source.
+const CHECK_CATCH_UNCLEAR = 0.3;
 const UNSURE_IF_WRONG = 0.7;
 const CATCH_SHARPENS = 5; // clean parcels a caught mistake takes off the checkers' run
 const UNSURE_IF_RIGHT = 0.06;
@@ -124,9 +126,9 @@ const WRONG_CAUSES = {
     fix: "Put toys on Assist so an elf confirms, or check a few more.",
   },
   waved: {
-    name: "Checkers let mistakes through",
+    name: "Checkers stopped looking",
     control: "train",
-    fix: "Train the checkers at a break, and send tired ones for cocoa.",
+    fix: "Train them at a break, or rest them with cocoa.",
   },
   faulty: {
     name: "The faulty update",
@@ -144,9 +146,23 @@ const TEST_DELAY = 20; // seconds into the next run a tested update goes in, whe
 
 // Checkers relax after a run of clean AI-made parcels they checked: quicker checks, some skipped.
 const VIGILANCE = [
-  { state: "careful", from: 0, speed: 1, skip: 0, trust: 0 },
-  { state: "relaxing", from: 8, speed: 0.75, skip: 0.5, trust: 0.3 },
-  { state: "waving through", from: 20, speed: 0.5, skip: 0.9, trust: 0.6 },
+  { state: "careful", name: "sharp", from: 0, speed: 1, skip: 0, trust: 0 },
+  {
+    state: "relaxing",
+    name: "drifting",
+    from: 8,
+    speed: 0.75,
+    skip: 0.5,
+    trust: 0.3,
+  },
+  {
+    state: "waving through",
+    name: "not looking",
+    from: 20,
+    speed: 0.5,
+    skip: 0.9,
+    trust: 0.6,
+  },
 ];
 
 // A cocoa break in time is short; a burnt-out elf is gone for a minute and comes back still tired.
@@ -193,7 +209,7 @@ const GROUPS = [
 const groupOf = (w) => (w.big ? "big" : w.unclear ? "unclear" : "everyday");
 // The end summary dial: below little it reads too little checking, above much too much. settle is the
 // share of all money spent that the two losses must reach before the dial moves far from the middle.
-const ASSURANCE = { little: 0.2, much: 0.8, settle: 0.1 };
+const ASSURANCE = { little: 0.1, much: 0.8, settle: 0.1 };
 
 const AT = { close: 211 };
 // When the letters speed up, when Timmy writes, and the latest each card may wait for its real
@@ -384,9 +400,9 @@ const MOMENTS = {
     control: "ai1",
     unlocks: ["ai1"],
     completes: ["setAi"],
-    title: "Let the AI make toys",
+    title: "Let the AI help make toys",
     text: () =>
-      "Toy orders are piling up. Switch toys to Automate, and the elves there can watch or move.",
+      "Toy orders are piling up. Assist is safer and needs elves; Automate is faster and frees them.",
   },
   ask: {
     control: "ask",
@@ -861,7 +877,7 @@ class Workshop {
   arrive(timmy = false) {
     const w = timmy ? TIMMY : this.pickWish();
     const roll = {};
-    for (const k of "read make unsure sample catch confirm watch skip judge".split(
+    for (const k of "read make unsure sample catch confirm skip judge".split(
       " ",
     ))
       roll[k] = this.rng();
@@ -1020,8 +1036,9 @@ class Workshop {
     );
   }
 
-  checkCatch() {
-    return Math.max(0.35, CHECK_CATCH - this.slipAt(2) * TIRED_MISSES);
+  checkCatch(x) {
+    const base = x?.w.unclear && !x.asked ? CHECK_CATCH_UNCLEAR : CHECK_CATCH;
+    return Math.max(0.35, base - this.slipAt(2) * TIRED_MISSES);
   }
 
   suspect(x) {
@@ -1293,17 +1310,7 @@ class Workshop {
         (x.wrong && !faulty && !x.confident
           ? UNSURE_IF_WRONG
           : UNSURE_IF_RIGHT);
-    if (faulty) {
-      this.incident.trains++;
-      if (level === 2) {
-        const missed = this.staff(1).reduce(
-          (p, e) =>
-            p * (1 - WATCH_CATCH * (1 - strain(e.tired) * TIRED_MISSES)),
-          1,
-        );
-        if (x.roll.watch < 1 - missed) this.notice("watcher");
-      }
-    }
+    if (faulty) this.incident.trains++;
     this.recent = [...this.recent.slice(-49), x];
     x.route = this.needsCheck(x) ? "check" : "pass";
     this.q[x.route].push(x);
@@ -1332,7 +1339,7 @@ class Workshop {
       x.exit = "case";
       return this.openCase({ kind: "judge", parcels: [x] });
     }
-    if (x.wrong && x.roll.catch >= this.checkCatch()) {
+    if (x.wrong && x.roll.catch >= this.checkCatch(x)) {
       x.slipped = true;
       return this.load(x);
     }
@@ -1491,7 +1498,7 @@ class Workshop {
     if (!this.incident || this.incident.known) return;
     this.incident.known = true;
     const who = {
-      watcher: "An elf watching the toy machine",
+      watcher: "An elf confirming the AI's toys",
       checker: "The checkers",
       sleigh: "The sleigh crew",
       case: "Your investigation",
@@ -2179,11 +2186,6 @@ class Workshop {
       const open = this.poolQueues(s, "elf").filter(
         (id) => this.q[id].length && !this.queueBlocked(id),
       );
-      const watching =
-        s === 1 &&
-        this.ai[1] === 2 &&
-        this.q.orders.length &&
-        !this.incident?.rollingBack;
       const c = this.cases[0];
       team.forEach((e, i) => {
         if (c?.resolving && c.station === s && i === 0)
@@ -2192,7 +2194,6 @@ class Workshop {
             ask: "asking a child",
             investigate: "investigating a pattern",
           }[c.resolving.optionId];
-        else if (watching) e.doing = "watching the toy machine";
         else if (!open.length) e.doing = "nothing to do";
         else {
           const id = open[i % open.length];
@@ -2226,12 +2227,7 @@ class Workshop {
         0.6 +
         Math.max(0, pressure - 0.25) * 0.75 +
         (s === 2 ? CHECKER_STRAIN + 0.1 * this.checking : 0);
-      const gain =
-        e.doing === "nothing to do"
-          ? -0.12
-          : e.doing === "watching the toy machine"
-            ? 0.15
-            : effort;
+      const gain = e.doing === "nothing to do" ? -0.12 : effort;
       e.tired = Math.min(100, Math.max(0, e.tired + dt * gain));
       if (e.tired < BURNOUT_AT) return;
       Object.assign(e, { home: s, station: BREAK, rest: BURNOUT_SECONDS });
@@ -2556,7 +2552,7 @@ class Workshop {
           [
             "elves make every toy",
             "AI drafts, an elf confirms",
-            "AI makes toys; elves watch it",
+            "AI makes toys alone",
           ],
         ][s][level];
         const ratio = perMinute[level] / perMinute[0];
@@ -2994,7 +2990,7 @@ class Workshop {
         fact("Costs", money(BREAK_PRICE.tested)),
       ],
     };
-    const state = this.vigilance().state;
+    const state = this.vigilance().name;
     const train = {
       id: "train",
       kind: "train",
@@ -3452,6 +3448,7 @@ class Workshop {
       bypassed: this.bypassed,
       vigilance: {
         state: v.state,
+        name: v.name,
         cleanRun: this.vig.cleanRun,
         secondsPerCheck: Math.round(this.secondsPerCheck() * 10) / 10,
         skipped: this.vig.skipped,
@@ -3503,6 +3500,10 @@ class Workshop {
         parcels: this.aboard.map((x) => this.parcel(x)),
       },
       lost: this.lost,
+      prices: {
+        wrongEveryday: WRONG_PRICE.everyday,
+        wrongBig: WRONG_PRICE.big,
+      },
       budget: {
         left: Math.round(this.left()),
         spent: Object.fromEntries(

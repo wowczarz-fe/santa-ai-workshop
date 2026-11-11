@@ -976,3 +976,6 @@ body[data-look="polish"] #countdownRing {
     top: 2px;
   }
 }
+body[data-look="polish"] .sleigh-column > * {
+  grid-column: 1;
+}

@@ -51,6 +51,11 @@ const ELF_SECONDS = {
 // However many gifts come back, a recall takes the checkers at most this many seconds in all.
 const RECALL_MAX_SECONDS = 20;
 // Seconds of checker work for each of n gifts brought back.
+// What bringing these gifts back off the sleigh costs, remakes included. Fixing a mistake after it
+// has shipped costs far more than checking it would have, and a big gift twice as much again.
+const recallPrice = (list) =>
+  PRICE.recall +
+  sum(list.map((x) => PRICE.recallEach * (x.w.big ? 2 : 1) + PRICE.remake));
 const recallSeconds = (n) =>
   Math.min(ELF_SECONDS.recall, RECALL_MAX_SECONDS / Math.max(1, n));
 const AI_SECONDS = { read: 0.6, make: 0.75 };
@@ -196,7 +201,7 @@ const PRICE = {
   rollback: 65,
   made: 15,
   recall: 20,
-  recallEach: 22, // per gift brought back, on top of its remake
+  recallEach: 40, // per gift brought back, twice that for a big one, on top of its remake
   investigate: 10,
   ask: 3, // a letter back to the child
 };
@@ -255,7 +260,7 @@ const CARGO = {
     big: 0.7,
     unclear: 0.05,
     rate: 1,
-    target: 50,
+    target: 56,
   },
   unclear: {
     name: "Letters from little ones",
@@ -263,7 +268,7 @@ const CARGO = {
     big: 0.05,
     unclear: 0.8,
     rate: 1,
-    target: 44,
+    target: 48,
   },
   rush: {
     name: "The rush",
@@ -271,7 +276,7 @@ const CARGO = {
     big: 0.05,
     unclear: 0.05,
     rate: 2,
-    target: 72,
+    target: 78,
   },
 };
 const LATER_CARGO = ["big", "unclear", "rush"];
@@ -1884,7 +1889,7 @@ class Workshop {
               "bringBack",
               "Bring them back",
               n * recallSeconds(n),
-              PRICE.recall + n * (PRICE.recallEach + PRICE.remake),
+              recallPrice(list),
               `${plural(n, "wrong gift")}, about ${Math.round(n * recallSeconds(n))} s of checkers`,
               broke ?? checker,
             ),
@@ -2112,28 +2117,30 @@ class Workshop {
           left: n,
           caught: 0,
           avoided: 0,
-          money: PRICE.recall + n * PRICE.recallEach,
+          money: recallPrice(list) - n * PRICE.remake,
           since: this.t,
         };
         list.forEach((x) => {
           // The summary counts a recall against too little checking only for a gift that went out unchecked.
-          x.recalled =
-            x.exit === "checked" || x.exit === "case" ? "checked" : "unchecked";
+          x.recalled = ["checked", "case", "skipped"].includes(x.exit)
+            ? "checked"
+            : "unchecked";
           if (x.recalled === "unchecked")
-            this.assure.recallCost += PRICE.recall / n + PRICE.recallEach;
+            this.assure.recallCost +=
+              PRICE.recall / n + PRICE.recallEach * (x.w.big ? 2 : 1);
           this.toRework(x, recallSeconds(n), job);
         });
-        this.pay("fixing", PRICE.recall + n * PRICE.recallEach);
+        this.pay("fixing", recallPrice(list) - n * PRICE.remake);
         this.say(
           "recalled",
           `${plural(n, "wrong gift")} came back off the sleigh to be remade.`,
           { count: n },
         );
         tell(
-          `${does(n, "wrong gift", "comes", "come")} back to be remade: about ${Math.round(n * recallSeconds(n))} s of checkers and ${money(PRICE.recall + n * (PRICE.recallEach + PRICE.remake))}.`,
+          `${does(n, "wrong gift", "comes", "come")} back to be remade: about ${Math.round(n * recallSeconds(n))} s of checkers and ${money(recallPrice(list))}.`,
           {
             seconds: n * recallSeconds(n),
-            money: PRICE.recall + n * (PRICE.recallEach + PRICE.remake),
+            money: recallPrice(list),
             parcels: n,
           },
         );
@@ -2550,7 +2557,7 @@ class Workshop {
       return LEVELS.map((name, level) => {
         const who = [
           "Elves do it",
-          "AI drafts, an elf confirms each one",
+          "AI drafts, an elf confirms each",
           "AI works alone",
         ][level];
         const ratio = perMinute[level] / perMinute[0];
@@ -2666,7 +2673,7 @@ class Workshop {
 
   // Whether checking was too little, about right or too much, in the game's own money.
   //   underCost: what under-checking lost: for each kind of gift, what its wrong gifts that reached
-  //     children without a check (never sent for one, waved through, or let through) cost beyond
+  //     children without a check (never sent for one, or let through by the player) cost beyond
   //     what checking every unchecked parcel of that kind would have cost, plus the recalls and
   //     remakes of unchecked gifts brought back off the sleigh. Leaving cheap mistakes unchecked when
   //     checking them all would cost more is not under-checking, and a mistake that slipped past a
@@ -2900,8 +2907,9 @@ class Workshop {
     for (const x of wrongGifts) {
       this.assured(x, "shipped");
       this.assured(x, "shippedCost", this.price(x));
-      // Unchecked: never sent for a check, waved through, or let through; not one a checker or the player looked at.
-      if (x.exit !== "checked" && x.exit !== "case") {
+      // Unchecked: never sent for a check, or let through by the player. One sent for a check that relaxed
+      // checkers waved through counts against the checkers, not against how much was checked.
+      if (!["checked", "case", "skipped"].includes(x.exit)) {
         this.assured(x, "shippedUnchecked");
         this.assured(x, "shippedUncheckedCost", this.price(x));
       }

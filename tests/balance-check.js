@@ -675,9 +675,7 @@ for (const version of VERSION_IDS) {
     const same = results[name].every(
       (r, i) => r.hash === results.sensible[i].hash,
     );
-    // A warning for checkFew since recalls became quick: letting mistakes out and bringing them back
-    // can now outscore checking, which is worth a balance pass of its own.
-    (name === "checkEverything" ? assert : warn)(
+    (["checkFew", "checkEverything"].includes(name) ? assert : warn)(
       beats(best, s) || (same && ["careful", "cheap"].includes(name)),
       `${version}: the sensible player beats ${name}`,
     );
@@ -895,8 +893,8 @@ function assuranceOf(seed, plan) {
 const BY_CARGO = {
   everyday: { ai: [1, 1], ask: true, checking: 0, staff: [3, 3, 2] },
   big: { ai: [1, 1], checking: 0, staff: [3, 3, 2] },
-  unclear: { ai: [1, 2], checking: 0, staff: [3, 0, 5] },
-  rush: { ai: [2, 2], ask: true, checking: 1, staff: [2, 0, 6] },
+  unclear: { ai: [1, 1], checking: 0, staff: [3, 3, 2] },
+  rush: { ai: [2, 2], checking: 1, staff: [0, 0, 8] },
 };
 for (const seed of SEEDS.slice(0, 3)) {
   const few = assuranceOf(seed, () => ({
@@ -915,10 +913,9 @@ for (const seed of SEEDS.slice(0, 3)) {
     "too little",
     `seed ${seed}: few checks read ${few.verdict}`,
   );
-  // A warning since recalls became quick: the two-checker game no longer always reads too much,
-  // which is worth a balance pass of its own.
-  warn(
-    all.verdict === "too much",
+  assert.strictEqual(
+    all.verdict,
+    "too much",
     `seed ${seed}: two checkers on everything read ${all.verdict} at ${all.position}`,
   );
   assert.strictEqual(

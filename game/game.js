@@ -11,7 +11,7 @@
       : PaperArt;
   document.body.insertAdjacentHTML(
     "afterbegin",
-    PaperArt.defs + (Art === PaperArt ? "" : Art.defs),
+    PaperArt.defs + (Art === PaperArt ? "" : Art.defs) + SharedArt.defs,
   );
   const elfSVG = Art.elf;
   const artSymbol = (id) => Art.symbol?.(id) || id;

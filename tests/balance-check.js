@@ -343,18 +343,26 @@ function checkHidden(v, w) {
   for (const g of v.run.goals) {
     assert.strictEqual(
       Object.keys(g).join(),
-      "id,name,now,need,text,met,waiting,note",
+      "id,name,now,need,text,met,waiting",
     );
-    assert(
-      !(g.met && g.waiting) && (g.note === null) === !g.waiting,
-      `goal ${g.id} waits only when unmet, with a note`,
-    );
+    assert(!(g.met && g.waiting), `goal ${g.id} waits only when unmet`);
   }
-  for (const n of v.news.filter((n) => n.kind === "loaded"))
+  assert(
+    Number.isInteger(v.run.goalsCountFrom) &&
+      v.run.goalsCountFrom <= v.run.target,
+    "run.goalsCountFrom is a gift count within the target",
+  );
+  for (const n of v.news.filter((n) => n.kind === "loaded")) {
     assert(
       n.cause in WRONG_CAUSES && n.control === WRONG_CAUSES[n.cause].control,
       `a wrong gift aboard names its cause (${n.cause})`,
     );
+    // Only a waiting decision about the faulty update can be the cause of a wrong gift aboard.
+    assert(
+      n.caseId === undefined || n.cause === "faulty",
+      `a wrong gift aboard names a waiting decision only for the faulty update (${n.cause})`,
+    );
+  }
   assert.strictEqual(
     v.score.stars,
     v.run.stars.reduce((a, b) => a + b, 0),
@@ -432,12 +440,23 @@ function checkChoice(v, w) {
   const ch = v.choice;
   assert.strictEqual(
     Object.keys(ch).join(),
-    "id,run,report,next,title,text,options",
+    "id,run,report,next,title,text,options,openCase",
   );
   assert.strictEqual(
     Object.keys(ch.report).join(),
-    "run,right,wrong,target,stars,missedBy,bonus,slips,more,spent,assurance,cargo,goals,causes",
+    "run,right,wrong,target,stars,missedBy,bonus,slips,more,spent,assurance,cargo,goals,goalsCountFrom,causes,tired",
   );
+  assert(
+    ch.report.tired >= 0 && ch.report.tired <= 100,
+    "the report gives the elves' average tiredness",
+  );
+  const waiting = w.cases.find((c) => !c.resolving);
+  assert.strictEqual(
+    ch.openCase?.id ?? null,
+    waiting?.id ?? null,
+    "the break names the decision still waiting",
+  );
+  if (ch.openCase) assert(ch.openCase.title, "a waiting decision has a title");
   for (const s of ch.report.slips)
     assert(CAUSES.includes(s.cause), `slip cause "${s.cause}"`);
   assert(
@@ -699,8 +718,10 @@ for (const version of VERSION_IDS) {
   const sensibleEnds = over("sensible").map((r) => r.end);
   console.log(`  sensible stars by run: ${starsOf(sensibleEnds).join(" ")}`);
   const sensibleStars = mean(sensibleEnds, (e) => e.stars);
+  // 7.5, not 8, since wrong gifts aboard count against the budget goal (ADR 0012): a sensible game
+  // ships a few and loses its budget star on about one run in twelve more than before.
   assert(
-    sensibleStars >= 8 && sensibleStars <= 11.5,
+    sensibleStars >= 7.5 && sensibleStars <= 11.5,
     `${version}: a sensible game earns two to three stars a run (${sensibleStars.toFixed(1)})`,
   );
   warn(
@@ -858,7 +879,9 @@ for (const version of VERSION_IDS)
   }
 
 // The end summary reads too little for few checks on automation, too much for checking everything
-// with two checkers, and about right for a player who sets up for each run's cargo.
+// with two checkers, and mostly about right for a player who sets up for each run's cargo. Since
+// gifts held up by risky checks no longer count as over-checking (ADR 0012), that player's unchecked
+// big-gift slips can read too little on an unlucky seed, so it must read about right on two of three.
 function assuranceOf(seed, plan) {
   const w = new Workshop({ seed });
   const setUp = ({ ai, ask = false, checking, staff }) => {
@@ -896,6 +919,7 @@ const BY_CARGO = {
   unclear: { ai: [1, 1], checking: 0, staff: [3, 3, 2] },
   rush: { ai: [2, 2], checking: 1, staff: [0, 0, 8] },
 };
+const fittedVerdicts = [];
 for (const seed of SEEDS.slice(0, 3)) {
   const few = assuranceOf(seed, () => ({
     ai: [2, 2],
@@ -918,12 +942,18 @@ for (const seed of SEEDS.slice(0, 3)) {
     "too much",
     `seed ${seed}: two checkers on everything read ${all.verdict} at ${all.position}`,
   );
-  assert.strictEqual(
-    fitted.verdict,
-    "about right",
+  assert(
+    fitted.verdict !== "too much" &&
+      fitted.position > few.position &&
+      fitted.position < all.position,
     `seed ${seed}: setting up for each cargo reads ${fitted.verdict} at ${fitted.position}`,
   );
+  fittedVerdicts.push(fitted.verdict);
 }
+assert(
+  fittedVerdicts.filter((v) => v === "about right").length >= 2,
+  `setting up for each cargo reads ${fittedVerdicts.join(", ")}`,
+);
 
 // Spending past the budget says so once and stops the paid one-off actions.
 {

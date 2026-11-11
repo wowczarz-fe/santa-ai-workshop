@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=assurance-53e4008-page4" />
   </head>
   <body class="stopped">
     <header>
@@ -46,10 +46,16 @@
           </p>
           <p id="mission"></p>
           <p>
-            AI brings speed and mistakes; checking costs time and money, so put
-            it where it matters.
+            AI can free elves for questions and checks; those choices cost time
+            and money.
           </p>
         </div>
+        <div
+          id="versions"
+          class="versions"
+          role="group"
+          aria-label="Workshop version"
+        ></div>
         <button class="primary" id="start">Open the workshop →</button>
       </section>
       <div class="dashboard">
@@ -64,12 +70,17 @@
         </div>
         <div><span>Wrong gifts aboard</span><strong id="wrong">0</strong></div>
         <div><span>Budget left</span><strong id="budget"></strong></div>
-        <div><span>Until departure</span><strong id="clock"></strong></div>
+        <div>
+          <span>Until departure</span><strong id="clock"></strong
+          ><small id="pauseState"></small>
+        </div>
         <button id="pause" disabled>Pause</button
         ><button id="restart">Restart</button>
       </div>
       <div class="guidance">
         <p id="status" role="status" aria-live="polite"></p>
+        <button id="guidanceContinue" hidden>Continue playing →</button>
+        <button id="caseCue" hidden>Checker needs a decision</button>
         <button id="motion" aria-pressed="false">Reduce motion</button>
       </div>
       <section class="workshop" aria-label="The workshop production line">
@@ -142,7 +153,7 @@
         ><button id="cancelRestart">Keep playing</button>
       </div>
     </dialog>
-    <script src="workshop.js"></script>
-    <script src="game.js"></script>
+    <script src="workshop.js?v=assurance-53e4008-page4"></script>
+    <script src="game.js?v=assurance-53e4008-page4"></script>
   </body>
 </html>

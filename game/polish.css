@@ -979,3 +979,14 @@ body[data-look="polish"] #countdownRing {
 body[data-look="polish"] .sleigh-column > * {
   grid-column: 1;
 }
+@media (max-width: 999px) {
+  body[data-look="polish"] #adventRuns {
+    display: none;
+  }
+  body[data-look="polish"] > header h1 {
+    min-width: 0;
+  }
+  body[data-look="polish"] .header-actions {
+    flex: none;
+  }
+}

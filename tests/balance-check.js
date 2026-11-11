@@ -20,6 +20,108 @@ const wantedFor = new Map(WISHES.map((w) => [w.wish, w.wanted.name]));
 const argmax = (list) => list.indexOf(Math.max(...list));
 const fill = (v, id) => v.queues[id].parcels.length / v.queues[id].limit;
 
+// Reading a case's facts the way a player would.
+const fact = (c, label) => c.facts.find((f) => f.label === label)?.value ?? "";
+const num = (text) => parseFloat(text.match(/\d+(\.\d+)?/)?.[0] ?? "0");
+const odds = (text) => {
+  const m = text.match(/(\d+) in (\d+)/);
+  return m ? m[1] / m[2] : 0;
+};
+const key = (c) => c.step ?? c.kind;
+
+// Weighs what the case shows and what the workshop can spare; picks a different option when they change.
+function conditional(c, v) {
+  const left = num(fact(c, "Time left"));
+  const e = c.evidence[0];
+  switch (key(c)) {
+    case "judge": {
+      if (wantedFor.get(e.wish) === e.made.name) return "ship";
+      return fact(c, "Gift worth").includes("big") ||
+        num(fact(c, "Checking pile")) < 6
+        ? "remake"
+        : "ship";
+    }
+    case "unclear":
+      return wantedFor.get(e.wish) === e.reading.name ? "accept" : "ask";
+    case "pattern": {
+      const ago = fact(c, "Last update installed");
+      if (!ago.includes("ago") || num(ago) > 60) return "carryOn";
+      return num(fact(c, "Made since")) <= 2 ? "hold" : "investigate";
+    }
+    case "offered": {
+      const p = odds(fact(c, "Updates like this go wrong"));
+      if (p <= 0.2) return "install";
+      if (p >= 0.8 || left < 80) return "skip";
+      return "test";
+    }
+    case "tested":
+      return odds(fact(c, "After the test")) <= 0.3 ? "install" : "skip";
+    case "source":
+      return left < 30 || v.ai[1] < 2 ? "keep" : "rollback";
+    case "made": {
+      const n = num(fact(c, "Parcels from the update"));
+      const big = num(fact(c, "Big gifts among them"));
+      if (odds(fact(c, "Likely wrong")) >= 0.4 && left >= 20)
+        return "remakeAll";
+      return big > 0 || (n >= 3 && left >= 20) ? "checkEach" : "letGo";
+    }
+    case "aboard": {
+      const n = num(fact(c, "Wrong gifts aboard"));
+      return num(fact(c, "Big gifts among them")) > 0 || (n >= 4 && left >= 40)
+        ? "bringBack"
+        : "leave";
+    }
+  }
+}
+const CAREFUL = {
+  judge: "remake",
+  unclear: "ask",
+  pattern: "investigate",
+  offered: "test",
+  tested: "skip",
+  source: "rollback",
+  made: "remakeAll",
+  aboard: "bringBack",
+};
+const CHEAP = {
+  judge: "ship",
+  unclear: "accept",
+  pattern: "carryOn",
+  offered: "install",
+  tested: "install",
+  source: "keep",
+  made: "letGo",
+  aboard: "leave",
+};
+
+// Answers the open case with a policy, falling back to any option that can be chosen now.
+function answer(w, v, m, policy = conditional) {
+  const c = v.case;
+  if (!c || c.resolving) return;
+  const wanted = policy(c, v);
+  const pick =
+    c.options.find((o) => o.id === wanted && o.available) ??
+    c.options.find((o) => o.available);
+  if (!pick || !w.resolve(c.id, pick.id)) return;
+  m.choices ??= [];
+  m.choices.push(`${key(c)}:${pick.id}`);
+  // What the conditional player itself chose, as opposed to a fixed rule standing in for it.
+  const own =
+    policy === conditional ||
+    (policy.overrides && !(key(c) in policy.overrides));
+  if (own && pick.id === wanted)
+    (m.conditional ??= []).push(`${key(c)}:${pick.id}`);
+  if (c.kind === "unclear") {
+    m.unclear ??= { ask: [], accept: [] };
+    m.unclear[pick.id].push(e(c).parcelId);
+  }
+}
+const e = (c) => c.evidence[0];
+const only = (overrides) =>
+  Object.assign((c, v) => overrides[key(c)] ?? conditional(c, v), {
+    overrides,
+  });
+
 // Every player except neverRests sends an elf for cocoa at the hint's tiredness, so each player
 // differs from the sensible one in the one thing its name says.
 function rests(w, v, m) {
@@ -38,29 +140,6 @@ function rests(w, v, m) {
     if (e.station === 3 && !e.resting && e.tired <= 10)
       w.move(i, m.home[i] ?? 2);
   });
-}
-
-// Answers cases as a careful player would: judges the toy against the wish, asks, investigates.
-// `unclear` forces the answer to unclear cases, and the letters answered each way are remembered.
-function answer(w, v, m = {}, unclear = null) {
-  const c = v.case;
-  if (!c || c.resolving) return;
-  const ok = (id) => c.options.find((o) => o.id === id && o.available);
-  const pick =
-    c.kind === "judge"
-      ? wantedFor.get(c.evidence[0].wish) === c.evidence[0].made.name
-        ? "ship"
-        : "remake"
-      : c.kind === "unclear"
-        ? (unclear ?? (ok("ask") ? "ask" : "accept"))
-        : ok("investigate")
-          ? "investigate"
-          : ok("hold")
-            ? "hold"
-            : "carryOn";
-  if (!ok(pick) || !w.resolve(c.id, pick) || c.kind !== "unclear") return;
-  m.unclear ??= { ask: [], accept: [] };
-  m.unclear[pick].push(c.evidence[0].parcelId);
 }
 
 // Moves one elf every few seconds to the station whose piles are fullest, keeping one asker,
@@ -85,102 +164,119 @@ function balance(w, v, m, keep = [1, 1, 2], toDispatch = true) {
     m.moved = v.t;
 }
 
-function respond(w, v, m) {
-  if (v.incident?.known) w.rollback();
-  if (
-    v.incident?.suspectWaiting >= 2 &&
-    v.t - (m.quarantined ?? -99) >= 15 &&
-    w.quarantine()
-  )
-    m.quarantined = v.t;
-  const wrongShare =
-    v.sleigh.wrong / Math.max(1, v.sleigh.right + v.sleigh.wrong);
-  if (
-    v.sleigh.wrong >= 4 &&
-    wrongShare > 0.06 &&
-    v.t - (m.recalled ?? -99) >= 20 &&
-    w.recall()
-  )
-    m.recalled = v.t;
-}
-
 // Players see only view() and call only the action methods.
+const sensible = (
+  w,
+  v,
+  m,
+  {
+    rest = true,
+    train = true,
+    watch = true,
+    staffCheck = true,
+    bypass = false,
+    ask = true,
+    policy = conditional,
+    toys = null,
+  } = {},
+) => {
+  w.setAsk(ask);
+  w.setChecking(1);
+  w.setAi(0, 2);
+  // The machine alone until an update makes it faster than elves confirming its drafts.
+  w.setAi(
+    1,
+    toys ?? (v.levers.ai1[2].perMinute >= v.levers.ai1[1].perMinute ? 2 : 1),
+  );
+  if (rest) rests(w, v, m);
+  if (train && v.vigilance.state !== "careful" && v.t < 170) w.train();
+  balance(w, v, m, [1, watch ? 1 : 0, 2], staffCheck);
+  if (!watch) v.elves.forEach((e, i) => e.station === 1 && w.move(i, 2));
+  if (bypass && v.queues.check.parcels.length) w.bypass();
+  answer(w, v, m, policy);
+};
 const players = {
-  byHand: rests,
+  byHand: (w, v, m) => (rests(w, v, m), answer(w, v, m)),
   fastNoChecks(w, v, m) {
     rests(w, v, m);
     w.setAi(0, 2);
     w.setAi(1, 2);
+    answer(
+      w,
+      v,
+      m,
+      only({
+        offered: "install",
+        tested: "install",
+        source: "keep",
+        made: "letGo",
+        aboard: "leave",
+      }),
+    );
   },
-  // Asks, trains, answers cases and rolls back like the sensible player; checking everything is the difference.
+  // Asks, trains and answers cases like the sensible player; checking everything is the difference.
   checkAll(w, v, m) {
     rests(w, v, m);
     w.setAi(0, 1);
     w.setAi(1, 1);
     w.setChecking(2);
     w.setAsk(true);
-    if (v.t >= 80) w.train();
-    answer(w, v);
-    if (v.incident?.known) w.rollback();
+    if (v.vigilance.state !== "careful") w.train();
+    answer(w, v, m);
   },
-  sensible(
-    w,
-    v,
-    m,
-    {
-      update = true,
-      rest = true,
-      train = true,
-      watch = true,
-      staffCheck = true,
-      bypass = false,
-      ask = true,
-      unclear = null,
-    } = {},
-  ) {
-    w.setAsk(ask);
-    w.setChecking(1);
-    w.setAi(0, 2);
-    w.setAi(1, 2);
-    if (rest) rests(w, v, m);
-    if (train && v.t >= 80) w.train();
-    balance(w, v, m, [1, watch ? 1 : 0, 2], staffCheck);
-    if (!watch) v.elves.forEach((e, i) => e.station === 1 && w.move(i, 2));
-    if (bypass && fill(v, "check") >= 0.3) w.bypass();
-    answer(w, v, m, unclear);
-    if (update) respond(w, v, m);
-  },
-  lateOnUpdate: (w, v, m) => players.sensible(w, v, m, { update: false }),
-  neverRests: (w, v, m) => players.sensible(w, v, m, { rest: false }),
-  neverTrains: (w, v, m) => players.sensible(w, v, m, { train: false }),
-  // Never adds checkers and lets the checking pile through whenever three parcels wait.
+  sensible: (w, v, m) => sensible(w, v, m),
+  careful: (w, v, m) => sensible(w, v, m, { policy: (c) => CAREFUL[key(c)] }),
+  cheap: (w, v, m) => sensible(w, v, m, { policy: (c) => CHEAP[key(c)] }),
+  alwaysInstall: (w, v, m) =>
+    sensible(w, v, m, {
+      policy: only({ offered: "install", tested: "install" }),
+    }),
+  alwaysTest: (w, v, m) =>
+    sensible(w, v, m, { policy: only({ offered: "test" }) }),
+  alwaysSkip: (w, v, m) =>
+    sensible(w, v, m, { policy: only({ offered: "skip", tested: "skip" }) }),
+  neverRests: (w, v, m) => sensible(w, v, m, { rest: false }),
+  neverTrains: (w, v, m) => sensible(w, v, m, { train: false }),
+  // Never adds checkers and lets the checking pile through whenever anything waits.
   bypassHeavy: (w, v, m) =>
-    players.sensible(w, v, m, { staffCheck: false, bypass: true }),
-  // Nobody watches the toy machine, so only checkers, cases or the sleigh can notice the update.
-  noWatcher: (w, v, m) => players.sensible(w, v, m, { watch: false }),
+    sensible(w, v, m, { staffCheck: false, bypass: true }),
+  // Nobody watches the toy machine, so only checkers, cases or the sleigh can notice a faulty update.
+  noWatcher: (w, v, m) =>
+    sensible(w, v, m, {
+      watch: false,
+      policy: only({ offered: "install", tested: "install" }),
+    }),
   // Asking is off, so unclear big gifts come as cases: one player asks the child, one accepts the AI.
-  askUnclear: (w, v, m) =>
-    players.sensible(w, v, m, { ask: false, unclear: "ask" }),
-  acceptUnclear: (w, v, m) =>
-    players.sensible(w, v, m, { ask: false, unclear: "accept" }),
-  // Skips checking and fixes mistakes after loading instead: must not beat checking first.
-  recallHappy(w, v, m) {
+  // Pays for everything: both stations automated, every parcel checked, the careful option always.
+  spendthrift(w, v, m) {
     rests(w, v, m);
     w.setAi(0, 2);
     w.setAi(1, 2);
+    w.setChecking(2);
     w.setAsk(true);
-    if (v.incident?.known) w.rollback();
-    w.recall();
+    w.train();
+    balance(w, v, m);
+    answer(w, v, m, (c) => CAREFUL[key(c)]);
   },
+  // Toys stay on Assist, so confirming elves catch most of a faulty update's trains.
+  assistToys: (w, v, m) =>
+    sensible(w, v, m, {
+      toys: 1,
+      policy: only({ offered: "install", tested: "install" }),
+    }),
+  // Asking off with cases read on their merits: unclear cases get asked or accepted by what the AI reads.
+  askOff: (w, v, m) => sensible(w, v, m, { ask: false }),
+  askUnclear: (w, v, m) =>
+    sensible(w, v, m, { ask: false, policy: only({ unclear: "ask" }) }),
+  acceptUnclear: (w, v, m) =>
+    sensible(w, v, m, { ask: false, policy: only({ unclear: "accept" }) }),
   // Toy mistakes: tired elves by hand against the machine with rested watchers.
-  toysByHandTired(w) {
-    w.setAi(0, 1);
-  },
+  toysByHandTired: (w, v, m) => (w.setAi(0, 1), answer(w, v, m)),
   toysAutomatedWatched(w, v, m) {
     rests(w, v, m);
     w.setAi(0, 1);
     w.setAi(1, 2);
-    if (v.incident?.known) w.rollback();
+    answer(w, v, m);
   },
 };
 
@@ -202,8 +298,14 @@ function checkHidden(v, w) {
       );
   }
   if (!v.case) return;
-  for (const e of v.case.evidence)
-    assert.strictEqual(Object.keys(e).join(), "parcelId,wish,made");
+  assert.strictEqual(
+    Object.keys(v.case).join(),
+    "id,kind,step,text,facts,evidence,affected,options,resolving",
+  );
+  for (const f of v.case.facts)
+    assert.strictEqual(Object.keys(f).join(), "label,value");
+  for (const ev of v.case.evidence)
+    assert.strictEqual(Object.keys(ev).join(), "parcelId,wish,made,reading");
   if (v.case.kind === "judge") {
     const pinned = w.cases[0].parcels[0];
     assert.strictEqual(
@@ -216,26 +318,6 @@ function checkHidden(v, w) {
       "the judged parcel is held aside",
     );
   }
-}
-
-// Parcels picked for a check reach the sleigh only checked, waved through by relaxed checkers,
-// judged in a case, remade after quarantine or a hold, or bypassed by the player.
-function checkGate(w) {
-  const everywhere = [
-    ...w.aboard,
-    ...Object.values(w.q).flat(),
-    ...w.cases.flatMap((c) => c.parcels),
-  ];
-  for (const x of w.aboard.filter((x) => x.route === "check"))
-    assert(
-      ["checked", "skipped", "bypassed", "case", "remade"].includes(x.exit),
-      `parcel ${x.id} left the checking pile unchecked`,
-    );
-  assert.strictEqual(
-    everywhere.filter((x) => x.exit === "bypassed").length,
-    w.bypassed,
-    "bypassed count",
-  );
 }
 
 // An open moment points at something that is there in the same view.
@@ -260,12 +342,33 @@ function checkMoment(v) {
     case: () => v.case,
     cocoa: () => v.elves.some((e) => e.station < 3 && e.tired >= 60),
     bypass: () => v.queues.check.parcels.length >= v.queues.check.limit,
-    recall: () => v.sleigh.wrong > 0,
-    quarantine: () => v.incident?.suspectWaiting > 0,
-    rollback: () => v.actions.rollback.available,
-    train: () => v.vigilance.state !== "careful",
+    train: () => !v.vigilance.trained,
   }[m.id];
   assert(!live || live(), `moment ${m.id} shown after its example has gone`);
+  assert(
+    m.text.split(/(?<=[.!?])\s+(?=[A-Z])/).length <= 2,
+    `moment ${m.id} is longer than two sentences`,
+  );
+}
+
+// Parcels picked for a check reach the sleigh only checked, waved through by relaxed checkers,
+// judged in a case, remade, or bypassed by the player.
+function checkGate(w) {
+  const everywhere = [
+    ...w.aboard,
+    ...Object.values(w.q).flat(),
+    ...w.cases.flatMap((c) => c.parcels),
+  ];
+  for (const x of w.aboard.filter((x) => x.route === "check"))
+    assert(
+      ["checked", "skipped", "bypassed", "case", "remade"].includes(x.exit),
+      `parcel ${x.id} left the checking pile unchecked`,
+    );
+  assert.strictEqual(
+    everywhere.filter((x) => x.exit === "bypassed").length,
+    w.bypassed,
+    "bypassed count",
+  );
 }
 
 function play(name, seed, version, guided = false) {
@@ -277,23 +380,23 @@ function play(name, seed, version, guided = false) {
     behindAt: [],
     moments: [],
     cases: 0,
+    caseKinds: [],
+    firstCaseAt: null,
     judgedWhileOpen: 0,
     noticedBy: null,
     checkerBurnouts: 0,
     burnouts: 0,
     first60: null,
-    caseKinds: [],
-    firstCaseAt: null,
     consequences: [],
     trainsLoaded: 0,
     readWrong: new Map(),
     hash: crypto.createHash("sha1"),
   };
-  const seenCases = new Set();
   let last = null;
   let lastNews = 0;
   const memo = {};
   const warnedAt = {};
+  const seenCases = new Set();
   for (let i = 0; !w.end; i++) {
     if (i % 5 === 0) {
       let v = w.view();
@@ -308,27 +411,24 @@ function play(name, seed, version, guided = false) {
       for (const n of v.news.filter((n) => n.id > lastNews).reverse()) {
         run.kinds.add(n.kind);
         if (n.kind === "behind") run.behindAt.push(n.t);
-        if (n.kind === "case") {
-          run.cases++;
-          run.firstCaseAt ??= n.t;
-        }
+        if (n.kind === "case") run.firstCaseAt ??= n.t;
         if (n.kind === "consequence") run.consequences.push(n);
+        if (n.kind === "noticed") run.noticedBy = n.by;
         if (
           n.kind === "loaded" &&
           n.check.made.name === "full-sized locomotive"
         )
           run.trainsLoaded++;
-        if (n.kind === "noticed") run.noticedBy = n.by;
         if (n.kind === "checked" && v.case?.kind === "judge")
           run.judgedWhileOpen++;
-        if (n.kind === "tired" && last?.elves[n.elf].station === 2)
-          run.checkerBurnouts++;
-        if (n.kind === "tired") run.burnouts++;
-        if (n.kind === "tired")
+        if (n.kind === "tired") {
+          run.burnouts++;
+          if (last?.elves[n.elf].station === 2) run.checkerBurnouts++;
           assert(
             n.t - (warnedAt[n.elf] ?? n.t) >= 10,
             "the elf card warns at least 10 seconds before a burnout",
           );
+        }
       }
       lastNews = v.news[0]?.id ?? lastNews;
       if (v.case && !seenCases.has(v.case.id)) {
@@ -355,18 +455,21 @@ function play(name, seed, version, guided = false) {
     w.step(0.1);
   }
   checkGate(w);
+  run.cases = run.caseKinds.length;
   run.end = w.view().end;
   run.target = w.target;
   run.skipped = w.vig.skipped;
-  run.memo = memo;
-  run.sleigh = w.view().sleigh.parcels;
+  run.choices = memo.choices ?? [];
+  run.conditional = memo.conditional ?? [];
   run.toyMistakes = w.stats.toyMistakes / Math.max(1, w.stats.toys);
+  run.speed = w.machineSpeed;
   run.hash = run.hash.digest("hex");
   return run;
 }
 
 const mean = (runs, f) => runs.reduce((s, r) => s + f(r), 0) / runs.length;
 const everyRun = [];
+const conditionalChoices = new Set();
 
 for (const version of VERSION_IDS) {
   const results = Object.fromEntries(
@@ -377,7 +480,7 @@ for (const version of VERSION_IDS) {
   );
   everyRun.push(...Object.values(results).flat());
   console.log(
-    `\n${version}: player        right wrong lost  ratings  check prevented mistakes total  lessons`,
+    `\n${version}: player             right wrong lost  ratings  check  fixing mistakes  total  lessons`,
   );
   for (const [name, runs] of Object.entries(results)) {
     const c = (k) =>
@@ -388,75 +491,91 @@ for (const version of VERSION_IDS) {
       " / ",
     );
     console.log(
-      `  ${name.padEnd(21)}${avg("right")} ${avg("wrong")}${avg("lost")}  ${runs.map((r) => r.end.rating).join("")}  ${c("checking")}  ${c("prevented")}  ${c("mistakes")} ${c("total")}  ${lessons}`,
+      `  ${name.padEnd(21)}${avg("right")} ${avg("wrong")}${avg("lost")}  ${runs.map((r) => r.end.rating).join("")}  ${c("checking")}  ${c("fixing")}  ${c("mistakes")} ${c("total")}  ${lessons}`,
     );
   }
+  for (const r of Object.values(results).flat())
+    r.conditional.forEach((x) => conditionalChoices.add(x));
 
-  const expect = {
-    byHand: "By hand is careful but slow",
-    fastNoChecks: "Too little checking",
-    checkAll: "Too much checking",
-    sensible: "Checking in the right places",
-  };
-  for (const [name, title] of Object.entries(expect))
-    for (const r of results[name]) {
-      assert.strictEqual(
-        r.end.lesson.title,
-        title,
-        `${version} ${name} lesson`,
-      );
-      if (name !== "neverTrains")
-        assert.strictEqual(
-          r.end.rating === 3,
-          name === "sensible",
-          `${version} ${name} rating ${r.end.rating}`,
-        );
-    }
+  // The conditional player beats every fixed case policy on rating or, at equal rating, on cost per right gift.
+  const score = (name) => ({
+    rating: mean(results[name], (r) => r.end.rating),
+    total: mean(results[name], (r) => r.end.costs.total),
+    right: mean(results[name], (r) => r.end.right),
+    wrong: mean(results[name], (r) => r.end.wrong),
+    fixes: mean(
+      results[name],
+      (r) => r.end.costs.fixing + r.end.costs.mistakes,
+    ),
+    perGift: mean(
+      results[name],
+      (r) => r.end.costs.total / Math.max(1, r.end.right),
+    ),
+  });
+  const best = score("sensible");
+  for (const name of [
+    "careful",
+    "cheap",
+    "alwaysInstall",
+    "alwaysTest",
+    "alwaysSkip",
+  ]) {
+    const s = score(name);
+    console.log(
+      `  sensible vs ${name}: rating ${best.rating.toFixed(2)} vs ${s.rating.toFixed(2)}, total £${Math.round(best.total)} vs £${Math.round(s.total)}, right ${Math.round(best.right)} vs ${Math.round(s.right)}, wrong ${best.wrong.toFixed(1)} vs ${s.wrong.toFixed(1)}`,
+    );
+    assert(
+      best.rating > s.rating ||
+        (best.rating === s.rating && best.perGift < s.perGift),
+      `${version}: reading the facts beats ${name}`,
+    );
+  }
+  // Each fixed policy loses for the reason its choices make visible.
+  assert(
+    score("careful").perGift > best.perGift,
+    `${version}: always careful costs more per right gift`,
+  );
+  assert(
+    score("cheap").wrong > best.wrong,
+    `${version}: always cheap ships more wrong gifts`,
+  );
+  assert(
+    score("alwaysInstall").fixes > best.fixes,
+    `${version}: installing every update blind costs more in fixing and wrong gifts`,
+  );
+  assert(
+    score("alwaysSkip").right < best.right,
+    `${version}: skipping every update delivers fewer gifts`,
+  );
+  assert(
+    score("alwaysTest").total > best.total ||
+      score("alwaysTest").right < best.right,
+    `${version}: testing every update costs time or money`,
+  );
+
   for (const r of results.sensible)
     assert(
       r.end.costs.total <= r.end.costs.budget,
-      `${version} sensible within budget`,
+      `${version}: sensible within budget`,
     );
-
-  const avgCost = (name, k) => mean(results[name], (r) => r.end.costs[k]);
-  assert(
-    avgCost("sensible", "checking") < avgCost("sensible", "prevented"),
-    `${version}: sensible checking pays for itself`,
-  );
-  assert(
-    avgCost("checkAll", "checking") > avgCost("checkAll", "prevented"),
-    `${version}: checking everything costs more than it stops`,
-  );
-  const skipped =
-    avgCost("sensible", "checking") - avgCost("fastNoChecks", "checking");
-  assert(
-    avgCost("fastNoChecks", "mistakes") > 2 * skipped,
-    `${version}: little checking costs far more than the checking skipped`,
-  );
-
-  // Calm has too little pressure for tiredness or trust to cost the rating; there they only show.
   const most = (runs, test) =>
     runs.filter(test).length >= (version === "calm" ? 0 : 4);
   assert(
-    most(
-      results.neverTrains,
-      (r) => r.end.lesson.title === "The checkers trusted the AI too much",
-    ) && results.neverTrains.filter((r) => r.skipped > 0).length >= 4,
-    `${version}: untrained checkers skip checks and wave mistakes through`,
-  );
-  assert(
     most(results.neverRests, (r) => r.end.rating < 3) &&
-      most(results.neverRests, (r) => r.checkerBurnouts > 0) &&
       results.neverRests.every((r) => r.burnouts > 0),
     `${version}: a player who never rests loses elves to burnout and misses top rating`,
+  );
+  assert(
+    results.neverTrains.filter((r) => r.skipped > 0).length >= 4,
+    `${version}: untrained checkers skip checks`,
   );
   assert(
     results.byHand.every((r) => r.behindAt.length > 0),
     `${version}: behind fires for the by-hand player`,
   );
   assert(
-    results.sensible.every((r) => r.behindAt.every((t) => t < 60)),
-    `${version}: behind stays quiet for the sensible player`,
+    results.sensible.every((r) => r.behindAt.every((t) => t < 180)),
+    `${version}: the sensible player is never warned in the last minute, too late to act`,
   );
   assert(
     mean(results.toysAutomatedWatched, (r) => r.toyMistakes) <
@@ -470,16 +589,15 @@ for (const version of VERSION_IDS) {
   );
 
   const runs = Object.values(results).flat();
-  for (const r of runs)
-    assert(
-      version === "piles" ? r.cases === 0 : r.cases <= 6,
-      `${version}: case count ${r.cases}`,
-    );
   for (const r of runs) {
-    assert(
-      r.firstCaseAt === null || r.firstCaseAt >= 60,
-      `${version}: no case before 60 seconds`,
+    const others = r.caseKinds.filter(
+      (k) => !["update", "incident"].includes(k),
     );
+    assert(
+      version === "piles" ? others.length === 0 : others.length <= 6,
+      `${version}: case count ${others.length}`,
+    );
+    assert(r.caseKinds.includes("update"), `${version}: updates are offered`);
     const bySubject = {};
     for (const n of r.consequences) {
       const f = n.facts;
@@ -494,41 +612,29 @@ for (const version of VERSION_IDS) {
       bySubject[n.about] = n.t;
     }
   }
-  for (const r of results.byHand)
-    assert(
-      !r.caseKinds.includes("pattern"),
-      `${version}: a by-hand line raised a pattern case`,
-    );
-  assert(
-    mean(results.bypassHeavy, (r) => r.trainsLoaded) >
-      mean(results.sensible, (r) => r.trainsLoaded),
-    `${version}: bypassing during the faulty update ships trains`,
-  );
   if (version !== "piles") {
-    // How the answered letters were read, before the toy line or a check could change them.
-    const wrongShare = (runs, choice) => {
-      const made = runs.flatMap((r) =>
-        (r.memo.unclear?.[choice] ?? [])
-          .filter((id) => r.readWrong.has(id))
-          .map((id) => r.readWrong.get(id)),
+    const misread = (runs, choice) => {
+      const read = runs.flatMap((r) =>
+        r.choices.includes(`unclear:${choice}`)
+          ? [...r.readWrong.entries()]
+          : [],
+      );
+      const picked = runs.flatMap((r) =>
+        r.choices.filter((c) => c === `unclear:${choice}`),
       );
       return {
-        n: made.length,
-        wrong: made.filter(Boolean).length / Math.max(1, made.length),
+        n: picked.length,
+        wrong: read.filter(([, w]) => w).length / Math.max(1, read.length),
       };
     };
-    const asked = wrongShare(results.askUnclear, "ask");
-    const accepted = wrongShare(results.acceptUnclear, "accept");
+    const asked = misread(results.askUnclear, "ask");
+    const accepted = misread(results.acceptUnclear, "accept");
     console.log(
       `  unclear cases: ${asked.n} asked, ${Math.round(asked.wrong * 100)}% misread; ${accepted.n} accepted, ${Math.round(accepted.wrong * 100)}% misread`,
     );
     assert(
-      asked.n >= 5 && accepted.n >= 5 && asked.wrong + 0.2 < accepted.wrong,
+      asked.n >= 3 && accepted.n >= 3 && asked.wrong + 0.2 < accepted.wrong,
       `${version}: asking the child beats accepting the AI's guess`,
-    );
-    assert(
-      runs.some((r) => r.noticedBy === "case"),
-      `${version}: investigating a real pattern makes the update known`,
     );
     assert(
       runs.some((r) => r.judgedWhileOpen > 0),
@@ -544,17 +650,8 @@ for (const version of VERSION_IDS) {
       `${version}: guided sensible reaches the target (${r.end.right})`,
     );
     assert(r.first60 >= 60, `${version}: first tired elf at ${r.first60}s`);
-  }
-  console.log(
-    `  guided sensible right: ${guided.map((r) => r.end.right).join(" ")}`,
-  );
-  console.log(
-    `  moments (seed 1): ${guided[0].moments.map((m) => `${Math.round(m.t)}s ${m.id}`).join(", ")}`,
-  );
-  for (const r of guided) {
-    const ids = r.moments.map((m) => m.id);
     assert.deepStrictEqual(
-      ids.slice(0, FIRST_MOMENTS.length),
+      r.moments.map((m) => m.id).slice(0, FIRST_MOMENTS.length),
       FIRST_MOMENTS,
       `${version}: first moments in order`,
     );
@@ -564,16 +661,13 @@ for (const version of VERSION_IDS) {
         `${version}: moments ${MOMENT_GAP}s apart`,
       ),
     );
-    const train = r.moments.find((m) => m.id === "train");
-    assert(
-      !train || train.t >= 90,
-      `${version}: training moment after 90 seconds`,
-    );
-    assert(
-      r.firstCaseAt === null || r.firstCaseAt >= 60,
-      `${version}: no case before 60 seconds`,
-    );
   }
+  console.log(
+    `  guided sensible right: ${guided.map((r) => r.end.right).join(" ")}`,
+  );
+  console.log(
+    `  moments (seed 1): ${guided[0].moments.map((m) => `${Math.round(m.t)}s ${m.id}`).join(", ")}`,
+  );
   assert.strictEqual(
     play("sensible", 3, version).hash,
     play("sensible", 3, version).hash,
@@ -581,8 +675,33 @@ for (const version of VERSION_IDS) {
   );
 }
 
+// The conditional player picks every option of every case kind somewhere: the answer depends on the case.
+const allOptions = Object.entries(CAREFUL)
+  .flatMap(([k, careful]) => [`${k}:${careful}`, `${k}:${CHEAP[k]}`])
+  .concat(["pattern:hold", "made:checkEach"]);
+console.log(
+  `\nconditional choices seen: ${[...conditionalChoices].sort().join(", ")}`,
+);
+for (const option of allOptions)
+  assert(
+    conditionalChoices.has(option),
+    `the conditional player sometimes chooses ${option}`,
+  );
+
 const kinds = new Set(everyRun.flatMap((r) => [...r.kinds]));
 for (const k of NEWS_KINDS) assert(kinds.has(k), `news kind ${k} is emitted`);
+
+// skipGuidance unlocks everything and stops moments.
+{
+  const w = new Workshop({ seed: 1, guided: true });
+  assert(w.view().moment && w.skipGuidance());
+  w.step(100);
+  const v = w.view();
+  assert(
+    !v.moment && Object.values(v.actions).every((a) => a.unlocked),
+    "skipGuidance leaves the guided run",
+  );
+}
 
 // Each moment closes by its own calls as well as by acknowledge.
 function completeMoment(w, v) {
@@ -596,40 +715,36 @@ function completeMoment(w, v) {
     setChecking: () => w.setChecking(1),
     bypass: () => w.bypass(),
     train: () => w.train(),
-    rollback: () => w.rollback(),
-    quarantine: () => w.quarantine(),
-    recall: () => w.recall(),
     resolve: () =>
       v.case &&
       w.resolve(v.case.id, v.case.options.find((o) => o.available)?.id),
   };
   return m.completes.some((call) => calls[call]());
 }
-// The player automates and checks everything once it can, so the checking pile fills and every
-// moment, bypass included, comes up.
 const closed = new Set();
-for (const version of ["piles", "cases"]) {
-  const w = new Workshop({ seed: 2, guided: true, version });
-  const memo = {};
-  while (!w.end) {
-    const v = w.view();
-    if (v.moment) checkMoment(v);
-    if (v.moment && completeMoment(w, v)) {
-      assert.notStrictEqual(
-        w.view().moment?.id,
-        v.moment.id,
-        `moment ${v.moment.id} closes by its own call`,
-      );
-      closed.add(v.moment.id);
-    } else if (v.moment) w.acknowledge(v.moment.id);
-    else {
-      players.fastNoChecks(w, v, memo);
-      w.setChecking(2);
+for (const version of ["piles", "cases"])
+  for (const seed of [2, 3]) {
+    const w = new Workshop({ seed, guided: true, version });
+    const memo = {};
+    while (!w.end) {
+      const v = w.view();
+      if (v.moment) checkMoment(v);
+      if (v.moment && completeMoment(w, v)) {
+        assert.notStrictEqual(
+          w.view().moment?.id,
+          v.moment.id,
+          `moment ${v.moment.id} closes by its own call`,
+        );
+        closed.add(v.moment.id);
+      } else if (v.moment) w.acknowledge(v.moment.id);
+      else {
+        players.fastNoChecks(w, v, memo);
+        w.setChecking(2);
+      }
+      w.step(0.5);
     }
-    w.step(0.5);
   }
-}
-console.log(`\nmoments closed by their own calls: ${[...closed].join(", ")}`);
+console.log(`moments closed by their own calls: ${[...closed].join(", ")}`);
 for (const id of Object.keys(MOMENTS))
   assert(closed.has(id), `moment ${id} closed by its own call`);
 
@@ -643,6 +758,8 @@ for (const id of Object.keys(MOMENTS))
   while (!w.end) {
     w.step(0.5);
     const v = w.view();
+    if (v.case)
+      w.resolve(v.case.id, v.case.options.find((o) => o.available).id);
     if (v.queues.check.parcels.length >= v.queues.check.limit) {
       assert.strictEqual(
         v.queues.orders.parcels.length
@@ -680,12 +797,20 @@ for (const id of Object.keys(MOMENTS))
     did += ((past(w.view()) - before) * 2) / SEEDS.length;
   }
   console.log(
-    `\nlevers: reading by hand promised ${promised.toFixed(1)}/min, did ${did.toFixed(1)}`,
+    `levers: reading by hand promised ${promised.toFixed(1)}/min, did ${did.toFixed(1)}`,
   );
   assert(
     Math.abs(did - promised) <= 0.15 * promised,
     "reading lever is honest",
   );
+  const words = (text) => text.split(/\s+/).length;
+  const v = new Workshop({ seed: 1 }).view();
+  for (const entry of [...v.levers.ai0, ...v.levers.ai1])
+    for (const k of ["who", "speed", "risk"])
+      assert(
+        words(entry[k]) <= 6,
+        `lever ${k} "${entry[k]}" is six words at most`,
+      );
 }
 
 console.log("\nall checks passed");

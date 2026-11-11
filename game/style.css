@@ -1825,7 +1825,7 @@ dialog p {
 /* -- Break card -- */
 #breakDialog {
   width: min(1000px, calc(100vw - 28px));
-  max-height: calc(100dvh - 28px);
+  max-height: calc(100dvh - 20px);
   padding: 0;
   overflow: auto;
   overscroll-behavior: contain;
@@ -1836,7 +1836,7 @@ dialog p {
 }
 .break-hero {
   position: relative;
-  height: 108px;
+  height: 96px;
   overflow: hidden;
   background: linear-gradient(180deg, var(--bc-hero1), var(--bc-hero2));
   color: var(--bc-hero-ink);
@@ -1907,8 +1907,8 @@ dialog p {
 }
 .break-hero-copy {
   position: absolute;
-  left: 26px;
-  top: 18px;
+  left: 24px;
+  top: 13px;
   z-index: 1;
 }
 #breakRun {
@@ -1917,9 +1917,9 @@ dialog p {
   color: var(--bc-hero-muted);
 }
 #breakTitle {
-  margin: 2px 0 0;
+  margin: 1px 0 0;
   font:
-    600 30px/1.1 var(--bc-serif),
+    600 28px/1.1 var(--bc-serif),
     serif;
   color: inherit;
 }
@@ -1936,15 +1936,15 @@ dialog p {
 }
 .break-body {
   display: grid;
-  gap: 12px;
-  padding: 14px 24px 20px;
+  gap: 8px;
+  padding: 10px 22px 14px;
 }
 .next-cargo {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
-  padding: 12px 16px;
+  padding: 8px 14px;
   border: 1.5px solid var(--bc-gold);
   border-radius: 12px;
   background: var(--bc-gold-soft);
@@ -1952,15 +1952,15 @@ dialog p {
 .next-cargo-icon {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
   background: var(--bc-gold);
   color: #2b2005;
 }
 .next-cargo-icon svg {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
 }
 #breakDialog .next-cargo .eyebrow {
   color: var(--bc-gold-ink);
@@ -1985,7 +1985,7 @@ dialog p {
 .next-cargo-target b {
   display: block;
   font:
-    600 28px var(--bc-serif),
+    600 24px var(--bc-serif),
     serif;
   color: var(--bc-accent-deep);
 }
@@ -2000,7 +2000,7 @@ dialog p {
   align-items: baseline;
   justify-content: space-between;
   gap: 4px 12px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 #breakCounts {
   font-size: 12.5px;
@@ -2017,10 +2017,11 @@ dialog p {
   grid-template-areas:
     "marks name"
     "marks figure"
-    "marks text";
+    "marks text"
+    "marks note";
   column-gap: 12px;
   align-content: start;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border: 1px solid var(--bc-line);
   border-radius: 12px;
   background: var(--bc-card);
@@ -2037,8 +2038,8 @@ dialog p {
   gap: 5px;
 }
 .goal-star svg {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
 }
 .goal-slot .goal-star {
   color: var(--bc-off);
@@ -2081,11 +2082,26 @@ dialog p {
   line-height: 1.3;
   color: var(--bc-muted);
 }
+.goal-note {
+  grid-area: note;
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--bc-gold-ink);
+}
+.goal-slot[data-waiting="true"] .goal-star {
+  opacity: 0.75;
+}
+.run-report .goal-wait {
+  font-weight: 700;
+  color: var(--bc-mini-on);
+}
 #breakDialog .break-note {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 10px;
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   font-size: 12.5px;
   color: var(--bc-muted);
 }
@@ -2107,15 +2123,15 @@ dialog p {
 }
 .break-causes,
 .break-last {
-  padding: 12px 14px;
+  padding: 10px 14px;
   border: 1px solid var(--bc-line);
   border-radius: 12px;
   background: var(--bc-card);
 }
 .cause-list {
   display: grid;
-  gap: 8px;
-  margin: 8px 0 0;
+  gap: 7px;
+  margin: 7px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -2126,7 +2142,7 @@ dialog p {
   align-items: start;
 }
 .cause + .cause {
-  padding-top: 8px;
+  padding-top: 7px;
   border-top: 1px solid var(--bc-line);
 }
 .cause-icon {
@@ -2173,7 +2189,7 @@ dialog p {
 }
 .delivery-slip {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 #breakDialog .slip-wish {
   margin: 0;
@@ -2186,21 +2202,30 @@ dialog p {
   gap: 8px;
 }
 .slip-side {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
   align-items: center;
-  gap: 1px;
-  padding: 6px;
+  column-gap: 6px;
+  padding: 4px 8px 4px 4px;
   border-radius: 10px;
   background: var(--bc-frost);
-  text-align: center;
+}
+.slip-side .slip-art {
+  grid-row: 1 / 3;
+}
+.slip-side small {
+  align-self: end;
+}
+.slip-side b {
+  align-self: start;
 }
 .slip-side.slip-made {
   background: var(--bc-red-soft);
 }
 .slip-art svg {
-  width: 60px;
-  height: 48px;
+  width: 50px;
+  height: 40px;
 }
 .slip-side small {
   font-size: 10.5px;
@@ -2219,7 +2244,7 @@ dialog p {
   color: var(--bc-red-deep);
 }
 #breakMore {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   font-size: 12px;
   color: var(--bc-muted);
 }
@@ -2249,8 +2274,8 @@ dialog p {
   height: 15px;
 }
 #breakDialog .break-choose {
-  margin: 2px 0 -4px;
-  font-size: 17px;
+  margin: 4px 0 0;
+  font-size: 16px;
 }
 .break-options {
   display: grid;
@@ -2261,8 +2286,8 @@ dialog p {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
-  padding: 13px 14px 12px;
+  gap: 5px;
+  padding: 10px 12px;
   border: 1.5px solid var(--bc-press);
   border-radius: 12px;
   background: var(--bc-card);
@@ -2279,15 +2304,15 @@ dialog p {
 .upgrade-icon {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 11px;
   background: var(--bc-accent-soft);
   color: var(--bc-accent-deep);
 }
 .upgrade-icon svg {
-  width: 26px;
-  height: 26px;
+  width: 23px;
+  height: 23px;
 }
 .upgrade-card[data-kind="train"] .upgrade-icon {
   background: var(--bc-gold-soft);
@@ -3169,7 +3194,8 @@ dialog p {
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
       "marks name figure"
-      "marks text figure";
+      "marks text figure"
+      "marks note note";
     align-items: center;
     padding: 8px 12px;
   }

@@ -858,6 +858,7 @@
     const slot = make("div", "goal-slot");
     slot.dataset.goal = goal.id;
     slot.dataset.met = String(goal.met);
+    slot.dataset.waiting = String(Boolean(goal.waiting));
     const marks = make("span", "goal-marks");
     marks.append(
       iconNode(goal.met ? "star" : "star-empty", "goal-star"),
@@ -869,9 +870,11 @@
       make("strong", "goal-figure", goalFigure(goal)),
       make("small", "goal-text", goal.text),
     );
+    if (goal.waiting && goal.note)
+      slot.append(make("small", "goal-note", goal.note));
     slot.setAttribute(
       "aria-label",
-      `${goal.name}: ${goalFigure(goal)}, ${goal.text}. ${goal.met ? "Star earned" : "No star"}.`,
+      `${goal.name}: ${goalFigure(goal)}, ${goal.text}. ${goal.met ? "Star earned" : goal.waiting && goal.note ? `No star yet: ${goal.note}` : "No star"}.`,
     );
     slot.setAttribute("role", "group");
     return slot;
@@ -885,7 +888,8 @@
         uiIcon(goal.met ? "star" : "star-empty") +
         uiIcon(goalIcons[goal.id] || "star");
       mark.dataset.met = String(goal.met);
-      mark.title = `${goal.name}: ${goalFigure(goal)}${goal.met ? ", star earned" : ""}`;
+      mark.dataset.waiting = String(Boolean(goal.waiting));
+      mark.title = `${goal.name}: ${goalFigure(goal)}${goal.met ? ", star earned" : goal.waiting && goal.note ? `, ${goal.note}` : ""}`;
       row.append(mark);
     }
     row.setAttribute(
@@ -2416,6 +2420,19 @@
         make("span", "run-cargo", run.cargo.name),
       );
       card.append(head, goalMarks(run.goals || []));
+      // Goals within their limit that never counted, because the sleigh stayed under two thirds full.
+      const waiting = (run.goals || []).filter((g) => g.waiting && g.note);
+      for (const note of new Set(waiting.map((g) => g.note)))
+        card.append(
+          make(
+            "small",
+            "goal-wait",
+            `${waiting
+              .filter((g) => g.note === note)
+              .map((g) => g.name)
+              .join(", ")}: ${note}`,
+          ),
+        );
       card.append(
         make("p", "", `${run.right}/${run.target} right · ${run.wrong} wrong`),
       );

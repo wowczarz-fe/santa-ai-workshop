@@ -1872,3 +1872,9 @@ dialog p {
   font-size: 11px;
   white-space: nowrap;
 }
+.popup-pointer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}

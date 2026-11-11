@@ -680,18 +680,25 @@
       .map((node) => node.getBoundingClientRect())
       .filter((rect) => rect.width && rect.height);
     const places = [
-      { x: r.right + gap, y: vertical },
-      { x: r.left - p.width - gap, y: vertical },
       { x: horizontal, y: r.bottom + gap },
       { x: horizontal, y: r.top - p.height - gap },
-      {
-        x: w - p.width - 12,
-        y: Math.max(12, $("board").getBoundingClientRect().top),
-      },
-      { x: 12, y: 12 },
-      { x: w - p.width - 12, y: 12 },
-      { x: 12, y: h - p.height - 12 },
+      { x: r.right + gap, y: vertical },
+      { x: r.left - p.width - gap, y: vertical },
+      ...protectedBounds.flatMap((rect) => [
+        { x: horizontal, y: rect.top - p.height - gap },
+        { x: horizontal, y: rect.bottom + gap },
+        { x: rect.right + gap, y: vertical },
+        { x: rect.left - p.width - gap, y: vertical },
+      ]),
     ];
+    places.sort((a, b) => {
+      const distance = (point) =>
+        Math.hypot(
+          Math.max(r.left - point.x - p.width, point.x - r.right, 0),
+          Math.max(r.top - point.y - p.height, point.y - r.bottom, 0),
+        );
+      return distance(a) - distance(b);
+    });
     const fit = places.find(
       (a) =>
         a.x >= 12 &&
@@ -706,11 +713,85 @@
             a.y >= rect.bottom,
         ),
     ) || {
-      x: w - p.width - 12,
+      x: horizontal,
       y: Math.max(12, Math.min(r.bottom + gap, h - p.height - 12)),
     };
     panel.style.left = `${Math.max(12, Math.min(fit.x, w - p.width - 12))}px`;
     panel.style.top = `${Math.max(12, Math.min(fit.y, h - p.height - 12))}px`;
+    drawPopupPointer(panel, anchor);
+  }
+  const popupPointers = new Map();
+  function hidePopupPointer(id) {
+    const pointer = popupPointers.get(id);
+    if (pointer) pointer.setAttribute("hidden", "");
+  }
+  function drawPopupPointer(panel, anchor) {
+    let pointer = popupPointers.get(panel.id);
+    if (!pointer) {
+      pointer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      pointer.classList.add("popup-pointer");
+      pointer.dataset.popup = panel.id;
+      pointer.setAttribute("aria-hidden", "true");
+      pointer.append(
+        document.createElementNS("http://www.w3.org/2000/svg", "path"),
+      );
+      document.body.append(pointer);
+      popupPointers.set(panel.id, pointer);
+    }
+    pointer.toggleAttribute("hidden", panel.hidden);
+    pointer.setAttribute("width", innerWidth);
+    pointer.setAttribute("height", innerHeight);
+    pointer.style.zIndex = String(Number(getComputedStyle(panel).zIndex) - 1);
+    const p = panel.getBoundingClientRect(),
+      a = anchor.getBoundingClientRect();
+    const cx = Math.max(
+      p.left + 14,
+      Math.min(a.left + a.width / 2, p.right - 14),
+    );
+    const cy = Math.max(
+      p.top + 14,
+      Math.min(a.top + a.height / 2, p.bottom - 14),
+    );
+    let points;
+    if (p.top >= a.bottom)
+      points = [
+        [cx - 8, p.top + 1],
+        [Math.max(a.left, Math.min(cx, a.right)), a.bottom + 2],
+        [cx + 8, p.top + 1],
+      ];
+    else if (p.bottom <= a.top)
+      points = [
+        [cx - 8, p.bottom - 1],
+        [Math.max(a.left, Math.min(cx, a.right)), a.top - 2],
+        [cx + 8, p.bottom - 1],
+      ];
+    else if (p.left >= a.right)
+      points = [
+        [p.left + 1, cy - 8],
+        [a.right + 2, Math.max(a.top, Math.min(cy, a.bottom))],
+        [p.left + 1, cy + 8],
+      ];
+    else
+      points = [
+        [p.right - 1, cy - 8],
+        [a.left - 2, Math.max(a.top, Math.min(cy, a.bottom))],
+        [p.right - 1, cy + 8],
+      ];
+    pointer
+      .querySelector("path")
+      .setAttribute(
+        "d",
+        `M${points.map((point) => point.join(",")).join(" L")} Z`,
+      );
+    pointer
+      .querySelector("path")
+      .setAttribute("fill", getComputedStyle(panel).backgroundColor);
+    pointer
+      .querySelector("path")
+      .setAttribute(
+        "stroke",
+        panel.id === "infoPopover" ? "#193b35" : "#b6c5ba",
+      );
   }
   function paintGuidance() {
     const moment = started && !view.end ? view.moment : null;
@@ -718,6 +799,7 @@
     $("tutorial").hidden = !moment || moment.control === "case";
     $("caseGuidance").hidden = !moment || moment.control !== "case";
     if (!moment) {
+      hidePopupPointer("tutorial");
       lastMoment = null;
       return;
     }
@@ -731,6 +813,7 @@
     );
     text("caseGuidanceText", moment.text);
     if (moment.control === "case") {
+      hidePopupPointer("tutorial");
       caseOpen = true;
       paintCase();
     } else {
@@ -759,6 +842,7 @@
       caseOpen = false;
       lastCase = null;
       $("casePanel").hidden = true;
+      hidePopupPointer("casePanel");
       return;
     }
     text(
@@ -772,7 +856,10 @@
       caseOpen = false;
     }
     $("casePanel").hidden = !started || !caseOpen || !!view.end;
-    if ($("casePanel").hidden) return;
+    if ($("casePanel").hidden) {
+      hidePopupPointer("casePanel");
+      return;
+    }
     const headings = {
       update: { offered: "AI update offer", tested: "Update test result" },
       incident: {
@@ -931,18 +1018,25 @@
       $("caseProgress").value =
         1 - c.resolving.remaining / c.resolving.duration;
     }
-    const station =
-      c.kind === "unclear"
-        ? 0
-        : c.kind === "update" || c.step === "source"
-          ? 1
-          : c.step === "aboard"
-            ? 3
-            : 2;
-    positionPanel(
-      $("casePanel"),
-      $(station === 3 ? "sleigh" : `station${station}`),
-    );
+    const anchor = caseAnchor(c);
+    positionPanel($("casePanel"), anchor, [anchor]);
+  }
+  function caseAnchor(c) {
+    if (c.step === "source") return $("station1").querySelector(".machine");
+    if (c.step === "aboard")
+      return $("wrongDelivery").hidden ? $("sleighRight") : $("wrongDelivery");
+    if (c.kind === "unclear") return $("queue-clarify");
+    if (c.step === "made") {
+      const affected = new Set(c.affected.ids);
+      const queues = Object.values(view.queues)
+        .map((q) => ({
+          id: q.id,
+          count: q.parcels.filter((p) => affected.has(p.id)).length,
+        }))
+        .sort((a, b) => b.count - a.count);
+      if (queues[0]?.count) return $(`queue-${queues[0].id}`);
+    }
+    return $("queue-check");
   }
   function getInfo(key) {
     if (key === "caughtToy" && caughtSnapshot)
@@ -1177,6 +1271,7 @@
     infoKey = null;
     infoPinned = false;
     $("infoPopover").hidden = true;
+    hidePopupPointer("infoPopover");
   }
   let pointerFocus = false,
     recentTouchUntil = 0;
@@ -1239,6 +1334,7 @@
       closeInfo();
       caseOpen = false;
       $("casePanel").hidden = true;
+      hidePopupPointer("casePanel");
     }
   });
   document.addEventListener("click", (e) => {
@@ -1411,6 +1507,17 @@
   $("skipGuidance").onclick = skip;
   $("caseCue").onclick = () => {
     caseOpen = !caseOpen;
+    if (caseOpen && view.case && innerWidth < 1000) {
+      const anchor = caseAnchor(view.case),
+        rect = anchor.getBoundingClientRect();
+      if (
+        rect.left < 0 ||
+        rect.right > innerWidth ||
+        rect.top < 0 ||
+        rect.bottom > innerHeight
+      )
+        anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
     paintCase();
   };
   $("closeCase").onclick = () => {
@@ -1488,11 +1595,13 @@
     lastTime = performance.now();
     paint();
   });
-  window.addEventListener("resize", () => {
+  function repositionPopups() {
     paintGuidance();
     paintCase();
-    if (infoAnchor) renderInfo();
-  });
+    if (infoAnchor) positionPanel($("infoPopover"), infoAnchor);
+  }
+  window.addEventListener("resize", repositionPopups);
+  document.addEventListener("scroll", repositionPopups, true);
   function showReport() {
     const e = view.end;
     const newBest =

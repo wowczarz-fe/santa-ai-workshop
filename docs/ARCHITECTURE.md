@@ -84,8 +84,8 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
   works `orders`; station 2 works `check`, `pass` (parcels going straight through) and `rework`.
 - `levers.ai0` and `levers.ai1` each hold three entries
   `{ name, who, speed, risk, perMinute, costPerMinute }`. The three text fields are written to be
-  read at a glance, six words at most each: `who` says who does the work ("AI drafts, an elf
-  confirms"), `speed` compares it with working by hand ("about twice as fast"), and `risk` says
+  read at a glance, six words at most each: `who` says who does the work, the same for both
+  stations: "Elves do it", "AI drafts, an elf confirms each one" or "AI works alone", `speed` compares it with working by hand ("about twice as fast"), and `risk` says
   what to watch for now, from the current state ("guesses unclear wishes: 4 waiting").
   `levers.checking` holds three entries `{ name, sends, per100 }`: which parcels the elves check
   and how many in a hundred that is now.
@@ -418,5 +418,8 @@ checker asks the player to judge one toy against its wish.
 - An elf confirming an AI draft on Assist catches 95 in 100 wrong ones. A checker catches 90 in 100,
   but only 30 in 100 on an unclear wish nobody asked about, because the checker cannot tell what the
   child meant either; asking the child or confirming the reading fixes those at the source.
+- A recall takes the checkers 4 seconds for each gift brought back, at most 20 seconds in all, and
+  keeps its money cost. The gifts come off the sleigh at once; one still being remade when the sleigh
+  leaves stays in the workshop and goes on the next sleigh.
 - Nobody watches the toy machine: a faulty update shows up through elves confirming on Assist,
   checkers, the sleigh or an investigation.

@@ -46,8 +46,13 @@ const ELF_SECONDS = {
   check: 4.5,
   pass: 0.16,
   remake: 10, // remaking a caught mistake: catching it late costs more than preventing it
-  recall: 20, // fetching a gift back off a loaded sleigh, then remaking it
+  recall: 4, // fetching a gift back off a loaded sleigh, then remaking it
 };
+// However many gifts come back, a recall takes the checkers at most this many seconds in all.
+const RECALL_MAX_SECONDS = 20;
+// Seconds of checker work for each of n gifts brought back.
+const recallSeconds = (n) =>
+  Math.min(ELF_SECONDS.recall, RECALL_MAX_SECONDS / Math.max(1, n));
 const AI_SECONDS = { read: 0.6, make: 0.75 };
 const INVESTIGATE_SECONDS = 5;
 const ROLLBACK_SECONDS = 8;
@@ -1878,9 +1883,9 @@ class Workshop {
             o(
               "bringBack",
               "Bring them back",
-              n * ELF_SECONDS.recall,
+              n * recallSeconds(n),
               PRICE.recall + n * (PRICE.recallEach + PRICE.remake),
-              `${plural(n, "wrong gift")}, about ${Math.round(n * ELF_SECONDS.recall)} s of checkers`,
+              `${plural(n, "wrong gift")}, about ${Math.round(n * recallSeconds(n))} s of checkers`,
               broke ?? checker,
             ),
             o(
@@ -2116,7 +2121,7 @@ class Workshop {
             x.exit === "checked" || x.exit === "case" ? "checked" : "unchecked";
           if (x.recalled === "unchecked")
             this.assure.recallCost += PRICE.recall / n + PRICE.recallEach;
-          this.toRework(x, ELF_SECONDS.recall, job);
+          this.toRework(x, recallSeconds(n), job);
         });
         this.pay("fixing", PRICE.recall + n * PRICE.recallEach);
         this.say(
@@ -2125,9 +2130,9 @@ class Workshop {
           { count: n },
         );
         tell(
-          `${does(n, "wrong gift", "comes", "come")} back to be remade: about ${Math.round(n * ELF_SECONDS.recall)} s of checkers and ${money(PRICE.recall + n * (PRICE.recallEach + PRICE.remake))}.`,
+          `${does(n, "wrong gift", "comes", "come")} back to be remade: about ${Math.round(n * recallSeconds(n))} s of checkers and ${money(PRICE.recall + n * (PRICE.recallEach + PRICE.remake))}.`,
           {
-            seconds: n * ELF_SECONDS.recall,
+            seconds: n * recallSeconds(n),
             money: PRICE.recall + n * (PRICE.recallEach + PRICE.remake),
             parcels: n,
           },
@@ -2544,17 +2549,10 @@ class Workshop {
       );
       return LEVELS.map((name, level) => {
         const who = [
-          [
-            "elves read every letter",
-            "AI drafts, an elf confirms",
-            "AI reads alone; elves ask children",
-          ],
-          [
-            "elves make every toy",
-            "AI drafts, an elf confirms",
-            "AI makes toys alone",
-          ],
-        ][s][level];
+          "Elves do it",
+          "AI drafts, an elf confirms each one",
+          "AI works alone",
+        ][level];
         const ratio = perMinute[level] / perMinute[0];
         const speed =
           level === 0
@@ -2576,7 +2574,7 @@ class Workshop {
                 : `confirmers at ${here} miss slips`
               : s === 0
                 ? this.ask
-                  ? `unclear wishes wait for askers: ${this.q.clarify.length}`
+                  ? "unclear wishes are asked first"
                   : `guesses unclear wishes: ${unclearWaiting} waiting`
                 : fault
                   ? "faulty update: same wrong toy"

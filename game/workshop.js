@@ -303,12 +303,6 @@ const chance = (p) => {
     ) ?? 20;
   return `about ${Math.max(1, Math.round(p * n))} in ${n}`;
 };
-// The two ways an unclear wish can be read, in a fixed order so the order gives nothing away.
-const readings = (w) =>
-  [w.wanted.name, w.wrong.name]
-    .sort()
-    .map((name) => a(name))
-    .join(" or ");
 // The absurd wrong toys the AI can make, for the page's collection.
 const BLUNDERS = new Map(
   [...WISHES.filter((w) => !w.subtle).map((w) => w.wrong), LOCOMOTIVE].map(
@@ -328,25 +322,23 @@ const MOMENTS = {
     completes: ["move"],
     title: "Move your elves",
     text: () =>
-      "Letters are arriving a little faster than three elves can read them. Move one elf from making toys to reading letters.",
+      "Letters arrive faster than three elves can read. Move an elf from toys to reading.",
   },
   ai0: {
     control: "ai0",
     unlocks: ["ai0"],
     completes: ["setAi"],
     title: "Let the AI help read",
-    text: (w) =>
-      `Letters now come faster than elves can read: ${w.q.letters.length} are waiting. Put the AI on reading: on Assist it drafts each letter and an elf confirms it.`,
+    text: () =>
+      "Letters are arriving faster than the elves can read. Switch reading to Assist.",
   },
   ai1: {
     control: "ai1",
     unlocks: ["ai1"],
     completes: ["setAi"],
     title: "Let the AI make toys",
-    text: (w) =>
-      w.q.orders.length >= 8
-        ? `${does(w.q.orders.length, "toy order", "is", "are")} waiting for the toy makers. On Automate the AI makes toys alone, so the elves there can watch it or move.`
-        : "When toy orders start to pile up, the AI can make toys too. On Automate it works alone, so the elves there can watch it or move.",
+    text: () =>
+      "Toy orders are piling up. Switch toys to Automate, and the elves there can watch or move.",
   },
   ask: {
     control: "ask",
@@ -354,7 +346,7 @@ const MOMENTS = {
     completes: ["setAsk"],
     title: "Ask when a wish is unclear",
     text: (w, x) =>
-      `${x.w.child}'s wish could mean ${readings(x.w)}. The AI picks one without asking; turn on asking and an elf asks.`,
+      `${x.w.child}'s wish could mean two toys, and the AI just guesses. Turn on asking.`,
   },
   checking: {
     control: "checking",
@@ -363,16 +355,16 @@ const MOMENTS = {
     title: "A wrong gift went aboard",
     text: (w, x) =>
       x?.result === "wrong"
-        ? `${x.w.child}'s ${x.made.name} just went aboard instead of ${a(x.w.wanted.name)}, unchecked. Choose which parcels the elves check before they leave.`
-        : "Nothing checks the parcels before they leave yet. Choose which parcels the elves check.",
+        ? "A wrong gift just went aboard unchecked. Choose which parcels the elves check."
+        : "Nothing checks parcels before they leave. Choose which parcels the elves check.",
   },
   bypass: {
     control: "bypass",
     unlocks: ["bypass"],
     completes: ["move", "bypass"],
     title: "The checking pile is full",
-    text: (w) =>
-      `The checking pile is full with ${w.q.check.length}, so the toy line has stopped. Move an elf to checking, or let the waiting parcels through unchecked.`,
+    text: () =>
+      "The checking pile is full and the toy line has stopped. Add a checker or let parcels through.",
   },
   cocoa: {
     control: "cocoa",
@@ -380,7 +372,7 @@ const MOMENTS = {
     completes: ["move"],
     title: "Send a tired elf for cocoa",
     text: (w, x, e) =>
-      `${e.name} is getting tired and will slow down and miss mistakes. Drag them to cocoa for a short break before they burn out.`,
+      `${e.name} is tiring and will start missing mistakes. Drag them to cocoa for a short break.`,
   },
   case: {
     control: "case",
@@ -390,15 +382,15 @@ const MOMENTS = {
     text: (w) =>
       ({
         judge:
-          "A checker is unsure about one parcel and has brought it to you. Compare the toy with the wish, then ship it or remake it.",
+          "A checker is unsure about a parcel. Compare the toy with the wish, then ship or remake it.",
         unclear:
-          "The AI is unsure what a child means and shows you how it reads the wish. Accept its reading or have an elf ask.",
+          "The AI is unsure what a child means. Accept its reading or have an elf ask.",
         pattern:
-          "Checkers have seen the same wrong toy more than once. Decide whether it is worth looking into.",
+          "The same wrong toy keeps turning up. Decide whether to look into it.",
         update:
-          "A new update is on offer for the toy machine. Read what is known about it, then install, test or skip.",
+          "A toy machine update is on offer. Read its facts, then install, test or skip it.",
         incident:
-          "The update you installed is making full-sized trains. Decide what to do about it, one step at a time.",
+          "Your update is making full-sized trains. Decide what to do, one step at a time.",
       })[w.cases[0].kind],
   },
 };
@@ -1550,21 +1542,23 @@ class Workshop {
     }
   }
 
+  // What happened, then what the player can do; the figures belong to the options.
   caseText(c) {
     const x = c.parcels[0];
-    const n = this.affected(c).length;
     switch (c.kind) {
       case "judge":
-        return `A checker is unsure about ${x.w.child}'s parcel. Is this the toy the child asked for?`;
+        return `A checker is unsure about ${x.w.child}'s parcel. Check the toy against the wish, then ship or remake it.`;
       case "unclear":
-        return `${x.w.child} wrote '${x.w.wish}': ${readings(x.w)}? The AI picks one without asking; an elf would ask.`;
+        return `${x.w.child}'s wish is unclear: '${x.w.wish}' Accept the AI's reading or have an elf ask.`;
       case "pattern":
-        return `The checkers have seen ${a(c.name)} ${c.parcels.length} times in a short while.`;
+        return `The checkers keep seeing ${a(c.name)}. Look into it, hold what was made, or carry on.`;
       default:
         return {
-          source: "The update you installed is making full-sized trains.",
-          made: `${plural(n, "parcel")} made during the faulty update ${n === 1 ? "is" : "are"} still in the workshop.`,
-          aboard: `${plural(n, "wrong gift")} ${n === 1 ? "is" : "are"} on the sleigh.`,
+          source:
+            "Your update is making full-sized trains. Roll it back, or keep it running for now.",
+          made: "Parcels from the faulty update are still in the workshop. Remake them, check each, or let them go.",
+          aboard:
+            "Wrong gifts are on the sleigh. Bring them back to be remade, or leave them aboard.",
         }[c.step];
     }
   }
@@ -2248,7 +2242,7 @@ class Workshop {
       this.behindNoted = true;
       this.say(
         "behind",
-        `At this pace Santa leaves with about ${pace.projected} right gifts. ${STATION_NAMES[pace.slowest]} is holding things up.`,
+        `At this pace Santa leaves with about ${pace.projected} right gifts.${pace.slowest === null ? "" : ` ${STATION_NAMES[pace.slowest]} is holding things up.`}`,
         { station: pace.slowest },
       );
     }
@@ -2445,10 +2439,27 @@ class Workshop {
     return [reading, making, dispatch];
   }
 
+  // The station holding gifts back: the furthest along the line whose own pile is filling up. A pile
+  // also fills when the station after it is stopped, so the furthest one is where the line is stuck.
+  // null when no pile is filling, because letters are not arriving faster than the workshop works.
+  // Letters waiting to be asked hold nothing back until their pile is full and stops the letter pile.
+  holdingUp() {
+    const filling = (id) =>
+      this.q[id].length >= QUEUES[id].limit / 2 ||
+      (this.trend(id) === "growing" &&
+        this.q[id].length >= QUEUES[id].limit / 4);
+    const s = [2, 1, 0].find((s) =>
+      STATION_QUEUES[s].some(
+        (id) => !["rework", "clarify"].includes(id) && filling(id),
+      ),
+    );
+    return s ?? null;
+  }
+
   // Right gifts expected at departure if every station keeps its current speed.
   estimate() {
     const rates = this.rates();
-    const slowest = rates.indexOf(Math.min(...rates));
+    const slowest = this.holdingUp();
     const letters = this.v.letters * this.lettersBetween(this.t, AT.close);
     const supply = sum(Object.values(this.q).map((q) => q.length)) + letters;
     const all = [...this.delivered, ...this.aboard];
@@ -2457,7 +2468,7 @@ class Workshop {
     return {
       projected:
         right +
-        Math.min(rates[slowest] * (this.duration - this.t), supply) *
+        Math.min(Math.min(...rates) * (this.duration - this.t), supply) *
           rightShare,
       slowest,
     };

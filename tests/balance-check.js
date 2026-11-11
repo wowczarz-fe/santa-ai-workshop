@@ -919,6 +919,40 @@ for (const seed of SEEDS.slice(0, 3)) {
 const kinds = new Set(everyRun.flatMap((r) => [...r.kinds]));
 for (const k of NEWS_KINDS) warn(kinds.has(k), `news kind ${k} is emitted`);
 
+// With reading automated and its pile near empty, reading is never named as holding things up, and
+// nothing is named while no pile is filling.
+for (const seed of SEEDS.slice(0, 3)) {
+  const w = new Workshop({ seed });
+  w.setAi(0, 2);
+  w.setAi(1, 2);
+  w.setAsk(true);
+  [3, 2, 3].reduce((elf, n, s) => {
+    for (let k = 0; k < n; k++, elf++)
+      if (w.elves[elf].station !== s) w.move(elf, s);
+    return elf;
+  }, 0);
+  while (w.t < 120) {
+    w.step(0.5);
+    if (w.choice) w.choose(w.choice.id, "rest");
+    const v = w.view();
+    if (v.case && !v.case.resolving)
+      w.resolve(v.case.id, v.case.options.find((o) => o.available).id);
+    const piles = Object.values(v.queues);
+    if (v.queues.letters.parcels.length <= 3)
+      assert.notStrictEqual(
+        v.pace.slowest,
+        0,
+        `seed ${seed} at ${v.t}s: automated reading with an empty pile named as the bottleneck`,
+      );
+    if (piles.every((q) => q.parcels.length <= 2))
+      assert.strictEqual(
+        v.pace.slowest,
+        null,
+        `seed ${seed} at ${v.t}s: a bottleneck named while every pile is near empty`,
+      );
+  }
+}
+
 // The default game, the opening, and the little things the page relies on.
 {
   assert.strictEqual(

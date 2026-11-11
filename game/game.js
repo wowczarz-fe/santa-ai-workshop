@@ -1177,29 +1177,20 @@
         report.causes || [],
         "No wrong gifts on this sleigh.",
       );
-      $("breakSpend").hidden = !report.spent && !report.assurance;
-      $("breakSpend").replaceChildren();
-      if (report.spent) {
-        $("breakSpend").append(make("b", "", "Spent this run"));
-        for (const [name, label, value] of [
-          ["people", "People", report.spent.people],
-          ["ai", "AI", report.spent.ai],
-          ["checks", "Checks", report.spent.checking],
-          ["fixing", "Fixing", report.spent.fixing],
-        ]) {
-          const part = make("span", "spend-part");
-          part.append(iconNode(name, "spend-icon"), `${label} ${money(value)}`);
-          $("breakSpend").append(part);
-        }
-      }
-      if (report.assurance) {
-        const part = make("span", "spend-part");
-        part.append(
-          iconNode("prevented", "spend-icon"),
-          `${report.assurance.caught} caught · ${money(report.assurance.prevented)} losses prevented (estimate)`,
-        );
-        $("breakSpend").append(part);
-      }
+      const spendText = [
+        ...(report.spent
+          ? [
+              `Spent this run: people ${money(report.spent.people)}, AI ${money(report.spent.ai)}, checks ${money(report.spent.checking)}, fixing ${money(report.spent.fixing)}.`,
+            ]
+          : []),
+        ...(report.assurance
+          ? [
+              `${report.assurance.caught} caught, about ${money(report.assurance.prevented)} of losses prevented (estimate).`,
+            ]
+          : []),
+      ].join(" ");
+      const budgetSlot = $("breakGoals").querySelector('[data-goal="cost"]');
+      if (budgetSlot && spendText) budgetSlot.title = spendText;
       $("breakLast").hidden = !report.slips.length;
       $("breakSlips").replaceChildren();
       const slip = report.slips[0];
@@ -1219,11 +1210,10 @@
           make("b", "", slip.made.name),
         );
         toys.append(wanted, made);
+        card.title = `"${slip.wish}" - ${slip.cause}`;
         card.append(
-          make("span", "eyebrow", "Costliest wrong gift"),
-          make("p", "slip-wish", `"${slip.wish}"`),
+          make("span", "eyebrow", `Costliest wrong gift · ${money(slip.cost)}`),
           toys,
-          make("p", "slip-cause", `${slip.cause} · ${money(slip.cost)}`),
         );
         $("breakSlips").append(card);
       }
@@ -1241,24 +1231,40 @@
         card.dataset.choose = option.id;
         card.dataset.choiceId = choice.id;
         card.dataset.kind = option.kind;
-        card.title = option.text;
         const gives = option.facts.find((f) => f.label === "Gives");
         const costs = option.facts.find((f) => f.label === "Costs");
-        const notes = option.facts.filter((f) => f !== gives && f !== costs);
+        const risk = option.facts.find((f) => f.label === "Risk");
+        const others = option.facts.filter(
+          (f) => f !== gives && f !== costs && f !== risk,
+        );
+        card.title = [
+          option.text,
+          ...[risk, ...others]
+            .filter(Boolean)
+            .map((f) => `${f.label}: ${f.value}.`),
+        ].join(" ");
         card.append(
           iconNode(optionIcons[option.kind] || "gift", "upgrade-icon"),
           make("strong", "", option.label),
         );
         if (gives) card.append(make("span", "upgrade-gives", gives.value));
-        for (const note of notes)
-          card.append(
-            make("small", "upgrade-note", `${note.label}: ${note.value}`),
-          );
+        const chips = make("span", "upgrade-chips");
         if (costs) {
           const chip = make("span", "upgrade-cost");
           chip.append(iconNode("budget", ""), costs.value);
-          card.append(chip);
+          chips.append(chip);
         }
+        if (risk) {
+          const odds = risk.value.match(/\d+ in \d+/);
+          chips.append(
+            make(
+              "span",
+              "upgrade-risk",
+              `risk: ${odds ? odds[0] : risk.value}`,
+            ),
+          );
+        }
+        card.append(chips);
         $("breakOptions").append(card);
       }
     }
@@ -2374,6 +2380,15 @@
       `</svg>`
     );
   }
+  const firstSentence = (words) => {
+    const match = String(words).match(/^.*?[.!?](?=\s|$)/);
+    return match ? match[0] : String(words);
+  };
+  const groupVerdicts = {
+    paid: "Worth it",
+    "cost more than it saved": "Cost more than it saved",
+    "left exposed": "Left exposed",
+  };
   function paintAssurance(end) {
     const a = end.assurance;
     $("assurance").hidden = !a;
@@ -2391,86 +2406,139 @@
       );
       text("underCost", money(a.underCost));
       text("overCost", money(a.overCost));
-      text("assuranceText", a.text);
+      text("assuranceText", firstSentence(a.text));
+      $("assuranceText").title = a.text;
       $("assuranceGroups").replaceChildren();
+      // One shared scale, so a long bar means the same money on every card.
+      const scale = Math.max(
+        1,
+        ...a.groups.flatMap((g) => [
+          g.checkCost,
+          g.prevented,
+          g.shippedUnchecked ? g.shippedUncheckedCost : 0,
+        ]),
+      );
       for (const group of a.groups) {
         const row = make("article", "assurance-group");
         row.dataset.group = group.id;
         row.dataset.verdict = group.verdict;
+        row.title = group.text;
+        const none = !group.parcels;
+        row.dataset.none = String(none);
         const head = make("div", "group-head");
         head.append(
           iconNode(`gift-${group.id}`, "group-icon"),
           make("b", "", group.name),
-          make("span", "group-verdict", group.verdict),
+          make(
+            "span",
+            "group-verdict",
+            none
+              ? "none this game"
+              : groupVerdicts[group.verdict] || group.verdict,
+          ),
         );
-        const figures = make("dl", "group-figures");
-        for (const [label, value] of [
-          ["Spent on checks", money(group.checkCost)],
-          [
-            "Caught",
-            `${group.caught} · ${money(group.prevented)} saved (estimate)`,
-          ],
-          ["Wrong shipped", `${group.shipped} · ${money(group.shippedCost)}`],
-        ])
-          figures.append(make("dt", "", label), make("dd", "", value));
-        row.append(head, figures, make("p", "", group.text));
+        row.append(head);
+        if (!none) {
+          const bars = make("div", "group-bars");
+          for (const [cls, label, value] of [
+            ["spent", "Spent on checks", money(group.checkCost)],
+            [
+              "stopped",
+              "Mistakes stopped",
+              `${money(group.prevented)} (estimate)`,
+            ],
+            ...(group.shippedUnchecked
+              ? [["through", "Got through", money(group.shippedUncheckedCost)]]
+              : []),
+          ]) {
+            const amount =
+              cls === "spent"
+                ? group.checkCost
+                : cls === "stopped"
+                  ? group.prevented
+                  : group.shippedUncheckedCost;
+            const bar = make("div", `group-bar bar-${cls}`);
+            const track = make("span", "bar-track");
+            const fill = make("span", "bar-fill");
+            fill.style.width = `${amount > 0 ? Math.max(2, (amount / scale) * 100) : 0}%`;
+            track.append(fill);
+            bar.append(
+              make("span", "bar-label", label),
+              make("b", "bar-value", value),
+              track,
+            );
+            bars.append(bar);
+          }
+          row.append(bars);
+        }
         $("assuranceGroups").append(row);
       }
       $("noChecks").replaceChildren(
         iconNode("mistakes", "spend-icon"),
         make("b", "", "With no checks (estimate): "),
-        `${a.noChecks.wrong} wrong gifts, about ${money(a.noChecks.cost)}`,
+        `${a.noChecks.wrong} wrong gifts, ${money(a.noChecks.cost)}`,
       );
     }
     $("practices").hidden = !end.used;
     $("practiceTiles").replaceChildren();
     if (!end.used) return;
-    for (const [icon, actions] of [
+    for (const [icon, practice, actions] of [
       [
         "human-in-loop",
-        [["assist", "Elves confirm AI drafts", "Human in the loop"]],
+        "Human in the loop",
+        [["assist", "Elves confirmed the AI's drafts"]],
       ],
-      ["risk-check", [["risky", "Check risky ones", "Risk-based checking"]]],
-      ["escalate", [["asked", "Ask child", "Escalate ambiguity to a person"]]],
+      [
+        "risk-check",
+        "Risk-based checking",
+        [["risky", "Checked the risky parcels"]],
+      ],
+      [
+        "escalate",
+        "Ask a person when unsure",
+        [["asked", "Asked the child about an unclear wish"]],
+      ],
       [
         "test-release",
+        "Test before release, keep a way back",
         [
-          ["tested", "Test update", "Test before release"],
-          ["rolledBack", "Roll back", "Way to undo"],
+          ["tested", "Tested the update first"],
+          ["rolledBack", "Rolled back a faulty update"],
         ],
       ],
       [
         "oversight",
+        "Keep human oversight sharp",
         [
-          ["trained", "Train checkers", "Keep human oversight sharp"],
-          ["rested", "Rest checkers", "Keep human oversight sharp"],
+          ["trained", "Trained the checkers"],
+          ["rested", "Gave the elves a cocoa break"],
         ],
       ],
     ]) {
+      const used = actions.some(([flag]) => end.used[flag]);
       const tile = make("article", "practice-tile");
-      tile.dataset.used = String(actions.some(([flag]) => end.used[flag]));
-      tile.append(iconNode(icon, "practice-icon"));
-      for (const [flag, label, meaning] of actions) {
-        const action = make("div", "practice-action");
+      tile.dataset.used = String(used);
+      const top = make("div", "practice-top");
+      const badge = make("span", "practice-badge");
+      badge.innerHTML = used ? tickSVG : "";
+      badge.append(used ? "You did this" : "Not this time");
+      top.append(iconNode(icon, "practice-icon"), badge);
+      tile.append(top, make("h4", "practice-name", practice));
+      for (const [flag, label] of actions) {
+        const action = make("p", "practice-action", label);
         action.dataset.used = String(end.used[flag]);
         action.dataset.practice = flag;
-        const tick = make("span", "practice-tick");
-        tick.innerHTML = end.used[flag]
-          ? '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-          : "";
-        tick.setAttribute("aria-hidden", "true");
-        const label_ = make("strong", "", label);
-        label_.prepend(tick);
-        action.append(label_, make("span", "", meaning));
-        action.setAttribute(
-          "aria-label",
-          `${label}, ${end.used[flag] ? "done" : "not done"}: ${meaning}`,
-        );
         tile.append(action);
       }
+      tile.setAttribute(
+        "aria-label",
+        `${practice}: ${actions.map(([flag, label]) => `${label}, ${end.used[flag] ? "done" : "not this time"}`).join("; ")}`,
+      );
       $("practiceTiles").append(tile);
     }
   }
+  const tickSVG =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function showReport() {
     const e = view.end;
     paintAssurance(e);
@@ -2527,26 +2595,21 @@
         make("b", "", `Run ${run.run}`),
         make("span", "run-cargo", run.cargo.name),
       );
-      card.append(head, goalMarks(run.goals || []));
-      // Goals within their limit that never counted, because the sleigh stayed under two thirds full.
-      const waiting = (run.goals || []).filter((g) => g.waiting && g.note);
-      for (const note of new Set(waiting.map((g) => g.note)))
-        card.append(
-          make(
-            "small",
-            "goal-wait",
-            `${waiting
-              .filter((g) => g.note === note)
-              .map((g) => g.name)
-              .join(", ")}: ${note}`,
-          ),
-        );
-      card.append(
+      // Stars and figures share a line; the first missed goal is the card's hover text.
+      const row = make("div", "run-row");
+      row.append(
+        goalMarks(run.goals || []),
         make("p", "", `${run.right}/${run.target} right · ${run.wrong} wrong`),
       );
-      const note =
-        run.missedBy || (run.bonus ? `+${run.bonus} clean-run bonus` : "");
-      if (note) card.append(make("small", "", note));
+      card.append(head, row);
+      if (run.missedBy) card.title = run.missedBy;
+      // Goals within their limit that never counted, because the sleigh stayed under two thirds full.
+      const waiting = (run.goals || []).find((g) => g.waiting && g.note);
+      if (waiting) card.append(make("small", "goal-wait", waiting.note));
+      if (run.bonus)
+        card.append(
+          make("small", "run-bonus", `+${run.bonus} clean-run bonus`),
+        );
       $("endRuns").append(card);
     }
     text(
@@ -2602,7 +2665,8 @@
       }),
     );
     text("lessonTitle", e.lesson.title);
-    text("lessonText", e.lesson.text);
+    text("lessonText", firstSentence(e.lesson.text));
+    $("lessonText").title = e.lesson.text;
     paintCauses(
       $("endCauses"),
       e.causes || [],

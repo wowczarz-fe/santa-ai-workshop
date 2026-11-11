@@ -2713,9 +2713,20 @@ dialog p {
   z-index: 1;
 }
 #breakRun {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--bc-hero-muted);
+  font-variant-numeric: tabular-nums;
+}
+.break-run-star {
+  color: var(--bc-mini-on);
+}
+.break-run-star svg {
+  width: 15px;
+  height: 15px;
 }
 #breakTitle {
   margin: 1px 0 0;
@@ -2737,92 +2748,56 @@ dialog p {
 }
 .break-body {
   display: grid;
-  gap: 8px;
-  padding: 10px 22px 14px;
+  gap: 10px;
+  padding: 12px 22px 14px;
 }
-.next-cargo {
+/* The choice heading carries the next sleigh: its cargo icon, name, target and one hint. */
+#breakDialog .break-choose {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 14px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
   align-items: center;
-  padding: 8px 14px;
-  border: 1.5px solid var(--bc-gold);
-  border-radius: 12px;
-  background: var(--bc-gold-soft);
+  margin-top: 2px;
 }
 .next-cargo-icon {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   background: var(--bc-gold);
   color: #2b2005;
 }
 .next-cargo-icon svg {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
 }
-#breakDialog .next-cargo .eyebrow {
-  color: var(--bc-gold-ink);
+#breakDialog #breakText {
+  font-size: 16px;
 }
-#breakDialog #nextCargoTitle {
-  margin: 1px 0 2px;
-  font-size: 19px;
+#breakDialog #breakText:focus {
+  outline: none;
 }
 #nextCargoText {
-  margin: 0;
+  margin: 1px 0 0;
   font-size: 13px;
-  line-height: 1.4;
-}
-.next-cargo-target {
-  padding: 6px 14px;
-  border: 1px solid var(--bc-line);
-  border-radius: 10px;
-  background: var(--bc-card);
-  text-align: center;
-  line-height: 1.1;
-}
-.next-cargo-target b {
-  display: block;
-  font:
-    600 24px var(--bc-serif),
-    serif;
-  color: var(--bc-accent-deep);
-}
-.next-cargo-target span {
-  font-size: 11.5px;
-  font-weight: 400;
-  color: var(--bc-muted);
-}
-.card-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-  margin-bottom: 6px;
-}
-#breakCounts {
-  font-size: 12.5px;
+  line-height: 1.35;
   color: var(--bc-muted);
 }
 .goal-slots {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 .goal-slot {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
     "marks name"
-    "marks figure"
-    "marks text"
-    "marks note";
-  column-gap: 12px;
-  align-content: start;
-  padding: 8px 12px;
+    "marks figure";
+  column-gap: 10px;
+  align-items: center;
+  padding: 7px 12px;
   border: 1px solid var(--bc-line);
   border-radius: 12px;
   background: var(--bc-card);
@@ -2834,9 +2809,8 @@ dialog p {
 .goal-marks {
   grid-area: marks;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 .goal-star svg {
   width: 26px;
@@ -2877,57 +2851,120 @@ dialog p {
 .goal-slot[data-met="true"] .goal-figure {
   color: var(--bc-accent-deep);
 }
-.goal-text {
-  grid-area: text;
-  font-size: 11.5px;
-  line-height: 1.3;
-  color: var(--bc-muted);
-}
-.goal-note {
-  grid-area: note;
-  margin-top: 2px;
-  font-size: 11.5px;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--bc-gold-ink);
-}
 .goal-slot[data-waiting="true"] .goal-star {
   opacity: 0.75;
 }
-.run-report .goal-wait {
-  font-weight: 700;
-  color: var(--bc-mini-on);
-}
-#breakDialog .break-note {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin: 6px 0 0;
-  font-size: 12.5px;
+.goal-slot[data-waiting="true"] .goal-figure {
   color: var(--bc-muted);
 }
-#breakBonus:not(:empty) {
-  padding: 0 8px;
-  border-radius: 20px;
+/* At most two lines under the stars: a decision still waiting or the main cause, and tired elves. */
+.break-lines {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.break-lines:empty {
+  display: none;
+}
+#breakDialog .break-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-line);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.break-line-icon {
+  flex: none;
+  color: var(--bc-accent-deep);
+}
+.break-line-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.break-line-text {
+  min-width: 0;
+}
+.break-line-figure {
+  color: var(--bc-red-deep);
+  white-space: nowrap;
+}
+#breakDialog .break-line-case {
+  border-color: var(--bc-gold);
+  background: var(--bc-gold-soft);
+}
+.break-line-case .break-line-icon {
+  color: var(--bc-gold-ink);
+}
+.break-line-case .break-line-text {
+  flex: 1;
+}
+#breakDialog .break-open-case {
+  flex: none;
+  min-height: 30px;
+  padding: 3px 12px;
+  border: 1.5px solid var(--bc-gold-ink);
+  border-radius: 8px;
+  background: var(--bc-card);
+  color: var(--bc-ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+#breakDialog .break-line-bonus {
+  border-color: var(--bc-ok-soft);
   background: var(--bc-ok-soft);
   color: var(--bc-ok);
   font-weight: 700;
 }
-.break-detail {
+.break-line-bonus .break-line-icon {
+  color: var(--bc-gold);
+}
+.break-line-tired .break-line-icon {
+  color: var(--bc-red-deep);
+}
+.break-line-slip {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+.slip-mini {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
+  place-items: center;
+  width: 34px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--bc-frost);
 }
-.break-detail:has(> .break-last[hidden]) {
-  grid-template-columns: minmax(0, 1fr);
+.slip-mini.slip-mini-made {
+  background: var(--bc-red-soft);
 }
-.break-causes,
-.break-last {
-  padding: 10px 14px;
+.slip-mini svg {
+  width: 30px;
+  height: 24px;
+}
+/* Details after the choices: the costliest wrong gift and every cause, folded away. */
+.break-detail {
+  padding: 8px 14px;
   border: 1px solid var(--bc-line);
   border-radius: 12px;
   background: var(--bc-card);
+  font-size: 13px;
+}
+.break-detail summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--bc-muted);
+}
+.break-detail[open] summary {
+  margin-bottom: 8px;
+}
+.break-detail[open] {
+  display: grid;
+  gap: 8px;
 }
 .cause-list {
   display: grid;
@@ -2994,8 +3031,8 @@ dialog p {
 }
 #breakDialog .slip-wish {
   margin: 0;
-  font-size: 13px;
-  font-style: italic;
+  font-size: 12.5px;
+  color: var(--bc-muted);
 }
 .slip-toys {
   display: grid;
@@ -3039,26 +3076,9 @@ dialog p {
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
-#breakDialog .slip-cause {
-  margin: 0;
-  font-size: 12px;
-  color: var(--bc-red-deep);
-}
-#breakMore {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--bc-muted);
-}
-#breakMore:empty {
-  display: none;
-}
 .spend-icon svg {
   width: 15px;
   height: 15px;
-}
-#breakDialog .break-choose {
-  margin: 4px 0 0;
-  font-size: 16px;
 }
 .break-options {
   display: grid;
@@ -3125,6 +3145,14 @@ dialog p {
   border-radius: 20px;
   background: var(--bc-red-soft);
   color: var(--bc-red-deep);
+  font-size: 12px;
+  font-weight: 700;
+}
+.upgrade-stops {
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: var(--bc-ok-soft);
+  color: var(--bc-ok);
   font-size: 12px;
   font-weight: 700;
 }
@@ -4015,72 +4043,55 @@ dialog p {
     height: 35px;
   }
   .break-body {
-    gap: 12px;
-    padding: 12px 12px 16px;
+    gap: 8px;
+    padding: 10px 10px 14px;
   }
-  .next-cargo {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 8px 12px;
-    padding: 10px 12px;
-  }
-  .next-cargo-icon {
-    width: 40px;
-    height: 40px;
-  }
-  .next-cargo-target {
-    grid-column: 1 / -1;
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 6px;
-    padding: 4px 10px;
-  }
-  .next-cargo-target b {
-    display: inline;
-    font-size: 21px;
-  }
+  /* Three goals side by side even on a phone: stars on top, figure below. */
   .goal-slots {
-    grid-template-columns: 1fr;
-    gap: 6px;
+    gap: 5px;
   }
   .goal-slot {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "marks name figure"
-      "marks text figure"
-      "marks note note";
-    align-items: center;
-    padding: 8px 12px;
-  }
-  .goal-marks {
-    flex-direction: row;
+      "marks"
+      "name"
+      "figure";
+    justify-items: center;
+    row-gap: 1px;
+    padding: 6px 4px;
+    text-align: center;
   }
   .goal-star svg {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
+  }
+  .goal-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .goal-icon svg {
+    width: 15px;
+    height: 15px;
+  }
+  .goal-name {
+    font-size: 11.5px;
   }
   .goal-figure {
-    font-size: 20px;
+    font-size: 16px;
   }
-  .break-detail {
-    display: contents;
+  #breakDialog .break-line {
+    padding: 5px 8px;
+    font-size: 12.5px;
   }
-  .break-result {
-    order: 2;
+  #breakDialog #breakText {
+    font-size: 15px;
   }
-  .break-causes {
-    order: 3;
-  }
-  #breakDialog .break-choose {
-    order: 4;
+  #nextCargoText {
+    font-size: 12.5px;
   }
   .break-options {
-    order: 5;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-  }
-  .break-last {
-    order: 6;
   }
   #breakDialog .upgrade-card {
     padding: 10px;

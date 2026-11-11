@@ -269,6 +269,7 @@
       class="break-dialog"
       tabindex="-1"
       aria-labelledby="breakTitle"
+      closedby="none"
     >
       <div class="break-hero">
         <div id="breakScene" class="break-scene" aria-hidden="true"></div>
@@ -284,45 +285,27 @@
         <span class="break-paused">Clock paused</span>
       </div>
       <div class="break-body">
-        <section class="next-cargo" aria-labelledby="nextCargoTitle">
+        <section class="break-result" aria-label="How it went">
+          <div id="breakGoals" class="goal-slots"></div>
+          <div id="breakLines" class="break-lines"></div>
+        </section>
+        <div class="break-choose">
           <span
             id="nextCargoIcon"
             class="next-cargo-icon"
             aria-hidden="true"
           ></span>
-          <div class="next-cargo-copy">
-            <span class="eyebrow">Next sleigh</span>
-            <h3 id="nextCargoTitle" tabindex="-1"></h3>
+          <div>
+            <h3 id="breakText" tabindex="-1"></h3>
             <p id="nextCargoText"></p>
           </div>
-          <strong id="nextCargoTarget" class="next-cargo-target"></strong>
-        </section>
-        <section class="break-result" aria-labelledby="breakResultTitle">
-          <div class="card-heading">
-            <h3 id="breakResultTitle"></h3>
-            <span id="breakCounts"></span>
-          </div>
-          <div id="breakGoals" class="goal-slots"></div>
-          <p class="break-note">
-            <span id="breakMissed"></span><span id="breakBonus"></span>
-          </p>
-        </section>
-        <div class="break-detail">
-          <section class="break-causes" aria-labelledby="breakCausesTitle">
-            <h3 id="breakCausesTitle">Where the wrong gifts came from</h3>
-            <ol id="breakCauses" class="cause-list"></ol>
-          </section>
-          <section
-            id="breakLast"
-            class="break-last"
-            aria-label="Last wrong gift"
-          >
-            <div id="breakSlips"></div>
-            <p id="breakMore"></p>
-          </section>
         </div>
-        <h3 id="breakText" class="break-choose"></h3>
         <div id="breakOptions" class="break-options"></div>
+        <details id="breakLast" class="break-detail">
+          <summary>Where the wrong gifts came from</summary>
+          <div id="breakSlips"></div>
+          <ol id="breakCauses" class="cause-list"></ol>
+        </details>
       </div>
     </dialog>
     <dialog id="report" class="end-screen" aria-labelledby="resultTitle">

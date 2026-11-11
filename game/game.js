@@ -1114,7 +1114,7 @@
     "</g></svg>" +
     `<span class="end-sleigh">${sleighArt()}</span>`;
   $("replay").innerHTML = `${uiIcon("restart")}<span>Play again</span>`;
-  function goalSlot(goal) {
+  function goalSlot(goal, countsFrom) {
     const slot = make("div", "goal-slot");
     slot.dataset.goal = goal.id;
     slot.dataset.met = String(goal.met);
@@ -1124,17 +1124,21 @@
       iconNode(goal.met ? "star" : "star-empty", "goal-star"),
       iconNode(goalIcons[goal.id] || "star", "goal-icon"),
     );
+    // The figure carries the goal; its longer wording stays in the label and the hover text.
     slot.append(
       marks,
       make("b", "goal-name", goal.name),
       make("strong", "goal-figure", goalFigure(goal)),
-      make("small", "goal-text", goal.text),
     );
-    if (goal.waiting && goal.note)
-      slot.append(make("small", "goal-note", goal.note));
+    // Within its limit but never counted: the sleigh stayed under the share where this goal starts.
+    const why =
+      goal.waiting && countsFrom
+        ? `, counts from ${countsFrom} right gifts`
+        : "";
+    slot.title = goal.text + why;
     slot.setAttribute(
       "aria-label",
-      `${goal.name}: ${goalFigure(goal)}, ${goal.text}. ${goal.met ? "Star earned" : goal.waiting && goal.note ? `No star yet: ${goal.note}` : "No star"}.`,
+      `${goal.name}: ${goalFigure(goal)}, ${goal.text}${why}. ${goal.met ? "Star earned" : "No star"}.`,
     );
     slot.setAttribute("role", "group");
     return slot;
@@ -1144,12 +1148,10 @@
     const row = make("div", "goal-mini");
     for (const goal of goals) {
       const mark = make("span", "goal-mini-mark");
-      mark.innerHTML =
-        uiIcon(goal.met ? "star" : "star-empty") +
-        uiIcon(goalIcons[goal.id] || "star");
+      mark.innerHTML = uiIcon(goal.met ? "star" : "star-empty");
       mark.dataset.met = String(goal.met);
       mark.dataset.waiting = String(Boolean(goal.waiting));
-      mark.title = `${goal.name}: ${goalFigure(goal)}${goal.met ? ", star earned" : goal.waiting && goal.note ? `, ${goal.note}` : ""}`;
+      mark.title = `${goal.name}: ${goalFigure(goal)}${goal.met ? ", star earned" : ""}`;
       row.append(mark);
     }
     row.setAttribute(
@@ -1184,149 +1186,216 @@
     );
     if (!causes.length) list.append(make("li", "cause-none", none));
   }
+  // The break card: what the last run earned, at most two lines on why, then the choice.
+  // A decision still waiting can be opened from here; the card steps aside until it is answered.
+  let breakAside = false,
+    breakAnimated = null;
+  function breakLine(cls, iconName, ...parts) {
+    const line = make("p", `break-line ${cls}`);
+    if (iconName) line.append(iconNode(iconName, "break-line-icon"));
+    const words = make("span", "break-line-text");
+    words.append(...parts);
+    line.append(words);
+    return line;
+  }
+  function paintBreakLines(choice) {
+    const report = choice.report;
+    const lines = [];
+    const top = (report.causes || [])[0];
+    const slip = report.slips[0];
+    if (choice.openCase) {
+      const line = breakLine(
+        "break-line-case",
+        "ask",
+        "Decision still waiting: ",
+        make("b", "", choice.openCase.title),
+      );
+      if (view.case) {
+        const open = make("button", "break-open-case", "Open it");
+        open.type = "button";
+        open.dataset.openCase = choice.openCase.id;
+        line.append(open);
+      }
+      lines.push(line);
+    } else if (report.wrong && top) {
+      const cost =
+        report.assurance?.shippedCost ??
+        report.causes.reduce((sum, c) => sum + c.cost, 0);
+      const line = breakLine(
+        "break-line-cause",
+        "",
+        make(
+          "b",
+          "break-line-figure",
+          `${plural(report.wrong, "wrong gift")} · ${money(cost)}`,
+        ),
+        ` ${top.name}. ${top.fix}`,
+      );
+      if (slip) {
+        const pair = make("span", "break-line-slip");
+        pair.append(
+          drawnToy(slip.wanted.name, true, "slip-mini"),
+          drawnToy(slip.made.name, false, "slip-mini slip-mini-made"),
+        );
+        pair.title = `Wanted ${slip.wanted.name}, got ${slip.made.name}`;
+        line.prepend(pair);
+      }
+      lines.push(line);
+    } else if (report.bonus) {
+      lines.push(
+        breakLine(
+          "break-line-bonus",
+          "star",
+          `+${report.bonus} clean-run bonus`,
+        ),
+      );
+    }
+    const full = (report.goals || []).find((g) => g.id === "full");
+    if ((report.tired ?? 0) >= 50 && full && !full.met)
+      lines.push(
+        breakLine(
+          "break-line-tired",
+          "role-tired",
+          `Tired elves slowed the line (average ${Math.round(report.tired)} tired)`,
+        ),
+      );
+    $("breakLines").replaceChildren(...lines);
+  }
+  function paintBreakDetail(report) {
+    const slip = report.slips[0];
+    $("breakLast").hidden = !report.wrong;
+    $("breakLast").open = false;
+    $("breakSlips").replaceChildren();
+    if (slip) {
+      const card = make("article", "delivery-slip");
+      const toys = make("div", "slip-toys");
+      const wanted = make("span", "slip-side");
+      wanted.append(
+        drawnToy(slip.wanted.name, true, "slip-art"),
+        make("small", "", "Wanted"),
+        make("b", "", slip.wanted.name),
+      );
+      const made = make("span", "slip-side slip-made");
+      made.append(
+        drawnToy(slip.made.name, false, "slip-art"),
+        make("small", "", "Got"),
+        make("b", "", slip.made.name),
+      );
+      toys.append(wanted, made);
+      card.append(
+        make("span", "eyebrow", `Costliest · ${money(slip.cost)}`),
+        toys,
+        make(
+          "p",
+          "slip-wish",
+          `"${slip.wish}" ${slip.cause.charAt(0).toUpperCase()}${slip.cause.slice(1)}.`,
+        ),
+      );
+      $("breakSlips").append(card);
+    }
+    paintCauses($("breakCauses"), report.causes || [], "");
+  }
+  function paintBreakOptions(choice) {
+    $("breakOptions").replaceChildren();
+    $("breakOptions").style.setProperty("--choices", choice.options.length);
+    for (const option of choice.options) {
+      const card = make("button", "upgrade-card");
+      card.dataset.choose = option.id;
+      card.dataset.choiceId = choice.id;
+      card.dataset.kind = option.kind;
+      const fact = (label) => option.facts.find((f) => f.label === label);
+      const gives = fact("Gives");
+      const costs = fact("Costs");
+      const risk = fact("Risk");
+      const stops = fact("Stops");
+      const others = option.facts.filter(
+        (f) => f !== gives && f !== costs && f !== risk && f !== stops,
+      );
+      card.title = [
+        option.text,
+        ...others.map((f) => `${f.label}: ${f.value}.`),
+      ].join(" ");
+      card.append(
+        iconNode(optionIcons[option.kind] || "gift", "upgrade-icon"),
+        make("strong", "", option.label),
+      );
+      if (gives) card.append(make("span", "upgrade-gives", gives.value));
+      const chips = make("span", "upgrade-chips");
+      if (costs) {
+        const chip = make("span", "upgrade-cost");
+        chip.append(iconNode("budget", ""), costs.value);
+        chips.append(chip);
+      }
+      // The install risk is how likely the update is faulty; testing is what stops a bad one.
+      if (risk) {
+        const odds = risk.value.match(/\d+ in \d+/);
+        chips.append(
+          make(
+            "span",
+            "upgrade-risk",
+            odds ? `may be faulty: ${odds[0]}` : risk.value,
+          ),
+        );
+      }
+      if (stops)
+        chips.append(make("span", "upgrade-stops", `stops ${stops.value}`));
+      card.append(chips);
+      const wrap = make("div", "upgrade-wrap");
+      wrap.append(card);
+      addMore(wrap, card.title, `More about ${option.label}`);
+      $("breakOptions").append(wrap);
+    }
+  }
   function paintChoice() {
     const choice = started ? view.choice : null;
     if (!choice) {
+      breakAside = false;
       $("breakDialog").close();
       lastChoice = null;
       return;
     }
-    if (lastChoice !== choice.id) {
+    if (breakAside) {
+      if (caseOpen && view.case && !view.case.resolving) return;
+      breakAside = false;
+      lastChoice = null;
+    }
+    if (
+      lastChoice !== choice.id ||
+      $("breakLines").dataset.case !== String(choice.openCase?.id ?? "")
+    ) {
       lastChoice = choice.id;
       const report = choice.report;
-      $("nextCargoIcon").innerHTML = uiIcon(`cargo-${choice.next.cargo.id}`);
-      text("nextCargoTitle", choice.next.cargo.name);
-      text("nextCargoText", choice.next.cargo.text);
-      $("nextCargoTarget").replaceChildren(
-        make("b", "", choice.next.target),
-        make("span", "", "right gifts needed"),
+      const next = choice.next;
+      $("breakRun").replaceChildren(
+        iconNode("star", "break-run-star"),
+        `${view.score.stars} / ${view.score.best}`,
       );
-      text("breakRun", `Run ${report.run} of ${view.run.of}`);
+      $("breakRun").setAttribute(
+        "aria-label",
+        `${view.score.stars} of ${view.score.best} stars so far`,
+      );
       text("breakTitle", choice.title);
-      text("breakText", choice.text);
-      text("breakResultTitle", `How run ${report.run} went`);
+      $("nextCargoIcon").innerHTML = uiIcon(`cargo-${next.cargo.id}`);
       text(
-        "breakCounts",
-        `${report.stars} of 3 stars · ${view.score.stars} of ${view.score.best} so far`,
+        "breakText",
+        `${choice.text} Next: ${next.cargo.name}, ${next.target} needed.`,
       );
-      $("breakGoals").replaceChildren(...(report.goals || []).map(goalSlot));
-      text("breakMissed", report.missedBy || "");
-      text(
-        "breakBonus",
-        report.bonus ? `+${report.bonus} clean-run bonus` : "",
+      text("nextCargoText", next.cargo.text);
+      $("breakGoals").replaceChildren(
+        ...(report.goals || []).map((g) => goalSlot(g, report.goalsCountFrom)),
       );
-      paintCauses(
-        $("breakCauses"),
-        report.causes || [],
-        "No wrong gifts on this sleigh.",
-      );
-      const spendText = [
-        ...(report.spent
-          ? [
-              `Spent this run: people ${money(report.spent.people)}, AI ${money(report.spent.ai)}, checks ${money(report.spent.checking)}, fixing ${money(report.spent.fixing)}.`,
-            ]
-          : []),
-        ...(report.assurance
-          ? [
-              `${report.assurance.caught} caught, about ${money(report.assurance.prevented)} of losses prevented (estimate).`,
-            ]
-          : []),
-      ].join(" ");
-      const budgetSlot = $("breakGoals").querySelector('[data-goal="cost"]');
-      if (budgetSlot && spendText) {
-        budgetSlot.title = spendText;
-        addMore(budgetSlot, spendText, "What this run spent");
-      }
-      $("breakLast").hidden = !report.slips.length;
-      $("breakSlips").replaceChildren();
-      const slip = report.slips[0];
-      if (slip) {
-        const card = make("article", "delivery-slip");
-        const toys = make("div", "slip-toys");
-        const wanted = make("span", "slip-side");
-        wanted.append(
-          drawnToy(slip.wanted.name, true, "slip-art"),
-          make("small", "", "Wanted"),
-          make("b", "", slip.wanted.name),
-        );
-        const made = make("span", "slip-side slip-made");
-        made.append(
-          drawnToy(slip.made.name, false, "slip-art"),
-          make("small", "", "Got"),
-          make("b", "", slip.made.name),
-        );
-        toys.append(wanted, made);
-        card.title = `"${slip.wish}" - ${slip.cause}`;
-        card.append(
-          make("span", "eyebrow", `Costliest wrong gift · ${money(slip.cost)}`),
-          toys,
-        );
-        addMore(
-          card,
-          `"${slip.wish}" ${slip.cause.charAt(0).toUpperCase()}${slip.cause.slice(1)}.`,
-          "The wish and what let it through",
-        );
-        $("breakSlips").append(card);
-      }
-      const others = Math.max(0, report.slips.length - 1) + (report.more || 0);
-      text(
-        "breakMore",
-        others
-          ? `${others} more wrong ${others === 1 ? "gift" : "gifts"} delivered.`
-          : "",
-      );
-      $("breakOptions").replaceChildren();
-      $("breakOptions").style.setProperty("--choices", choice.options.length);
-      for (const option of choice.options) {
-        const card = make("button", "upgrade-card");
-        card.dataset.choose = option.id;
-        card.dataset.choiceId = choice.id;
-        card.dataset.kind = option.kind;
-        const gives = option.facts.find((f) => f.label === "Gives");
-        const costs = option.facts.find((f) => f.label === "Costs");
-        const risk = option.facts.find((f) => f.label === "Risk");
-        const others = option.facts.filter(
-          (f) => f !== gives && f !== costs && f !== risk,
-        );
-        card.title = [
-          option.text,
-          ...[risk, ...others]
-            .filter(Boolean)
-            .map((f) => `${f.label}: ${f.value}.`),
-        ].join(" ");
-        card.append(
-          iconNode(optionIcons[option.kind] || "gift", "upgrade-icon"),
-          make("strong", "", option.label),
-        );
-        if (gives) card.append(make("span", "upgrade-gives", gives.value));
-        const chips = make("span", "upgrade-chips");
-        if (costs) {
-          const chip = make("span", "upgrade-cost");
-          chip.append(iconNode("budget", ""), costs.value);
-          chips.append(chip);
-        }
-        if (risk) {
-          const odds = risk.value.match(/\d+ in \d+/);
-          chips.append(
-            make(
-              "span",
-              "upgrade-risk",
-              `risk: ${odds ? odds[0] : risk.value}`,
-            ),
-          );
-        }
-        card.append(chips);
-        const wrap = make("div", "upgrade-wrap");
-        wrap.append(card);
-        addMore(wrap, card.title, `More about ${option.label}`);
-        $("breakOptions").append(wrap);
-      }
+      $("breakLines").dataset.case = String(choice.openCase?.id ?? "");
+      paintBreakLines(choice);
+      paintBreakDetail(report);
+      paintBreakOptions(choice);
     }
     closeInfo();
     if (!$("breakDialog").open) {
       $("breakDialog").showModal();
-      $("nextCargoTitle").focus({ preventScroll: true });
+      $("breakText").focus({ preventScroll: true });
       $("breakDialog").scrollTop = 0;
+      if (breakAnimated === choice.id) return;
+      breakAnimated = choice.id;
       $("breakDeparture").classList.remove("break-arrival");
       void $("breakDeparture").offsetWidth;
       $("breakDeparture").classList.add("break-arrival");
@@ -2254,6 +2323,25 @@
   $("breakDialog").addEventListener("cancel", (event) =>
     event.preventDefault(),
   );
+  // Escape can still close a modal dialog after two cancels; while the choice is open the card
+  // comes back, or the clock would stay stopped with nothing to pick.
+  $("breakDialog").addEventListener("close", () =>
+    queueMicrotask(() => {
+      if (started && view.choice && !view.end && !breakAside) paintChoice();
+    }),
+  );
+  $("breakDialog").addEventListener("click", (event) => {
+    const open = event.target.closest("[data-open-case]");
+    if (!open || !view.case) return;
+    breakAside = true;
+    caseOpen = true;
+    $("breakDialog").close();
+    paint();
+  });
+  // Escape closes the decision card; the break card then comes back.
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && breakAside) queueMicrotask(paint);
+  });
   $("copyResult").onclick = async () => {
     const end = view.end;
     const link = new URL(location.href);

@@ -10,642 +10,601 @@
     return `<svg viewBox="0 0 42 48" aria-hidden="true"><path d="M8 47q0-19 13-19t13 19" fill="${colour}"/><path d="M14 32l7 9 7-9" fill="#eee9de"/><path d="M10 18l-7-3 6 10m23-7 7-3-6 10" fill="#e9ba91"/><circle cx="21" cy="21" r="12" fill="#efc9a4"/><path d="M8 16L21 1l12 15" fill="${colour}"/><rect x="7" y="14" width="28" height="5" rx="2" fill="#f4f0e7"/><circle cx="17" cy="23" r="1.4" fill="#2d2926"/><circle cx="25" cy="23" r="1.4" fill="#2d2926"/><path d="M18 28q3 3 6 0" fill="none" stroke="#a46651" stroke-width="1.5"/></svg>`;
   }
 
-  const $ = (id) => document.getElementById(id),
-    stationNames = ["Wish lists", "Toy workshop", "Check & dispatch"];
-  let mobileTab = 0;
-  let game = new Workshop(),
+  const $ = (id) => document.getElementById(id);
+  const names = ["Read letters", "Make toys", "Check & dispatch"];
+  const rawSeed = new URLSearchParams(location.search).get("seed");
+  const seed =
+    rawSeed !== null && Number.isFinite(Number(rawSeed))
+      ? Number(rawSeed) >>> 0
+      : 2026;
+  let game,
+    view,
     running = false,
     started = false,
     selected = null,
-    speed = 1,
+    activeStation = 0,
     last = 0,
-    acc = 0,
+    accumulator = 0,
     paint = 0,
-    history = [],
-    lastSave = -1,
-    shownEnd = false,
-    toastTimer,
-    returnFocus = null,
-    modalKind = "",
-    resumeAfter = false,
-    parcelId = null;
-
-  function icon(kind) {
-    const body =
-      kind === "letter"
-        ? '<rect x="3" y="7" width="26" height="19" rx="2" fill="#fff" stroke="#286e73" stroke-width="2"/><path d="M4 8l12 10L28 8" stroke="#286e73" stroke-width="2" fill="none"/>'
-        : kind === "train"
-          ? '<path d="M5 12h13v12H5zM17 6h10v18H17z" fill="#e83f35"/><path d="M20 8h5v6h-5zM8 7h4v6H8z" fill="#286e73"/><circle cx="9" cy="25" r="4" fill="#2d2926"/><circle cx="23" cy="25" r="4" fill="#2d2926"/>'
-          : kind === "unknown"
-            ? '<rect x="5" y="6" width="23" height="22" rx="2" fill="#efc784"/><text x="16" y="23" text-anchor="middle" font-size="21" font-family="Arial" font-weight="bold" fill="#2d2926">?</text>'
-            : '<rect x="4" y="10" width="24" height="19" rx="2" fill="#8ed0d2"/><path d="M16 10v19M4 15h24" stroke="#fff" stroke-width="3"/><path d="M16 10C1 10 7-2 16 10C31-2 31 10 16 10" stroke="#e83f35" stroke-width="2" fill="none"/>';
-    return '<svg viewBox="0 0 32 32" aria-hidden="true">' + body + "</svg>";
+    seenNews = 0,
+    lastHint = null,
+    reportShown = false,
+    resumeRestart = false,
+    toast = "",
+    toastUntil = 0;
+  const money = (n) => "£" + Math.round(n).toLocaleString("en-GB");
+  const number = (n) =>
+    Number(n).toLocaleString("en-GB", { maximumFractionDigits: 1 });
+  const time = (n) =>
+    `${Math.floor(Math.max(0, Math.ceil(n)) / 60)
+      .toString()
+      .padStart(
+        2,
+        "0",
+      )}:${(Math.max(0, Math.ceil(n)) % 60).toString().padStart(2, "0")}`;
+  function text(id, value) {
+    const node = $(id);
+    if (node.textContent !== String(value)) node.textContent = value;
   }
-  $("stations").innerHTML = stationNames
+  function actionBlock(key, label) {
+    return `<div id="control-${key}" class="action-block" data-control="${key}" hidden><button data-action="${key}">${label}</button><small id="cost-${key}"></small><small id="why-${key}" class="why"></small></div>`;
+  }
+  $("stations").innerHTML = names
     .map(
-      (name, i) =>
-        `<section class="station" id="station${i}"><div class="station-head"><span class="number">0${i + 1}</span><h2>${name}</h2></div><div class="station-state" id="state${i}">Ready</div><div class="machine"><span class="statuslamp" id="lamp${i}">READY</span><svg viewBox="0 0 100 90" aria-hidden="true">${machineArt[i]}</svg><div class="belt"><span class="parcel">${icon(i === 0 ? "letter" : "gift")}</span><span class="parcel">${icon(i === 0 ? "letter" : "gift")}</span><span class="parcel">${icon(i === 0 ? "letter" : "gift")}</span></div></div><div class="queue"><span>Queue capacity</span><b id="queue${i}"></b></div><div class="track queue-track"><span id="qbar${i}"></span></div><div class="elves" id="elves${i}"></div><button class="move" data-move="${i}">Move selected elf here</button>${i < 2 ? `<label class="control">AI freedom</label><div class="seg" aria-label="${name} AI freedom" role="group">${["Off", "Assist", "Automate"].map((t, m) => `<button data-mode="${i},${m}">${t}</button>`).join("")}</div>${i === 0 ? '<label class="control" for="escalate">Ambiguous wishes</label><select id="escalate"><option value="review">Ask an elf · slower, safer</option><option value="trust">Trust the AI · faster, riskier</option></select><button id="intake" class="intervene" data-action="intake">Throttle incoming letters</button>' : '<button class="intervene danger" data-action="stop" id="stop">Emergency stop</button><button class="intervene" data-action="patch" id="patch">Roll back faulty AI · £65 / 8s</button>'}<p class="effect" id="effect${i}"></p>` : `<label class="control">Inspection policy</label><div class="seg" role="group" aria-label="Inspection policy">${["Spot", "Targeted", "Every gift"].map((t, i) => `<button data-policy="${i}">${t}</button>`).join("")}</div><button class="intervene" data-action="hold" id="hold">Hold dispatch</button><button class="intervene" data-action="training" id="training">Train reviewers · £70</button><div class="parcel-tray" id="parcelTray" aria-label="Parcels available for inspection"></div><div class="muted">Tap a parcel to inspect, isolate or release it.</div>`}</section>`,
+      (name, s) =>
+        `<section id="station${s}" class="station ${s === 0 ? "expanded" : ""}"><button class="station-heading" data-station="${s}" aria-expanded="${s === 0}"><span class="station-number">0${s + 1}</span><h2>${name}</h2><span class="expand-label">Controls ⌄</span></button><div class="machine" id="machine${s}"><svg viewBox="0 0 100 90" aria-hidden="true">${machineArt[s]}</svg><span class="machine-state" id="state${s}"></span><div class="belt" aria-hidden="true"><span>✉</span><span>🎁</span><span>🎁</span></div></div><div class="queue-label"><span id="queue${s}"></span><span id="rate${s}"></span></div><progress id="queuebar${s}" max="1" value="0" aria-label="${name} queue fullness"></progress><div class="job"><span>Next parcel</span><progress id="progress${s}" max="1" value="0" aria-label="${name} job progress"></progress></div><p class="pace" id="pace${s}" hidden></p><div id="elves${s}" class="elves"></div><button data-move="${s}" class="move" hidden>Move selected elf here</button><div class="station-controls">${s < 2 ? `<div id="control-ai${s}" class="lever" data-control="ai${s}" hidden><h3>How much should AI do?</h3><div role="group" aria-label="${name}: AI level">${[0, 1, 2].map((level) => `<button class="option" data-ai="${s},${level}" aria-pressed="false"><b id="ai${s}-${level}-name"></b><span id="ai${s}-${level}-effect"></span><small id="ai${s}-${level}-cost"></small></button>`).join("")}</div><small class="lever-note">Estimates at this staffing; queues and checks can slow the line.</small><small id="why-ai${s}" class="why"></small></div>` : `<div id="control-checking" class="lever" data-control="checking" hidden><h3>How much should elves check?</h3><div role="group" aria-label="Checking policy">${[0, 1, 2].map((level) => `<button class="option" data-checking="${level}" aria-pressed="false"><b id="checking${level}-name"></b><span id="checking${level}-effect"></span></button>`).join("")}</div><small id="cost-checking"></small><small id="why-checking" class="why"></small></div>`}${s === 0 ? `<div id="control-ask" class="action-block" data-control="ask" hidden><button id="ask" aria-pressed="false">Ask the child about unclear wishes</button><small id="cost-ask"></small><small id="why-ask" class="why"></small></div>` : s === 1 ? actionBlock("rollback", "Roll back the faulty AI") : `<div id="control-inspect" data-control="inspect" class="inspection-area" hidden><h3>Open a parcel yourself</h3><small id="cost-inspect"></small><small id="why-inspect" class="why"></small><div id="parcels" class="parcels"></div><p class="legend">★ Big gift: a mistake costs more. ? means uncertain; ! means from the faulty update.</p></div><section id="inspection" class="inspection" hidden><h3 id="inspectionTitle"></h3><blockquote id="inspectionWish"></blockquote><div class="inspection-toy"><span id="inspectionIcon"></span><b id="inspectionMade"></b></div><p id="inspectionStatus"></p><progress id="inspectionProgress" max="1" value="0" aria-label="Inspection progress"></progress><div class="inspection-decisions"><button id="ship">Ship this gift</button><button id="remake">Send back to remake</button></div></section><section id="evidence" class="evidence" hidden><h3 id="evidenceTitle"></h3><p id="evidenceWish"></p><p id="evidenceMade"></p><p id="evidenceResult"></p></section>${actionBlock("quarantine", "Quarantine the suspect queue")}${actionBlock("recall", "Recall wrong gifts from the sleigh")}${actionBlock("train", "Train the checkers")}<p id="rework" class="rework" hidden></p>`}</div></section>`,
     )
     .join("");
-  function toast(text) {
-    $("toast").textContent = text;
-    $("toast").hidden = false;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => ($("toast").hidden = true), 3000);
+  for (let s = 0; s < 3; s++) {
+    const station = $("station" + s);
+    const summary = document.createElement("div");
+    summary.className = "station-summary";
+    for (const node of [...station.children])
+      if (!node.classList.contains("station-controls")) summary.append(node);
+    station.prepend(summary);
   }
-  function seconds(n) {
-    return (
-      String(Math.floor(n / 60)).padStart(2, "0") +
-      ":" +
-      String(Math.ceil(n % 60)).padStart(2, "0")
-    );
+  const bench = document.createElement("section");
+  bench.className = "parcel-bench";
+  bench.id = "parcelBench";
+  bench.setAttribute("aria-label", "Dispatch inspection bench");
+  const opening = document.createElement("div");
+  opening.append($("control-inspect"), $("inspection"));
+  bench.append(opening, $("evidence"));
+  $("stations").after(bench);
+  const incidentActions = document.createElement("section");
+  incidentActions.id = "incidentActions";
+  incidentActions.className = "incident-actions";
+  incidentActions.setAttribute("aria-label", "Respond to the faulty update");
+  for (const [key, label] of [
+    ["rollback", "1 · Protect new toys"],
+    ["quarantine", "2 · Fix the waiting batch"],
+    ["recall", "3 · Bring wrong gifts back"],
+  ]) {
+    const control = $("control-" + key);
+    const heading = document.createElement("h3");
+    heading.textContent = label;
+    control.prepend(heading);
+    incidentActions.append(control);
   }
-  let elfSignature = "",
-    feedSignature = "",
-    traySignature = "";
-  function renderElves() {
-    const sig =
-      game.elves.map((e) => e.s + e.reason + e.ready).join("|") +
-      selected +
-      !!game.end;
-    if (sig !== elfSignature) {
-      elfSignature = sig;
-      for (let s = 0; s < 4; s++)
-        $("elves" + s).innerHTML = game.elves
-          .map((e, i) =>
-            e.s === s
-              ? `<button class="elf ${i === selected ? "selected" : ""}" data-elf="${i}" draggable="true" aria-pressed="${i === selected}" ${game.end ? "disabled" : ""}>${elfSVG(i)}<span>${e.name}</span><small class="elf-status"></small><span class="fatigue"><i></i></span></button>`
-              : "",
-          )
-          .join("");
+  bench.after(incidentActions);
+  function selectStation(s) {
+    activeStation = s;
+    for (let i = 0; i < 3; i++) {
+      $("station" + i).classList.toggle("expanded", i === s);
+      document
+        .querySelector(`[data-station="${i}"]`)
+        .setAttribute("aria-expanded", i === s);
     }
-    document.querySelectorAll("[data-elf]").forEach((b) => {
-      const e = game.elves[+b.dataset.elf],
-        status =
-          e.s === 3
-            ? e.reason === "burnout" && !e.ready
-              ? "Recovering"
-              : e.rest > 0
-                ? "On break"
-                : "Ready"
-            : e.f > 70
-              ? "Exhausted"
-              : e.f > 45
-                ? "Tiring"
-                : "Working";
-      b.querySelector("i").style.width = e.f + "%";
-      b.querySelector(".elf-status").textContent = status;
+  }
+  function setupElves() {
+    document.querySelectorAll(".elf").forEach((n) => n.remove());
+    view.elves.forEach((e, i) => {
+      const b = document.createElement("button");
+      b.className = "elf";
+      b.dataset.elf = i;
+      b.innerHTML =
+        elfSVG(i) +
+        '<span class="elf-name"></span><span class="elf-state"></span><progress max="100" value="0"></progress>';
+      b.querySelector(".elf-name").textContent = e.name;
+      b.querySelector("progress").setAttribute(
+        "aria-label",
+        e.name + " tiredness",
+      );
+      $("elves" + e.station).append(b);
+    });
+  }
+  function paintElves() {
+    view.elves.forEach((e, i) => {
+      const b = document.querySelector(`[data-elf="${i}"]`),
+        parent = $("elves" + e.station);
+      if (b.parentElement !== parent) parent.append(b);
+      b.classList.toggle("selected", selected === i);
+      b.classList.toggle("tired", e.tired >= 60);
+      b.setAttribute("aria-pressed", selected === i);
+      b.disabled = !started || !!view.end || e.resting;
+      b.querySelector("progress").value = e.tired;
+      const label = e.resting
+        ? "Resting"
+        : e.station === 3
+          ? "Ready to return"
+          : `${e.tired}% tired`;
+      b.querySelector(".elf-state").textContent = label;
+      b.setAttribute("aria-label", `${e.name}, ${label}. Select to move.`);
+    });
+    document.querySelectorAll("[data-move]").forEach((b) => {
+      const e = selected === null ? null : view.elves[selected],
+        s = Number(b.dataset.move);
+      b.hidden = !e;
+      b.disabled = !e || e.resting || e.station === s || !!view.end;
+      b.textContent = e
+        ? `Move ${e.name} ${s === 3 ? "for cocoa" : "here"} →`
+        : "Move selected elf here";
+    });
+  }
+  function updateActions() {
+    $("parcelBench").hidden = !started || !view.actions.inspect.unlocked;
+    $("incidentActions").hidden =
+      !started ||
+      !["rollback", "quarantine", "recall"].some(
+        (key) => view.actions[key].unlocked,
+      );
+    for (const [key, a] of Object.entries(view.actions)) {
+      const container = $("control-" + key);
+      if (!container) continue;
+      container.hidden = !started || !a.unlocked;
+      container.classList.toggle("guided", view.hint?.control === key);
+      const why = $("why-" + key);
+      if (why) why.textContent = a.why || "";
+      const cost = $("cost-" + key);
+      if (cost) cost.textContent = a.cost || "";
+      container
+        .querySelectorAll("button")
+        .forEach((b) => (b.disabled = !started || !a.available || !!view.end));
+    }
+    for (const s of [0, 1])
+      view.levers["ai" + s].forEach((o, i) => {
+        text(`ai${s}-${i}-name`, o.name);
+        text(
+          `ai${s}-${i}-effect`,
+          `${number(o.perMinute)} / min · ${number(o.wrongPer100)} mistakes / 100`,
+        );
+        text(`ai${s}-${i}-cost`, `${money(o.costPerMinute)} / min`);
+        document
+          .querySelector(`[data-ai="${s},${i}"]`)
+          .setAttribute("aria-pressed", view.ai[s] === i);
+      });
+    view.levers.checking.forEach((o, i) => {
+      text(`checking${i}-name`, o.name);
+      text(
+        `checking${i}-effect`,
+        `${number(o.checkedPer100)} checked / 100 · ${number(o.perMinute)} dispatched / min`,
+      );
+      document
+        .querySelector(`[data-checking="${i}"]`)
+        .setAttribute("aria-pressed", view.checking === i);
+    });
+    $("ask").setAttribute("aria-pressed", view.ask);
+    text(
+      "ask",
+      `${view.ask ? "✓ Asking" : "Ask the child"} about unclear wishes`,
+    );
+    text(
+      "rework",
+      `${view.rework} parcels being remade${view.dispatchHeld ? " · Dispatch waits for this batch" : ""}`,
+    );
+    $("rework").hidden = !view.rework;
+    const inc = view.incident;
+    if (inc?.rollingBack)
+      document.querySelector('[data-action="rollback"]').textContent =
+        `Rolling back · ${Math.ceil(inc.rollingBack)}s`;
+    else
+      document.querySelector('[data-action="rollback"]').textContent =
+        "Roll back the faulty AI";
+  }
+  function paintParcels() {
+    const box = $("parcels");
+    const parcels = view.stations[2].waiting.slice(0, 6);
+    const ids = new Set(parcels.map((p) => String(p.id)));
+    for (const node of [...box.children])
+      if (!ids.has(node.dataset.parcel)) node.remove();
+    for (const p of parcels) {
+      let b = box.querySelector(`[data-parcel="${p.id}"]`);
+      if (!b) {
+        b = document.createElement("button");
+        b.dataset.parcel = p.id;
+        b.className = "parcel";
+        b.innerHTML =
+          '<span class="parcel-icon"></span><span class="parcel-id"></span><span class="parcel-mark"></span>';
+        box.append(b);
+      }
+      b.classList.toggle("big", p.big);
+      b.classList.toggle("suspect", !!p.suspect);
+      b.classList.toggle("batch", p.suspect === "batch");
+      b.querySelector(".parcel-icon").textContent = p.made?.icon || "🎁";
+      b.querySelector(".parcel-id").textContent = "#" + p.id;
+      b.querySelector(".parcel-mark").textContent =
+        (p.big ? "★ " : "") +
+        (p.suspect === "batch" ? "!" : p.suspect ? "?" : "");
       b.setAttribute(
         "aria-label",
-        `${e.name}, ${status}, ${Math.round(e.f)}% fatigue. Select to move.`,
+        `Open parcel ${p.id}${p.big ? ", big gift" : ""}${p.suspect === "batch" ? ", from faulty update" : p.suspect ? ", uncertain" : ""}. ${p.wish}`,
       );
-      b.title = `${e.name} · ${Math.round(e.f)}% fatigue${e.s === 3 ? " · " + Math.ceil(e.rest) + "s minimum break" : ""}`;
-    });
-    $("selection").textContent =
-      selected === null
-        ? "Select an elf, then move them to a station or cocoa corner."
-        : `${game.elves[selected].name} selected. Choose where they work.`;
-    document
-      .querySelectorAll("[data-move]")
-      .forEach((b) => (b.disabled = selected === null || !!game.end));
-  }
-  function warnings() {
-    const a = [];
-    if (game.strike)
-      a.push({
-        title: `STRIKE · ${Math.ceil(game.strike)}s to settle`,
-        text: "All production has stopped. Agree paid cocoa before Christmas is cancelled.",
-      });
-    else if (game.morale < 35)
-      a.push({
-        title: `STRIKE NOTICE · ${Math.ceil(12 - game.notice)}s`,
-        text: "Morale is below 35. Agree a deal or restore morale before the elves walk out.",
-      });
-    else if (game.morale < 45)
-      a.push({
-        title: "WORK TO RULE",
-        text: "Elves are working at 65% capacity. Rest them or agree paid cocoa.",
-      });
-    for (let s = 0; s < 3; s++) {
-      if (game.overflow[s] > 0)
-        a.push({
-          title: `${stationNames[s]} · collapse in ${Math.max(0, Math.ceil(16 - game.overflow[s]))}s`,
-          text: `Drain below ${Math.ceil(game.limits[s] * 0.8) - 1} items or buy extra storage. ${game.jam[s] > 0 ? "The jam clears in " + Math.ceil(game.jam[s]) + "s." : ""}`,
-        });
-      else if (game.q[s].length >= game.limits[s] * 0.7)
-        a.push({
-          title: `${stationNames[s]} filling up`,
-          text: "Move elves to the bottleneck or slow the flow upstream.",
-        });
+      b.disabled = !started || !view.actions.inspect.available || !!view.end;
     }
-    if (game.batchClock > 0)
-      a.push({
-        title: `SLEIGH OVERLOAD · ${Math.ceil(18 - game.batchClock)}s`,
-        text: "Recall the suspect batch. Rolling back the AI only protects future production.",
-      });
-    if (game.fault)
-      a.push({
-        title: game.patch ? "AI ROLLBACK IN PROGRESS" : "FAULTY AI UPDATE",
-        text: game.patch
-          ? `${Math.ceil(game.patch)}s until production restarts. Contain existing batches.`
-          : "Automated toy lines can produce full-sized trains. Stop, roll back and quarantine.",
-      });
-    if (game.timmy && !game.timmy.done)
-      a.push({
-        title: `TIMMY NEEDS HELP · ${Math.ceil(game.timmy.until - game.t)}s`,
-        text: "Open his urgent letter and clarify what he means by “a little train”.",
-      });
-    return a;
+    const ins = view.inspection;
+    $("inspection").hidden = !ins;
+    if (ins) {
+      text(
+        "inspectionTitle",
+        `Parcel #${ins.parcel.id}${ins.parcel.big ? " · Big gift" : ""}`,
+      );
+      text("inspectionWish", `“${ins.parcel.wish}”`);
+      text("inspectionIcon", ins.parcel.made?.icon || "🎁");
+      text("inspectionMade", ins.parcel.made?.name || "Opening the wrapping…");
+      text(
+        "inspectionStatus",
+        ins.ready
+          ? "Does this toy meet the wish? You decide."
+          : `One checker is busy for ${Math.ceil(ins.remaining)} more seconds.`,
+      );
+      $("inspectionProgress").value = 1 - ins.remaining / ins.duration;
+      $("ship").disabled = $("remake").disabled = !ins.ready || !!view.end;
+    }
+  }
+  function paintNews() {
+    const fresh = view.news.filter((n) => n.id > seenNews).reverse();
+    for (const n of fresh) {
+      if (n.check) {
+        $("evidence").hidden = false;
+        text(
+          "evidenceTitle",
+          n.kind === "loaded" ? "Latest delivery reveal" : "Latest check",
+        );
+        text("evidenceWish", `Wish: “${n.check.wish}”`);
+        text("evidenceMade", `Made: ${n.check.made.icon} ${n.check.made.name}`);
+        text("evidenceResult", n.text);
+      }
+    }
+    seenNews = view.news[0]?.id || seenNews;
+    const hint = view.hint;
+    if (hint && hint.control !== lastHint) {
+      const s =
+        hint.control === "ai0" || hint.control === "ask"
+          ? 0
+          : hint.control === "ai1" || hint.control === "rollback"
+            ? 1
+            : hint.control === "elves"
+              ? 0
+              : 2;
+      if (!view.inspection) selectStation(s);
+      lastHint = hint.control;
+    } else if (!hint) lastHint = null;
+    const e = selected === null ? null : view.elves[selected];
+    text(
+      "status",
+      toast && performance.now() < toastUntil
+        ? toast
+        : e
+          ? `${e.name} selected. Choose a station or cocoa corner.`
+          : hint?.text ||
+            view.news[0]?.text ||
+            "Move elves between stations to keep the presents flowing.",
+    );
+    const cocoaHint =
+      hint?.control === "elves" &&
+      view.elves.some((e) => e.station < 3 && e.tired >= 60);
+    document.querySelector(".cocoa").classList.toggle("guided", cocoaHint);
+    document
+      .querySelectorAll(".elves")
+      .forEach((node) =>
+        node.classList.toggle(
+          "guided",
+          hint?.control === "elves" && !cocoaHint && node.children.length > 0,
+        ),
+      );
+    view.elves.forEach((e, i) =>
+      document
+        .querySelector(`[data-elf="${i}"]`)
+        .classList.toggle(
+          "guided",
+          cocoaHint && e.station < 3 && e.tired >= 60,
+        ),
+    );
+  }
+  function paintSleigh() {
+    const holder = $("aboard");
+    const parcels = view.sleigh.parcels.slice(-3).reverse();
+    const signature = parcels.map((p) => p.id + ":" + p.result).join();
+    if (holder.dataset.signature !== signature) {
+      holder.dataset.signature = signature;
+      holder.replaceChildren();
+      for (const p of parcels) {
+        const item = document.createElement("span");
+        item.className = "aboard-gift " + p.result;
+        item.textContent = `${p.made?.icon || "🎁"} ${p.result === "wrong" ? "Wrong" : "Right"}`;
+        item.title = `${p.wish} → ${p.made?.name || ""}`;
+        holder.append(item);
+      }
+      if (!parcels.length) holder.textContent = "Ready for the first delivery.";
+    }
+    text("lost", `${view.lost} letters lost when the pile was full`);
   }
   function render() {
-    const g = game;
-    document.body.classList.toggle("playing", started);
+    view = game.view();
     document.body.classList.toggle("stopped", !running);
-    document.body.classList.toggle("mobile-cocoa", mobileTab === 3);
-    document.querySelectorAll("[data-tab]").forEach((b) => {
-      const i = +b.dataset.tab;
-      b.classList.toggle("active", mobileTab === i);
-      b.setAttribute("aria-pressed", mobileTab === i);
-      b.textContent =
-        ["Letters", "Toys", "Dispatch", "Cocoa"][i] +
-        " " +
-        (i === 3 ? g.staff(3).length : g.q[i].length);
+    document.body.classList.toggle("playing", started);
+    text("right", `${view.sleigh.right} / ${view.target}`);
+    text("wrong", view.sleigh.wrong);
+    text("budget", money(view.budget.left));
+    $("budget").classList.toggle("warning", view.budget.left < 0);
+    text("clock", time(view.duration - view.t));
+    $("goal").value = Math.min(1, view.sleigh.right / view.target);
+    text("pause", running ? "Pause" : "Resume");
+    $("pause").disabled = !started || !!view.end;
+    view.stations.forEach((st, s) => {
+      const rollback = s === 1 && view.incident?.rollingBack;
+      const held = s === 2 && view.dispatchHeld;
+      const moving =
+        started &&
+        running &&
+        !view.end &&
+        !st.blocked &&
+        !rollback &&
+        !!st.rate &&
+        (!!st.waiting.length || (s === 2 && view.rework > 0));
+      $("machine" + s).classList.toggle("working", moving);
+      $("machine" + s)
+        .querySelectorAll(".belt span")
+        .forEach((node, i) => {
+          const parcel = st.waiting[i];
+          node.hidden = !parcel;
+          node.textContent = parcel
+            ? s === 0
+              ? "✉"
+              : parcel.made?.icon || "🎁"
+            : "";
+          node.classList.toggle("big", !!parcel?.big);
+        });
+      $("machine" + s).style.setProperty(
+        "--belt-time",
+        `${Math.max(0.4, 3 / Math.max(0.1, st.rate))}s`,
+      );
+      text(
+        "state" + s,
+        !started
+          ? "Ready"
+          : view.end
+            ? "Shift finished"
+            : !running
+              ? "Paused"
+              : rollback
+                ? `Rollback · ${Math.ceil(rollback)}s`
+                : held
+                  ? "Remaking held batch"
+                  : st.blocked
+                    ? "Next station is full"
+                    : !st.staff
+                      ? "Needs an elf"
+                      : st.waiting.length
+                        ? "Working"
+                        : "Waiting for work",
+      );
+      text("queue" + s, `${st.waiting.length} / ${st.limit} waiting`);
+      text("rate" + s, `${number(st.rate * 60)} / min`);
+      $("rate" + s).hidden =
+        s === 2 && (!started || !view.actions.checking.unlocked);
+      $("queuebar" + s).value = st.waiting.length / st.limit;
+      $("progress" + s).value = st.progress;
+      $("station" + s).classList.toggle("blocked", st.blocked);
+      const behind =
+        started && !view.end && view.pace.behind && view.pace.slowest === s;
+      $("pace" + s).hidden = !behind;
+      text(
+        "pace" + s,
+        `At this pace: about ${Math.round(view.pace.projected)} / ${view.target} gifts. This station is holding up the line.`,
+      );
     });
-    for (let i = 0; i < 3; i++)
-      $("station" + i).classList.toggle("mobile-active", i === mobileTab);
-    $("mobilePause").disabled = !started || !!g.end;
-    $("mobilePause").textContent = running ? "Pause" : "Resume";
-    $("mobileBrief").textContent =
-      seconds(Math.max(0, 240 - Math.ceil(g.t))) +
-      " · " +
-      (warnings()[0]?.title || "Workshop stable");
-    document.body.classList.toggle("finished", !!g.end);
-    $("clock").textContent = seconds(Math.max(0, 240 - Math.ceil(g.t)));
-    $("date").textContent =
-      `${Math.min(24, 1 + Math.floor(g.t / 10))} December · ${g.practice ? "Practice run" : g.t < 104 ? "The Christmas shift" : g.t < 144 ? "Last-minute rush" : "The final push"}`;
-    $("loaded").textContent = g.loaded.length;
-    $("loadbar").style.width =
-      Math.min(100, (g.loaded.length / 155) * 100) + "%";
-    $("verified").textContent =
-      `${g.caught} mistakes caught · ${g.checked} checks`;
-    $("budget").textContent =
-      "£" + Math.round(g.budget).toLocaleString("en-GB");
-    $("budget").classList.toggle("warning", g.budget < 100);
-    $("strain").textContent = Math.round(g.fatigue()) + "%";
-    $("strainbar").style.width = g.fatigue() + "%";
-    $("straintext").textContent =
-      `${g.staff(3).length} on cocoa · ${g.burnouts} burnouts`;
-    $("morale").textContent = Math.round(g.morale) + "%";
-    $("moralebar").style.width = g.morale + "%";
-    $("moralebar").style.background = g.morale < 45 ? "#e83f35" : "#286e73";
-    $("moraleNote").textContent = g.strike
-      ? "On strike"
-      : g.morale < 35
-        ? "Strike notice"
-        : g.morale < 45
-          ? "Work to rule"
-          : "Keeping Christmas civil";
-    $("pause").disabled = !started || !!g.end;
-    $("pause").textContent = running ? "Pause" : "Resume";
-    $("speed").disabled = !started || !!g.end;
-    $("speed").textContent = `Speed ${speed}×`;
-    $("welcome").hidden = started;
-    $("report").hidden = !g.end;
-    for (let s = 0; s < 3; s++) {
-      const count = g.q[s].length,
-        limit = g.limits[s];
-      $("queue" + s).textContent = `${count} / ${limit}`;
-      $("qbar" + s).style.width = Math.min(100, (count / limit) * 100) + "%";
-      $("qbar" + s).style.background =
-        count >= limit * 0.7 ? "#e83f35" : "#286e73";
-      const state = !running
-        ? "PAUSED"
-        : g.strike
-          ? "ON STRIKE"
-          : g.deal
-            ? "PAID COCOA"
-            : g.jam[s] > 0
-              ? `JAM ${Math.ceil(g.jam[s])}s`
-              : s === 1 && g.patch
-                ? `ROLLBACK ${Math.ceil(g.patch)}s`
-                : s === 1 && g.stop
-                  ? "LINE STOPPED"
-                  : s === 2 && g.hold
-                    ? "DISPATCH HELD"
-                    : s === 2 && g.rework.length
-                      ? `REWORKING ${g.rework.length}`
-                      : g.cap(s) === 0
-                        ? "NEEDS ELVES"
-                        : count
-                          ? "WORKING"
-                          : "IDLE";
-      $("lamp" + s).textContent = state;
-      $("state" + s).textContent =
-        g.overflow[s] > 0
-          ? `Collapse in ${Math.ceil(16 - g.overflow[s])}s · clear the backlog`
-          : s === 2
-            ? `${g.suspect()} suspect gifts aboard · ${g.rework.length} in rework`
-            : `${g.cap(s).toFixed(1)} jobs/sec before checks and pauses`;
-      $("station" + s).classList.toggle("critical", g.overflow[s] > 0);
-      $("station" + s)
-        .querySelector(".machine")
-        .classList.toggle(
-          "idle",
-          count === 0 ||
-            g.cap(s) === 0 ||
-            g.jam[s] > 0 ||
-            (s === 1 && (g.stop || g.patch)),
-        );
-      if (s < 2)
-        $("effect" + s).textContent = [
-          "Elf-led production. Low error risk, limited capacity.",
-          "AI assists elves. Supervision and targeted checks still matter.",
-          "Fast autonomous production. Mistakes scale up too.",
-        ][g.mode[s]];
-    }
-    renderElves();
-    document.querySelectorAll("[data-mode]").forEach((b) => {
-      const [s, m] = b.dataset.mode.split(",").map(Number);
-      b.classList.toggle("active", g.mode[s] === m);
-      b.setAttribute("aria-pressed", g.mode[s] === m);
-      b.disabled = !!g.end;
-    });
-    document.querySelectorAll("[data-policy]").forEach((b) => {
-      b.classList.toggle("active", g.policy === +b.dataset.policy);
-      b.setAttribute("aria-pressed", g.policy === +b.dataset.policy);
-      b.disabled = !!g.end;
-    });
-    $("escalate").value = g.ask ? "review" : "trust";
-    $("escalate").disabled = !!g.end;
-    const buttons = {
-      patch: !g.fault || g.patch > 0 || g.budget < 65,
-      training: g.trained || g.budget < 70,
-      quarantine: !g.q[2].some((x) => x.batch && !x.clean) || g.budget < 15,
-      recall: g.suspect() === 0 || g.budget < 40,
-      deal: g.dealCooldown > 0 || g.budget < 90,
-      storage: g.budget < 85,
-    };
-    document
-      .querySelectorAll("[data-action]")
-      .forEach((b) => (b.disabled = !!g.end || !!buttons[b.dataset.action]));
-    $("stop").textContent = g.stop ? "Restart toy line" : "Emergency stop";
-    $("hold").textContent = g.hold ? "Release dispatch" : "Hold dispatch";
-    $("intake").textContent = g.metered
-      ? "Restore full letter intake"
-      : "Throttle incoming letters";
-    $("patch").textContent = g.patch
-      ? `Rolling back · ${Math.ceil(g.patch)}s`
-      : "Roll back faulty AI · £65 / 8s";
-    $("training").textContent = g.trained
-      ? "Reviewers trained ✓"
-      : "Train reviewers · £70";
-    $("deal").textContent =
-      g.dealCooldown > 0
-        ? `Cocoa agreement · ready in ${Math.ceil(g.dealCooldown)}s`
-        : "Agree paid cocoa · £90 / 7s stop";
-    $("quarantine").textContent = `Quarantine suspect queue · £15`;
-    $("recall").textContent = `Recall ${g.suspect()} suspect gifts · £40`;
-    const warn = warnings();
-    $("alerts").classList.toggle("quiet", !warn.length);
-    $("alerts").innerHTML = warn.length
-      ? warn
-          .slice(0, 3)
-          .map((w) => `<div><b>${w.title}</b><span>${w.text}</span></div>`)
-          .join("")
-      : "<div><b>WORKSHOP STABLE</b><span>Watch the queues, give elves breaks and contain suspicious batches.</span></div>";
-    $("timmyButton").hidden = !g.timmy || g.timmy.done || !!g.end;
-    $("timmyButton").textContent = g.timmy
-      ? `Read Timmy’s letter · ${Math.max(0, Math.ceil(g.timmy.until - g.t))}s`
-      : "Read Timmy’s letter";
-    const fs = JSON.stringify(g.log);
-    if (fs !== feedSignature) {
-      feedSignature = fs;
-      $("feed").innerHTML = g.log
-        .slice(0, 4)
-        .map(
-          (x) =>
-            `<li><time>${seconds(Math.floor(x.t))}</time><span>${x.text}</span></li>`,
-        )
-        .join("");
-      $("headline").textContent = g.log[0]?.text || "";
-    }
-    const xs = g.q[2].slice(0, 5),
-      ts =
-        xs.map((x) => x.id + ":" + x.batch + ":" + x.clue).join(",") + !!g.end;
-    if (ts !== traySignature) {
-      traySignature = ts;
-      $("parcelTray").innerHTML = xs.length
-        ? xs
-            .map(
-              (x) =>
-                `<button data-parcel="${x.id}" class="parcel-button ${x.batch || x.clue ? "suspect" : ""}" aria-label="Inspect parcel ${x.id}${x.batch ? ", suspect batch" : x.clue ? ", unusual shape" : ""}" ${g.end ? "disabled" : ""}><span>${icon(x.batch ? "train" : x.clue ? "unknown" : "gift")}</span><small>#${x.id}</small></button>`,
-            )
-            .join("")
-        : '<span class="muted">Parcels will appear here.</span>';
-    }
-    $("reworkCount").textContent =
-      `${g.rework.length} quarantined · ${g.activeJob ? "Inspection in progress" : "Checker available"}`;
-    if (g.end && !shownEnd) {
-      shownEnd = true;
+    paintElves();
+    updateActions();
+    paintParcels();
+    paintNews();
+    paintSleigh();
+    if (view.end && !reportShown) {
       running = false;
-      showResults();
+      document.body.classList.add("stopped");
+      reportShown = true;
+      showReport();
     }
   }
-  function openModal(kind, html) {
-    resumeAfter = running;
-    running = false;
-    modalKind = kind;
-    returnFocus = document.activeElement;
-    $("sheet").innerHTML = html;
-    $("modal").hidden = false;
-    $("gameRoot").inert = true;
-    $("sheet").querySelector("button,a")?.focus();
-  }
-  function closeModal() {
-    const resume = resumeAfter;
-    modalKind = "";
-    $("modal").hidden = true;
-    $("gameRoot").inert = false;
-    running = resume && !game.end;
-    returnFocus?.focus();
-    render();
-  }
-  function showParcel(id) {
-    const x = game.q[2].find((x) => x.id === id);
-    if (!x) return;
-    parcelId = id;
-    openModal(
-      "parcel",
-      `<div class="eyebrow">Parcel #${id}</div><h2 id="modalTitle">${x.batch ? "That is a suspiciously large train…" : x.clue ? "Something looks odd." : "A parcel on the conveyor"}</h2><p>${x.batch ? "This gift came from the faulty AI batch. An ordinary wrapper is concealing an extraordinary amount of locomotive." : x.clue ? "The shape is unusual. It might be a mistake, or just an unusual wish." : "There is no obvious warning sign. That does not guarantee the present is correct."}</p><p>Inspection costs £8 and occupies one checker for three seconds. Quarantine sends it to the rework bench. Releasing it skips further checks.</p><div class="endbuttons"><button data-inspect="inspect" ${game.budget < 8 || !game.staff(2).length || game.activeJob ? "disabled" : ""}>Assign checker · £8</button><button data-inspect="quarantine">Quarantine</button><button data-inspect="release">Release unchecked</button><button data-close>Back</button></div>`,
+  function showReport() {
+    const e = view.end;
+    text(
+      "resultTitle",
+      e.rating === 3
+        ? "Christmas, carefully delivered."
+        : e.rating === 2
+          ? "Christmas needs a little rework."
+          : "Some wishes are still waiting.",
     );
-  }
-  function showTimmy() {
-    if (!game.timmy || game.timmy.done) return;
-    openModal(
-      "timmy",
-      `<div class="eyebrow">An urgent letter from Timmy</div><h2 id="modalTitle">“A little train, please.”</h2><p>“I want to put it on the carpet next to my teddy. Mum says it must fit in the toy box.”</p><div class="letter-art">${icon("letter")}${icon("train")}${icon("gift")}</div><p>The AI has shortlisted two options. Your attention can prevent a mistake before it reaches the production line.</p><div class="endbuttons"><button class="primary" data-timmy="little">A model train for his toy box</button><button data-timmy="large">A full-sized locomotive</button><button data-close>Leave it to the workshop</button></div>`,
+    text(
+      "resultSummary",
+      `${e.right} correct gifts / ${view.target} · ${e.wrong} wrong gifts aboard · ${e.lost} letters lost`,
     );
-  }
-  function showResults() {
-    const g = game,
-      correct = g.loaded.filter((x) => !x.wrong).length,
-      wrong = g.loaded.length - correct,
-      left = g.id - g.loaded.length,
-      avg = g.avgFatigue / Math.max(0.1, g.t),
-      success =
-        g.end.kind === "complete" &&
-        correct >= 155 &&
-        wrong / Math.max(1, g.loaded.length) < 0.1 &&
-        g.morale >= 45 &&
-        g.budget >= 0;
-    const title =
-      g.end.kind !== "complete"
-        ? g.end.title
-        : success
-          ? "Christmas, expertly calibrated"
-          : correct < 155
-            ? "Christmas needs a little rework"
-            : "A very mixed Christmas";
-    const t = g.loaded.find((x) => x.timmy);
-    const story = !t
-      ? "Timmy’s present is still at the workshop."
-      : t.wrong
-        ? "Timmy gets a locomotive. His parents get a structural survey."
-        : "Timmy gets his little train. It fits in the toy box.";
-    openModal(
-      "result",
-      `<div class="eyebrow">${g.end.kind === "complete" ? "Christmas morning" : "Workshop closed early"} · ${g.practice ? "Practice run" : "Your report"}</div><h2 id="modalTitle">${title}</h2><p>${g.end.why || "Santa’s sleigh has left. Here is what your decisions delivered."}</p><div class="results"><div><strong>${correct}</strong><small>correct gifts / 155</small></div><div><strong>${wrong}</strong><small>wrong gifts aboard</small></div><div><strong>${left}</strong><small>left at the workshop</small></div></div><p>Budget £${Math.round(g.budget)} · Morale ${Math.round(g.morale)}% · ${g.burnouts} burnouts</p><div class="timmy"><b>And little Timmy?</b><p>${story}</p></div><div class="insight"><b>Your AI assurance lesson</b><p>${g.end.tip || (wrong > 15 ? "Errors travelled as fast as production. Targeted checks, rollback and batch containment protect the value of automation." : left > 35 ? "Capacity is a system-wide constraint. More production does not help when inspection and dispatch cannot keep up." : "Good controls preserved the benefits of automation. Human oversight still needed capacity, recovery time and clear decisions.")}</p><p>${g.caught} mistakes repaired across ${g.checked} checks. Average fatigue ${Math.round(avg)}%. All figures are illustrative.</p></div><div class="endbuttons"><button class="primary" data-new>Start a new Christmas</button><button data-rewind ${history.some((h) => h.t <= g.t - 20) ? "" : "disabled"}>Rewind 20s · practice</button><button data-close>View workshop</button></div><a class="assurance" href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/" target="_blank" rel="noopener noreferrer">Explore Data Science &amp; AI at Frontier →</a>`,
+    text("lessonTitle", e.lesson.title);
+    text("lessonText", e.lesson.text);
+    $("account").replaceChildren();
+    for (const [label, key] of [
+      ["People", "people"],
+      ["AI", "ai"],
+      ["Checking", "checking"],
+      ["Fixing mistakes", "fixing"],
+      ["Delivered mistakes", "mistakes"],
+      ["Total cost", "total"],
+      ["Available budget", "budget"],
+    ]) {
+      const dt = document.createElement("dt"),
+        dd = document.createElement("dd");
+      dt.textContent = label;
+      dd.textContent = money(e.costs[key]);
+      $("account").append(dt, dd);
+    }
+    text(
+      "prevented",
+      `${money(e.costs.prevented)} in estimated losses prevented by catching mistakes.`,
     );
-    resumeAfter = false;
+    $("report").showModal();
   }
-  function reset() {
-    game = new Workshop();
+  function reset(guided) {
+    game = new Workshop({ seed, guided });
+    view = game.view();
     running = false;
     started = false;
     selected = null;
-    mobileTab = 0;
-    shownEnd = false;
-    speed = 1;
-    history = [];
-    lastSave = -1;
-    acc = 0;
-    elfSignature = feedSignature = traySignature = "";
-    $("modal").hidden = true;
-    $("gameRoot").inert = false;
-    modalKind = "";
-    $("toast").hidden = true;
-    render();
-  }
-  function rewind() {
-    const h = [...history].reverse().find((h) => h.t <= game.t - 20);
-    if (!h) return;
-    game = Workshop.restore(h.state);
-    game.end = null;
-    game.practice = true;
-    shownEnd = false;
-    history = history.filter((x) => x.t <= h.t);
-    lastSave = h.t;
-    acc = 0;
-    selected = null;
-    elfSignature = feedSignature = traySignature = "";
-    $("modal").hidden = true;
-    $("gameRoot").inert = false;
-    modalKind = "";
-    running = false;
-    started = true;
-    game.emit(
-      "Rewound 20 seconds. Practice is paused: change your decisions, then resume.",
+    seenNews = 0;
+    lastHint = null;
+    reportShown = false;
+    accumulator = 0;
+    paint = 0;
+    toast = "";
+    $("welcome").hidden = false;
+    $("report").close();
+    $("restartDialog").close();
+    $("evidence").hidden = true;
+    $("aboard").dataset.signature = "reset";
+    $("parcels").replaceChildren();
+    text(
+      "mission",
+      `Deliver ${view.target} correct presents before the sleigh leaves in ${number(view.duration / 60)} minutes.`,
     );
+    text("seedLabel", `Christmas seed ${seed} · Same seed on replay`);
+    setupElves();
+    selectStation(0);
     render();
   }
-  function advance(dt) {
-    if (game.end) return;
-    if (Math.floor(game.t) > lastSave) {
-      history.push({ t: game.t, state: game.snapshot() });
-      history = history.filter((x) => x.t > game.t - 35);
-      lastSave = Math.floor(game.t);
+  function apply(name, args = []) {
+    const ok = game[name](...args);
+    if (!ok) {
+      const key =
+        name === "setAi"
+          ? "ai" + args[0]
+          : name === "setChecking"
+            ? "checking"
+            : name === "setAsk"
+              ? "ask"
+              : name;
+      toast =
+        game.view().actions[key]?.why ||
+        "That action is not available right now.";
+      toastUntil = performance.now() + 3000;
     }
-    game.step(dt);
-  }
-  function dispatchAction(name) {
-    const ok = game.action(name);
-    if (!ok)
-      toast(
-        "That action is not available right now. Check the budget and station status.",
-      );
     render();
     return ok;
   }
-  document.addEventListener("click", (ev) => {
-    const b = ev.target.closest("button");
+  document.addEventListener("click", (event) => {
+    const b = event.target.closest("button");
     if (!b || b.disabled) return;
-    if (b.hasAttribute("data-new")) {
-      reset();
-      $("start").focus();
+    if (b.dataset.station !== undefined) {
+      selectStation(Number(b.dataset.station));
       return;
     }
-    if (b.hasAttribute("data-rewind")) {
-      rewind();
-      return;
-    }
-    if (b.hasAttribute("data-close")) {
-      closeModal();
-      return;
-    }
-    if (b.dataset.timmy) {
-      game.resolveTimmy(b.dataset.timmy);
-      closeModal();
-      return;
-    }
-    if (b.dataset.inspect) {
-      const ok = game.inspect(parcelId, b.dataset.inspect);
-      if (ok) closeModal();
-      else toast("A checker, budget or inspection slot is unavailable.");
-      return;
-    }
-    if (b.dataset.tab !== undefined) {
-      mobileTab = +b.dataset.tab;
+    if (b.dataset.elf !== undefined) {
+      selected =
+        selected === Number(b.dataset.elf) ? null : Number(b.dataset.elf);
       render();
       return;
-    }
-    if (game.end) return;
-    if (b.dataset.elf !== undefined) {
-      selected = selected === +b.dataset.elf ? null : +b.dataset.elf;
-      elfSignature = "";
-      renderElves();
-      $("elves" + game.elves[+b.dataset.elf].s)
-        .querySelector(`[data-elf="${b.dataset.elf}"]`)
-        ?.focus();
     }
     if (b.dataset.move !== undefined && selected !== null) {
-      const n = game.elves[selected].name;
-      if (game.move(selected, +b.dataset.move)) {
-        selected = null;
-        toast(`${n} reassigned.`);
-      } else toast("This elf needs to recover before returning.");
+      if (apply("move", [selected, Number(b.dataset.move)])) selected = null;
       render();
+      return;
     }
-    if (b.dataset.mode) {
-      const [s, m] = b.dataset.mode.split(",").map(Number);
-      game.mode[s] = m;
-      render();
+    if (b.dataset.ai) {
+      apply("setAi", b.dataset.ai.split(",").map(Number));
+      return;
     }
-    if (b.dataset.policy !== undefined) {
-      game.policy = +b.dataset.policy;
-      game.q[2].forEach((x) => {
-        if (!x.done) delete x.review;
-      });
-      render();
+    if (b.dataset.checking !== undefined) {
+      apply("setChecking", [Number(b.dataset.checking)]);
+      return;
     }
-    if (b.dataset.action) dispatchAction(b.dataset.action);
-    if (b.dataset.parcel) showParcel(+b.dataset.parcel);
+    if (b.dataset.action) {
+      apply(b.dataset.action);
+      return;
+    }
+    if (b.dataset.parcel) {
+      if (apply("inspect", [Number(b.dataset.parcel)])) selectStation(2);
+      return;
+    }
   });
-  $("mobilePause").onclick = () => {
-    running = !running;
-    render();
-  };
   $("start").onclick = () => {
     started = true;
     running = true;
-    game.emit(
-      "Workshop open. Keep the queues below capacity and remember the cocoa.",
-    );
+    $("welcome").hidden = true;
+    last = performance.now();
     render();
-    $("pause").focus();
   };
   $("pause").onclick = () => {
     running = !running;
     render();
   };
-  $("speed").onclick = () => {
-    speed = speed === 1 ? 2 : 1;
+  $("ask").onclick = () => apply("setAsk", [!view.ask]);
+  for (const choice of ["ship", "remake"])
+    $(choice).onclick = () => {
+      if (view.inspection) apply("decide", [view.inspection.parcel.id, choice]);
+    };
+  $("motion").onclick = () => {
+    const on = document.body.classList.toggle("reduced");
+    $("motion").setAttribute("aria-pressed", on);
+    text("motion", on ? "Motion reduced" : "Reduce motion");
+  };
+  $("replay").onclick = () => reset(false);
+  $("closeReport").onclick = () => {
+    $("report").close();
     render();
   };
-  $("motion").onclick = () => {
-    const v = document.body.classList.toggle("reduced");
-    $("motion").setAttribute("aria-pressed", v);
-    $("motion").textContent = v ? "Motion reduced" : "Reduce motion";
-  };
-  $("escalate").onchange = (e) => (game.ask = e.target.value === "review");
-  $("timmyButton").onclick = showTimmy;
-  $("report").onclick = showResults;
   $("restart").onclick = () => {
-    if (!started || game.end) {
-      reset();
+    if (!started || view.end) {
+      reset(false);
       return;
     }
-    openModal(
-      "restart",
-      '<h2 id="modalTitle">Restart Christmas?</h2><p>Your current run will be reset.</p><div class="endbuttons"><button class="primary" data-new>Restart</button><button data-close>Keep playing</button></div>',
-    );
+    resumeRestart = running;
+    running = false;
+    $("restartDialog").showModal();
+    render();
   };
-  document.addEventListener("dragstart", (e) => {
-    const b = e.target.closest("[data-elf]");
-    if (!b || game.end) return;
-    selected = +b.dataset.elf;
-    e.dataTransfer.setData("text/plain", String(selected));
-  });
-  for (let s = 0; s < 4; s++) {
-    const zone = s === 3 ? $("lounge") : $("station" + s);
-    zone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      zone.classList.add("drop");
-    });
-    zone.addEventListener("dragleave", () => zone.classList.remove("drop"));
-    zone.addEventListener("drop", (e) => {
-      e.preventDefault();
-      zone.classList.remove("drop");
-      if (selected !== null) {
-        if (game.move(selected, s)) selected = null;
-        else toast("This elf needs to finish recovering.");
-        render();
-      }
-    });
+  $("confirmRestart").onclick = () => reset(false);
+  function cancelRestart() {
+    $("restartDialog").close();
+    running = resumeRestart;
+    render();
   }
-  $("modal").addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeModal();
-      return;
-    }
-    if (e.key === "Tab") {
-      const controls = [
-          ...$("sheet").querySelectorAll("button:not(:disabled),a[href]"),
-        ],
-        a = controls[0],
-        z = controls.at(-1);
-      if (e.shiftKey && document.activeElement === a) {
-        e.preventDefault();
-        z.focus();
-      } else if (!e.shiftKey && document.activeElement === z) {
-        e.preventDefault();
-        a.focus();
-      }
-    }
+  $("cancelRestart").onclick = cancelRestart;
+  $("restartDialog").addEventListener("cancel", (event) => {
+    event.preventDefault();
+    cancelRestart();
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && running) {
       running = false;
       render();
-      toast("Workshop paused while you were away.");
     }
   });
   function frame(now) {
     const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
     last = now;
-    if (running && !game.end) {
-      acc += dt * speed;
-      while (acc >= 0.1 && !game.end) {
-        advance(0.1);
-        acc -= 0.1;
+    if (running && !view.end) {
+      accumulator += dt;
+      while (accumulator >= 0.1 && !game.view().end) {
+        game.step(0.1);
+        accumulator -= 0.1;
       }
       paint += dt;
-      if (paint > 0.2 || game.end) {
-        render();
+      if (paint >= 0.15) {
         paint = 0;
+        render();
       }
     }
     requestAnimationFrame(frame);
   }
-  reset();
+  reset(true);
   requestAnimationFrame(frame);
 })();

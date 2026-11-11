@@ -283,8 +283,8 @@ up to `target`.
   brought back. Parcels still in the workshop carry over. `sleigh` holds only the run under way.
 - A run has three goals and earns one star for each it meets, 0 to 3, 12 in a game:
   - `full`: the right gifts aboard reach the run's target.
-  - `right`: the wrong gifts aboard, a big one counting double, are at most one for every 12 gifts
-    of target, and at least one is always allowed.
+  - `right`: the wrong gifts aboard are at most one for every 12 gifts of target, and at least one
+    is always allowed. Every wrong gift counts as one.
   - `cost`: the money spent during the run, the break before it included, is at most £300 plus £4
     for each gift of target.
   - `right` and `cost` count only once the sleigh holds two thirds of its target, so a near-empty
@@ -293,11 +293,13 @@ up to `target`.
   A run with its target met and no wrong gift at all also earns a clean-run bonus in points.
 
 - `run.goals` is the three goals for the run under way, as they stand now:
-  `[{ id, name, now, need, met, text }]` with `id` `"full"`, `"right"` or `"cost"`. `now` and
-  `need` are the figures (right gifts against the target, weighted wrong gifts against the most
-  allowed, money spent against the allowance), `met` is whether the star would be earned if the
-  sleigh left now, and `text` is a short phrase such as "at most 3 wrong gifts, big ones count
-  double".
+  `[{ id, name, now, need, text, met, waiting, note }]` with `id` `"full"`, `"right"` or
+  `"cost"`. `now` and `need` are the figures (right gifts against the target, wrong gifts aboard
+  against the most allowed, money spent against the allowance), and `text` is a short phrase such
+  as "at most 3 wrong gifts". `met` is whether the star would be earned if the sleigh left now.
+  `waiting` is `true` for a `right` or `cost` goal whose figures are within its limit while the
+  sleigh is not yet two thirds full, so the star is not earned yet; `note` then says when it
+  counts, such as "counts from 27 right gifts", and is `null` otherwise. `full` never waits.
 - Letters arrive slowly in the first run and faster in each later one.
 - `score.points` rises with every right gift delivered, falls with every wrong one by what it
   cost, and gains the clean-run bonuses, the stars and a share of the budget left at the end. It is

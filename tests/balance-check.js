@@ -336,8 +336,16 @@ function checkHidden(v, w) {
     "run.stars lists each finished run",
   );
   assert.strictEqual(v.run.goals.map((g) => g.id).join(), "full,right,cost");
-  for (const g of v.run.goals)
-    assert.strictEqual(Object.keys(g).join(), "id,name,now,need,met,text");
+  for (const g of v.run.goals) {
+    assert.strictEqual(
+      Object.keys(g).join(),
+      "id,name,now,need,text,met,waiting,note",
+    );
+    assert(
+      !(g.met && g.waiting) && (g.note === null) === !g.waiting,
+      `goal ${g.id} waits only when unmet, with a note`,
+    );
+  }
   for (const n of v.news.filter((n) => n.kind === "loaded"))
     assert(
       n.cause in WRONG_CAUSES && n.control === WRONG_CAUSES[n.cause].control,

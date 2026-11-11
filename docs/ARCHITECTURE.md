@@ -241,5 +241,5 @@ preselects one.
 - A `resolved` item for a choice whose result is not yet known (install, accept, carry on, keep
   running, let go, leave) states the time, money, parcels and risk taken, and does not say whether
   it was right.
-- Updates are offered at 50, 100 and 150 seconds. Asking a child takes an elf 12 seconds. The budget
-  is 1,000.
+- Updates are offered at 50, 100 and 150 seconds. Asking a child takes an elf 15 seconds. The budget
+  is 1,400. A wrong everyday gift costs 12 and a wrong big gift 100.

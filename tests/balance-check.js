@@ -50,9 +50,10 @@ function conditional(c, v) {
     }
     case "offered": {
       const p = odds(fact(c, "Updates like this go wrong"));
+      // A test is worth its price only when the odds are uncertain and there is time to use the result.
       if (p <= 0.2) return "install";
-      if (p >= 0.8 || left < 80) return "skip";
-      return "test";
+      if (p >= 0.8) return "skip";
+      return left >= 90 ? "test" : "skip";
     }
     case "tested":
       return odds(fact(c, "After the test")) <= 0.3 ? "install" : "skip";
@@ -66,8 +67,10 @@ function conditional(c, v) {
       return big > 0 || (n >= 3 && left >= 20) ? "checkEach" : "letGo";
     }
     case "aboard": {
-      const n = num(fact(c, "Wrong gifts aboard"));
-      return num(fact(c, "Big gifts among them")) > 0 || (n >= 4 && left >= 40)
+      // Worth fetching back when leaving them costs more than the fetching, counting checker time at £1 a second.
+      const bring = c.options.find((o) => o.id === "bringBack");
+      return num(fact(c, "Their cost if they stay")) >
+        bring.money + bring.seconds && left >= 40
         ? "bringBack"
         : "leave";
     }
@@ -175,13 +178,14 @@ const sensible = (
     watch = true,
     staffCheck = true,
     bypass = false,
-    ask = true,
+    ask = false,
     policy = conditional,
     toys = null,
+    checking = 1,
   } = {},
 ) => {
   w.setAsk(ask);
-  w.setChecking(1);
+  w.setChecking(checking);
   w.setAi(0, 2);
   // The machine alone until an update makes it faster than elves confirming its drafts.
   w.setAi(
@@ -265,7 +269,11 @@ const players = {
       policy: only({ offered: "install", tested: "install" }),
     }),
   // Asking off with cases read on their merits: unclear cases get asked or accepted by what the AI reads.
-  askOff: (w, v, m) => sensible(w, v, m, { ask: false }),
+  // Asks about every unclear wish, big or small.
+  askAll: (w, v, m) => sensible(w, v, m, { ask: true }),
+  // The three checking levels for a player who otherwise plays sensibly.
+  checkFew: (w, v, m) => sensible(w, v, m, { checking: 0 }),
+  checkEverything: (w, v, m) => sensible(w, v, m, { checking: 2 }),
   askUnclear: (w, v, m) =>
     sensible(w, v, m, { ask: false, policy: only({ unclear: "ask" }) }),
   acceptUnclear: (w, v, m) =>
@@ -558,6 +566,31 @@ for (const version of VERSION_IDS) {
       r.end.costs.total <= r.end.costs.budget,
       `${version}: sensible within budget`,
     );
+  // Proportionate checking, staffing the pile, training and asking about big wishes each beat the
+  // alternatives on rating or, at equal rating, on cost per right gift.
+  const beats = (a, b) =>
+    a.rating > b.rating || (a.rating === b.rating && a.perGift < b.perGift);
+  const rivals = [
+    "checkFew",
+    "checkEverything",
+    "bypassHeavy",
+    "neverTrains",
+    ...(version === "piles" ? [] : ["askAll", "acceptUnclear"]),
+  ];
+  for (const name of rivals) {
+    const s = score(name);
+    console.log(
+      `  sensible vs ${name}: rating ${best.rating.toFixed(2)} vs ${s.rating.toFixed(2)}, per right gift £${best.perGift.toFixed(2)} vs £${s.perGift.toFixed(2)}`,
+    );
+    assert(beats(best, s), `${version}: the sensible player beats ${name}`);
+  }
+  // By hand loses on gifts delivered, not on mistakes.
+  for (const r of results.byHand)
+    assert(
+      r.end.right < r.target &&
+        r.end.wrong <= 0.1 * (r.end.right + r.end.wrong),
+      `${version}: by hand is slow, not sloppy`,
+    );
   const most = (runs, test) =>
     runs.filter(test).length >= (version === "calm" ? 0 : 4);
   assert(
@@ -577,16 +610,13 @@ for (const version of VERSION_IDS) {
     results.sensible.every((r) => r.behindAt.every((t) => t < 180)),
     `${version}: the sensible player is never warned in the last minute, too late to act`,
   );
-  assert(
-    mean(results.toysAutomatedWatched, (r) => r.toyMistakes) <
-      mean(results.toysByHandTired, (r) => r.toyMistakes),
-    `${version}: automating with watchers makes fewer toy mistakes than tired elves`,
-  );
-  assert(
-    mean(results.bypassHeavy, (r) => r.end.wrong) >
-      mean(results.sensible, (r) => r.end.wrong),
-    `${version}: bypassing ships more wrong gifts than staffing the pile`,
-  );
+  // Calm leaves the by-hand elves too little work to get properly tired, so it is left out there.
+  if (version !== "calm")
+    assert(
+      mean(results.toysAutomatedWatched, (r) => r.toyMistakes) <
+        mean(results.toysByHandTired, (r) => r.toyMistakes),
+      `${version}: automating with watchers makes fewer toy mistakes than tired elves`,
+    );
 
   const runs = Object.values(results).flat();
   for (const r of runs) {
@@ -687,6 +717,33 @@ for (const option of allOptions)
     conditionalChoices.has(option),
     `the conditional player sometimes chooses ${option}`,
   );
+
+// Left alone by hand, the workshop makes almost no mistakes in the first 70 seconds: the first
+// wrong gift a player sees follows from a choice they made.
+for (const version of VERSION_IDS)
+  for (const seed of SEEDS) {
+    const w = new Workshop({ seed, version });
+    w.step(70);
+    assert(
+      w.view().sleigh.wrong <= 2,
+      `${version} seed ${seed}: hands-off by hand ships ${w.view().sleigh.wrong} wrong gifts by 70 s`,
+    );
+  }
+
+// Spending past the budget says so once and stops the paid one-off actions.
+{
+  const w = new Workshop({ seed: 1 });
+  w.spent.fixing += 1500;
+  w.step(1);
+  const v = w.view();
+  assert(
+    v.news.some((n) => n.kind === "broke") &&
+      v.budget.left < 0 &&
+      !v.actions.train.available,
+    "running out of money stops paid actions",
+  );
+  everyRun.push({ kinds: new Set(v.news.map((n) => n.kind)) });
+}
 
 const kinds = new Set(everyRun.flatMap((r) => [...r.kinds]));
 for (const k of NEWS_KINDS) assert(kinds.has(k), `news kind ${k} is emitted`);

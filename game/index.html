@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=5b3f363-assurance1" />
+    <link rel="stylesheet" href="style.css?v=5b3f363-paper1" />
+    <link rel="stylesheet" href="paper.css?v=5b3f363-paper1" />
   </head>
   <body>
     <header>
@@ -91,6 +92,14 @@
           i
         </button>
       </div>
+      <nav id="stationPicker" aria-label="Workshop stations">
+        <button data-station-page="0" aria-pressed="true">Letters</button
+        ><button data-station-page="1" aria-pressed="false">Toys</button
+        ><button data-station-page="2" aria-pressed="false">Checks</button
+        ><button data-station-page="3" aria-pressed="false">
+          Sleigh · cocoa
+        </button>
+      </nav>
       <div id="board" class="board" aria-label="Workshop production line">
         <section id="sleigh" class="station sleigh-column">
           <div class="column-heading">
@@ -111,7 +120,8 @@
             aria-label="Finished sleigh runs"
           ></div>
           <div class="sleigh-total">
-            <strong id="sleighRight">0</strong><span>right gifts aboard</span>
+            <strong id="sleighRight">0</strong><span id="sleighTarget"></span
+            ><span>right gifts aboard</span>
           </div>
           <div class="arrival" id="arrival">
             <span class="arrival-icon" id="arrivalIcon">🎁</span
@@ -346,7 +356,8 @@
     <div id="celebration" class="celebration" aria-hidden="true"></div>
     <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
-    <script src="workshop.js?v=5b3f363-assurance1"></script>
-    <script src="game.js?v=5b3f363-assurance1"></script>
+    <script src="workshop.js?v=5b3f363-paper1"></script>
+    <script src="paper-art.js?v=5b3f363-paper1"></script>
+    <script src="game.js?v=5b3f363-paper1"></script>
   </body>
 </html>

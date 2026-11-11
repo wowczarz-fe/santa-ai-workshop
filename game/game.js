@@ -1,14 +1,7 @@
 (() => {
   "use strict";
-  const machineArt = [
-    `<rect x="17" y="19" width="63" height="48" rx="7" fill="#2d2926"/><rect x="24" y="25" width="49" height="30" rx="3" fill="#dff0ef"/><path d="M32 34h30M32 41h21M32 48h26" stroke="#7ca18e" stroke-width="3"/><rect x="34" y="8" width="32" height="17" rx="2" fill="#fff"/><path d="M39 12l11 8 11-8" fill="none" stroke="#b6accd" stroke-width="2"/><circle cx="72" cy="61" r="2" fill="#e83f35"/>`,
-    `<path d="M20 66V23h15v43M65 66V23h15v43M20 23h60" stroke="#2d2926" stroke-width="8" fill="none"/><path d="M50 25v13l-8 8m8-8 8 8" stroke="#286e73" stroke-width="6" fill="none"/><rect x="35" y="51" width="30" height="23" rx="3" fill="#e83f35"/><path d="M50 51v23m-15-12h30" stroke="#f9c6ae" stroke-width="4"/>`,
-    `<rect x="20" y="38" width="43" height="32" rx="4" fill="#8ed0d2"/><path d="M41 38v32m-21-17h43" stroke="#fff" stroke-width="4"/><circle cx="66" cy="31" r="17" fill="#dff0ef" stroke="#2d2926" stroke-width="5"/><path d="M78 44l12 15" stroke="#2d2926" stroke-width="7" stroke-linecap="round"/><path d="M58 31l6 6 10-12" stroke="#6e9b84" stroke-width="3" fill="none"/>`,
-  ];
-  function elfSVG(i) {
-    const colour = ["#799c8a", "#65a9ac", "#d7896e"][i % 3];
-    return `<svg viewBox="0 0 42 48" aria-hidden="true"><path d="M8 47q0-19 13-19t13 19" fill="${colour}"/><path d="M14 32l7 9 7-9" fill="#eee9de"/><path d="M10 18l-7-3 6 10m23-7 7-3-6 10" fill="#e9ba91"/><circle cx="21" cy="21" r="12" fill="#efc9a4"/><path d="M8 16L21 1l12 15" fill="${colour}"/><rect x="7" y="14" width="28" height="5" rx="2" fill="#f4f0e7"/><circle cx="17" cy="23" r="1.4" fill="#2d2926"/><circle cx="25" cy="23" r="1.4" fill="#2d2926"/><path d="M18 28q3 3 6 0" fill="none" stroke="#a46651" stroke-width="1.5"/></svg>`;
-  }
+  document.body.insertAdjacentHTML("afterbegin", PaperArt.defs);
+  const elfSVG = PaperArt.elf;
 
   const $ = (id) => document.getElementById(id);
   const text = (id, value) => {
@@ -88,6 +81,14 @@
     if (content !== undefined) node.textContent = content;
     return node;
   };
+  const revealedToy = (toy, cls) => {
+    const node = make("span", cls);
+    const art = PaperArt.toy(toy.name);
+    if (art) node.innerHTML = art;
+    else node.append(make("span", "", toy.icon || "🎁"));
+    node.append(make("span", "", toy.name));
+    return node;
+  };
   const infoButton = (key, label = "More information") => {
     const b = make("button", "info-button", "i");
     b.dataset.help = key;
@@ -99,7 +100,7 @@
     const station = make("section", "station");
     station.id = `station${s}`;
     station.dataset.destination = s;
-    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine"><svg viewBox="0 0 100 80" aria-hidden="true">${machineArt[s]}</svg><strong class="station-rate" id="rate${s}"></strong><span class="station-bottleneck" id="bottleneck${s}"></span><span class="capacity-label">${["Reading", "Toy making", "Dispatch at current checking"][s]}</span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine">${PaperArt.scene(s)}<strong class="station-rate" id="rate${s}"></strong><span class="station-bottleneck" id="bottleneck${s}"></span><span class="capacity-label">${["Reading", "Toy making", "Dispatch at current checking"][s]}</span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
     station
       .querySelector(".column-heading")
       .append(
@@ -130,7 +131,7 @@
         const b = make("button", "switch-button");
         b.dataset.ai = `${s},${level}`;
         b.dataset.info = `ai:${s}:${level}`;
-        b.innerHTML = `<span class="switch-art" aria-hidden="true">${[elfSVG(s), `${elfSVG(s)}<span>🤖</span>`, "🤖"][level]}</span><span class="switch-label">${["By hand", "Assist", "Automate"][level]}</span>`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${PaperArt.icon(["ic-hand", "ic-assist", "ic-cog"][level])}</span><span class="switch-label">${["By hand", "Assist", "Automate"][level]}</span>`;
         position.append(
           b,
           infoButton(
@@ -158,7 +159,7 @@
         const b = make("button", "switch-button");
         b.dataset.checking = level;
         b.dataset.info = `checking:${level}`;
-        b.innerHTML = `<span class="switch-art" aria-hidden="true">${["🔎 ·", "🔎 ◆", "🔎 ▦"][level]}</span><span class="switch-label">${["A few", "Risky", "All"][level]}</span>`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${PaperArt.icon(["ic-few", "ic-risky", "ic-all"][level])}</span><span class="switch-label">${["A few", "Risky", "All"][level]}</span>`;
         position.append(b, infoButton(`checking:${level}`));
         sw.append(position);
       }
@@ -176,6 +177,84 @@
       $(`controls${s}`).append(vigilance);
     }
   }
+  for (let s = 0; s < 3; s++) {
+    const station = $(`station${s}`),
+      heading = station.querySelector(".column-heading");
+    const rate = make("div", "paper-rate");
+    rate.append(
+      $(`rate${s}`),
+      $(`bottleneck${s}`),
+      station.querySelector(".capacity-label"),
+    );
+    heading.append(rate);
+    const scene = make("div", "paper-scene");
+    scene.append(station.querySelector(".machine"), $(`piles${s}`));
+    const belt = make("div", "paper-belt");
+    belt.setAttribute("aria-hidden", "true");
+    const floor = make("div", "paper-floor");
+    floor.append(
+      station.querySelector(".crew-heading"),
+      $(`elves${s}`),
+      $(`spare${s}`),
+      station.querySelector(".move-target"),
+    );
+    station.append(heading, scene, belt, floor, $(`controls${s}`));
+  }
+  const sleigh = $("sleigh"),
+    sleighScene = make("div", "paper-scene paper-sleigh-scene");
+  sleigh.querySelector(".sleigh-art").innerHTML = PaperArt.scene(3);
+  sleighScene.append(
+    sleigh.querySelector(".sleigh-art"),
+    sleigh.querySelector(".sleigh-total"),
+    $("runStars"),
+    $("arrival"),
+  );
+  const sleighBelt = make("div", "paper-belt");
+  sleighBelt.setAttribute("aria-hidden", "true");
+  const sleighControls = make("div", "controls paper-sleigh-controls");
+  sleighControls.append($("wrongDelivery"), $("recentGifts"), $("sleighNote"));
+  sleigh.append(sleighScene, sleighBelt, $("cocoa"), sleighControls);
+  $("cocoa").classList.add("paper-floor");
+  $("cocoa").querySelector(".cocoa-label > span").innerHTML =
+    '<svg viewBox="0 0 80 80" aria-hidden="true"><use href="#mug"/></svg>';
+  $("stationPicker").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-station-page]");
+    if (!button) return;
+    const station =
+      Number(button.dataset.stationPage) === 3
+        ? $("sleigh")
+        : $(`station${button.dataset.stationPage}`);
+    $("board").scrollTo({
+      left: station.offsetLeft - $("board").offsetLeft,
+      behavior: "instant",
+    });
+  });
+  $("board").addEventListener(
+    "scroll",
+    () => {
+      const columns = [...$("board").children];
+      const current = columns.reduce(
+        (best, node, i) =>
+          Math.abs(
+            node.getBoundingClientRect().left -
+              $("board").getBoundingClientRect().left,
+          ) <
+          Math.abs(
+            columns[best].getBoundingClientRect().left -
+              $("board").getBoundingClientRect().left,
+          )
+            ? i
+            : best,
+        0,
+      );
+      $("stationPicker")
+        .querySelectorAll("button")
+        .forEach((button, i) =>
+          button.setAttribute("aria-pressed", i === current),
+        );
+    },
+    { passive: true },
+  );
   const elfNodes = [];
   function buildElves() {
     for (const node of elfNodes) node.remove();
@@ -229,6 +308,7 @@
     url.searchParams.delete("version");
     history.replaceState(null, "", url);
     paint();
+    $("board").scrollLeft = 0;
     if (showIntro && !$("intro").open) $("intro").showModal();
   }
   function perform(action) {
@@ -367,6 +447,7 @@
               `${p.big ? "big " : ""}${p.suspect ? "suspect " : ""}${p.suspect === "batch" ? "batch" : ""}`,
               id === "letters" || id === "clarify" ? "✉" : "🎁",
             );
+            item.innerHTML = `<svg viewBox="0 0 30 26"><use href="#${id === "letters" || id === "clarify" ? "env" : p.big ? "parcel-k" : "parcel-r"}"/></svg>`;
             item.setAttribute("aria-hidden", "true");
             const count = Math.min(q.parcels.length, 18);
             item.style.setProperty(
@@ -418,6 +499,23 @@
       b.querySelector(".elf-doing").textContent = role[0];
       b.querySelector(".elf-task").textContent = role[1];
       b.dataset.role = role[1];
+      b.querySelector(".elf-eyes").setAttribute(
+        "href",
+        elf.tired >= 55 ? "#eyes-tired" : "#eyes",
+      );
+      b.querySelector(".elf-prop").setAttribute(
+        "href",
+        "#" +
+          ({
+            reading: "p-letter",
+            making: "p-hammer",
+            checking: "p-glass",
+            confirm: "p-confirming",
+            watching: "p-watching",
+            asking: "p-asking",
+            resting: "p-resting",
+          }[role[1]] || ""),
+      );
     });
     for (let station = 0; station < 2; station++) {
       text(
@@ -507,6 +605,8 @@
     if (newest && newest.id !== lastArrival) {
       lastArrival = newest.id;
       text("arrivalIcon", newest.made?.icon || "🎁");
+      if (newest.made && PaperArt.toy(newest.made.name))
+        $("arrivalIcon").innerHTML = PaperArt.toy(newest.made.name);
       text(
         "arrivalLabel",
         newest.result === "wrong" ? "Wrong gift aboard" : "Gift loaded",
@@ -518,6 +618,8 @@
     $("wrongDelivery").hidden = !lastWrong;
     if (lastWrong) {
       text("wrongToy", lastWrong.made.icon);
+      if (PaperArt.toy(lastWrong.made.name))
+        $("wrongToy").innerHTML = PaperArt.toy(lastWrong.made.name);
       text("wrongName", lastWrong.made.name);
       $("wrongDelivery").dataset.help = "lastWrong";
       $("wrongDelivery").dataset.info = "lastWrong";
@@ -623,7 +725,7 @@
       for (const slip of report.slips) {
         const card = make("article", "delivery-slip");
         card.append(
-          make("strong", "slip-toy", `${slip.made.icon} ${slip.made.name}`),
+          revealedToy(slip.made, "slip-toy"),
           make("p", "", `Wanted: ${slip.wanted.icon} ${slip.wanted.name}`),
           make("p", "", `“${slip.wish}”`),
           make("p", "slip-cause", `${slip.cause} · ${money(slip.cost)}`),
@@ -693,6 +795,7 @@
     }
   }
   function paintEffects() {
+    text("sleighTarget", `of ${view.run.target} needed`);
     const run = view.run?.number ?? 1;
     if (run !== observedRun) {
       observedRun = run;
@@ -770,6 +873,10 @@
       { x: horizontal, y: r.top - p.height - gap },
       { x: r.right + gap, y: vertical },
       { x: r.left - p.width - gap, y: vertical },
+      ...[...document.querySelectorAll(".paper-scene")].map((scene) => {
+        const bounds = scene.getBoundingClientRect();
+        return { x: Math.max(12, bounds.left + 4), y: bounds.top + 3 };
+      }),
       ...protectedBounds.flatMap((rect) => [
         { x: horizontal, y: rect.top - p.height - gap },
         { x: horizontal, y: rect.bottom + gap },
@@ -946,6 +1053,10 @@
               : "elves0",
         );
       const protectedNodes = [
+        ...(innerWidth >= 1000 &&
+        ["elves", "cocoa", "bypass"].includes(moment.control)
+          ? document.querySelectorAll(".machine")
+          : []),
         ...document.querySelectorAll(".crew, [data-move]:not([hidden])"),
         $("cocoa"),
         ...(["ai0", "ai1", "ask", "checking", "cocoa", "bypass"].includes(
@@ -1072,10 +1183,7 @@
         const row = make("div", "evidence-item");
         const wish = make("p", "wish", `“${e.wish}”`);
         row.append(wish);
-        if (e.made)
-          row.append(
-            make("p", "toy-evidence", `${e.made.icon} ${e.made.name}`),
-          );
+        if (e.made) row.append(revealedToy(e.made, "toy-evidence"));
         if (e.reading)
           row.append(
             make(
@@ -1658,6 +1766,7 @@
     if (!guided) game.skipGuidance();
     started = true;
     $("intro").close();
+    $("board").scrollLeft = 0;
     paint();
   };
   $("pause").onclick = () => {
@@ -1909,9 +2018,7 @@
         : "Christmas blunders",
     );
     $("blunderCollection").replaceChildren(
-      ...collectedBlunders.map((item) =>
-        make("span", "blunder", `${item.icon || "🎁"} ${item.name}`),
-      ),
+      ...collectedBlunders.map((item) => revealedToy(item, "blunder")),
     );
     text("copyStatus", "");
     $("copyFallback").hidden = true;

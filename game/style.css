@@ -553,9 +553,8 @@ main {
   font-size: 10px;
   line-height: 12px;
 }
-/* The break card also uses goal-slot, goal-name, goal-star and goal-note, with grid areas;
-   the top bar places its own parts explicitly so those rules do not reach it. */
-.dashboard .goal-slot {
+/* Top-bar goal slots use hud-* names, apart from the break card's goal-* names */
+.dashboard .hud-slot {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas: none;
@@ -569,7 +568,7 @@ main {
   text-align: left;
   color: inherit;
 }
-.dashboard .goal-star {
+.dashboard .hud-star {
   grid-area: auto;
   grid-row: 1 / 3;
   grid-column: 1;
@@ -579,11 +578,11 @@ main {
   height: 26px;
   border-radius: 50%;
 }
-.dashboard .goal-star .ui-icon {
+.dashboard .hud-star .ui-icon {
   width: 17px;
   height: 17px;
 }
-.dashboard .goal-name {
+.dashboard .hud-name {
   grid-area: auto;
   grid-row: 1;
   grid-column: 2;
@@ -595,7 +594,7 @@ main {
   line-height: 14px;
   white-space: nowrap;
 }
-.dashboard .goal-slot .goal-name > span {
+.dashboard .hud-slot .hud-name > span {
   overflow: hidden;
   text-overflow: ellipsis;
   color: inherit;
@@ -643,16 +642,16 @@ main {
     align-self: center;
   }
 }
-.dashboard .goal-name .ui-icon {
+.dashboard .hud-name .ui-icon {
   width: 13px;
   height: 13px;
 }
-.dashboard .goal-figures small > span {
+.dashboard .hud-figures small > span {
   display: inline;
   font-size: inherit;
   color: inherit;
 }
-.dashboard .goal-figures {
+.dashboard .hud-figures {
   grid-row: 2;
   grid-column: 2;
   display: flex;
@@ -661,15 +660,15 @@ main {
   min-width: 0;
   white-space: nowrap;
 }
-.dashboard .goal-figures b {
+.dashboard .hud-figures b {
   font-size: 24px;
   line-height: 26px;
   font-variant-numeric: tabular-nums;
 }
-.dashboard .goal-figures small {
+.dashboard .hud-figures small {
   font-size: 12px;
 }
-.dashboard .goal-bar {
+.dashboard .hud-bar {
   grid-row: 3;
   grid-column: 1 / -1;
   height: 4px;
@@ -678,7 +677,7 @@ main {
   overflow: hidden;
   background: #0000001f;
 }
-.dashboard .goal-note {
+.dashboard .hud-note {
   display: none;
   grid-area: auto;
   grid-row: 3;
@@ -691,44 +690,44 @@ main {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.dashboard .goal-slot[data-state="waiting"] .goal-note {
+.dashboard .hud-slot[data-state="waiting"] .hud-note {
   display: block;
 }
-.dashboard .goal-slot[data-state="waiting"] .goal-bar {
+.dashboard .hud-slot[data-state="waiting"] .hud-bar {
   display: none;
 }
-.dashboard .goal-slot[data-state="waiting"] {
+.dashboard .hud-slot[data-state="waiting"] {
   border-style: dashed;
 }
 .dashboard .goals-note {
   display: none;
 }
 @media (max-width: 600px) {
-  .dashboard .goal-slot {
+  .dashboard .hud-slot {
     column-gap: 5px;
     padding: 4px 6px 5px;
   }
-  .dashboard .goal-star {
+  .dashboard .hud-star {
     width: 20px;
     height: 20px;
   }
-  .dashboard .goal-star .ui-icon {
+  .dashboard .hud-star .ui-icon {
     width: 13px;
     height: 13px;
   }
-  .dashboard .goal-slot .goal-name > span,
-  .dashboard .goal-slot .goal-unit,
-  .dashboard .goal-slot[data-state] .goal-note {
+  .dashboard .hud-slot .hud-name > span,
+  .dashboard .hud-slot .hud-unit,
+  .dashboard .hud-slot[data-state] .hud-note {
     display: none;
   }
-  .dashboard .goal-slot[data-state] .goal-bar {
+  .dashboard .hud-slot[data-state] .hud-bar {
     display: block;
   }
-  .dashboard .goal-slot .goal-figures b {
+  .dashboard .hud-slot .hud-figures b {
     font-size: 18px;
     line-height: 20px;
   }
-  .dashboard .goal-slot .goal-figures small {
+  .dashboard .hud-slot .hud-figures small {
     font-size: 10px;
   }
   .dashboard .goals-note {
@@ -739,7 +738,7 @@ main {
     min-height: 12px;
   }
 }
-.dashboard .goal-bar i {
+.dashboard .hud-bar i {
   display: block;
   height: 100%;
   width: calc(var(--fill, 0) * 100%);

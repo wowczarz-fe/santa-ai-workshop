@@ -536,20 +536,20 @@ body[data-look="paper"] #tutorial .link-button {
   color: #705132;
   font-size: 11px;
 }
-body[data-look="paper"] .dashboard .goal-slot {
+body[data-look="paper"] .dashboard .hud-slot {
   border: 1px solid #d4c6a740;
   border-radius: 4px;
   background: #f4ead314;
   color: var(--paper);
 }
-body[data-look="paper"] .dashboard .goal-slot:hover:not(:disabled) {
+body[data-look="paper"] .dashboard .hud-slot:hover:not(:disabled) {
   background: #f4ead326;
 }
-body[data-look="paper"] .dashboard .goal-star {
+body[data-look="paper"] .dashboard .hud-star {
   background: #00000033;
   color: #f4ead34d;
 }
-body[data-look="paper"] .dashboard .goal-slot[data-state="met"] .goal-star {
+body[data-look="paper"] .dashboard .hud-slot[data-state="met"] .hud-star {
   background: #d2a44733;
   color: #e7bd5c;
   box-shadow: 0 0 0 1.5px #d2a447;
@@ -557,41 +557,41 @@ body[data-look="paper"] .dashboard .goal-slot[data-state="met"] .goal-star {
 body[data-look="paper"] .dashboard .goals-title {
   color: #d4c6a7;
 }
-body[data-look="paper"] .dashboard .goal-name {
+body[data-look="paper"] .dashboard .hud-name {
   color: #d4c6a7;
 }
-body[data-look="paper"] .dashboard .goal-slot[data-state="waiting"] {
+body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] {
   border-color: #d2a447;
 }
-body[data-look="paper"] .dashboard .goal-slot[data-state="waiting"] .goal-star {
+body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] .hud-star {
   background: transparent;
   color: #e7bd5c;
   box-shadow: inset 0 0 0 1.5px #d2a44799;
 }
-body[data-look="paper"] .dashboard .goal-note,
+body[data-look="paper"] .dashboard .hud-note,
 body[data-look="paper"] .dashboard .goals-note {
   color: #e7bd5c;
 }
-body[data-look="paper"] .dashboard .goal-figures b {
+body[data-look="paper"] .dashboard .hud-figures b {
   color: var(--paper);
   font-family: Georgia, serif;
   font-weight: normal;
 }
-body[data-look="paper"] .dashboard .goal-figures small {
+body[data-look="paper"] .dashboard .hud-figures small {
   color: #d4c6a7;
 }
-body[data-look="paper"] .dashboard .goal-bar {
+body[data-look="paper"] .dashboard .hud-bar {
   background: #f4ead326;
   color: #9fc7a8;
 }
-body[data-look="paper"] .dashboard .goal-slot[data-goal="full"] .goal-bar {
+body[data-look="paper"] .dashboard .hud-slot[data-goal="full"] .hud-bar {
   color: #d2a447;
 }
-body[data-look="paper"] .dashboard .goal-slot[data-state="failed"] {
+body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] {
   border-color: #e0707f;
   background: #a3263a66;
 }
-body[data-look="paper"] .dashboard .goal-slot[data-state="failed"] .goal-bar {
+body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   color: #ff9aa6;
 }
 @media (min-width: 1000px) {

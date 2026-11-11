@@ -307,11 +307,11 @@
     ["right", "wrong-gift"],
     ["cost", "budget"],
   ]) {
-    const slot = make("button", "goal-slot");
+    const slot = make("button", "hud-slot");
     slot.dataset.goal = id;
     slot.dataset.help = `goal:${id}`;
     slot.dataset.info = `goal:${id}`;
-    slot.innerHTML = `<span class="goal-star">${icon("star")}</span><span class="goal-name">${icon(art)}<span></span></span><span class="goal-figures"><b></b><small><span class="goal-need"></span><span class="goal-unit"></span></small></span><span class="goal-bar" aria-hidden="true"><i></i></span><span class="goal-note"></span>`;
+    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small></span><span class="hud-bar" aria-hidden="true"><i></i></span><span class="hud-note"></span>`;
     $("goals").append(slot);
     goalSlots[id] = slot;
   }
@@ -330,10 +330,10 @@
       const slot = goalSlots[goal.id];
       if (!slot) continue;
       const figure = (n) => (goal.id === "cost" ? money(n) : String(n));
-      slot.querySelector(".goal-name > span").textContent = goal.name;
-      slot.querySelector(".goal-figures b").textContent = figure(goal.now);
-      slot.querySelector(".goal-need").textContent = ` / ${figure(goal.need)}`;
-      slot.querySelector(".goal-unit").textContent =
+      slot.querySelector(".hud-name > span").textContent = goal.name;
+      slot.querySelector(".hud-figures b").textContent = figure(goal.now);
+      slot.querySelector(".hud-need").textContent = ` / ${figure(goal.need)}`;
+      slot.querySelector(".hud-unit").textContent =
         goal.id === "right" ? " wrong" : "";
       // met: lit star; waiting: inside the limit but the sleigh is not full enough yet;
       // failed: a limit goal not met; open: the full-sleigh goal still filling.
@@ -346,14 +346,14 @@
             : "failed";
       if (slot.dataset.state !== state) {
         slot.dataset.state = state;
-        slot.querySelector(".goal-star").innerHTML = icon(
+        slot.querySelector(".hud-star").innerHTML = icon(
           state === "waiting" ? "star-empty" : "star",
         );
       }
-      slot.querySelector(".goal-note").textContent =
+      slot.querySelector(".hud-note").textContent =
         goal.waiting && goal.note ? goal.note : "";
       slot
-        .querySelector(".goal-bar i")
+        .querySelector(".hud-bar i")
         .style.setProperty(
           "--fill",
           Math.min(1, goal.now / Math.max(1, goal.need)),

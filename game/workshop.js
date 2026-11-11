@@ -1,7 +1,7 @@
 // The rules of one run. It never touches the page, so it also runs in Node for balance checks.
 
 const ELF_NAMES = "Pip Holly Jingle Noel Ivy Fig Tinsel Coco".split(" ");
-const CONTROLS = "ai0 ai1 ask checking bypass train".split(" ");
+const CONTROLS = "ai0 ai1 ask checking bypass".split(" ");
 const BREAK = 3;
 const STATION_NAMES = [
   "Reading letters",
@@ -10,24 +10,15 @@ const STATION_NAMES = [
 ];
 const LEVELS = ["By hand", "Assist", "Automate"];
 
+// One game, kept under a version name so a build can still be picked by address. `kinds` are the cases
+// besides updates and incidents, at most `cap` of them a run.
 const VERSIONS = {
-  piles: {
-    name: "Piles",
-    text: "Every check and every question is a pile your elves have to staff. Only AI updates and their trouble come to you as cases.",
-    cases: false,
+  standard: {
+    name: "Santa's workshop",
+    text: "Keep the letters moving, let the AI help where it pays, and check where its mistakes would cost most.",
+    kinds: ["judge"],
+    cap: 3,
     letters: 1,
-  },
-  cases: {
-    name: "Piles and cases",
-    text: "As Piles, and checkers also bring you single parcels, unclear wishes and repeated mistakes to decide.",
-    cases: true,
-    letters: 1,
-  },
-  calm: {
-    name: "Calm",
-    text: "Piles and cases, with fewer letters and a lower target.",
-    cases: true,
-    letters: 0.8,
   },
 };
 
@@ -60,7 +51,6 @@ const ELF_SECONDS = {
 const AI_SECONDS = { read: 0.6, make: 1.6 };
 const INVESTIGATE_SECONDS = 5;
 const ROLLBACK_SECONDS = 8;
-const TRAINING_SECONDS = 10;
 
 // What goes wrong. Elves get worse as they tire. The AI is steady on everyday work, slips on big
 // gifts it has seen less of, and is confidently wrong on unclear wishes; a faulty update makes the
@@ -88,14 +78,22 @@ const NOTICE_AFTER = 4; // faulty trains seen by checkers or on the sleigh befor
 
 // Updates on offer for the toy machine. A worrying sign (a big change, brief supplier testing) is
 // likelier on a faulty update, so reading the signs beats chance without making it certain.
-const UPDATES_AT = [50, 100, 150];
-const SPEED_UP = 1.5;
+// An update is offered at each break; its promise varies and so do its signs of risk.
+const PROMISES = [0.3, 0.4, 0.5, 0.6];
 const SIGN_IF_FAULTY = 0.7;
 const SIGN_IF_GOOD = 0.3;
-const TEST_SECONDS = 40;
 const TEST_TOYS = 4;
 const KEEP_AGAIN = 20; // seconds before a kept-running update is raised again
 const ABOARD_AT = 5;
+
+// Four sleigh runs of a minute. Each target sits just above what a careful player managed in tests,
+// and well above what elves working by hand deliver, so every run needs the player.
+const RUNS = 4;
+const RUN_SECONDS = 60;
+const RUN_TARGETS = [40, 62, 66, 68];
+const POINTS = { right: 10, star: 20, clean: 50, budgetLeft: 0.2 };
+const BREAK_PRICE = { update: 20, tested: 20, train: 70, rest: 40 };
+const TEST_DELAY = 20; // seconds into the next run a tested update goes in, when the test is clean
 
 // Checkers relax after a run of clean AI-made parcels they checked: quicker checks, some skipped.
 const VIGILANCE = [
@@ -106,9 +104,9 @@ const VIGILANCE = [
 
 // A cocoa break in time is short; a burnt-out elf is gone for a minute and comes back still tired.
 const BURNOUT_AT = 88;
-const BURNOUT_SECONDS = 60;
-const BURNOUT_RECOVERY = 0.5;
-const COCOA_RECOVERY = 6;
+const BURNOUT_SECONDS = 15;
+const BURNOUT_RECOVERY = 2.5; // back at about 50, so a burnt-out elf soon tires again
+const COCOA_RECOVERY = 13; // from 60 to fresh in about 4 seconds
 // Tiredness 0 to 100. Above FRESH it slows an elf and makes it miss more.
 const FRESH = 30;
 const TIRED_SLOWS = 0.014;
@@ -125,7 +123,6 @@ const COCOA_WAGE = 0.08;
 const AI_PRICE = [0, 0.22, 0.72]; // per station, per second
 const PRICE = {
   check: 2,
-  train: 70,
   remake: 3,
   rollback: 65,
   made: 15,
@@ -133,36 +130,43 @@ const PRICE = {
   recallEach: 22, // per gift brought back, on top of its remake
   investigate: 10,
   ask: 3, // a letter back to the child
-  test: 20,
 };
 const WRONG_PRICE = { everyday: 12, big: 100 };
 
-const AT = { timmy: 45, rush: 110, calm: 150, close: 211 };
-const INFLOW = 0.88;
-const RUSH_INFLOW = 1.65;
-const CASE_CAP = 6;
+const AT = { timmy: 45, close: 211 };
+// Letters a second from each time on: a trickle three readers nearly manage, then faster than hand
+// reading can keep up with, then enough for the toy line to fall behind, a rush whose start
+// differs from game to game, and the run-out.
+const ramp = (rushAt) => [
+  [0, 0.5],
+  [30, 0.8],
+  [60, 1.3],
+  [rushAt, 2.2],
+  [rushAt + 40, 1.3],
+];
+const RUSH_FROM = [95, 130];
 const CASE_GAP = 20;
 const CASES_FROM = 60;
 const CONSEQUENCE_GAP = 45;
 const PATTERN_WINDOW = 30; // seconds within which the same wrong toy from the AI counts as a pattern
 // Waiting cases take their turn in this order; the other kinds come last.
-const CASE_ORDER = { source: 0, made: 1, aboard: 2, offered: 3, tested: 3 };
+const CASE_ORDER = { source: 0, made: 1, aboard: 2 };
 
 // child | words | wanted toy | wrong toy the AI might make | flags
 const WISHES = [
   "Timmy | A little train, please. | 🚃 model train | 🚂 full-sized locomotive | unclear",
-  "Mia | A red bike for the park. | 🚲 red bike | 🚲 blue bike | big",
+  "Mia | A red bike for the park. | 🚲 red bike | 🚲 blue bike | big subtle",
   "Noah | A teddy bear to cuddle. | 🧸 teddy bear | 🐻 live bear cub",
   "Ava | Something to paint with. I already have brushes. | 🎨 box of watercolours | 🪣 tin of wall paint | unclear",
   "Leo | A mouse for my desk. | 🖱️ computer mouse | 🐭 pet mouse | unclear",
-  "Isla | A blue football. | ⚽ blue football | 🏈 rugby ball",
+  "Isla | A blue football. | ⚽ blue football | 🏈 rugby ball | subtle",
   "Oliver | A rocket for my space toys. | 🚀 toy rocket | 🎆 box of fireworks | unclear",
   "Grace | A small drum to play music. | 🥁 toy drum | 🛢️ oil drum",
   "Amir | A bat, please! I love caves. | 🦇 cuddly bat | 🏏 cricket bat | unclear",
   "Ella | Building bricks, no screens. | 🧱 box of building bricks | 📱 tablet game",
   "Finn | A book about dinosaurs. | 📕 dinosaur book | 🦖 live T. rex",
   "Sofia | A star for my bedroom. | ⭐ star night light | 🍪 star-shaped biscuit",
-  "Zara | A doll in a pink dress. | 🪆 doll in a pink dress | 🪆 doll in a green dress",
+  "Zara | A doll in a pink dress. | 🪆 doll in a pink dress | 🪆 doll in a green dress | subtle",
   "Max | A kite that flies really high. | 🪁 kite | 🦅 real eagle",
   "Ruby | A puppy toy that barks. | 🐶 toy puppy | 🪵 sack of tree bark",
   "Jack | A pirate ship for the bath. | 🏴‍☠️ toy pirate ship | ⛵ full-sized galleon | big",
@@ -170,17 +174,17 @@ const WISHES = [
   "Sam | Some cool shades, please. | 🕶️ pair of sunglasses | 💡 lampshade | unclear",
   "Maya | A crown like a real queen. | 👑 toy crown | 💎 set of crown jewels",
   "Ben | A dragon that breathes fire! | 🐉 toy dragon | 🔥 garden bonfire",
-  "Chloe | A green dinosaur. | 🦕 green dinosaur | 🦕 purple dinosaur",
+  "Chloe | A green dinosaur. | 🦕 green dinosaur | 🦕 purple dinosaur | subtle",
   "Ethan | Something for the snow. | 🛷 sledge | 🧂 bag of road salt | unclear big",
   "Hannah | A horse with a horn! | 🦄 toy unicorn | 🐴 horse in a party hat",
   "Lucas | A robot that helps me tidy up. | 🤖 toy robot | 🧹 broom",
   "Poppy | Something sweet, please. | 🍬 bag of sweets | 🍠 sweet potato | unclear",
-  "Theo | A big red fire engine. | 🚒 red fire engine | 🚒 blue fire engine | big",
+  "Theo | A big red fire engine. | 🚒 red fire engine | 🚒 blue fire engine | big subtle",
   "Nina | A guitar so I can rock. | 🎸 toy guitar | 🪨 big rock | unclear big",
   "Omar | A space helmet. | 👩‍🚀 space helmet | 🐠 fishbowl",
   "Rosa | A chess set, please. | ♟️ chess set | 🗄️ chest of drawers | big",
   "Lena | Drums like my dad plays. | 🥁 toy drum kit | 🪘 full concert drum kit | unclear big",
-  "Freya | Pink roller skates. | 🛼 pair of pink roller skates | ⛸️ pair of ice skates | big",
+  "Freya | Pink roller skates. | 🛼 pair of pink roller skates | ⛸️ pair of ice skates | big subtle",
   "Kai | A yo-yo. | 🪀 yo-yo | 🥣 bowl of yoghurt",
   "Elsie | A magic wand. | 🪄 magic wand | 🥖 baguette",
 ].map((line) => {
@@ -196,10 +200,12 @@ const WISHES = [
     wrong: toy(wrong),
     unclear: flags.includes("unclear"),
     big: flags.includes("big"),
+    subtle: flags.includes("subtle"), // the wrong toy is a near miss, not an absurd blunder
   };
 });
 const TIMMY = WISHES[0];
 const EVERYDAY_WISHES = WISHES.slice(1);
+const slug = (name) => name.toLowerCase().replace(/[^a-z]+/g, "-");
 const LOCOMOTIVE = { name: "full-sized locomotive", icon: "🚂" };
 
 const a = (name) => (/^[aeio]/.test(name) ? "an " : "a ") + name;
@@ -221,6 +227,19 @@ const chance = (p) => {
     ) ?? 20;
   return `about ${Math.max(1, Math.round(p * n))} in ${n}`;
 };
+// The two ways an unclear wish can be read, in a fixed order so the order gives nothing away.
+const readings = (w) =>
+  [w.wanted.name, w.wrong.name]
+    .sort()
+    .map((name) => a(name))
+    .join(" or ");
+// The absurd wrong toys the AI can make, for the page's collection.
+const BLUNDERS = new Map(
+  [...WISHES.filter((w) => !w.subtle).map((w) => w.wrong), LOCOMOTIVE].map(
+    (toy) => [slug(toy.name), toy],
+  ),
+);
+const BLUNDER_TOTAL = BLUNDERS.size;
 const AVERAGE_PRICE =
   share((w) => !w.big) * WRONG_PRICE.everyday +
   share((w) => w.big) * WRONG_PRICE.big;
@@ -233,7 +252,7 @@ const MOMENTS = {
     completes: ["move"],
     title: "Move your elves",
     text: () =>
-      "Letters are arriving faster than three elves can read them. Move one elf from making toys to reading letters.",
+      "Letters are arriving a little faster than three elves can read them. Move one elf from making toys to reading letters.",
   },
   ai0: {
     control: "ai0",
@@ -241,7 +260,7 @@ const MOMENTS = {
     completes: ["setAi"],
     title: "Let the AI help read",
     text: (w) =>
-      `The letter pile has reached ${w.q.letters.length}. Put the AI on reading: on Assist it drafts each letter and an elf confirms it.`,
+      `Letters now come faster than elves can read: ${w.q.letters.length} are waiting. Put the AI on reading: on Assist it drafts each letter and an elf confirms it.`,
   },
   ai1: {
     control: "ai1",
@@ -249,15 +268,17 @@ const MOMENTS = {
     completes: ["setAi"],
     title: "Let the AI make toys",
     text: (w) =>
-      `${does(w.q.orders.length, "toy order", "is", "are")} waiting. On Automate the AI makes toys alone, so the elves there can watch it or move.`,
+      w.q.orders.length >= 8
+        ? `${does(w.q.orders.length, "toy order", "is", "are")} waiting for the toy makers. On Automate the AI makes toys alone, so the elves there can watch it or move.`
+        : "When toy orders start to pile up, the AI can make toys too. On Automate it works alone, so the elves there can watch it or move.",
   },
   ask: {
     control: "ask",
     unlocks: ["ask"],
     completes: ["setAsk"],
     title: "Ask when a wish is unclear",
-    text: () =>
-      "Timmy just wrote 'A little train, please.' Turn on asking so an elf asks him what he means instead of the AI guessing.",
+    text: (w, x) =>
+      `${x.w.child}'s wish could mean ${readings(x.w)}. The AI picks one without asking; turn on asking and an elf asks.`,
   },
   checking: {
     control: "checking",
@@ -308,14 +329,6 @@ const MOMENTS = {
           "The update you installed is making full-sized trains. Decide what to do about it, one step at a time.",
       })[w.cases[0].kind],
   },
-  train: {
-    control: "train",
-    unlocks: ["train"],
-    completes: ["train"],
-    title: "A checker waved one through",
-    text: (w, x) =>
-      `A relaxed checker waved ${x.w.child}'s ${x.made.name} through without opening it. Training keeps the checkers careful for good.`,
-  },
 };
 const FIRST_MOMENTS = ["elves", "ai0", "ai1", "ask", "checking"];
 const URGENT_MOMENTS = ["bypass"];
@@ -331,13 +344,14 @@ const DOING = {
 };
 
 class Workshop {
-  constructor({ seed = 1, guided = false, version = "cases" } = {}) {
+  constructor({ seed = 1, guided = false, version = "standard" } = {}) {
     this.seed = seed >>> 0;
     this.guided = guided;
-    this.versionId = VERSIONS[version] ? version : "cases";
+    this.versionId = VERSIONS[version] ? version : "standard";
     this.v = VERSIONS[this.versionId];
     this.duration = 240;
-    this.target = Math.round(155 * this.v.letters);
+    this.runTargets = RUN_TARGETS.map((n) => Math.round(n * this.v.letters));
+    this.target = sum(this.runTargets);
     this.t = 0;
     this.elves = ELF_NAMES.map((name, i) => ({
       name,
@@ -356,9 +370,20 @@ class Workshop {
     this.checking = 0;
     this.bypassed = 0;
     this.vig = { cleanRun: 0, skipped: 0, trained: false };
-    this.training = 0;
     this.machineSpeed = 1;
     this.updates = this.planUpdates();
+    this.ramp = ramp(
+      RUSH_FROM[0] + Math.floor(this.rng() * (RUSH_FROM[1] - RUSH_FROM[0])),
+    );
+    this.runNumber = 1;
+    this.delivered = [];
+    this.reports = [];
+    this.choice = null;
+    this.lastChoiceId = 0;
+    this.pendingTest = null;
+    this.aiUsed = false;
+    this.blunders = new Map();
+    this.points = 0;
     this.lastInstallAt = null;
     this.incident = null;
     this.cases = [];
@@ -381,6 +406,16 @@ class Workshop {
     this.lastNews = 0;
     this.newsAt = {};
     this.lost = 0;
+    this.flow = Object.fromEntries(
+      Object.keys(QUEUES).map((id) => [
+        id,
+        { ids: new Set(), arrived: 0, seconds: [], halfFull: false },
+      ]),
+    );
+    this.milestones = [25, 50, 75, 100, 125]
+      .filter((n) => n < this.target)
+      .concat(this.target);
+    this.secondAt = 0;
     this.unreportedLost = 0;
     this.behindNoted = false;
     this.lastId = 0;
@@ -416,7 +451,8 @@ class Workshop {
     return this.seed / 4294967296;
   }
 
-  // Three updates, at least one good and one faulty, each with two signs that lean the right way.
+  // One update for each break, at least one good and one faulty, each with two signs that lean the
+  // right way and a promise of its own.
   planUpdates() {
     const faulty =
       this.rng() < 0.5 ? [true, false, false] : [true, true, false];
@@ -424,17 +460,35 @@ class Workshop {
       const j = Math.floor(this.rng() * (i + 1));
       [faulty[i], faulty[j]] = [faulty[j], faulty[i]];
     }
-    return UPDATES_AT.map((at, i) => {
-      const sign = () =>
-        this.rng() < (faulty[i] ? SIGN_IF_FAULTY : SIGN_IF_GOOD);
+    return faulty.map((bad) => {
+      const sign = () => this.rng() < (bad ? SIGN_IF_FAULTY : SIGN_IF_GOOD);
       return {
-        at,
-        faulty: faulty[i],
+        faulty: bad,
         bigChange: sign(),
         briefTesting: sign(),
+        promise: PROMISES[Math.floor(this.rng() * PROMISES.length)],
         testRolls: Array.from({ length: TEST_TOYS }, () => this.rng()),
       };
     });
+  }
+
+  inflowAt(t) {
+    return this.ramp.findLast(([from]) => t >= from)[1];
+  }
+
+  // Letters expected between two times, following the ramp.
+  lettersBetween(from, to) {
+    return sum(
+      this.ramp.map(
+        ([start, rate], i) =>
+          rate *
+          Math.max(
+            0,
+            Math.min(to, this.ramp[i + 1]?.[0] ?? AT.close, AT.close) -
+              Math.max(from, start),
+          ),
+      ),
+    );
   }
 
   say(kind, text, extra = {}) {
@@ -548,18 +602,19 @@ class Workshop {
     switch (id) {
       case "bypass":
         return this.full("check") ? this.q.check[0].id : false;
+      case "ask": {
+        // Timmy while his letter is still here, or else any unclear letter not yet read.
+        if (this.find(parcelId)) return parcelId;
+        return this.q.letters.find((x) => x.w.unclear && !x.asked)?.id ?? false;
+      }
       case "cocoa":
         return this.elves.some((e) => e.station < BREAK && e.tired >= 60)
           ? null
           : false;
       case "case":
         return this.cases.length ? null : false;
-      case "train":
-        return !this.vig.trained && !this.training && this.find(parcelId)
-          ? parcelId
-          : false;
       default:
-        return parcelId;
+        return parcelId === null || this.find(parcelId) ? parcelId : false;
     }
   }
 
@@ -662,7 +717,7 @@ class Workshop {
   capacity(s, pool) {
     if (s === 1 && this.incident?.rollingBack) return 0;
     if (pool === "ai") return 1;
-    return this.power(s) * (s === 2 && this.training ? 0.5 : 1);
+    return this.power(s);
   }
 
   poolFor(id) {
@@ -687,10 +742,7 @@ class Workshop {
         ? ELF_SECONDS.readUnclear
         : ELF_SECONDS.read[this.ai[0]];
     }
-    if (id === "orders")
-      return this.ai[1] === 2
-        ? AI_SECONDS.make / this.machineSpeed
-        : ELF_SECONDS.make[this.ai[1]];
+    if (id === "orders") return this.makeSeconds(this.ai[1]);
     if (id === "check") return this.secondsPerCheck();
     if (id === "rework") return x.remake;
     return ELF_SECONDS[id === "clarify" ? "ask" : "pass"];
@@ -800,8 +852,9 @@ class Workshop {
     return Math.round(this.duration - this.t);
   }
 
+  // Advances the run; nothing moves while a break choice is open.
   step(dt) {
-    while (dt > 1e-9 && !this.end) {
+    while (dt > 1e-9 && !this.end && !this.choice) {
       const d = Math.min(dt, 0.1);
       this.tick(d);
       dt -= d;
@@ -812,8 +865,7 @@ class Workshop {
     this.t = Math.min(this.duration, this.t + dt);
     this.events();
     if (this.t < AT.close) {
-      const rush = this.t >= AT.rush && this.t < AT.calm;
-      this.inflow += dt * (rush ? RUSH_INFLOW : INFLOW) * this.v.letters;
+      this.inflow += dt * this.inflowAt(this.t) * this.v.letters;
       for (; this.inflow >= 1; this.inflow--) this.arrive();
     }
     this.timers(dt);
@@ -822,8 +874,10 @@ class Workshop {
       for (const pool of ["elf", "ai"]) this.run(s, pool, dt);
     this.assignWork();
     this.elvesTick(dt);
+    this.watchPiles(dt);
     this.track(dt);
-    if (this.t >= this.duration) this.finish();
+    if (this.ai.some((l) => l > 0)) this.aiUsed = true;
+    if (this.t >= this.runNumber * RUN_SECONDS - 1e-9) this.depart();
   }
 
   events() {
@@ -840,19 +894,25 @@ class Workshop {
         "Timmy writes: 'A little train, please.' How little is little?",
       );
     });
-    at(AT.rush, "rush", () =>
+    at(this.ramp[3][0], "rush", () =>
       this.say("rush", "Last-minute rush! Letters now arrive twice as fast."),
     );
-    this.updates.forEach((u, i) => at(u.at, "update" + i, () => this.offer(u)));
+    if (this.pendingTest && this.t >= this.pendingTest.at) this.finishTest();
     this.raiseIncident();
     // Guided runs fall back to these times when the real example has not come by then.
-    if (this.q.letters.length >= 10 || this.t >= 18) this.reach("ai0");
+    // Each AI lever comes as the answer to a pile that has started to grow.
+    const growing = (id, n) =>
+      this.trend(id) === "growing" && this.q[id].length >= n;
+    if ((this.t >= this.ramp[1][0] && growing("letters", 8)) || this.t >= 50)
+      this.reach("ai0");
     if (
       this.happened.has("moment:ai0") &&
-      (this.q.orders.length >= 8 || this.t >= 26)
+      (growing("orders", 8) || this.t >= 70)
     )
       this.reach("ai1");
-    if (this.t >= 60) this.reach("checking");
+    const unclear = this.q.letters.find((x) => x.w.unclear && !x.asked);
+    if (this.t > AT.timmy && unclear) this.reach("ask", unclear.id);
+    if (this.t >= 80) this.reach("checking");
     if (this.happened.has("moment:checking") && this.full("check"))
       this.reach("bypass", this.q.check[0].id);
     if (this.elves.some((e) => e.station < BREAK && e.tired >= 60))
@@ -871,7 +931,7 @@ class Workshop {
         !this.ask &&
         !x.accepted &&
         this.ai[0] > 0 &&
-        this.canOpenOther()
+        this.canOpenOther("unclear")
       )
         this.openCase({ kind: "unclear", parcels: [this.q.letters.shift()] });
       else break;
@@ -922,7 +982,11 @@ class Workshop {
     x.asked = true;
     this.pay("people", PRICE.ask);
     x.wrong = x.roll.read < RISK.asked;
-    if (x.wrong) x.wrongToy = this.slipToy(x);
+    if (x.wrong)
+      Object.assign(x, {
+        wrongToy: this.slipToy(x),
+        cause: "a misheard answer",
+      });
   }
 
   // How the AI reads a letter, decided by the letter's own roll so a case can show it in advance.
@@ -937,14 +1001,20 @@ class Workshop {
     const guess = x.w.unclear && !x.asked;
     if (level === 0) {
       x.wrong = x.roll.read < RISK.elfRead + this.slipAt(0) * RISK.perStrain;
-      if (x.wrong) x.wrongToy = this.slipToy(x);
+      if (x.wrong)
+        Object.assign(x, { wrongToy: this.slipToy(x), cause: "a tired elf" });
     } else {
       const draftWrong = this.aiReading(x) !== x.w.wanted;
       x.byAi = true;
       x.confident = guess;
       x.wrong =
         draftWrong && !(level === 1 && x.roll.confirm < this.confirmCatch(0));
-      if (x.wrong) x.wrongToy = x.w.wrong;
+      const cause = guess
+        ? "the AI guessed an unclear wish"
+        : x.w.big
+          ? "the AI on a big gift"
+          : "the AI misread a letter";
+      if (x.wrong) Object.assign(x, { wrongToy: x.w.wrong, cause });
     }
     this.q.orders.push(x);
   }
@@ -957,7 +1027,8 @@ class Workshop {
     let slip;
     if (level === 0) {
       slip = x.roll.make < RISK.elfMake + this.slipAt(1) * RISK.perStrain;
-      if (slip && !x.wrong) x.wrongToy = this.slipToy(x);
+      if (slip && !x.wrong)
+        Object.assign(x, { wrongToy: this.slipToy(x), cause: "a tired elf" });
     } else {
       x.byAi = true;
       faulty = x.batch && x.roll.make < RISK.fault;
@@ -968,7 +1039,12 @@ class Workshop {
       if (confirmed && faulty) this.notice("watcher");
       if (confirmed) faulty = false;
       slip = draftWrong && !confirmed;
-      if (slip && !x.wrong) x.wrongToy = x.w.wrong;
+      if (slip && !x.wrong)
+        Object.assign(x, {
+          wrongToy: x.w.wrong,
+          cause: x.w.big ? "the AI on a big gift" : "the AI made the wrong toy",
+        });
+      if (faulty) x.cause = "made by the faulty update";
       // What a parcel made now is likely to be, for the incident's facts.
       x.batchRisk = x.batch
         ? RISK.fault * (level === 1 ? 1 - this.confirmCatch(1) : 1)
@@ -978,6 +1054,14 @@ class Workshop {
     this.stats.toys++;
     if (slip) this.stats.toyMistakes++;
     x.made = faulty ? LOCOMOTIVE : x.wrong ? x.wrongToy : x.w.wanted;
+    // An absurd wrong toy joins the game's collection of blunders, caught or not.
+    const absurd = x.wrong && BLUNDERS.get(slug(x.made.name));
+    if (absurd)
+      this.blunders.set(slug(x.made.name), {
+        id: slug(x.made.name),
+        name: absurd.name,
+        icon: absurd.icon,
+      });
     x.unsure =
       x.byAi &&
       x.roll.unsure <
@@ -1017,7 +1101,7 @@ class Workshop {
     this.report.checking.money += PRICE.check;
     x.exit = "checked";
     // An unsure checker brings the parcel to the player instead of deciding; nothing is revealed yet.
-    if (x.unsure && x.roll.judge < 0.3 && this.canOpenOther()) {
+    if (x.unsure && x.roll.judge < 0.3 && this.canOpenOther("judge")) {
       x.exit = "case";
       return this.openCase({ kind: "judge", parcels: [x] });
     }
@@ -1123,9 +1207,8 @@ class Workshop {
         20,
         "waved",
         "relaxed",
-        `${elf} waved ${x.w.child}'s ${x.made.name} through without opening it.`,
+        `${elf} waved ${x.w.child}'s ${x.made.name} through without opening it. Training at the next break would stop that.`,
       );
-      this.reach("train", x.id);
     }
     this.sighting(x, "sleigh");
   }
@@ -1150,7 +1233,7 @@ class Workshop {
     if (
       same.length >= 2 &&
       this.t - (this.patternAt[x.made.name] ?? -99) > 60 &&
-      this.canOpenOther()
+      this.canOpenOther("pattern")
     ) {
       this.patternAt[x.made.name] = this.t;
       this.openCase({
@@ -1190,16 +1273,16 @@ class Workshop {
 
   // Cases. Update and incident cases always get their turn; the other kinds are rare, tied to
   // something a checker has really seen, and at most one of them waits.
-  canOpenOther() {
+  canOpenOther(kind) {
     const waitingOther = this.cases
       .slice(1)
       .some((c) => !(c.kind in { update: 1, incident: 1 }));
     return (
-      this.v.cases &&
+      this.v.kinds.includes(kind) &&
       this.unlocked.has("checking") &&
       this.t >= CASES_FROM &&
       !waitingOther &&
-      this.caseCount < CASE_CAP &&
+      this.caseCount < this.v.cap &&
       this.t - this.lastCaseAt >= CASE_GAP
     );
   }
@@ -1231,10 +1314,6 @@ class Workshop {
     this.say("case", this.caseText(c), { caseId: c.id });
     this.reach("case");
     return c;
-  }
-
-  offer(u) {
-    this.openCase({ kind: "update", step: "offered", update: u });
   }
 
   // Raises the incident's steps in turn once a faulty installed update is known.
@@ -1281,13 +1360,9 @@ class Workshop {
       case "judge":
         return `A checker is unsure about ${x.w.child}'s parcel. Is this the toy the child asked for?`;
       case "unclear":
-        return `${x.w.child} wrote '${x.w.wish}' and the AI is not sure what that means.`;
+        return `${x.w.child} wrote '${x.w.wish}': ${readings(x.w)}? The AI picks one without asking; an elf would ask.`;
       case "pattern":
         return `The checkers have seen ${a(c.name)} ${c.parcels.length} times in a short while.`;
-      case "update":
-        return c.step === "tested"
-          ? "The test of the new toy machine update is done."
-          : "A new update is on offer for the toy machine.";
       default:
         return {
           source: "The update you installed is making full-sized trains.",
@@ -1319,139 +1394,97 @@ class Workshop {
     );
   }
 
-  // How likely the update is faulty once the test is in, from the signs and what the trial toys showed.
-  testedChance(c) {
-    const p = this.failChance(c.update);
-    const ifFaulty = c.found
-      ? 1 - (1 - RISK.fault) ** TEST_TOYS
-      : (1 - RISK.fault) ** TEST_TOYS;
-    const ifGood = c.found
-      ? 1 - (1 - RISK.aiMake) ** TEST_TOYS
-      : (1 - RISK.aiMake) ** TEST_TOYS;
-    return (p * ifFaulty) / (p * ifFaulty + (1 - p) * ifGood);
+  // Seconds per toy: the machine alone, or each elf confirming its drafts, goes faster with a faster
+  // machine; by hand does not.
+  makeSeconds(level, speed = this.machineSpeed) {
+    if (level === 2) return AI_SECONDS.make / speed;
+    return ELF_SECONDS.make[level] / (level ? speed : 1);
   }
 
   toyRate(speed = this.machineSpeed) {
-    return Math.round(
-      this.ai[1] === 2
-        ? (60 / AI_SECONDS.make) * speed
-        : (this.power(1) * 60) / ELF_SECONDS.make[this.ai[1]],
-    );
+    const people = this.ai[1] === 2 ? 1 : this.power(1);
+    return Math.round((people * 60) / this.makeSeconds(this.ai[1], speed));
   }
 
   // The figures each decision turns on, shown before the choice.
+  // The figures each decision turns on, shown before the choice: three primary ones on the card, the
+  // rest behind the info pop-up. Values are kept to a few words.
   facts(c) {
-    const f = (label, value) => ({ label, value: String(value) });
+    const f = (label, value, primary = false) => ({
+      label,
+      value: String(value),
+      primary,
+    });
     const x = c.parcels[0];
     const list = this.affected(c);
     const big = list.filter((x) => x.w.big).length;
     const worth = (x) =>
       x.w.big
-        ? `${money(WRONG_PRICE.big)}, a big gift`
-        : `${money(WRONG_PRICE.everyday)}, an everyday gift`;
+        ? `${money(WRONG_PRICE.big)}, big gift`
+        : `${money(WRONG_PRICE.everyday)}, everyday`;
     const time = f("Time left", `${this.timeLeft()} s`);
     switch (c.kind) {
       case "judge":
         return [
-          f("Gift worth", worth(x)),
-          f("Why unsure", "the AI flagged this toy as unsure"),
-          f("Checking pile", `${this.q.check.length} waiting`),
+          f("Gift", worth(x), true),
+          f("Why unsure", "the AI flagged it", true),
+          f("Checking pile", `${this.q.check.length} waiting`, true),
           time,
         ];
       case "unclear":
         return [
-          f("Gift worth", worth(x)),
-          f("AI reads it as", this.aiReading(x).name),
-          f(
-            "Asking",
-            `an elf for ${ELF_SECONDS.ask} s; ${this.q.clarify.length} letters waiting to be asked`,
-          ),
+          f("Gift", worth(x), true),
+          f("AI reads it as", this.aiReading(x).name, true),
+          f("Asking", `${ELF_SECONDS.ask} s, ${money(PRICE.ask)}`, true),
+          f("Waiting to be asked", this.q.clarify.length),
           time,
         ];
       case "pattern": {
         const ago =
           this.lastInstallAt === null
-            ? "no update installed"
+            ? "none"
             : `${Math.round(this.t - this.lastInstallAt)} s ago`;
         return [
-          f("Seen", `${c.parcels.length} times in ${PATTERN_WINDOW} s`),
-          f("Last update installed", ago),
-          f("Made since", `${list.length} parcels, ${big} big`),
+          f("Seen", `${c.parcels.length} times in ${PATTERN_WINDOW} s`, true),
+          f("Last update", ago, true),
+          f("Made since", `${list.length}, ${big} big`, true),
           time,
         ];
-      }
-      case "update": {
-        const u = c.update;
-        const facts = [
-          f(
-            "Promises",
-            `toys about ${Math.round((SPEED_UP - 1) * 100)}% faster`,
-          ),
-          f(
-            "How much it changes",
-            u.bigChange
-              ? "a large part of the machine"
-              : "a small part of the machine",
-          ),
-          f("Supplier testing", u.briefTesting ? "brief" : "thorough"),
-          f("Updates like this go wrong", chance(this.failChance(u))),
-          f("Toys a minute now", this.toyRate()),
-        ];
-        if (c.step === "offered")
-          facts.push(
-            f(
-              "A test now",
-              `${TEST_SECONDS} s and ${money(PRICE.test)}; a good update fails it about 1 in 9`,
-            ),
-          );
-        else
-          facts.push(
-            f("Test", `${c.found} of ${TEST_TOYS} trial toys came out wrong`),
-            f(
-              "After the test",
-              `${chance(this.testedChance(c))} chance it is faulty`,
-            ),
-          );
-        return [...facts, time];
       }
       default: {
         if (c.step === "source")
           return [
-            f("Trains so far", this.incident.trains),
-            f("Toys a minute now", this.toyRate()),
+            f("Trains so far", this.incident.trains, true),
             f(
               "Rolling back",
-              `line stops ${ROLLBACK_SECONDS} s, ${money(PRICE.rollback)}, back to ${this.toyRate(this.incident.speedBefore)} toys a minute`,
+              `${ROLLBACK_SECONDS} s, ${money(PRICE.rollback)}`,
+              true,
+            ),
+            f(
+              "Toys a minute",
+              `${this.toyRate()} now, ${this.toyRate(this.incident.speedBefore)} after`,
+              true,
             ),
             time,
           ];
-        const likely = list.length
-          ? sum(
-              list.map((x) => (c.step === "aboard" ? 1 : (x.batchRisk ?? 0))),
-            ) / list.length
-          : 0;
-        const facts = [
-          f(
-            c.step === "made"
-              ? "Parcels from the update"
-              : "Wrong gifts aboard",
-            list.length,
-          ),
-          f("Big gifts among them", big),
-        ];
-        if (c.step === "made")
-          facts.push(
-            f("Likely wrong", chance(likely)),
+        if (c.step === "made") {
+          const likely = list.length
+            ? sum(list.map((x) => x.batchRisk ?? 0)) / list.length
+            : 0;
+          return [
+            f("Parcels", list.length, true),
+            f("Big gifts", big, true),
+            f("Likely wrong", chance(likely), true),
             f("Checking pile", `${this.q.check.length} waiting`),
-          );
-        else
-          facts.push(
-            f(
-              "Their cost if they stay",
-              money(sum(list.map((x) => this.price(x)))),
-            ),
-          );
-        return [...facts, time];
+            time,
+          ];
+        }
+        return [
+          f("Wrong gifts", list.length, true),
+          f("Big gifts", big, true),
+          f("Cost if left", money(sum(list.map((x) => this.price(x)))), true),
+          time,
+        ];
       }
     }
   }
@@ -1547,36 +1580,6 @@ class Workshop {
           ),
         ];
         break;
-      case "update":
-        options = [
-          o(
-            "install",
-            "Install it",
-            0,
-            0,
-            `the toy machine from now on; ${chance(c.step === "offered" ? this.failChance(c.update) : this.testedChance(c))} chance it makes wrong toys`,
-          ),
-          ...(c.step === "offered"
-            ? [
-                o(
-                  "test",
-                  "Test it first",
-                  TEST_SECONDS,
-                  PRICE.test,
-                  `the old version keeps working for ${TEST_SECONDS} s`,
-                  broke,
-                ),
-              ]
-            : []),
-          o(
-            "skip",
-            "Skip it",
-            0,
-            0,
-            `the toy machine stays at ${this.toyRate()} toys a minute`,
-          ),
-        ];
-        break;
       default:
         options = {
           source: [
@@ -1652,15 +1655,13 @@ class Workshop {
     const option = this.options(c).find((o) => o.id === optionId);
     if (!option?.available) return false;
     this.did("resolve");
-    if (["remake", "ask", "investigate", "test"].includes(optionId)) {
+    if (["remake", "ask", "investigate"].includes(optionId)) {
       c.resolving = {
         optionId,
         remaining: option.seconds,
         duration: option.seconds,
       };
       if (optionId === "investigate") this.pay("checking", PRICE.investigate);
-      if (optionId === "test") this.pay("checking", PRICE.test);
-      if (optionId === "test") c.station = null;
       return true;
     }
     this.closeCase(c, optionId);
@@ -1673,7 +1674,6 @@ class Workshop {
     const extra = { caseId: c.id, option: optionId };
     let text;
     let outcome = {};
-    if (optionId === "test") return this.finishTest(c);
     this.cases.shift();
     if (c.kind === "judge") {
       extra.check = this.copy(x, ELF_SECONDS.check, "player");
@@ -1742,31 +1742,6 @@ class Workshop {
         text = `Carried on: ${plural(held.length, "parcel")} made since ${held.length === 1 ? "goes" : "go"} on as before, with no time spent.`;
         outcome = { parcels: held.length };
       }
-    } else if (c.kind === "update") {
-      const before = this.toyRate();
-      if (optionId === "install") {
-        this.install(c.update);
-        const gained = this.toyRate() - before;
-        const late =
-          c.step === "tested"
-            ? ` ${TEST_SECONDS} s later than installing at once`
-            : "";
-        text = `Installed${late}: the toy machine can now make ${this.toyRate()} toys a minute instead of ${before}.`;
-        outcome = {
-          gained,
-          ...(c.step === "tested"
-            ? { seconds: TEST_SECONDS, money: PRICE.test }
-            : {}),
-        };
-      } else {
-        text = `Skipped: the toy machine stays at ${before} toys a minute.`;
-        outcome = {
-          gained: 0,
-          ...(c.step === "tested"
-            ? { seconds: TEST_SECONDS, money: PRICE.test }
-            : {}),
-        };
-      }
     } else
       this.closeIncident(c, optionId, (t, o) => ((text = t), (outcome = o)));
     const kept = Object.fromEntries(
@@ -1783,29 +1758,10 @@ class Workshop {
     });
   }
 
-  // A test runs trial toys on the new version; the case comes back with what it found.
-  finishTest(c) {
-    c.found = c.update.testRolls.filter(
-      (r) => r < (c.update.faulty ? RISK.fault : RISK.aiMake),
-    ).length;
-    c.step = "tested";
-    c.resolving = null;
-    c.station = 2;
-    this.say(
-      "resolved",
-      `Tested for ${TEST_SECONDS} s and ${money(PRICE.test)} while the old version kept working: ${c.found} of ${TEST_TOYS} trial toys came out wrong.`,
-      {
-        caseId: c.id,
-        option: "test",
-        outcome: { seconds: TEST_SECONDS, money: PRICE.test },
-      },
-    );
-  }
-
   install(u) {
     this.lastInstallAt = this.t;
     const speedBefore = this.machineSpeed;
-    this.machineSpeed *= SPEED_UP;
+    this.machineSpeed *= 1 + u.promise;
     if (u.faulty)
       this.incident = {
         fault: true,
@@ -1962,21 +1918,6 @@ class Workshop {
         "Rollback done. The toy machine makes proper toys again.",
       );
     }
-    if (
-      this.training > 0 &&
-      (this.training = countDown(this.training, dt)) === 0
-    ) {
-      this.vig.trained = true;
-      this.say(
-        "trained",
-        "Training done. The checkers stay careful however clean the AI looks.",
-      );
-      this.consequence(
-        "train",
-        `Training took ${TRAINING_SECONDS} seconds of half-speed checking and cost ${money(PRICE.train)}.`,
-        { seconds: TRAINING_SECONDS, money: PRICE.train },
-      );
-    }
   }
 
   // What each elf is doing now: elves at a station take turns over the queues that have work.
@@ -2030,7 +1971,7 @@ class Workshop {
         sum(ids.map((id) => this.q[id].length)) /
         sum(ids.map((id) => QUEUES[id].limit));
       const effort =
-        0.5 +
+        0.6 +
         Math.max(0, pressure - 0.25) * 0.75 +
         (s === 2 ? CHECKER_STRAIN + 0.1 * this.checking : 0);
       const gain =
@@ -2146,6 +2087,102 @@ class Workshop {
     this.report.ask = this.fresh();
   }
 
+  // What arrives in each pile and how long it is, kept second by second for the last ten seconds,
+  // so the page can show whether the player's last move helped.
+  watchPiles(dt) {
+    for (const [id, flow] of Object.entries(this.flow)) {
+      const ids = new Set(this.q[id].map((x) => x.id));
+      for (const i of ids) if (!flow.ids.has(i)) flow.arrived++;
+      flow.ids = ids;
+      if (ids.size > QUEUES[id].limit / 2) flow.halfFull = true;
+      if (!ids.size && flow.halfFull) {
+        flow.halfFull = false;
+        this.say(
+          "cleared",
+          `The ${QUEUES[id].name.toLowerCase()} pile is clear.`,
+          { queue: id },
+        );
+      }
+    }
+    if (this.t - this.secondAt < 1 - 1e-9) return;
+    this.secondAt = this.t;
+    for (const [id, flow] of Object.entries(this.flow)) {
+      flow.seconds = [
+        ...flow.seconds.slice(-10),
+        { length: this.q[id].length, arrived: flow.arrived },
+      ];
+      flow.arrived = 0;
+    }
+    const right = this.rightSoFar();
+    while (this.milestones.length && right >= this.milestones[0]) {
+      const n = this.milestones.shift();
+      this.say(
+        "milestone",
+        n === this.target
+          ? `${n} right gifts: the target is met!`
+          : `${n} right gifts are on the sleigh.`,
+        { right: n },
+      );
+    }
+  }
+
+  inflowOf(id) {
+    return (
+      sum(this.flow[id].seconds.map((s) => s.arrived)) *
+      (60 / Math.max(1, this.flow[id].seconds.length))
+    );
+  }
+
+  // Compares the pile now with ten seconds ago, a few seconds averaged at each end so it does not flicker.
+  trend(id) {
+    const seconds = this.flow[id].seconds;
+    if (seconds.length < 6) return "steady";
+    const mean = (list) => sum(list.map((s) => s.length)) / list.length;
+    const change = mean(seconds.slice(-3)) - mean(seconds.slice(0, 3));
+    return change >= 1 ? "growing" : change <= -1 ? "shrinking" : "steady";
+  }
+
+  // The one thing that most needs the player now, in four words at most, or null.
+  focus() {
+    const tired = this.elves
+      .filter((e) => e.station < BREAK && e.tired >= 70)
+      .sort((x, y) => y.tired - x.tired)[0];
+    if (tired)
+      return { station: BREAK, control: "cocoa", text: `rest ${tired.name}` };
+    const piles = ["letters", "clarify", "orders", "check"].filter(
+      (id) =>
+        this.trend(id) === "growing" &&
+        this.q[id].length >= QUEUES[id].limit * 0.3,
+    );
+    piles.sort(
+      (x, y) =>
+        this.q[y].length / QUEUES[y].limit - this.q[x].length / QUEUES[x].limit,
+    );
+    for (const id of piles) {
+      const s = QUEUES[id].station;
+      const lever = `ai${s}`;
+      const aiHelps =
+        s < 2 &&
+        id !== "clarify" &&
+        this.ai[s] < 2 &&
+        this.unlocked.has(lever) &&
+        this.staff(s).length >= 3;
+      return aiHelps
+        ? { station: s, control: lever, text: "try the AI" }
+        : { station: s, control: "elves", text: "needs another elf" };
+    }
+    const recentWrong = this.news.filter(
+      (n) => n.kind === "loaded" && this.t - n.t <= 30,
+    ).length;
+    if (
+      recentWrong >= 2 &&
+      this.checking === 0 &&
+      this.unlocked.has("checking")
+    )
+      return { station: 2, control: "checking", text: "check more" };
+    return null;
+  }
+
   pace() {
     return {
       projected: Math.round(this.projected),
@@ -2193,9 +2230,7 @@ class Workshop {
           )
         : elves(0) / this.elfReadSeconds(this.ai[0]);
     const making =
-      this.ai[1] === 2
-        ? this.machineSpeed / AI_SECONDS.make
-        : elves(1) / ELF_SECONDS.make[this.ai[1]];
+      (this.ai[1] === 2 ? 1 : elves(1)) / this.makeSeconds(this.ai[1]);
     const checked = this.checkShare();
     const dispatch =
       elves(2) /
@@ -2209,16 +2244,11 @@ class Workshop {
   estimate() {
     const rates = this.rates();
     const slowest = rates.indexOf(Math.min(...rates));
-    const later = (from, to) =>
-      Math.max(0, Math.min(to, AT.close) - Math.max(from, this.t));
-    const letters =
-      this.v.letters *
-      (INFLOW * (later(0, AT.rush) + later(AT.calm, AT.close)) +
-        RUSH_INFLOW * later(AT.rush, AT.calm));
+    const letters = this.v.letters * this.lettersBetween(this.t, AT.close);
     const supply = sum(Object.values(this.q).map((q) => q.length)) + letters;
-    const right = this.aboard.filter((x) => !x.wrong).length;
-    const rightShare =
-      this.aboard.length >= 10 ? right / this.aboard.length : 0.95;
+    const all = [...this.delivered, ...this.aboard];
+    const right = all.filter((x) => !x.wrong).length;
+    const rightShare = all.length >= 10 ? right / all.length : 0.95;
     return {
       projected:
         right +
@@ -2245,7 +2275,7 @@ class Workshop {
         level === 2
           ? (60 / AI_SECONDS[kind]) * (s === 1 ? this.machineSpeed : 1)
           : (elves(s) * 60) /
-            (s === 0 ? this.elfReadSeconds(level) : ELF_SECONDS.make[level]),
+            (s === 0 ? this.elfReadSeconds(level) : this.makeSeconds(level)),
       );
       return LEVELS.map((name, level) => {
         const who = [
@@ -2314,8 +2344,8 @@ class Workshop {
   finish() {
     this.reportChecking();
     this.reportAsking();
-    const right = this.aboard.filter((x) => !x.wrong).length;
-    const wrongGifts = this.aboard.filter((x) => x.wrong);
+    const right = this.delivered.filter((x) => !x.wrong).length;
+    const wrongGifts = this.delivered.filter((x) => x.wrong);
     const mistakes = sum(wrongGifts.map((x) => this.price(x)));
     const total = sum(Object.values(this.spent)) + mistakes;
     const costs = {
@@ -2326,7 +2356,8 @@ class Workshop {
       budget: BUDGET,
     };
     for (const k in costs) costs[k] = Math.round(costs[k]);
-    const wrongShare = wrongGifts.length / Math.max(1, this.aboard.length);
+    const wrongShare = wrongGifts.length / Math.max(1, this.delivered.length);
+    this.points += Math.max(0, this.left()) * POINTS.budgetLeft;
     const top = right >= this.target && wrongShare <= 0.1 && total <= BUDGET;
     const rating = top
       ? 3
@@ -2340,7 +2371,232 @@ class Workshop {
       rating,
       costs,
       lesson: this.lesson(rating, right, costs),
+      stars: sum(this.reports.map((r) => r.stars)),
+      points: Math.round(this.points),
+      runs: this.reports.map((r) => ({
+        ...r,
+        slips: r.slips.map((x) => ({ ...x })),
+      })),
+      blunders: [...this.blunders.values()].map((b) => ({ ...b })),
+      blunderTotal: BLUNDER_TOTAL,
     };
+  }
+
+  rightSoFar() {
+    return [...this.delivered, ...this.aboard].filter((x) => !x.wrong).length;
+  }
+
+  stars(right, wrong, target) {
+    const wrongShare = wrong / Math.max(1, right + wrong);
+    if (right >= target && wrongShare <= 0.1) return 3;
+    return right >= target * 0.8 && wrongShare <= 0.2 ? 2 : 1;
+  }
+
+  // How far a run was from its next star, in the player's words.
+  missedBy(right, wrong, target, stars) {
+    if (stars === 3) return null;
+    const [goal, limit, next] =
+      stars === 2
+        ? [target, 0.1, "three stars"]
+        : [Math.ceil(target * 0.8), 0.2, "two stars"];
+    if (right < goal) return `${plural(goal - right, "gift")} short of ${next}`;
+    const allowed = Math.floor((limit * right) / (1 - limit));
+    return `${plural(Math.max(1, wrong - allowed), "wrong gift")} too many for ${next}`;
+  }
+
+  // What let a wrong gift reach a child: how it went past dispatch, or else how it was made wrong.
+  causeOf(x) {
+    if (x.exit === "skipped") return "waved through by relaxed checkers";
+    if (x.exit === "bypassed") return "let through unchecked";
+    return x.cause ?? "a slip";
+  }
+
+  // A sleigh run leaves: its gifts are delivered and cannot come back; what is still in the workshop
+  // carries over to the next run.
+  depart() {
+    const n = this.runNumber;
+    const right = this.aboard.filter((x) => !x.wrong).length;
+    const wrongGifts = this.aboard.filter((x) => x.wrong);
+    const target = this.runTargets[n - 1];
+    const stars = this.stars(right, wrongGifts.length, target);
+    const bonus = right >= target && !wrongGifts.length ? POINTS.clean : 0;
+    this.points +=
+      right * POINTS.right -
+      sum(wrongGifts.map((x) => this.price(x))) +
+      bonus +
+      stars * POINTS.star;
+    const slips = wrongGifts
+      .map((x) => ({
+        wish: x.w.wish,
+        wanted: { ...x.w.wanted },
+        made: { ...x.made },
+        cause: this.causeOf(x),
+        cost: this.price(x),
+      }))
+      .sort((p, q) => q.cost - p.cost);
+    const report = {
+      run: n,
+      right,
+      wrong: wrongGifts.length,
+      target,
+      stars,
+      missedBy: this.missedBy(right, wrongGifts.length, target, stars),
+      bonus,
+      slips: slips.slice(0, 3),
+      more: Math.max(0, slips.length - 3),
+    };
+    this.allSlips = [...(this.allSlips ?? []), ...slips];
+    this.reports.push(report);
+    this.delivered.push(...this.aboard);
+    this.aboard = [];
+    this.aboardSeen = 0;
+    const wrongText = wrongGifts.length
+      ? ` and ${plural(wrongGifts.length, "wrong one")}`
+      : "";
+    this.say(
+      "departed",
+      `Sleigh run ${n} left with ${right} right gifts${wrongText}: ${plural(stars, "star")}.`,
+      { run: n, right, wrong: wrongGifts.length, target, stars },
+    );
+    if (n === RUNS) return this.finish();
+    this.runNumber++;
+    this.choice = this.makeChoice(report);
+    this.aiUsed = false;
+  }
+
+  // The break: one thing to do before the next run. Each option says what it gives, risks and costs.
+  makeChoice(report) {
+    const u = this.updates[report.run - 1];
+    const fact = (label, value) => ({ label, value: String(value) });
+    const pct = Math.round(u.promise * 100);
+    const signs = `It changes ${u.bigChange ? "a large" : "a small"} part of the machine and the supplier tested it ${u.briefTesting ? "briefly" : "thoroughly"}.`;
+    const update = {
+      id: "update",
+      kind: "update",
+      label: "Install the AI update",
+      text: `An update for the toy machine promises toys ${pct}% faster. ${signs}`,
+      facts: [
+        fact("Gives", `toys ${pct}% faster`),
+        fact("Risk", `goes wrong ${chance(this.failChance(u))}`),
+        fact("Costs", money(BREAK_PRICE.update)),
+      ],
+    };
+    const tested = {
+      id: "tested",
+      kind: "tested",
+      label: "Test the update first",
+      text: `The update is tried on a few toys first. If they come out right it goes in ${TEST_DELAY} s into the next run; if not, nothing is installed.`,
+      facts: [
+        fact("Gives", `the same, ${TEST_DELAY} s later, if clean`),
+        fact("Risk", "a good update fails 1 in 9"),
+        fact("Costs", money(BREAK_PRICE.tested)),
+      ],
+    };
+    const state = this.vigilance().state;
+    const train = {
+      id: "train",
+      kind: "train",
+      label: "Train the checkers",
+      text: `The checkers are ${state} and have skipped ${plural(this.vig.skipped, "check")}; about ${this.aiParcelsToCome()} AI parcels are still to come.`,
+      facts: [
+        fact(
+          "Gives",
+          `careful checks on about ${this.aiParcelsToCome()} AI parcels`,
+        ),
+        fact("Checkers now", state),
+        fact("Costs", money(BREAK_PRICE.train)),
+      ],
+    };
+    const tired = this.elves.map((e) => e.tired);
+    const average = Math.round(sum(tired) / tired.length);
+    const rest = {
+      id: "rest",
+      kind: "rest",
+      label: "Cocoa for everyone",
+      text: `The elves average ${average} tiredness, and ${tired.filter((t) => t >= 60).length} are over 60.`,
+      facts: [
+        fact("Gives", "every elf fresh"),
+        fact("Elves now", `${average} tired on average`),
+        fact("Costs", money(BREAK_PRICE.rest)),
+      ],
+    };
+    const options = [
+      ...(this.aiUsed ? [update, tested] : []),
+      ...(this.vig.trained ? [] : [train]),
+      rest,
+    ];
+    // With no AI in use there is no update to offer, unless the break would otherwise have one option.
+    if (options.length < 2) options.unshift(update);
+    return {
+      id: ++this.lastChoiceId,
+      run: report.run,
+      report,
+      title: `Sleigh run ${report.run} has left`,
+      text: `Pick one thing to do before run ${report.run + 1}.`,
+      options,
+    };
+  }
+
+  choose(choiceId, optionId) {
+    const c = this.choice;
+    const option = c?.options.find((o) => o.id === optionId);
+    if (!c || c.id !== choiceId || !option) return false;
+    const u = this.updates[c.run - 1];
+    const machine = (speed) => Math.round((60 / AI_SECONDS.make) * speed);
+    const before = machine(this.machineSpeed);
+    let text;
+    let outcome;
+    if (optionId === "update") {
+      this.pay("ai", BREAK_PRICE.update);
+      this.install(u);
+      text = `Installed: the toy machine can now make ${machine(this.machineSpeed)} toys a minute instead of ${before}.`;
+      outcome = {
+        money: BREAK_PRICE.update,
+        gained: machine(this.machineSpeed) - before,
+      };
+    } else if (optionId === "tested") {
+      this.pay("ai", BREAK_PRICE.tested);
+      this.pendingTest = { u, at: this.t + TEST_DELAY };
+      text = `The update will be tried on a few toys; it goes in ${TEST_DELAY} s into the next run if they come out right.`;
+      outcome = { money: BREAK_PRICE.tested, seconds: TEST_DELAY };
+    } else if (optionId === "train") {
+      this.pay("people", BREAK_PRICE.train);
+      this.vig.trained = true;
+      this.say(
+        "trained",
+        "Training done. The checkers stay careful however clean the AI looks.",
+      );
+      text = `Trained the checkers for ${money(BREAK_PRICE.train)}: they will check properly however clean the AI looks.`;
+      outcome = { money: BREAK_PRICE.train };
+    } else {
+      this.pay("people", BREAK_PRICE.rest);
+      for (const e of this.elves)
+        Object.assign(e, {
+          tired: 0,
+          rest: 0,
+          station: e.station === BREAK && e.rest > 0 ? e.home : e.station,
+        });
+      text = `Cocoa for everyone for ${money(BREAK_PRICE.rest)}: every elf starts the next run fresh.`;
+      outcome = { money: BREAK_PRICE.rest };
+    }
+    this.say("chose", text, { choiceId, option: optionId, outcome });
+    this.choice = null;
+    return true;
+  }
+
+  // A tested update: trial toys on the new version; it goes in only if they all come out right.
+  finishTest() {
+    const { u } = this.pendingTest;
+    this.pendingTest = null;
+    const found = u.testRolls.filter(
+      (r) => r < (u.faulty ? RISK.fault : RISK.aiMake),
+    ).length;
+    if (!found) return this.install(u);
+    this.consequence(
+      "tested",
+      `The test found ${found} of ${TEST_TOYS} trial toys wrong, so the update was not installed.`,
+      { money: BREAK_PRICE.tested },
+    );
   }
 
   // One lesson from what the player did, biggest cause first, in the terms of the end account.
@@ -2359,6 +2615,45 @@ class Workshop {
         "By hand is careful but slow",
         `Your elves delivered only ${right} right gifts from ${this.lastId + this.lost} letters. With the AI doing some of the work, the same elves could have delivered far more and checked it too.`,
       );
+    // Where most of the delivered mistakes came from, when one cause stands out.
+    const slips = this.allSlips ?? [];
+    const top = Object.entries(Object.groupBy(slips, (x) => x.cause)).sort(
+      (p, q) => q[1].length - p[1].length,
+    )[0];
+    const byCause = {
+      "the AI guessed an unclear wish": [
+        "Unclear wishes, guessed",
+        "Most of your wrong gifts were unclear wishes the AI guessed. Asking the child, or checking unclear wishes, stops them.",
+      ],
+      "the AI on a big gift": [
+        "Big gifts the AI got wrong",
+        "Most of your wrong gifts were big gifts the AI got wrong. Check the big ones: they cost the most.",
+      ],
+      "made by the faulty update": [
+        "The faulty update's trains",
+        "Most of your wrong gifts came from the faulty update. Roll it back as soon as it shows, then deal with what it made.",
+      ],
+      "waved through by relaxed checkers": [
+        "Waved through",
+        "Most of your wrong gifts were waved through by relaxed checkers. Training them at a break keeps them careful.",
+      ],
+      "let through unchecked": [
+        "Let through unchecked",
+        "Most of your wrong gifts went through without a check. One more checker would have kept the pile moving.",
+      ],
+      "a tired elf": [
+        "Tired hands",
+        "Most of your wrong gifts were slips by tired elves. A short cocoa break keeps them sharp.",
+      ],
+    };
+    if (
+      missed &&
+      top &&
+      slips.length >= 4 &&
+      top[1].length * 2 >= slips.length &&
+      byCause[top[0]]
+    )
+      return L(...byCause[top[0]]);
     if (missed && st.brokeAt !== null)
       return L(
         "The money ran out",
@@ -2509,14 +2804,6 @@ class Workshop {
     return true;
   }
 
-  train() {
-    if (this.why("train")) return false;
-    this.training = TRAINING_SECONDS;
-    this.pay("people", PRICE.train);
-    this.did("train");
-    return true;
-  }
-
   // AI-made parcels still to come at the current pace, which is what training pays back on.
   aiParcelsToCome() {
     if (!this.ai.some((l) => l > 0)) return 0;
@@ -2528,15 +2815,8 @@ class Workshop {
   why(name) {
     if (!this.unlocked.has(name)) return "Unlocks later in this run";
     if (this.end) return "The sleigh has left";
-    if (name === "train" && this.left() <= 0) return "Out of money";
     if (name === "bypass")
       return this.q.check.length ? null : "Nothing waiting for a check";
-    if (name === "train")
-      return this.vig.trained
-        ? "Already trained"
-        : this.training
-          ? "Training now"
-          : null;
     return null;
   }
 
@@ -2549,7 +2829,6 @@ class Workshop {
       ask: `each unclear letter takes an elf about ${ELF_SECONDS.ask} seconds and a ${money(PRICE.ask)} letter back`,
       checking: `each check takes a checker about ${Math.round(this.secondsPerCheck())} seconds and costs ${money(PRICE.check)}`,
       bypass: `lets ${plural(waiting, "waiting parcel")} through unchecked; free, but nobody looks at them`,
-      train: `${money(PRICE.train)} and ${TRAINING_SECONDS} s of half-speed checks; about ${this.aiParcelsToCome()} AI parcels still to come`,
     }[name];
   }
 
@@ -2584,6 +2863,8 @@ class Workshop {
       parcels: this.q[id].map((x) => this.parcel(x)),
       limit: QUEUES[id].limit,
       rate: Math.round((this.capacity(s, pool) * 60) / seconds),
+      inflow: Math.round(this.inflowOf(id)),
+      trend: this.trend(id),
       progress:
         head && next === id ? Math.min(1, (this.work[key] ?? 0) / seconds) : 0,
       blocked: head ? this.queueBlocked(id) : null,
@@ -2662,6 +2943,33 @@ class Workshop {
       },
       case: this.cases[0] ? this.caseView(this.cases[0]) : null,
       casesWaiting: Math.max(0, this.cases.length - 1),
+      choice: this.choice && {
+        ...this.choice,
+        report: {
+          ...this.choice.report,
+          slips: this.choice.report.slips.map((x) => ({ ...x })),
+        },
+        options: this.choice.options.map((o) => ({
+          ...o,
+          facts: o.facts.map((f) => ({ ...f })),
+        })),
+      },
+      score: {
+        points: Math.round(this.points),
+        stars: sum(this.reports.map((r) => r.stars)),
+        best: RUNS * 3,
+      },
+      run: {
+        number: this.runNumber,
+        of: RUNS,
+        target: this.runTargets[this.runNumber - 1],
+        leavesIn: Math.max(
+          0,
+          Math.round(this.runNumber * RUN_SECONDS - this.t),
+        ),
+        stars: this.reports.map((r) => r.stars),
+      },
+      focus: this.focus(),
       sleigh: {
         right: this.aboard.filter((x) => !x.wrong).length,
         wrong: this.aboard.filter((x) => x.wrong).length,

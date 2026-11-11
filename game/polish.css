@@ -328,6 +328,7 @@ body[data-look="polish"] .column-heading h2 {
   font:
     700 16px Arial,
     sans-serif;
+  white-space: nowrap;
 }
 body[data-look="polish"] .station-number {
   display: grid;
@@ -348,11 +349,12 @@ body[data-look="polish"] .paper-rate {
   gap: 3px;
 }
 body[data-look="polish"] .station-rate {
-  font-size: 12px;
+  font-size: 11px;
   border: 1px solid #cfddd3;
   border-radius: 14px;
   padding: 2px 6px;
   background: white;
+  white-space: nowrap;
 }
 body[data-look="polish"] .capacity-label {
   display: none;
@@ -455,7 +457,7 @@ body[data-look="polish"] .queue-picture {
 body[data-look="polish"] .queue-rate {
   grid-column: 1/-1;
   grid-row: 3;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 11px;
 }
 body[data-look="polish"] .queue progress {
@@ -858,10 +860,10 @@ body[data-look="polish"] .small-action {
   border-radius: 6px;
   min-height: 23px;
   padding: 3px 6px;
-  font-size: 10px;
+  font-size: 11px;
 }
 body[data-look="polish"] #controls2 {
-  padding-top: 4px;
+  padding-top: 7px;
 }
 body[data-look="polish"] #controls2 [data-control="bypass"],
 body[data-look="polish"] #controls2 .vigilance {
@@ -871,7 +873,7 @@ body[data-look="polish"] #controls2 .vigilance {
 body[data-look="polish"] .vigilance {
   min-height: 18px;
   padding: 2px 5px;
-  font-size: 9px;
+  font-size: 11px;
 }
 body[data-look="polish"] .sleigh-column .paper-scene {
   grid-row: 2/4;
@@ -957,6 +959,9 @@ body[data-look="polish"] .cocoa-label > span {
 body[data-look="polish"] .cocoa-label b {
   font-size: 12px;
 }
+body[data-look="polish"] .wrong-delivery[data-empty] {
+  visibility: hidden;
+}
 body[data-look="polish"] .wrong-delivery {
   background: #ffebe5;
   border: 1px solid #e8aa9b;
@@ -1010,21 +1015,22 @@ body[data-look="polish"] .station-bottleneck {
   padding: 2px 7px 2px 5px;
   border-radius: 6px;
 }
-body[data-look="polish"] .paper-rate:has(.station-bottleneck:not(:empty)) {
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-body[data-look="polish"]
-  .paper-rate:has(.station-bottleneck:not(:empty))
-  .station-rate {
-  padding: 0 6px;
-  line-height: 16px;
+/* The bottleneck tag sits on the heading's bottom edge, so the rate chip never moves */
+body[data-look="polish"] .column-heading {
+  position: relative;
 }
 body[data-look="polish"] .paper-rate .station-bottleneck {
+  position: absolute;
+  top: auto;
+  right: 10px;
+  bottom: -9px;
+  z-index: 2;
   padding: 0 6px 0 4px;
-  font-size: 9px;
-  line-height: 14px;
+  font-size: 11px;
+  line-height: 16px;
+}
+body[data-look="polish"] .paper-rate .station-bottleneck:empty {
+  display: none;
 }
 body[data-look="polish"] .station-bottleneck .ui-icon {
   width: 11px;
@@ -1072,6 +1078,9 @@ body[data-look="polish"] .ask-toggle[aria-pressed="true"] {
 }
 body[data-look="polish"] .ask-toggle[aria-pressed="true"] .toggle-track {
   background: var(--teal);
+}
+body[data-look="polish"] .ask-toggle .toggle-state {
+  color: #56625a;
 }
 body[data-look="polish"] .ask-toggle[aria-pressed="true"] .toggle-state {
   color: var(--teal);
@@ -1124,7 +1133,7 @@ body[data-look="polish"] .board > .sleigh-column {
   flex-direction: column;
 }
 body[data-look="polish"] .sleigh-column > .column-heading {
-  flex: 0 0 52px;
+  flex: 0 0 56px;
 }
 body[data-look="polish"] .sleigh-column .paper-scene {
   flex: 1 1 0;
@@ -1468,9 +1477,6 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"] .column-heading h2 {
     font-size: 16px;
   }
-  body[data-look="polish"] .station-rate {
-    font-size: 12px;
-  }
   body[data-look="polish"] .paper-scene .machine > svg {
     left: 0;
     width: 32px;
@@ -1637,13 +1643,26 @@ body[data-look="polish"] .arrival {
   }
 }
 
-body[data-look="polish"] #sleigh .column-heading {
-  padding-top: 4px;
-  padding-bottom: 4px;
-  row-gap: 0;
+/* Finished runs' stars: the header pills show them on a desktop, the sleigh on a phone */
+body[data-look="polish"] .run-star-set b {
+  color: #6e5216;
 }
-body[data-look="polish"] .cargo-badge {
+@media (min-width: 1000px) {
+  body[data-look="polish"] #runStars {
+    display: none;
+  }
+}
+body[data-look="polish"] .paper-sleigh-scene .cargo-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 12px;
+  background: #ffffffd9;
   color: var(--teal);
-  font-size: 10px;
-  line-height: 15px;
+  font-size: 11px;
+  font-weight: 700;
 }

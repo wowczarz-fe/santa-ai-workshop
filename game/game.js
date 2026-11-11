@@ -289,9 +289,10 @@
   cargoBadge.id = "cargoBadge";
   cargoBadge.dataset.help = "cargo";
   cargoBadge.dataset.info = "cargo";
-  $("sleigh").querySelector(".column-heading").append(cargoBadge);
   const sleigh = $("sleigh"),
     sleighScene = make("div", "paper-scene paper-sleigh-scene");
+  // The cargo sits on the sleigh picture, so the four column headings match.
+  sleighScene.append(cargoBadge);
   sleigh.querySelector(".sleigh-art").innerHTML = Art.scene(3);
   sleighScene.append(
     sleigh.querySelector(".sleigh-art"),
@@ -748,7 +749,10 @@
       const station = view.stations[s];
       text(`staff${s}`, `${station.working} working · ${station.idle} idle`);
       const capacity = station.rate;
-      text(`rate${s}`, `${Math.round(capacity)} a minute`);
+      text(
+        `rate${s}`,
+        `${Math.round(capacity)} ${["read", "made", "checked"][s]}/min`,
+      );
       const bottleneck = $(`bottleneck${s}`),
         isSlowest = view.pace.slowest === s;
       if (bottleneck.childNodes.length !== (isSlowest ? 2 : 0)) {
@@ -778,7 +782,9 @@
         node.classList.toggle("full", q.parcels.length >= q.limit);
         node.querySelector("progress").value = q.progress;
         const change = rateChanges.get(id);
-        node.querySelector(".queue-rate").hidden = id === "pass";
+        // A pile's own rate shows only while it flashes the change a move made.
+        node.querySelector(".queue-rate").hidden =
+          id === "pass" || !(change && change.until > performance.now());
         node.querySelector(".queue-rate").textContent =
           change && change.until > performance.now()
             ? `${Math.round(change.after - change.before) > 0 ? "+" : ""}${Math.round(change.after - change.before)} a minute${Math.round(change.after - change.before) === 0 ? " unchanged" : ""}`
@@ -1047,7 +1053,8 @@
     }
     const wrong = arrivals.filter((p) => p.result === "wrong").at(-1);
     if (wrong) lastWrong = wrong;
-    $("wrongDelivery").hidden = !lastWrong;
+    // The wrong-gift card keeps its place from the start, so the sleigh never shrinks.
+    $("wrongDelivery").toggleAttribute("data-empty", !lastWrong);
     if (lastWrong) {
       if ($("wrongToy").dataset.toy !== lastWrong.made.name) {
         $("wrongToy").dataset.toy = lastWrong.made.name;
@@ -1452,23 +1459,19 @@
     if (started && gained > 0 && !view.end) {
       const effect = make("span", "gift-flight");
       iconText(effect, "gift", `+${gained}`);
-      const from = $("queue-pass").getBoundingClientRect(),
-        to = $("sleighRight").getBoundingClientRect();
+      // The bubbles rise beside the sleigh count, stacked, inside the sleigh column.
+      const to = $("sleighRight").getBoundingClientRect(),
+        column = $("sleigh").getBoundingClientRect();
       const visible = to.left >= 0 && to.right <= innerWidth;
       const target = visible ? to : goalSlots.full.getBoundingClientRect();
-      effect.classList.toggle("in-slot", !visible);
-      effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? from.right - 40 : target.right - 52))}px`;
-      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? from.top : target.top + 4))}px`;
-      effect.style.setProperty(
-        "--fly-x",
-        `${visible ? target.left - from.right + 40 : 0}px`,
-      );
-      effect.style.setProperty(
-        "--fly-y",
-        `${visible ? target.top - from.top : 0}px`,
-      );
-      while ($("celebration").children.length >= 4)
+      while ($("celebration").children.length >= 3)
         $("celebration").firstChild.remove();
+      const stack = $("celebration").children.length;
+      effect.classList.toggle("in-slot", !visible);
+      effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? column.left + 12 : target.right - 52))}px`;
+      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? to.top - 6 + stack * 30 : target.top + 4))}px`;
+      effect.style.setProperty("--fly-x", "0px");
+      effect.style.setProperty("--fly-y", visible ? "-14px" : "0px");
       $("celebration").append(effect);
       setTimeout(() => effect.remove(), 1500);
     }
@@ -1482,6 +1485,10 @@
       $("feedback2").append(caught);
     }
     caught.hidden = !caughtSnapshot || performance.now() > caughtUntil;
+    // The caught toy shows just under the pile it was caught from, clear of the checking dial.
+    if (!caught.hidden)
+      $("feedback2").style.top =
+        `${$("queue-check").getBoundingClientRect().bottom - ($("feedback2").offsetParent?.getBoundingClientRect().top ?? 0) - 10}px`;
     if (caughtSnapshot && caught.dataset.toy !== caughtSnapshot.made.name) {
       caught.dataset.toy = caughtSnapshot.made.name;
       caught.replaceChildren(make("b", "", "Caught!"));
@@ -1689,7 +1696,7 @@
             .sort((a, b) => b.elf.tired - a.elf.tired)[0]?.index;
       const anchor =
         (["checking", "sleigh"].includes(moment.control) &&
-        !$("wrongDelivery").hidden
+        !$("wrongDelivery").hasAttribute("data-empty")
           ? $("wrongDelivery")
           : null) ||
         (moment.control === "cocoa" && tiredElf !== undefined
@@ -1946,7 +1953,9 @@
   function caseAnchor(c) {
     if (c.step === "source") return $("station1").querySelector(".machine");
     if (c.step === "aboard")
-      return $("wrongDelivery").hidden ? $("sleighRight") : $("wrongDelivery");
+      return $("wrongDelivery").hasAttribute("data-empty")
+        ? $("sleighRight")
+        : $("wrongDelivery");
     if (c.kind === "unclear") return $("queue-clarify");
     if (c.step === "made") {
       const affected = new Set(c.affected.ids);

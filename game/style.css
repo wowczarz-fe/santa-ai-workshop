@@ -2693,24 +2693,6 @@ dialog p {
 #breakMore:empty {
   display: none;
 }
-#breakDialog .break-spend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 14px;
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--bc-muted);
-}
-.break-spend b {
-  color: var(--bc-ink);
-}
-.spend-part {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-variant-numeric: tabular-nums;
-}
 .spend-icon svg {
   width: 15px;
   height: 15px;
@@ -2772,17 +2754,25 @@ dialog p {
   font-size: 13px;
   line-height: 1.3;
 }
-.upgrade-note {
-  flex: 1;
-  font-size: 11.5px;
-  line-height: 1.3;
-  color: var(--bc-muted);
+.upgrade-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 2px;
+}
+.upgrade-risk {
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: var(--bc-red-soft);
+  color: var(--bc-red-deep);
+  font-size: 12px;
+  font-weight: 700;
 }
 .upgrade-cost {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-top: 2px;
   padding: 2px 9px 2px 6px;
   border-radius: 20px;
   background: var(--bc-frost);
@@ -2945,7 +2935,7 @@ dialog p {
 .end-runs {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 .run-report {
@@ -2974,6 +2964,13 @@ dialog p {
   font-size: 11px;
   color: var(--bc-hero-muted);
 }
+.run-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
 .goal-mini {
   display: flex;
   gap: 6px;
@@ -2992,6 +2989,10 @@ dialog p {
 .goal-mini-mark svg + svg {
   width: 13px;
   height: 13px;
+}
+.goal-mini-mark[data-waiting="true"] svg:first-child {
+  color: var(--bc-mini-on);
+  opacity: 0.6;
 }
 .goal-mini-mark[data-met="true"] {
   color: var(--bc-mini-on);
@@ -3338,26 +3339,51 @@ dialog p {
   background: var(--bc-gold-soft);
   color: var(--bc-gold-ink);
 }
-.group-figures {
+.group-bars {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 3px 10px;
-  margin: 0;
+  gap: 7px;
+}
+.group-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 8px;
   font-size: 12.5px;
 }
-.group-figures dt {
+.bar-label {
   color: var(--bc-muted);
 }
-.group-figures dd {
-  margin: 0;
-  text-align: right;
-  font-weight: 700;
+.bar-value {
   font-variant-numeric: tabular-nums;
 }
-#report .assurance-group p {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.4;
+.bar-track {
+  grid-column: 1 / -1;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bc-frost);
+  overflow: hidden;
+}
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+}
+.bar-spent .bar-fill {
+  background: var(--bc-gold);
+}
+.bar-stopped .bar-fill {
+  background: var(--bc-zone-right-on);
+}
+.bar-through .bar-fill {
+  background: var(--bc-red);
+}
+.bar-through .bar-value {
+  color: var(--bc-red-deep);
+}
+.assurance-group[data-none="true"] {
+  opacity: 0.6;
+}
+.assurance-group[data-none="true"] .group-verdict {
+  background: var(--bc-frost);
   color: var(--bc-muted);
 }
 #report #noChecks {
@@ -3379,72 +3405,97 @@ dialog p {
 #report .estimate-help p {
   font-size: 12px;
 }
+#practices {
+  padding: 20px 22px;
+  border: 2px solid var(--bc-accent);
+  background: var(--bc-accent-soft);
+}
+#report #practicesTitle {
+  margin-bottom: 14px;
+  font-size: 21px;
+}
 #practiceTiles {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 .practice-tile {
   display: grid;
   align-content: start;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--bc-line);
-  border-radius: 12px;
-  background: var(--bc-paper);
+  gap: 8px;
+  padding: 16px;
+  border: 1.5px dashed var(--bc-off);
+  border-radius: 14px;
+  background: var(--bc-card);
+  color: var(--bc-muted);
 }
 .practice-tile[data-used="true"] {
-  border-color: var(--bc-accent);
-  background: var(--bc-accent-soft);
+  border: 0;
+  background: var(--bc-accent-deep);
+  color: #fff;
+  box-shadow: 0 3px 0 #00000033;
+}
+.practice-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 .practice-icon {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 11px;
-  background: var(--bc-card);
-  color: var(--bc-accent-deep);
+  width: 50px;
+  height: 50px;
+  border-radius: 13px;
+  background: var(--bc-frost);
+  color: var(--bc-muted);
 }
 .practice-icon svg {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
 }
-.practice-action strong {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  line-height: 1.25;
-}
-.practice-action > span {
-  display: block;
-  margin-top: 2px;
-  padding-left: 25px;
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--bc-muted);
-}
-.practice-action[data-used="false"] strong {
-  color: var(--bc-muted);
-}
-.practice-tick {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 19px;
-  height: 19px;
-  border: 1.5px solid var(--bc-off);
-  border-radius: 50%;
-}
-.practice-action[data-used="true"] .practice-tick {
-  border-color: var(--bc-ok);
-  background: var(--bc-ok);
+.practice-tile[data-used="true"] .practice-icon {
+  background: #ffffff24;
   color: #fff;
 }
-.practice-tick svg {
+.practice-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--bc-frost);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.practice-badge svg {
   width: 13px;
   height: 13px;
+}
+.practice-tile[data-used="true"] .practice-badge {
+  background: var(--bc-gold);
+  color: #2b2005;
+}
+#report .practice-name {
+  margin: 4px 0 0;
+  font-size: 16.5px;
+  line-height: 1.2;
+  color: var(--bc-ink);
+}
+#report .practice-tile[data-used="true"] .practice-name {
+  color: #fff;
+}
+#report .practice-action {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+#report .practice-action[data-used="true"] {
+  font-weight: 700;
+}
+.practice-tile[data-used="true"] .practice-action[data-used="false"] {
+  opacity: 0.7;
 }
 .practices-foot {
   display: flex;
@@ -3456,14 +3507,15 @@ dialog p {
 }
 #report .practices-foot p {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 15px;
+  font-weight: 600;
 }
 .article-link {
   display: inline-flex;
   align-items: center;
-  height: 42px;
-  padding: 0 18px;
-  border: 1.5px solid var(--bc-press);
+  height: 44px;
+  padding: 0 20px;
+  border: 2px solid var(--bc-accent);
   border-radius: 12px;
   background: var(--bc-card);
   color: var(--bc-ink);
@@ -3671,9 +3723,6 @@ dialog p {
   .break-last {
     order: 6;
   }
-  #breakDialog .break-spend {
-    order: 7;
-  }
   #breakDialog .upgrade-card {
     padding: 10px;
   }
@@ -3749,11 +3798,38 @@ dialog p {
   .assurance-groups {
     grid-template-columns: minmax(0, 1fr);
   }
-  #practiceTiles {
-    grid-template-columns: 1fr 1fr;
+  #practices {
+    padding: 16px 14px;
   }
-  .practice-tile:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
+  #report #practicesTitle {
+    font-size: 19px;
+  }
+  #practiceTiles {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .practice-tile {
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 3px;
+    padding: 12px;
+  }
+  .practice-top {
+    display: contents;
+  }
+  .practice-icon {
+    grid-row: 1 / span 4;
+    width: 44px;
+    height: 44px;
+  }
+  .practice-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+  #report .practice-name,
+  #report .practice-action {
+    grid-column: 2;
+    margin: 0;
   }
   #blunderCollection {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));

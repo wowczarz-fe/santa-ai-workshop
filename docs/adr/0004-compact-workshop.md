@@ -17,7 +17,7 @@ Players need to see where work waits, where the elves are, and what reaches the 
 
 Show letters, toys, human checking and the sleigh in four compact columns, with shared progress above and cocoa below. The normal desktop workshop fits at 1280 by 800 pixels. Narrow screens can move horizontally between columns; short or enlarged views can scroll.
 
-Use pictures, numbers and short labels for the resting view. Explanations open on hover, keyboard focus or a dedicated information button. These explanations leave the clock running. Cases and guidance use overlays beside the relevant station, keeping its work visible. Only guidance pauses the clock, independently of the player's pause.
+Use pictures, numbers and short labels for the resting view. Explanations open on hover, keyboard focus or a dedicated information button. These explanations leave the clock running. Cases and guidance use overlays beside the specific pile or control, joined by a visible pointer. Placement keeps both the source elves and their destination available. Pointers follow scrolling and resizing without receiving input. Only guidance pauses the clock, independently of the player's pause.
 
 Keep controls stable while their values change. Elves support dragging and selecting a destination by tap. A move shows actual queue capacities before and after it, including unchanged capacities.
 

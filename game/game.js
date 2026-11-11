@@ -1,14 +1,20 @@
 (() => {
   "use strict";
-  const machineArt = [
-    `<rect x="17" y="19" width="63" height="48" rx="7" fill="#2d2926"/><rect x="24" y="25" width="49" height="30" rx="3" fill="#dff0ef"/><path d="M32 34h30M32 41h21M32 48h26" stroke="#7ca18e" stroke-width="3"/><rect x="34" y="8" width="32" height="17" rx="2" fill="#fff"/><path d="M39 12l11 8 11-8" fill="none" stroke="#b6accd" stroke-width="2"/><circle cx="72" cy="61" r="2" fill="#e83f35"/>`,
-    `<path d="M20 66V23h15v43M65 66V23h15v43M20 23h60" stroke="#2d2926" stroke-width="8" fill="none"/><path d="M50 25v13l-8 8m8-8 8 8" stroke="#286e73" stroke-width="6" fill="none"/><rect x="35" y="51" width="30" height="23" rx="3" fill="#e83f35"/><path d="M50 51v23m-15-12h30" stroke="#f9c6ae" stroke-width="4"/>`,
-    `<rect x="20" y="38" width="43" height="32" rx="4" fill="#8ed0d2"/><path d="M41 38v32m-21-17h43" stroke="#fff" stroke-width="4"/><circle cx="66" cy="31" r="17" fill="#dff0ef" stroke="#2d2926" stroke-width="5"/><path d="M78 44l12 15" stroke="#2d2926" stroke-width="7" stroke-linecap="round"/><path d="M58 31l6 6 10-12" stroke="#6e9b84" stroke-width="3" fill="none"/>`,
-  ];
-  function elfSVG(i) {
-    const colour = ["#799c8a", "#65a9ac", "#d7896e"][i % 3];
-    return `<svg viewBox="0 0 42 48" aria-hidden="true"><path d="M8 47q0-19 13-19t13 19" fill="${colour}"/><path d="M14 32l7 9 7-9" fill="#eee9de"/><path d="M10 18l-7-3 6 10m23-7 7-3-6 10" fill="#e9ba91"/><circle cx="21" cy="21" r="12" fill="#efc9a4"/><path d="M8 16L21 1l12 15" fill="${colour}"/><rect x="7" y="14" width="28" height="5" rx="2" fill="#f4f0e7"/><circle cx="17" cy="23" r="1.4" fill="#2d2926"/><circle cx="25" cy="23" r="1.4" fill="#2d2926"/><path d="M18 28q3 3 6 0" fill="none" stroke="#a46651" stroke-width="1.5"/></svg>`;
-  }
+  const look =
+    new URLSearchParams(location.search).get("look") === "paper"
+      ? "paper"
+      : "polish";
+  document.body.dataset.look = look;
+  const Art =
+    look === "polish" && typeof PolishArt !== "undefined"
+      ? PolishArt
+      : PaperArt;
+  document.body.insertAdjacentHTML(
+    "afterbegin",
+    PaperArt.defs + (Art === PaperArt ? "" : Art.defs) + SharedArt.defs,
+  );
+  const elfSVG = Art.elf;
+  const artSymbol = (id) => Art.symbol?.(id) || id;
 
   const $ = (id) => document.getElementById(id);
   const text = (id, value) => {
@@ -17,18 +23,19 @@
   const money = (n) => `£${Math.round(n).toLocaleString()}`;
   const params = new URLSearchParams(location.search);
   const requestedSeed = params.get("seed");
-  const seed =
+  const fixedSeed =
     requestedSeed !== null && Number.isFinite(Number(requestedSeed))
       ? Number(requestedSeed)
-      : 2026;
-  let version = ["piles", "cases", "calm"].includes(params.get("version"))
-    ? params.get("version")
-    : "cases";
-  const versionNames = {
-    piles: "A · Workshop decisions",
-    cases: "B · Extra checker questions",
-    calm: "C · Slower with questions",
-  };
+      : null;
+  let seed;
+  function nextSeed() {
+    return (
+      fixedSeed ??
+      (globalThis.crypto?.getRandomValues
+        ? crypto.getRandomValues(new Uint32Array(1))[0]
+        : Math.floor(Math.random() * 4294967296))
+    );
+  }
   const queueIds = [
     ["letters", "clarify"],
     ["orders"],
@@ -56,16 +63,99 @@
     lastArrival = null,
     notice = null,
     newsSeen = new Set(),
-    rateChanges = new Map();
+    rateChanges = new Map(),
+    spareHints = new Map();
   let infoAnchor = null,
     infoKey = null,
     infoPinned = false,
     drag = null,
-    suppressClick = 0;
+    suppressClick = 0,
+    nativeDragElf = null;
+  let lastChoice = null,
+    observedRight = 0,
+    observedRun = null,
+    caughtSnapshot = null,
+    caughtUntil = 0,
+    toastUntil = 0;
+  let personalBest = null,
+    collectedBlunders = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem("workshop-personal-best"));
+    if (saved && Number.isFinite(saved.points)) personalBest = saved;
+    const collection = JSON.parse(localStorage.getItem("workshop-blunders"));
+    if (Array.isArray(collection))
+      collectedBlunders = collection.filter(
+        (item) => item && item.id !== undefined && item.name,
+      );
+  } catch {}
   const make = (tag, cls, content) => {
     const node = document.createElement(tag);
     if (cls) node.className = cls;
     if (content !== undefined) node.textContent = content;
+    return node;
+  };
+  // Interface icons and toys are drawings; the rules' emoji icon fields are never printed.
+  const icon = (name, cls) => SharedArt.icon(name, cls) || "";
+  const toyArt = (name) =>
+    SharedArt.toy(name) || PaperArt.toy(name) || icon("gift");
+  const iconText = (node, name, value) => {
+    node.innerHTML = icon(name);
+    node.append(make("span", "", value));
+  };
+  // Free: nothing to do, or watching an automated machine (the rules may call it plain idle).
+  const isIdle = (elf) =>
+    elf.station < 3 &&
+    !elf.resting &&
+    (/watch/.test(elf.doing) || /^(nothing to do|idle|free)/.test(elf.doing));
+  // Free to move: idle at a reading or toy station the AI runs alone. Anywhere else an idle elf
+  // is waiting for work, so the player is not invited to pull checkers away.
+  const isFree = (elf) =>
+    isIdle(elf) && elf.station < 2 && view.ai[elf.station] === 2;
+  const trendArrow =
+    '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.5V2M2.5 5.5 6 2l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const starRow = (stars, of = 3) =>
+    icon("star", "on").repeat(stars) + icon("star-empty").repeat(of - stars);
+  // A small "i" button that shows or hides longer words in place: works with touch and keyboard.
+  // buttonHost gets the button, textHost the words (hidden until asked for).
+  function addMore(buttonHost, words, label, textHost = buttonHost) {
+    if (!words) return;
+    const more = make("p", "more-text", words);
+    more.hidden = true;
+    const button = make("button", "info-button more-toggle", "i");
+    button.type = "button";
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-expanded", "false");
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      more.hidden = !more.hidden;
+      button.setAttribute("aria-expanded", String(!more.hidden));
+    });
+    buttonHost.classList.add("more-host");
+    buttonHost.append(button);
+    textHost.append(more);
+  }
+  // A paragraph showing its first sentence, with a button that shows the whole of it.
+  function addExpand(paragraph, short, full, label) {
+    paragraph.moreButton?.remove();
+    paragraph.textContent = short;
+    if (!full || full === short) return;
+    const button = make("button", "info-button more-toggle", "i");
+    button.type = "button";
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-expanded", "false");
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = button.getAttribute("aria-expanded") !== "true";
+      paragraph.textContent = open ? full : short;
+      button.setAttribute("aria-expanded", String(open));
+    });
+    paragraph.after(button);
+    paragraph.moreButton = button;
+  }
+  const revealedToy = (toy, cls) => {
+    const node = make("span", cls);
+    node.innerHTML = toyArt(toy.name);
+    node.append(make("span", "", toy.name));
     return node;
   };
   const infoButton = (key, label = "More information") => {
@@ -74,12 +164,22 @@
     b.setAttribute("aria-label", label);
     return b;
   };
+  document.querySelectorAll("[name=look]").forEach((radio) => {
+    radio.checked = radio.value === look;
+    radio.disabled =
+      radio.value === "polish" && typeof PolishArt === "undefined";
+    radio.addEventListener("change", () => {
+      const url = new URL(location.href);
+      url.searchParams.set("look", radio.value);
+      location.replace(url);
+    });
+  });
   const actionGroups = new Map();
   for (let s = 0; s < 3; s++) {
     const station = make("section", "station");
     station.id = `station${s}`;
     station.dataset.destination = s;
-    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine" aria-hidden="true"><svg viewBox="0 0 100 80">${machineArt[s]}</svg></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine">${Art.scene(s)}<strong class="station-rate" id="rate${s}"></strong><span class="station-bottleneck" id="bottleneck${s}"></span><span class="capacity-label">${["Reading", "Toy making", "Dispatch at current checking"][s]}</span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
     station
       .querySelector(".column-heading")
       .append(
@@ -92,7 +192,7 @@
       q.dataset.info = `queue:${id}`;
       q.dataset.help = `queue:${id}`;
       q.innerHTML =
-        '<span class="queue-name"></span><strong class="queue-count"></strong><span class="queue-picture"><span class="stack"></span></span><span class="queue-rate"></span><progress max="1" value="0"></progress>';
+        '<span class="queue-tag"><span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span><span class="queue-trend" role="img"></span></strong></span><span class="queue-picture"><span class="stack"></span></span><span class="queue-rate"></span><progress max="1" value="0"></progress>';
       $(`piles${s}`).append(q);
     }
     const addGroup = (key, node) => {
@@ -110,7 +210,7 @@
         const b = make("button", "switch-button");
         b.dataset.ai = `${s},${level}`;
         b.dataset.info = `ai:${s}:${level}`;
-        b.innerHTML = `<span class="switch-art" aria-hidden="true">${[elfSVG(s), `${elfSVG(s)}<span>🤖</span>`, "🤖"][level]}</span><span class="switch-label">${["By hand", "Assist", "Automate"][level]}</span>`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${Art.icon(["ic-hand", "ic-assist", "ic-cog"][level])}</span><span class="switch-label">${["By hand", "Assist", "Automate"][level]}</span>`;
         position.append(
           b,
           infoButton(
@@ -120,10 +220,15 @@
         );
         sw.append(position);
       }
+      sw.dataset.kind = "ai";
       addGroup(`ai${s}`, sw);
+      const caption = make("span", "mode-caption");
+      caption.id = `mode${s}`;
+      $(`controls${s}`).append(caption);
     }
     if (s === 0) {
-      const b = make("button", "small-action", "💬 Ask the child");
+      const b = make("button", "small-action ask-toggle");
+      b.innerHTML = `${icon("ask")}<span class="toggle-label">Ask the child</span><span class="toggle-track" aria-hidden="true"><span class="toggle-knob"></span></span><span class="toggle-state" aria-hidden="true"></span>`;
       b.dataset.action = "ask";
       b.dataset.info = "action:ask";
       addGroup("ask", b);
@@ -135,16 +240,15 @@
         const b = make("button", "switch-button");
         b.dataset.checking = level;
         b.dataset.info = `checking:${level}`;
-        b.innerHTML = `<span class="switch-art" aria-hidden="true">${["🔎 ·", "🔎 ◆", "🔎 ▦"][level]}</span><span class="switch-label">${["A few", "Risky", "All"][level]}</span>`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${Art.icon(["ic-few", "ic-risky", "ic-all"][level])}</span><span class="switch-label">${["A few", "Risky", "All"][level]}</span>`;
         position.append(b, infoButton(`checking:${level}`));
         sw.append(position);
       }
+      sw.dataset.kind = "checking";
       addGroup("checking", sw);
-      for (const [key, label] of [
-        ["bypass", "↗ Let through"],
-        ["train", "🎓 Train checkers"],
-      ]) {
-        const b = make("button", "small-action", label);
+      for (const key of ["bypass"]) {
+        const b = make("button", "small-action");
+        b.innerHTML = `${icon("let-through")}<span class="bypass-label">Let through</span>`;
         b.dataset.action = key;
         b.dataset.info = `action:${key}`;
         addGroup(key, b);
@@ -156,11 +260,248 @@
       $(`controls${s}`).append(vigilance);
     }
   }
-  for (const [id, label] of Object.entries(versionNames)) {
-    const b = make("button", "version-option", label);
-    b.dataset.version = id;
-    $("versions").append(b);
+  for (let s = 0; s < 3; s++) {
+    const station = $(`station${s}`),
+      heading = station.querySelector(".column-heading");
+    const rate = make("div", "paper-rate");
+    rate.append(
+      $(`rate${s}`),
+      $(`bottleneck${s}`),
+      station.querySelector(".capacity-label"),
+    );
+    heading.append(rate);
+    const scene = make("div", "paper-scene");
+    scene.append(station.querySelector(".machine"), $(`piles${s}`));
+    const belt = make("div", "paper-belt");
+    belt.setAttribute("aria-hidden", "true");
+    const floor = make("div", "paper-floor");
+    floor.append(
+      station.querySelector(".crew-heading"),
+      $(`elves${s}`),
+      $(`spare${s}`),
+      station.querySelector(".move-target"),
+    );
+    station.append(heading, scene, belt, floor, $(`controls${s}`));
   }
+  const cargoBadge = make("button", "cargo-badge");
+  cargoBadge.id = "cargoBadge";
+  cargoBadge.dataset.help = "cargo";
+  cargoBadge.dataset.info = "cargo";
+  $("sleigh").querySelector(".column-heading").append(cargoBadge);
+  const sleigh = $("sleigh"),
+    sleighScene = make("div", "paper-scene paper-sleigh-scene");
+  sleigh.querySelector(".sleigh-art").innerHTML = Art.scene(3);
+  sleighScene.append(
+    sleigh.querySelector(".sleigh-art"),
+    sleigh.querySelector(".sleigh-total"),
+    $("runStars"),
+    $("arrival"),
+  );
+  const sleighBelt = make("div", "paper-belt");
+  sleighBelt.setAttribute("aria-hidden", "true");
+  const sleighControls = make("div", "controls paper-sleigh-controls");
+  sleighControls.append($("wrongDelivery"), $("recentGifts"), $("sleighNote"));
+  sleigh.append(sleighScene, sleighBelt, $("cocoa"), sleighControls);
+  $("cocoa").classList.add("paper-floor");
+  $("cocoa").querySelector(".cocoa-label > span").innerHTML =
+    Art !== PaperArt
+      ? Art.icon("mug")
+      : '<svg viewBox="0 0 80 80" aria-hidden="true"><use href="#mug"/></svg>';
+  $("arrivalIcon").innerHTML = icon("gift");
+  $("stationPicker").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-station-page]");
+    if (!button) return;
+    const station =
+      Number(button.dataset.stationPage) === 3
+        ? $("sleigh")
+        : $(`station${button.dataset.stationPage}`);
+    $("board").scrollTo({
+      left: station.offsetLeft - $("board").offsetLeft,
+      behavior: "instant",
+    });
+  });
+  $("board").addEventListener(
+    "scroll",
+    () => {
+      const columns = [...$("board").children];
+      const current = columns.reduce(
+        (best, node, i) =>
+          Math.abs(
+            node.getBoundingClientRect().left -
+              $("board").getBoundingClientRect().left,
+          ) <
+          Math.abs(
+            columns[best].getBoundingClientRect().left -
+              $("board").getBoundingClientRect().left,
+          )
+            ? i
+            : best,
+        0,
+      );
+      $("stationPicker")
+        .querySelectorAll("button")
+        .forEach((button, i) =>
+          button.setAttribute("aria-pressed", i === current),
+        );
+    },
+    { passive: true },
+  );
+  // The three goals of the run under way, one star each.
+  const goalSlots = {};
+  for (const [id, art] of [
+    ["full", "gift"],
+    ["right", "wrong-gift"],
+    ["cost", "budget"],
+  ]) {
+    const slot = make("button", "hud-slot");
+    slot.dataset.goal = id;
+    slot.dataset.help = `goal:${id}`;
+    slot.dataset.info = `goal:${id}`;
+    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i></span><span class="hud-note"></span>`;
+    $("goals").append(slot);
+    goalSlots[id] = slot;
+  }
+  const goalsNote = make("span", "goals-note");
+  $("goals").append(goalsNote);
+  function paintGoals() {
+    text(
+      "goalsTitle",
+      `Sleigh ${view.run.number} of ${view.run.of}: a star for each goal`,
+    );
+    const waiting = (view.run.goals || []).filter((g) => g.waiting && g.note);
+    // While a recall card is open, the wrong-gift goal previews the count after the recall.
+    const c = view.case;
+    const recall =
+      c && caseOpen && !c.resolving
+        ? recallCount(
+            c,
+            c.options.find((o) => o.id === "bringBack" && o.available),
+          )
+        : null;
+    const wrongGoal = (view.run.goals || []).find((g) => g.id === "right");
+    const after =
+      recall !== null && wrongGoal ? Math.max(0, wrongGoal.now - recall) : null;
+    goalSlots.right.classList.toggle("hud-previewing", after !== null);
+    goalSlots.right.querySelector(".hud-preview").textContent =
+      after !== null ? `${after} after recall` : "";
+    goalsNote.textContent =
+      after !== null
+        ? `Right gifts: ${after} wrong after recall`
+        : waiting.length
+          ? `${waiting.map((g) => g.name).join(", ")}: ${waiting[0].note}`
+          : "";
+    for (const goal of view.run.goals || []) {
+      const slot = goalSlots[goal.id];
+      if (!slot) continue;
+      const figure = (n) => (goal.id === "cost" ? money(n) : String(n));
+      slot.querySelector(".hud-name > span").textContent = goal.name;
+      slot.querySelector(".hud-figures b").textContent = figure(goal.now);
+      slot.querySelector(".hud-need").textContent = ` / ${figure(goal.need)}`;
+      slot.querySelector(".hud-unit").textContent =
+        goal.id === "right" ? " wrong" : "";
+      // met: lit star; waiting: inside the limit but the sleigh is not full enough yet;
+      // failed: a limit goal not met; open: the full-sleigh goal still filling.
+      const state = goal.met
+        ? "met"
+        : goal.waiting
+          ? "waiting"
+          : goal.id === "full"
+            ? "open"
+            : "failed";
+      if (slot.dataset.state !== state) {
+        slot.dataset.state = state;
+        slot.querySelector(".hud-star").innerHTML = icon(
+          state === "waiting" ? "star-empty" : "star",
+        );
+      }
+      slot.querySelector(".hud-note").textContent =
+        goal.waiting && goal.note ? goal.note : "";
+      slot
+        .querySelector(".hud-bar i")
+        .style.setProperty(
+          "--fill",
+          Math.min(1, goal.now / Math.max(1, goal.need)),
+        );
+      slot.setAttribute(
+        "aria-label",
+        `${goal.name}: ${figure(goal.now)} of ${figure(goal.need)}, ${{ met: "star earned so far", waiting: goal.note, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
+      );
+    }
+  }
+  // A wrong gift lights up, for about three seconds, the control that would have stopped it.
+  // The training and update choices live on the break card, so their hint goes on the sleigh.
+  const hintWords = {
+    ask: "Ask the child",
+    checking: "Check the risky ones",
+    ai0: "Try Assist",
+    ai1: "Try Assist",
+    cocoa: "Cocoa break",
+    train: "Train or rest them",
+    update: "Test updates first",
+    vigilance: "Train or rest them",
+  };
+  let mistakeHint = null,
+    pendingCause = null;
+  const hintLabel = make("span", "mistake-hint-label");
+  hintLabel.setAttribute("role", "status");
+  function showMistakeHint(control) {
+    if (!hintWords[control]) return;
+    mistakeHint = { control, until: performance.now() + 3000 };
+    setTimeout(paintMistakeHint, 3100);
+  }
+  function paintMistakeHint() {
+    let target = null;
+    if (mistakeHint && mistakeHint.until > performance.now() && !view.end) {
+      const control = mistakeHint.control;
+      target =
+        control === "cocoa"
+          ? $("cocoa")
+          : control === "vigilance"
+            ? $("vigilance")
+            : actionGroups.get(control);
+      if (!target?.getClientRects().length) target = $("wrongDelivery");
+      if (!target.getClientRects().length) target = $("sleigh");
+    }
+    document
+      .querySelectorAll(".mistake-hint")
+      .forEach(
+        (node) => node !== target && node.classList.remove("mistake-hint"),
+      );
+    const column = target?.closest(".station");
+    $("stationPicker")
+      .querySelectorAll("[data-station-page]")
+      .forEach((tab) =>
+        tab.classList.toggle(
+          "mistake-hint-tab",
+          !!column &&
+            Number(tab.dataset.stationPage) ===
+              (column.id === "sleigh" ? 3 : Number(column.id.slice(7))),
+        ),
+      );
+    if (!target) {
+      hintLabel.remove();
+      return;
+    }
+    target.classList.add("mistake-hint");
+    hintLabel.textContent = hintWords[mistakeHint.control];
+    if (hintLabel.parentNode !== target) target.append(hintLabel);
+  }
+  // How sharp the checkers are, from the rules' vigilance state value.
+  const attentionOf = (state) =>
+    /wav|not look|asleep/.test(state)
+      ? "closed"
+      : /relax|drift/.test(state)
+        ? "drifting"
+        : "sharp";
+  let lastAttention = "sharp";
+  const eyes = {
+    sharp:
+      '<svg class="ui-icon attention-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/></svg>',
+    drifting:
+      '<svg class="ui-icon attention-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 18.5 12 18.5 21.5 12 21.5 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2.5 12Q12 7.5 21.5 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M8.4 11.2a3.6 3.6 0 0 0 7.2 0z" fill="currentColor"/></svg>',
+    closed:
+      '<svg class="ui-icon attention-eye" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 10Q12 17.5 21 10"/><path d="M6.2 13.2 4.6 15.6M10 14.9l-.6 2.7M14 14.9l.6 2.7M17.8 13.2l1.6 2.4"/></g></svg>',
+  };
   const elfNodes = [];
   function buildElves() {
     for (const node of elfNodes) node.remove();
@@ -171,15 +512,16 @@
       b.draggable = true;
       b.dataset.elf = i;
       b.dataset.info = `elf:${i}`;
-      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><progress class="fatigue" max="100" value="0"></progress><span class="elf-doing" aria-hidden="true"></span>`;
+      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><span class="elf-task"></span><progress class="fatigue" max="100" value="0"></progress><span class="elf-doing" aria-hidden="true"></span>`;
       const more = infoButton(`elf:${i}`, `About ${elf.name}`);
       more.classList.add("elf-info");
       wrap.append(b, more);
       elfNodes.push(wrap);
     });
   }
-  function reset(showIntro = true) {
-    game = new Workshop({ seed, version, guided });
+  function reset(showIntro = true, freshSeed = true) {
+    if (freshSeed) seed = nextSeed();
+    game = new Workshop({ seed, guided });
     view = game.view();
     started = false;
     manualPaused = false;
@@ -194,16 +536,28 @@
     newsSeen = new Set();
     notice = null;
     rateChanges.clear();
+    mistakeHint = null;
+    pendingCause = null;
+    spareHints.clear();
     closeInfo();
     buildElves();
     $("walkthrough").checked = guided;
     $("report").close();
+    $("breakDialog").close();
+    lastChoice = null;
+    observedRight = 0;
+    observedRun = null;
+    caughtSnapshot = null;
+    $("celebration").replaceChildren();
+    $("milestoneToast").hidden = true;
     $("restartDialog").close();
     const url = new URL(location.href);
-    url.searchParams.set("seed", seed);
-    url.searchParams.set("version", version);
+    if (fixedSeed !== null) url.searchParams.set("seed", fixedSeed);
+    else url.searchParams.delete("seed");
+    url.searchParams.delete("version");
     history.replaceState(null, "", url);
     paint();
+    $("board").scrollLeft = 0;
     if (showIntro && !$("intro").open) $("intro").showModal();
   }
   function perform(action) {
@@ -240,23 +594,85 @@
   }
   function paint() {
     view = game.view();
-    text("right", `${view.sleigh.right} / ${view.target}`);
-    $("goal").max = view.target;
-    $("goal").value = view.sleigh.right;
-    text("wrong", view.sleigh.wrong);
+    paintGoals();
     text("budget", money(view.budget.left));
-    const left = Math.ceil(view.duration - view.t);
+    text("runLabel", view.run ? `${view.run.number}/${view.run.of}` : "");
+    if ($("cargoBadge").dataset.cargo !== view.run.cargo.id) {
+      $("cargoBadge").dataset.cargo = view.run.cargo.id;
+      iconText(
+        $("cargoBadge"),
+        `cargo-${view.run.cargo.id}`,
+        view.run.cargo.name,
+      );
+    }
+    $("cargoBadge").setAttribute(
+      "aria-label",
+      `${view.run.cargo.name}. About this cargo.`,
+    );
+    const runStars = (view.run?.stars || []).join();
+    if ($("runStars").dataset.value !== runStars) {
+      $("runStars").dataset.value = runStars;
+      $("runStars").innerHTML = (view.run?.stars || [])
+        .map(
+          (stars, i) =>
+            `<span class="run-star-set" aria-label="Sleigh ${i + 1}: ${stars} stars"><b>${i + 1}</b>${starRow(stars)}</span>`,
+        )
+        .join("");
+    }
+    const doors = $("adventRuns");
+    if (doors.children.length !== view.run.of) {
+      doors.replaceChildren(
+        ...Array.from({ length: view.run.of }, (_, i) => {
+          const door = make("div", "run-door");
+          door.append(
+            make("span", "door-number", i + 1),
+            make("span", "door-stars"),
+          );
+          return door;
+        }),
+      );
+    }
+    [...doors.children].forEach((door, i) => {
+      const stars = view.run.stars[i];
+      door.dataset.state =
+        stars !== undefined
+          ? "done"
+          : i + 1 === view.run.number
+            ? "current"
+            : "later";
+      const doorStars = door.querySelector(".door-stars");
+      if (doorStars.dataset.value !== String(stars)) {
+        doorStars.dataset.value = String(stars);
+        doorStars.innerHTML = stars === undefined ? "" : starRow(stars);
+      }
+      door.setAttribute(
+        "aria-label",
+        `Sleigh ${i + 1}${stars === undefined ? (i + 1 === view.run.number ? ", current" : ", upcoming") : `, ${stars} stars`}`,
+      );
+    });
+    $("paceFill").max = view.target;
+    $("paceFill").value = view.pace.projected;
+    $("paceFill").setAttribute(
+      "aria-label",
+      `Projected ${Math.round(view.pace.projected)} of ${view.target} correct gifts`,
+    );
+    $("countdownRing").style.setProperty(
+      "--remaining",
+      Math.max(0, view.run.leavesIn / (view.duration / view.run.of)),
+    );
+    const left = Math.ceil(view.run?.leavesIn ?? view.duration - view.t);
     text(
       "clock",
       `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`,
     );
     text(
       "mission",
-      `Deliver ${view.target} correct gifts in ${Math.round(view.duration / 60)} minutes.`,
+      `Deliver ${view.target} correct gifts${view.run ? ` across ${view.run.of} sleighs` : ""} in ${Math.round(view.duration / 60)} minutes.`,
     );
-    text("versionLabel", versionNames[version]);
-    for (const b of $("versions").children)
-      b.setAttribute("aria-pressed", String(b.dataset.version === version));
+    text(
+      "paceLabel",
+      `Projected ${Math.round(view.pace.projected)} / ${view.target} overall`,
+    );
     $("pause").disabled = !started || !!view.end;
     text("pause", manualPaused ? "Resume" : "Pause");
     text(
@@ -267,15 +683,25 @@
           ? "Departure"
           : manualPaused
             ? "Paused by you"
-            : view.moment
-              ? "Paused for guidance"
-              : document.hidden
-                ? "Paused while away"
-                : "",
+            : view.choice
+              ? "Paused for your choice"
+              : view.moment
+                ? "Paused for guidance"
+                : document.hidden
+                  ? "Paused while away"
+                  : "",
     );
     for (let s = 0; s < 3; s++) {
       const station = view.stations[s];
       text(`staff${s}`, `${station.working} working · ${station.idle} idle`);
+      const capacity = station.rate;
+      text(`rate${s}`, `${Math.round(capacity)} a minute`);
+      const bottleneck = $(`bottleneck${s}`),
+        isSlowest = view.pace.slowest === s;
+      if (bottleneck.childNodes.length !== (isSlowest ? 2 : 0)) {
+        if (isSlowest) iconText(bottleneck, "bottleneck", "Bottleneck");
+        else bottleneck.replaceChildren();
+      }
       $(`station${s}`).classList.toggle(
         "faulty",
         s === 1 && !!view.incident?.known,
@@ -288,16 +714,22 @@
         const q = view.queues[id],
           node = $(`queue-${id}`);
         node.querySelector(".queue-name").textContent = q.name;
-        node.querySelector(".queue-count").textContent =
+        node.querySelector(".queue-amount").textContent =
           `${q.parcels.length}/${q.limit}`;
+        const trend = node.querySelector(".queue-trend");
+        if (!trend.firstChild) trend.innerHTML = trendArrow;
+        trend.hidden = !q.trend;
+        trend.dataset.trend = q.trend || "";
+        trend.setAttribute("aria-label", q.trend ? `Pile ${q.trend}` : "");
         node.classList.toggle("blocked", !!q.blocked);
         node.classList.toggle("full", q.parcels.length >= q.limit);
         node.querySelector("progress").value = q.progress;
         const change = rateChanges.get(id);
+        node.querySelector(".queue-rate").hidden = id === "pass";
         node.querySelector(".queue-rate").textContent =
           change && change.until > performance.now()
-            ? `${Math.round(change.after - change.before) > 0 ? "+" : ""}${Math.round(change.after - change.before)}/min${Math.round(change.after - change.before) === 0 ? " unchanged" : ""}`
-            : `${Math.round(q.rate)}/min`;
+            ? `${Math.round(change.after - change.before) > 0 ? "+" : ""}${Math.round(change.after - change.before)} a minute${Math.round(change.after - change.before) === 0 ? " unchanged" : ""}`
+            : `${Math.round(q.rate)} a minute`;
         node.dataset.delta =
           change && change.after < change.before ? "down" : "up";
         node.classList.toggle(
@@ -316,8 +748,14 @@
             const item = make(
               "i",
               `${p.big ? "big " : ""}${p.suspect ? "suspect " : ""}${p.suspect === "batch" ? "batch" : ""}`,
-              id === "letters" || id === "clarify" ? "✉" : "🎁",
             );
+            // Parcels: a big gift is the gold parcel with a "big" tag; others red or green.
+            item.innerHTML = ["letters", "clarify", "orders"].includes(id)
+              ? Art.pile?.(id, index) ||
+                Art.icon(id === "orders" ? "parcel-r" : "env")
+              : Art.icon(
+                  p.big ? "parcel-k" : index % 2 ? "parcel-g" : "parcel-r",
+                );
             item.setAttribute("aria-hidden", "true");
             const count = Math.min(q.parcels.length, 18);
             item.style.setProperty(
@@ -347,11 +785,86 @@
       b.disabled = !started || !!view.end || elf.resting;
       b.setAttribute(
         "aria-label",
-        `${elf.name}, ${elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
+        `${elf.name}, ${isFree(elf) ? "free to move" : isIdle(elf) ? "waiting for work" : elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
       );
-      b.querySelector(".elf-doing").textContent =
-        elf.station === 3 ? "☕" : elf.doing === "nothing to do" ? "◌" : "⚙";
+      const role = elf.doing.includes("asking")
+        ? ["role-asking", "asking"]
+        : isFree(elf)
+          ? ["role-idle", "free to move", "free"]
+          : isIdle(elf)
+            ? ["role-idle", "waiting", "waiting"]
+            : elf.doing.includes("confirm")
+              ? ["role-confirming", "confirm"]
+              : elf.station === 3 || elf.resting
+                ? ["role-resting", "resting"]
+                : elf.doing.includes("reading")
+                  ? ["role-reading", "reading"]
+                  : elf.doing.includes("making")
+                    ? ["role-making", "making"]
+                    : elf.doing.includes("checking")
+                      ? ["role-checking", "checking"]
+                      : ["role-making", "working"];
+      const doing = b.querySelector(".elf-doing");
+      if (doing.dataset.icon !== role[0]) {
+        doing.dataset.icon = role[0];
+        doing.innerHTML = icon(role[0]);
+      }
+      b.querySelector(".elf-task").textContent = role[1];
+      b.dataset.role = role[2] || role[1];
+      b.querySelector(".elf-eyes").setAttribute(
+        "href",
+        "#" + artSymbol(elf.tired >= 55 ? "eyes-tired" : "eyes"),
+      );
+      b.querySelector(".elf-prop").setAttribute(
+        "href",
+        "#" +
+          artSymbol(
+            {
+              reading: "p-letter",
+              making: "p-hammer",
+              checking: "p-glass",
+              confirm: "p-confirming",
+              watching: "p-watching",
+              asking: "p-asking",
+              resting: "p-resting",
+            }[role[1]] || "",
+          ),
+      );
     });
+    for (let station = 0; station < 4; station++)
+      $(`elves${station}`).style.setProperty(
+        "--crew-count",
+        Math.max(
+          1,
+          Math.min(
+            4,
+            view.elves.filter((elf) => elf.station === station).length,
+          ),
+        ),
+      );
+    for (let station = 0; station < 2; station++) {
+      text(
+        `mode${station}`,
+        ["Elves do the work", "Elves confirm each", "Machine works alone"][
+          view.ai[station]
+        ],
+      );
+      $(`mode${station}`).hidden =
+        !started || !view.actions[`ai${station}`].unlocked;
+      const spare = view.elves.filter(
+        (elf) => elf.station === station && isFree(elf),
+      );
+      text(
+        `spare${station}`,
+        spare.length &&
+          (view.ai[station] === 2 ||
+            (spareHints.get(station) || 0) > performance.now())
+          ? `${spare.length} free to move · help with checks`
+          : "",
+      );
+      $(`spare${station}`).style.top =
+        `${$(`elves${station}`).offsetTop + $(`elves${station}`).offsetHeight + 3}px`;
+    }
     document
       .querySelectorAll("[data-destination]")
       .forEach((node) =>
@@ -377,6 +890,15 @@
       const [s, l] = b.dataset.ai.split(",").map(Number);
       b.setAttribute("aria-pressed", String(view.ai[s] === l));
     });
+    for (let station = 0; station < 2; station++)
+      actionGroups
+        .get(`ai${station}`)
+        .querySelector(".switch")
+        .style.setProperty("--selected", view.ai[station]);
+    actionGroups
+      .get("checking")
+      .querySelector(".switch")
+      .style.setProperty("--selected", view.checking);
     document
       .querySelectorAll("[data-checking]")
       .forEach((b) =>
@@ -385,31 +907,76 @@
           String(view.checking === Number(b.dataset.checking)),
         ),
       );
-    document
-      .querySelector('[data-action="ask"]')
-      .setAttribute("aria-pressed", String(view.ask));
-    document.querySelector('[data-action="bypass"]').textContent =
-      `↗ Let through ${view.queues.check.parcels.length}`;
-    text("vigilance", `● ${view.vigilance.state}`);
+    const ask = document.querySelector('[data-action="ask"]');
+    ask.setAttribute("aria-pressed", String(view.ask));
+    ask.querySelector(".toggle-state").textContent = view.ask ? "On" : "Off";
+    document.querySelector('[data-action="bypass"] .bypass-label').textContent =
+      `Let through ${view.queues.check.parcels.length}`;
+    const attention = attentionOf(view.vigilance.state);
+    if ($("vigilance").dataset.attention !== attention) {
+      if (lastAttention === "sharp" && attention !== "sharp" && started)
+        showMistakeHint("vigilance");
+      $("vigilance").dataset.attention = attention;
+      $("vigilance").innerHTML = eyes[attention];
+      $("vigilance").append(
+        make(
+          "span",
+          "attention-label",
+          view.vigilance.name
+            ? `Checkers ${view.vigilance.name}`
+            : {
+                sharp: "Checkers sharp",
+                drifting: "Checkers drifting",
+                closed: "Checkers not looking",
+              }[attention],
+        ),
+      );
+    }
+    lastAttention = attention;
     $("vigilance").hidden = !started || !view.actions.checking.unlocked;
     $("vigilance").dataset.state = view.vigilance.state;
+    const focus = started && !view.end ? view.focus : null;
+    for (let station = 0; station < 3; station++)
+      text(`focus${station}`, focus?.station === station ? focus.text : "");
+    text("cocoaFocus", focus?.station === 3 ? focus.text : "");
+    const focusTarget =
+      focus?.control === "cocoa"
+        ? $("cocoa")
+        : focus?.control === "elves"
+          ? $(`elves${focus.station}`)
+          : actionGroups.get(focus?.control);
+    for (const node of [
+      ...actionGroups.values(),
+      $("elves0"),
+      $("elves1"),
+      $("elves2"),
+      $("cocoa"),
+    ])
+      node.classList.toggle("needs-attention", node === focusTarget);
     text("sleighRight", view.sleigh.right);
     const arrivals = view.sleigh.parcels;
     const newest = arrivals.at(-1);
     if (newest && newest.id !== lastArrival) {
       lastArrival = newest.id;
-      text("arrivalIcon", newest.made?.icon || "🎁");
+      $("arrivalIcon").innerHTML = newest.made
+        ? toyArt(newest.made.name)
+        : icon("gift");
       text(
         "arrivalLabel",
         newest.result === "wrong" ? "Wrong gift aboard" : "Gift loaded",
       );
       $("arrival").classList.toggle("wrong", newest.result === "wrong");
+      $("arrivalBig").hidden = !newest.big;
     }
     const wrong = arrivals.filter((p) => p.result === "wrong").at(-1);
     if (wrong) lastWrong = wrong;
     $("wrongDelivery").hidden = !lastWrong;
     if (lastWrong) {
-      text("wrongToy", lastWrong.made.icon);
+      if ($("wrongToy").dataset.toy !== lastWrong.made.name) {
+        $("wrongToy").dataset.toy = lastWrong.made.name;
+        $("wrongToy").innerHTML = toyArt(lastWrong.made.name);
+      }
+      $("wrongBig").hidden = !lastWrong.big;
       text("wrongName", lastWrong.made.name);
       $("wrongDelivery").dataset.help = "lastWrong";
       $("wrongDelivery").dataset.info = "lastWrong";
@@ -423,6 +990,7 @@
     for (const n of [...view.news].reverse()) {
       if (newsSeen.has(n.id)) continue;
       newsSeen.add(n.id);
+      handleNews(n);
       const priority =
         n.kind === "loaded" && n.check?.result === "wrong"
           ? 4
@@ -450,6 +1018,15 @@
     );
     paintCase();
     paintGuidance();
+    if (started && view.choice)
+      pendingCause = view.choice.report.causes?.[0]?.control ?? null;
+    else if (pendingCause) {
+      showMistakeHint(pendingCause);
+      pendingCause = null;
+    }
+    paintChoice();
+    paintEffects();
+    paintMistakeHint();
     if (infoKey && infoAnchor?.isConnected) renderInfo();
     if (view.end && !ended) {
       ended = true;
@@ -461,40 +1038,533 @@
       showReport();
     }
   }
-  function positionPanel(panel, anchor) {
+  // Break card and end screen: drawings and small builders shared by both.
+  const uiIcon = (name) => SharedArt.icon(name) || "";
+  const iconNode = (name, cls) => {
+    const node = make("span", cls);
+    node.innerHTML = uiIcon(name);
+    node.setAttribute("aria-hidden", "true");
+    return node;
+  };
+  const goalIcons = { full: "gift", right: "wrong-gift", cost: "budget" };
+  const goalFigure = (goal) =>
+    goal.id === "cost"
+      ? `${money(goal.now)} / ${money(goal.need)}`
+      : `${goal.now} / ${goal.need}${goal.id === "right" ? " wrong" : ""}`;
+  const causeIcons = {
+    guessed: "gift-unclear",
+    big: "gift-big",
+    misread: "letter",
+    misMade: "toy",
+    waved: "checks",
+    faulty: "update",
+    tired: "role-tired",
+  };
+  const optionIcons = {
+    update: "update",
+    tested: "test",
+    train: "train",
+    rest: "rest",
+  };
+  // A toy drawn: the one a child wanted, or the wrong one the workshop made.
+  const drawnToy = (name, wanted, cls) => {
+    const node = make("span", cls);
+    node.innerHTML =
+      (wanted ? SharedArt.toy(name) : PaperArt.toy(name)) ||
+      uiIcon(wanted ? "gift" : "wrong-gift");
+    node.setAttribute("aria-hidden", "true");
+    return node;
+  };
+  const sleighArt = () =>
+    look === "polish"
+      ? '<svg viewBox="0 0 280 150" aria-hidden="true"><use href="#polish-sleigh"/></svg>'
+      : uiIcon("sleigh");
+  const breakScene =
+    '<svg viewBox="0 0 940 120" preserveAspectRatio="xMidYMax slice" aria-hidden="true">' +
+    '<circle class="scene-moon" cx="760" cy="44" r="20"/><circle class="scene-moon-shade" cx="769" cy="38" r="17"/>' +
+    '<g class="scene-stars"><circle cx="420" cy="24" r="1.4"/><circle cx="520" cy="48" r="1.2"/><circle cx="700" cy="22" r="1.6"/><circle cx="740" cy="70" r="1.2"/><circle cx="890" cy="66" r="1.4"/><circle cx="350" cy="56" r="1.1"/><circle cx="600" cy="74" r="1"/><circle cx="910" cy="28" r="1.2"/><circle cx="300" cy="30" r="1"/></g>' +
+    '<path class="scene-trail" d="M420 84 C500 72 560 66 610 44"/>' +
+    '<path class="scene-roofs" d="M0 104 L40 96 L80 104 V100 L120 92 L160 100 V108 L200 108 V100 L250 90 L300 100 V104 L360 94 L420 104 V105.6 L470 93.6 L520 105.6 V97.2 L580 80.4 L640 97.2 V102 L700 87.6 L760 102 V94.8 L820 79.2 L880 94.8 V104.4 L940 90 V120 H0Z"/>' +
+    '<g class="scene-windows"><rect x="96" y="106" width="8" height="8"/><rect x="220" y="104" width="8" height="8"/><rect x="236" y="104" width="8" height="8"/><rect x="566" y="102" width="8" height="8"/><rect x="806" y="99.6" width="8" height="8"/><rect x="460" y="109.2" width="8" height="8"/><rect x="690" y="104.4" width="8" height="8"/></g>' +
+    '<path class="scene-roof-line" d="M0 104 L40 96 L80 104 V100 L120 92 L160 100 V108 L200 108 V100 L250 90 L300 100 V104 L360 94 L420 104 V105.6 L470 93.6 L520 105.6 V97.2 L580 80.4 L640 97.2 V102 L700 87.6 L760 102 V94.8 L820 79.2 L880 94.8 V104.4 L940 90"/>' +
+    "</svg>";
+  $("breakScene").innerHTML = breakScene;
+  $("breakDeparture").innerHTML = sleighArt();
+  $("endScene").innerHTML =
+    '<svg class="end-snow" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g>' +
+    [
+      [20, 30],
+      [60, 150],
+      [110, 20],
+      [150, 90],
+      [190, 170],
+      [230, 40],
+      [270, 120],
+      [300, 15],
+      [340, 80],
+      [380, 160],
+      [90, 110],
+      [250, 185],
+      [370, 40],
+    ]
+      .map(
+        ([x, y], i) => `<circle cx="${x}" cy="${y}" r="${1 + (i % 3) * 0.6}"/>`,
+      )
+      .join("") +
+    "</g></svg>" +
+    `<span class="end-sleigh">${sleighArt()}</span>`;
+  $("replay").innerHTML = `${uiIcon("restart")}<span>Play again</span>`;
+  function goalSlot(goal) {
+    const slot = make("div", "goal-slot");
+    slot.dataset.goal = goal.id;
+    slot.dataset.met = String(goal.met);
+    slot.dataset.waiting = String(Boolean(goal.waiting));
+    const marks = make("span", "goal-marks");
+    marks.append(
+      iconNode(goal.met ? "star" : "star-empty", "goal-star"),
+      iconNode(goalIcons[goal.id] || "star", "goal-icon"),
+    );
+    slot.append(
+      marks,
+      make("b", "goal-name", goal.name),
+      make("strong", "goal-figure", goalFigure(goal)),
+      make("small", "goal-text", goal.text),
+    );
+    if (goal.waiting && goal.note)
+      slot.append(make("small", "goal-note", goal.note));
+    slot.setAttribute(
+      "aria-label",
+      `${goal.name}: ${goalFigure(goal)}, ${goal.text}. ${goal.met ? "Star earned" : goal.waiting && goal.note ? `No star yet: ${goal.note}` : "No star"}.`,
+    );
+    slot.setAttribute("role", "group");
+    return slot;
+  }
+  // The three goals of a finished run as small lit or unlit stars, for the end screen.
+  function goalMarks(goals) {
+    const row = make("div", "goal-mini");
+    for (const goal of goals) {
+      const mark = make("span", "goal-mini-mark");
+      mark.innerHTML =
+        uiIcon(goal.met ? "star" : "star-empty") +
+        uiIcon(goalIcons[goal.id] || "star");
+      mark.dataset.met = String(goal.met);
+      mark.dataset.waiting = String(Boolean(goal.waiting));
+      mark.title = `${goal.name}: ${goalFigure(goal)}${goal.met ? ", star earned" : goal.waiting && goal.note ? `, ${goal.note}` : ""}`;
+      row.append(mark);
+    }
+    row.setAttribute(
+      "aria-label",
+      goals.map((g) => `${g.name} ${g.met ? "earned" : "missed"}`).join(", "),
+    );
+    row.setAttribute("role", "img");
+    return row;
+  }
+  function paintCauses(list, causes, none) {
+    list.replaceChildren(
+      ...causes.map((cause) => {
+        const item = make("li", "cause");
+        item.dataset.cause = cause.id;
+        const body = make("div", "cause-body");
+        const head = make("div", "cause-head");
+        head.append(
+          make("b", "", cause.name),
+          make(
+            "span",
+            "cause-figure",
+            `${cause.wrong} wrong · ${money(cause.cost)}`,
+          ),
+        );
+        body.append(head, make("p", "cause-fix", cause.fix));
+        item.append(
+          iconNode(causeIcons[cause.id] || "mistakes", "cause-icon"),
+          body,
+        );
+        return item;
+      }),
+    );
+    if (!causes.length) list.append(make("li", "cause-none", none));
+  }
+  function paintChoice() {
+    const choice = started ? view.choice : null;
+    if (!choice) {
+      $("breakDialog").close();
+      lastChoice = null;
+      return;
+    }
+    if (lastChoice !== choice.id) {
+      lastChoice = choice.id;
+      const report = choice.report;
+      $("nextCargoIcon").innerHTML = uiIcon(`cargo-${choice.next.cargo.id}`);
+      text("nextCargoTitle", choice.next.cargo.name);
+      text("nextCargoText", choice.next.cargo.text);
+      $("nextCargoTarget").replaceChildren(
+        make("b", "", choice.next.target),
+        make("span", "", "right gifts needed"),
+      );
+      text("breakRun", `Run ${report.run} of ${view.run.of}`);
+      text("breakTitle", choice.title);
+      text("breakText", choice.text);
+      text("breakResultTitle", `How run ${report.run} went`);
+      text(
+        "breakCounts",
+        `${report.stars} of 3 stars · ${view.score.stars} of ${view.score.best} so far`,
+      );
+      $("breakGoals").replaceChildren(...(report.goals || []).map(goalSlot));
+      text("breakMissed", report.missedBy || "");
+      text(
+        "breakBonus",
+        report.bonus ? `+${report.bonus} clean-run bonus` : "",
+      );
+      paintCauses(
+        $("breakCauses"),
+        report.causes || [],
+        "No wrong gifts on this sleigh.",
+      );
+      const spendText = [
+        ...(report.spent
+          ? [
+              `Spent this run: people ${money(report.spent.people)}, AI ${money(report.spent.ai)}, checks ${money(report.spent.checking)}, fixing ${money(report.spent.fixing)}.`,
+            ]
+          : []),
+        ...(report.assurance
+          ? [
+              `${report.assurance.caught} caught, about ${money(report.assurance.prevented)} of losses prevented (estimate).`,
+            ]
+          : []),
+      ].join(" ");
+      const budgetSlot = $("breakGoals").querySelector('[data-goal="cost"]');
+      if (budgetSlot && spendText) {
+        budgetSlot.title = spendText;
+        addMore(budgetSlot, spendText, "What this run spent");
+      }
+      $("breakLast").hidden = !report.slips.length;
+      $("breakSlips").replaceChildren();
+      const slip = report.slips[0];
+      if (slip) {
+        const card = make("article", "delivery-slip");
+        const toys = make("div", "slip-toys");
+        const wanted = make("span", "slip-side");
+        wanted.append(
+          drawnToy(slip.wanted.name, true, "slip-art"),
+          make("small", "", "Wanted"),
+          make("b", "", slip.wanted.name),
+        );
+        const made = make("span", "slip-side slip-made");
+        made.append(
+          drawnToy(slip.made.name, false, "slip-art"),
+          make("small", "", "Got"),
+          make("b", "", slip.made.name),
+        );
+        toys.append(wanted, made);
+        card.title = `"${slip.wish}" - ${slip.cause}`;
+        card.append(
+          make("span", "eyebrow", `Costliest wrong gift · ${money(slip.cost)}`),
+          toys,
+        );
+        addMore(
+          card,
+          `"${slip.wish}" ${slip.cause.charAt(0).toUpperCase()}${slip.cause.slice(1)}.`,
+          "The wish and what let it through",
+        );
+        $("breakSlips").append(card);
+      }
+      const others = Math.max(0, report.slips.length - 1) + (report.more || 0);
+      text(
+        "breakMore",
+        others
+          ? `${others} more wrong ${others === 1 ? "gift" : "gifts"} delivered.`
+          : "",
+      );
+      $("breakOptions").replaceChildren();
+      $("breakOptions").style.setProperty("--choices", choice.options.length);
+      for (const option of choice.options) {
+        const card = make("button", "upgrade-card");
+        card.dataset.choose = option.id;
+        card.dataset.choiceId = choice.id;
+        card.dataset.kind = option.kind;
+        const gives = option.facts.find((f) => f.label === "Gives");
+        const costs = option.facts.find((f) => f.label === "Costs");
+        const risk = option.facts.find((f) => f.label === "Risk");
+        const others = option.facts.filter(
+          (f) => f !== gives && f !== costs && f !== risk,
+        );
+        card.title = [
+          option.text,
+          ...[risk, ...others]
+            .filter(Boolean)
+            .map((f) => `${f.label}: ${f.value}.`),
+        ].join(" ");
+        card.append(
+          iconNode(optionIcons[option.kind] || "gift", "upgrade-icon"),
+          make("strong", "", option.label),
+        );
+        if (gives) card.append(make("span", "upgrade-gives", gives.value));
+        const chips = make("span", "upgrade-chips");
+        if (costs) {
+          const chip = make("span", "upgrade-cost");
+          chip.append(iconNode("budget", ""), costs.value);
+          chips.append(chip);
+        }
+        if (risk) {
+          const odds = risk.value.match(/\d+ in \d+/);
+          chips.append(
+            make(
+              "span",
+              "upgrade-risk",
+              `risk: ${odds ? odds[0] : risk.value}`,
+            ),
+          );
+        }
+        card.append(chips);
+        const wrap = make("div", "upgrade-wrap");
+        wrap.append(card);
+        addMore(wrap, card.title, `More about ${option.label}`);
+        $("breakOptions").append(wrap);
+      }
+    }
+    closeInfo();
+    if (!$("breakDialog").open) {
+      $("breakDialog").showModal();
+      $("nextCargoTitle").focus({ preventScroll: true });
+      $("breakDialog").scrollTop = 0;
+      $("breakDeparture").classList.remove("break-arrival");
+      void $("breakDeparture").offsetWidth;
+      $("breakDeparture").classList.add("break-arrival");
+    }
+  }
+  function handleNews(news) {
+    if (!started) return;
+    if (news.kind === "loaded" && news.control) showMistakeHint(news.control);
+    if (news.kind === "milestone") {
+      iconText($("milestoneToast"), "gift", news.text);
+      toastUntil = performance.now() + 3500;
+      $("milestoneToast").hidden = false;
+    }
+    if (news.kind === "cleared" && view.queues[news.queue]) {
+      const node = $(`queue-${news.queue}`);
+      node.dataset.clearedEvent = news.id;
+      node.classList.add("pile-cleared");
+      setTimeout(() => {
+        if (node.dataset.clearedEvent === String(news.id))
+          node.classList.remove("pile-cleared");
+      }, 1800);
+    }
+    if (news.kind === "checked" && news.check?.result === "wrong") {
+      caughtSnapshot = news.check;
+      caughtUntil = performance.now() + 5000;
+    }
+    if (news.kind === "departed") {
+      const sleigh = document.querySelector(".sleigh-art");
+      sleigh.classList.remove("departing");
+      void sleigh.offsetWidth;
+      sleigh.classList.add("departing");
+      setTimeout(() => sleigh.classList.remove("departing"), 1600);
+    }
+  }
+  function paintEffects() {
+    text("sleighTarget", `of ${view.run.target} needed`);
+    const run = view.run?.number ?? 1;
+    if (run !== observedRun) {
+      observedRun = run;
+      observedRight = 0;
+    }
+    const gained = view.sleigh.right - observedRight;
+    observedRight = view.sleigh.right;
+    if (started && gained > 0 && !view.end) {
+      const effect = make("span", "gift-flight");
+      iconText(effect, "gift", `+${gained}`);
+      const from = $("queue-pass").getBoundingClientRect(),
+        to = $("sleighRight").getBoundingClientRect();
+      const visible = to.left >= 0 && to.right <= innerWidth;
+      const target = visible ? to : goalSlots.full.getBoundingClientRect();
+      effect.classList.toggle("in-slot", !visible);
+      effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? from.right - 40 : target.right - 52))}px`;
+      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? from.top : target.top + 4))}px`;
+      effect.style.setProperty(
+        "--fly-x",
+        `${visible ? target.left - from.right + 40 : 0}px`,
+      );
+      effect.style.setProperty(
+        "--fly-y",
+        `${visible ? target.top - from.top : 0}px`,
+      );
+      while ($("celebration").children.length >= 4)
+        $("celebration").firstChild.remove();
+      $("celebration").append(effect);
+      setTimeout(() => effect.remove(), 1500);
+    }
+    if (toastUntil < performance.now()) $("milestoneToast").hidden = true;
+    let caught = $("caughtToy");
+    if (!caught) {
+      caught = make("button", "caught-toy");
+      caught.id = "caughtToy";
+      caught.dataset.help = "caughtToy";
+      caught.dataset.info = "caughtToy";
+      $("feedback2").append(caught);
+    }
+    caught.hidden = !caughtSnapshot || performance.now() > caughtUntil;
+    if (caughtSnapshot && caught.dataset.toy !== caughtSnapshot.made.name) {
+      caught.dataset.toy = caughtSnapshot.made.name;
+      caught.replaceChildren(make("b", "", "Caught!"));
+      caught.insertAdjacentHTML("beforeend", toyArt(caughtSnapshot.made.name));
+      caught.append(make("span", "", caughtSnapshot.made.name));
+    }
+  }
+  function positionPanel(panel, anchor, protectedNodes = []) {
     const anchorBounds = anchor.getBoundingClientRect();
-    if (panel === $("infoPopover")) {
+    if (panel === $("infoPopover") || innerWidth < 1000) {
       const roomBeside = Math.max(
         anchorBounds.left - 24,
         innerWidth - anchorBounds.right - 24,
       );
       panel.style.maxHeight = `${roomBeside >= panel.offsetWidth ? innerHeight - 24 : Math.max(80, anchorBounds.top - 24, innerHeight - anchorBounds.bottom - 24)}px`;
-    }
+    } else panel.style.maxHeight = "";
     const r = anchorBounds,
       p = panel.getBoundingClientRect(),
       gap = 12,
       w = innerWidth,
       h = innerHeight;
-    const horizontal = Math.max(12, Math.min(r.left, w - p.width - 12));
+    let horizontal = Math.max(12, Math.min(r.left, w - p.width - 12));
+    if (
+      panel.id === "tutorial" &&
+      panel.dataset.compact === "true" &&
+      anchor.closest(".station")
+    ) {
+      const column = anchor.closest(".station").getBoundingClientRect();
+      if (p.width <= column.width - 2 && column.left >= 0 && column.right <= w)
+        horizontal = Math.max(
+          column.left + 1,
+          Math.min(horizontal, column.right - p.width - 1),
+        );
+    }
     const vertical = Math.max(12, Math.min(r.top, h - p.height - 12));
+    const protectedBounds = protectedNodes
+      .map((node) => node.getBoundingClientRect())
+      .filter((rect) => rect.width && rect.height);
     const places = [
-      { x: r.right + gap, y: vertical },
-      { x: r.left - p.width - gap, y: vertical },
       { x: horizontal, y: r.bottom + gap },
       { x: horizontal, y: r.top - p.height - gap },
+      { x: r.right + gap, y: vertical },
+      { x: r.left - p.width - gap, y: vertical },
+      ...[...document.querySelectorAll(".paper-scene")].map((scene) => {
+        const bounds = scene.getBoundingClientRect();
+        return { x: Math.max(12, bounds.left + 4), y: bounds.top + 3 };
+      }),
+      ...protectedBounds.flatMap((rect) => [
+        { x: horizontal, y: rect.top - p.height - gap },
+        { x: horizontal, y: rect.bottom + gap },
+        { x: rect.right + gap, y: vertical },
+        { x: rect.left - p.width - gap, y: vertical },
+      ]),
     ];
+    places.sort((a, b) => {
+      const distance = (point) =>
+        Math.hypot(
+          Math.max(r.left - point.x - p.width, point.x - r.right, 0),
+          Math.max(r.top - point.y - p.height, point.y - r.bottom, 0),
+        );
+      return distance(a) - distance(b);
+    });
     const fit = places.find(
       (a) =>
         a.x >= 12 &&
         a.y >= 12 &&
         a.x + p.width <= w - 12 &&
-        a.y + p.height <= h - 12,
+        a.y + p.height <= h - 12 &&
+        protectedBounds.every(
+          (rect) =>
+            a.x + p.width <= rect.left ||
+            a.x >= rect.right ||
+            a.y + p.height <= rect.top ||
+            a.y >= rect.bottom,
+        ),
     ) || {
-      x: w - p.width - 12,
+      x: horizontal,
       y: Math.max(12, Math.min(r.bottom + gap, h - p.height - 12)),
     };
     panel.style.left = `${Math.max(12, Math.min(fit.x, w - p.width - 12))}px`;
     panel.style.top = `${Math.max(12, Math.min(fit.y, h - p.height - 12))}px`;
+    drawPopupPointer(panel, anchor);
+  }
+  const popupPointers = new Map();
+  function hidePopupPointer(id) {
+    const pointer = popupPointers.get(id);
+    if (pointer) pointer.setAttribute("hidden", "");
+  }
+  function drawPopupPointer(panel, anchor) {
+    let pointer = popupPointers.get(panel.id);
+    if (!pointer) {
+      pointer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      pointer.classList.add("popup-pointer");
+      pointer.dataset.popup = panel.id;
+      pointer.setAttribute("aria-hidden", "true");
+      pointer.append(
+        document.createElementNS("http://www.w3.org/2000/svg", "path"),
+      );
+      document.body.append(pointer);
+      popupPointers.set(panel.id, pointer);
+    }
+    pointer.toggleAttribute("hidden", panel.hidden);
+    pointer.setAttribute("width", innerWidth);
+    pointer.setAttribute("height", innerHeight);
+    pointer.style.zIndex = String(Number(getComputedStyle(panel).zIndex) - 1);
+    const p = panel.getBoundingClientRect(),
+      a = anchor.getBoundingClientRect();
+    const cx = Math.max(
+      p.left + 14,
+      Math.min(a.left + a.width / 2, p.right - 14),
+    );
+    const cy = Math.max(
+      p.top + 14,
+      Math.min(a.top + a.height / 2, p.bottom - 14),
+    );
+    let points;
+    if (p.top >= a.bottom)
+      points = [
+        [cx - 8, p.top + 1],
+        [Math.max(a.left, Math.min(cx, a.right)), a.bottom + 2],
+        [cx + 8, p.top + 1],
+      ];
+    else if (p.bottom <= a.top)
+      points = [
+        [cx - 8, p.bottom - 1],
+        [Math.max(a.left, Math.min(cx, a.right)), a.top - 2],
+        [cx + 8, p.bottom - 1],
+      ];
+    else if (p.left >= a.right)
+      points = [
+        [p.left + 1, cy - 8],
+        [a.right + 2, Math.max(a.top, Math.min(cy, a.bottom))],
+        [p.left + 1, cy + 8],
+      ];
+    else
+      points = [
+        [p.right - 1, cy - 8],
+        [a.left - 2, Math.max(a.top, Math.min(cy, a.bottom))],
+        [p.right - 1, cy + 8],
+      ];
+    pointer
+      .querySelector("path")
+      .setAttribute(
+        "d",
+        `M${points.map((point) => point.join(",")).join(" L")} Z`,
+      );
+    pointer
+      .querySelector("path")
+      .setAttribute("fill", getComputedStyle(panel).backgroundColor);
+    pointer
+      .querySelector("path")
+      .setAttribute(
+        "stroke",
+        panel.id === "infoPopover" ? "#193b35" : "#b6c5ba",
+      );
+  }
+  function showAnchorOnce(panel, anchor, key) {
+    const visit = `${key}:${innerWidth < 1000 ? "narrow" : "wide"}`;
+    if (panel.dataset.anchorVisit === visit) return;
+    panel.dataset.anchorVisit = visit;
+    if (innerWidth < 1000)
+      anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
   function paintGuidance() {
     const moment = started && !view.end ? view.moment : null;
@@ -502,23 +1572,45 @@
     $("tutorial").hidden = !moment || moment.control === "case";
     $("caseGuidance").hidden = !moment || moment.control !== "case";
     if (!moment) {
+      hidePopupPointer("tutorial");
+      delete $("tutorial").dataset.anchorVisit;
       lastMoment = null;
       return;
     }
+    $("tutorial").dataset.control = moment.control;
+    $("tutorial").dataset.compact = String(
+      ["ai0", "ai1", "ask", "checking", "cocoa", "bypass"].includes(
+        moment.control,
+      ),
+    );
     text("tutorialTitle", moment.title);
     text("tutorialText", moment.text);
-    text(
-      "tutorialPause",
-      manualPaused
-        ? "Your pause stays on after guidance."
-        : "The clock resumes when you continue.",
-    );
     text("caseGuidanceText", moment.text);
     if (moment.control === "case") {
+      hidePopupPointer("tutorial");
       caseOpen = true;
       paintCase();
     } else {
+      const ai = moment.control === "ai0" || moment.control === "ai1";
+      const tiredElf = Number.isInteger(moment.elf)
+        ? moment.elf
+        : view.elves
+            .map((elf, index) => ({ elf, index }))
+            .filter((item) => item.elf.station < 3)
+            .sort((a, b) => b.elf.tired - a.elf.tired)[0]?.index;
       const anchor =
+        (["checking", "sleigh"].includes(moment.control) &&
+        !$("wrongDelivery").hidden
+          ? $("wrongDelivery")
+          : null) ||
+        (moment.control === "cocoa" && tiredElf !== undefined
+          ? document.querySelector(`[data-elf="${tiredElf}"]`)
+          : null) ||
+        (ai
+          ? document.querySelector(
+              moment.control === "ai0" ? '[data-ai="0,1"]' : '[data-ai="1,2"]',
+            )
+          : null) ||
         actionGroups.get(moment.control) ||
         $(
           moment.control === "cocoa"
@@ -527,9 +1619,52 @@
               ? "sleigh"
               : "elves0",
         );
-      positionPanel($("tutorial"), anchor);
+      const protectedNodes = [
+        document.querySelector(".dashboard"),
+        ...(innerWidth >= 1000 &&
+        look !== "paper" &&
+        ["elves", "cocoa", "bypass"].includes(moment.control)
+          ? document.querySelectorAll(".machine")
+          : []),
+        ...document.querySelectorAll(".crew, [data-move]:not([hidden])"),
+        $("cocoa"),
+        ...(["ai0", "ai1", "ask", "checking", "cocoa", "bypass"].includes(
+          moment.control,
+        )
+          ? [
+              ...(actionGroups.has(moment.control)
+                ? [actionGroups.get(moment.control)]
+                : []),
+              ...(anchor.closest(".station")?.querySelectorAll(".queue") || []),
+            ]
+          : []),
+        anchor,
+      ];
+      showAnchorOnce($("tutorial"), anchor, moment.id);
+      positionPanel($("tutorial"), anchor, protectedNodes);
     }
     lastMoment = moment.id;
+  }
+  // How many wrong gifts an option brings off the sleigh, from its scope words.
+  function recallCount(c, o) {
+    if (!o || o.id !== "bringBack") return null;
+    const said = /(\d+) wrong gift/.exec(o.scope || "");
+    return said ? Number(said[1]) : c.affected.count;
+  }
+  // Chips for an option: what it does (the first part of its scope), money, time, or why it is shut.
+  function optionChips(c, o) {
+    const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+    const recall = recallCount(c, o);
+    const does =
+      recall !== null
+        ? `${plural(recall, "wrong gift")} off the sleigh`
+        : (o.scope || "").split(/;\s*/)[0];
+    const chips = [];
+    if (!o.available && o.why) chips.push(["chip-why", "", o.why]);
+    if (does) chips.push(["chip-does", "", does]);
+    chips.push(["chip-money", "budget", o.money ? money(o.money) : "free"]);
+    if (o.seconds) chips.push(["chip-time", "clock", `${o.seconds} s`]);
+    return chips;
   }
   function paintCase() {
     const c = view.case;
@@ -538,20 +1673,24 @@
       caseOpen = false;
       lastCase = null;
       $("casePanel").hidden = true;
+      hidePopupPointer("casePanel");
+      delete $("casePanel").dataset.anchorVisit;
       return;
     }
-    text(
-      "caseCue",
-      c.resolving
-        ? `⏱ ${Math.ceil(c.resolving.remaining)}s · decision in progress`
-        : "💬 Decision waiting",
-    );
+    const cue = c.resolving
+      ? ["clock", `${Math.ceil(c.resolving.remaining)}s · decision in progress`]
+      : ["ask", "Decision waiting"];
+    if ($("caseCue").textContent !== cue[1]) iconText($("caseCue"), ...cue);
     if (lastCase !== c.id) {
       lastCase = c.id;
       caseOpen = false;
     }
     $("casePanel").hidden = !started || !caseOpen || !!view.end;
-    if ($("casePanel").hidden) return;
+    if ($("casePanel").hidden) {
+      hidePopupPointer("casePanel");
+      delete $("casePanel").dataset.anchorVisit;
+      return;
+    }
     const headings = {
       update: { offered: "AI update offer", tested: "Update test result" },
       incident: {
@@ -564,134 +1703,101 @@
       pattern: "Repeated mistake",
     };
     text(
-      "caseKind",
+      "caseTitle",
       typeof headings[c.kind] === "string"
         ? headings[c.kind]
         : headings[c.kind]?.[c.step] || "Workshop decision",
     );
-    text("caseTitle", c.text);
-    const facts = $("caseFacts");
-    const preferred =
-      c.kind === "update"
-        ? c.step === "tested"
-          ? ["Promises", "Test", "After the test"]
-          : ["Promises", "Updates like this go wrong", "A test now"]
-        : null;
-    const shown = preferred
-      ? preferred
-          .map((label) => c.facts.findIndex((f) => f.label === label))
-          .filter((i) => i >= 0)
-      : c.facts.slice(0, 3).map((_, i) => i);
-    if (!shown.length) shown.push(...c.facts.slice(0, 3).map((_, i) => i));
-    const signature = shown.map((i) => c.facts[i].label).join("|");
-    if (facts.dataset.signature !== signature) {
-      facts.dataset.signature = signature;
-      facts.replaceChildren();
-      for (const i of shown) {
-        const b = make("button", "fact-chip");
-        b.append(make("b"), make("small"));
-        b.dataset.help = `fact:${i}`;
-        b.dataset.info = `fact:${i}`;
-        facts.append(b);
-      }
-      if (c.facts.length > shown.length) {
-        const more = make("button", "more-evidence", "i · All evidence");
-        more.dataset.help = "caseFacts";
-        more.dataset.info = "caseFacts";
-        facts.append(more);
-      }
-    }
-    shown.forEach((index, position) => {
-      const f = c.facts[index],
-        button = facts.children[position];
-      const symbol = /cost|price|worth|loss/i.test(f.label)
-        ? "£"
-        : /wrong|fault|chance/i.test(f.label)
-          ? "⚠"
-          : /time|test|second/i.test(f.label)
-            ? "⏱"
-            : /parcel|gift|made|aboard/i.test(f.label)
-              ? "📦"
-              : "◈";
-      button.querySelector("b").textContent = `${symbol} ${f.value}`;
-      button.querySelector("small").textContent = f.label;
-    });
+    text("caseText", c.text);
+    $("casePanel").dataset.kind = c.kind;
+    // Evidence as drawings: the child's words beside the toy the workshop made.
     const evidence = $("caseEvidence");
     const evidenceSignature = JSON.stringify(c.evidence);
     if (evidence.dataset.signature !== evidenceSignature) {
       evidence.dataset.signature = evidenceSignature;
       evidence.replaceChildren();
+      const figure = (cls, label, art, name) => {
+        const node = make("figure", `evidence-figure ${cls}`);
+        node.append(make("span", "evidence-label", label));
+        if (art) node.insertAdjacentHTML("beforeend", art);
+        node.append(make("figcaption", "", name));
+        return node;
+      };
       for (const e of c.evidence) {
         const row = make("div", "evidence-item");
-        const wish = make("p", "wish", `“${e.wish}”`);
-        row.append(wish);
+        row.append(figure("evidence-wish", "Wish", "", `"${e.wish}"`));
+        if (e.wanted)
+          row.append(
+            figure("", "Wanted", toyArt(e.wanted.name), e.wanted.name),
+          );
+        const reading =
+          e.reading &&
+          (typeof e.reading === "string" ? e.reading : e.reading.name);
+        if (reading)
+          row.append(figure("", "AI reads", toyArt(reading), reading));
         if (e.made)
           row.append(
-            make("p", "toy-evidence", `${e.made.icon} ${e.made.name}`),
-          );
-        if (e.reading)
-          row.append(
-            make(
-              "p",
-              "reading",
-              `AI reads: ${typeof e.reading === "string" ? e.reading : e.reading.name}`,
-            ),
+            figure("evidence-made", "Made", toyArt(e.made.name), e.made.name),
           );
         evidence.append(row);
       }
     }
+    // Options: large buttons with an icon, the label and chips for what each costs and does.
     const options = $("caseOptions");
     const ids = new Set(c.options.map((o) => o.id));
     for (const child of [...options.children])
       if (!ids.has(child.dataset.option)) child.remove();
     for (const o of c.options) {
-      let row = [...options.children].find((n) => n.dataset.option === o.id);
-      if (!row) {
-        row = make("div", "case-option");
-        row.dataset.option = o.id;
-        const b = make("button", "case-choice");
+      let b = [...options.children].find((n) => n.dataset.option === o.id);
+      if (!b) {
+        b = make("button", "case-choice");
+        b.dataset.option = o.id;
         b.dataset.resolve = o.id;
-        b.dataset.info = `option:${o.id}`;
         b.innerHTML =
-          '<span class="option-icon" aria-hidden="true"></span><span class="option-label"></span><span class="option-cost"></span>';
-        row.append(b, infoButton(`option:${o.id}`, `Explain ${o.label}`));
-        options.append(row);
+          '<span class="option-icon" aria-hidden="true"></span><span class="option-label"></span><span class="option-chips"></span>';
+        options.append(b);
       }
-      const b = row.querySelector(".case-choice");
       const icons = {
-        ship: "🛷",
-        remake: "🛠",
-        ask: "💬",
-        accept: "✓",
-        investigate: "🔎",
-        hold: "✋",
-        carryOn: "→",
-        install: "🤖",
-        test: "🧪",
-        skip: "↪",
-        rollback: "↶",
-        keep: "⚙",
-        remakeAll: "🛠",
-        checkEach: "🔎",
-        letGo: "→",
-        bringBack: "↩",
-        leave: "🛷",
+        ship: "sleigh",
+        remake: "fixing",
+        ask: "ask",
+        accept: "check",
+        investigate: "role-checking",
+        hold: "hand",
+        carryOn: "play",
+        install: "update",
+        test: "test",
+        skip: "play",
+        rollback: "rollback",
+        keep: "automate",
+        remakeAll: "fixing",
+        checkEach: "role-checking",
+        letGo: "let-through",
+        bringBack: "rollback",
+        leave: "sleigh",
       };
-      b.querySelector(".option-icon").textContent = icons[o.id] || "◇";
+      const optionIcon = b.querySelector(".option-icon");
+      if (optionIcon.dataset.icon !== o.id) {
+        optionIcon.dataset.icon = o.id;
+        optionIcon.innerHTML = icon(icons[o.id] || "info");
+      }
       b.querySelector(".option-label").textContent = o.label;
-      const scope = [
-        "install",
-        "test",
-        "skip",
-        "rollback",
-        "keep",
-        "investigate",
-      ].includes(o.id)
-        ? "⚙ line"
-        : `📦 ${c.affected.count}`;
-      b.querySelector(".option-cost").textContent =
-        `⏱ ${o.seconds}s · ${money(o.money)} · ${scope}`;
+      const chips = optionChips(c, o);
+      const chipsNode = b.querySelector(".option-chips");
+      const chipsSignature = JSON.stringify(chips);
+      if (chipsNode.dataset.value !== chipsSignature) {
+        chipsNode.dataset.value = chipsSignature;
+        chipsNode.replaceChildren(
+          ...chips.map(([cls, art, words]) => {
+            const chip = make("span", `opt-chip ${cls}`);
+            if (art) chip.innerHTML = icon(art);
+            chip.append(words);
+            return chip;
+          }),
+        );
+      }
       b.disabled = !o.available || !!c.resolving;
+      b.classList.toggle("unavailable", !o.available);
       b.classList.toggle("chosen", c.resolving?.optionId === o.id);
     }
     $("caseResolving").hidden = !c.resolving;
@@ -703,67 +1809,100 @@
       $("caseProgress").value =
         1 - c.resolving.remaining / c.resolving.duration;
     }
-    const station =
-      c.kind === "unclear"
-        ? 0
-        : c.kind === "update" || c.step === "source"
-          ? 1
-          : c.step === "aboard"
-            ? 3
-            : 2;
-    positionPanel(
-      $("casePanel"),
-      $(station === 3 ? "sleigh" : `station${station}`),
-    );
+    const anchor = caseAnchor(c);
+    showAnchorOnce($("casePanel"), anchor, `${c.id}:${c.step}`);
+    positionPanel($("casePanel"), anchor, [anchor]);
   }
+  function caseAnchor(c) {
+    if (c.step === "source") return $("station1").querySelector(".machine");
+    if (c.step === "aboard")
+      return $("wrongDelivery").hidden ? $("sleighRight") : $("wrongDelivery");
+    if (c.kind === "unclear") return $("queue-clarify");
+    if (c.step === "made") {
+      const affected = new Set(c.affected.ids);
+      const queues = Object.values(view.queues)
+        .map((q) => ({
+          id: q.id,
+          count: q.parcels.filter((p) => affected.has(p.id)).length,
+        }))
+        .sort((a, b) => b.count - a.count);
+      if (queues[0]?.count) return $(`queue-${queues[0].id}`);
+    }
+    return $("queue-check");
+  }
+  // What a wrong big gift costs against a wrong everyday one, from the rules' prices.
+  function bigGiftSentence() {
+    const prices = view.prices;
+    return prices
+      ? `A wrong big gift (gold) costs ${money(prices.wrongBig)}, an everyday one ${money(prices.wrongEveryday)}.`
+      : "A wrong big gift (gold) costs far more than an everyday one.";
+  }
+  // Info pop-ups: a title and one short plain sentence, two at most.
   function getInfo(key) {
+    const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : "");
+    if (key === "cargo")
+      return [
+        view.run.cargo.name,
+        [
+          view.run.cargo.text,
+          `This sleigh needs ${view.run.target} right gifts.`,
+        ],
+      ];
+    if (key === "caughtToy" && caughtSnapshot)
+      return [
+        "A checker caught this",
+        [
+          `"${caughtSnapshot.wish}" Wanted ${caughtSnapshot.wanted.name}, made ${caughtSnapshot.made.name}.`,
+        ],
+      ];
+    if (key === "pace")
+      return [
+        "On pace for",
+        [
+          `About ${Math.round(view.pace.projected)} right gifts by the last sleigh, against ${view.target}.`,
+        ],
+      ];
     if (key === "caseFacts")
       return [
-        "Decision evidence",
-        (view.case?.facts || []).map((f) => `${f.label}: ${f.value}`),
+        "All evidence",
+        [
+          ...(view.case?.facts || []).map((f) => `${f.label}: ${f.value}.`),
+          ...(view.case?.options || []).map(
+            (o) => `${o.label}: ${o.scope}${o.why ? ` (${o.why})` : ""}.`,
+          ),
+        ],
       ];
     const parts = key.split(":"),
       type = parts[0];
+    if (type === "goal") {
+      const goal = view.run.goals.find((g) => g.id === parts[1]);
+      return [
+        goal.name,
+        [
+          `${cap(goal.text)}.`,
+          goal.waiting && goal.note ? `${cap(goal.note)}.` : "",
+        ].filter(Boolean),
+      ];
+    }
     if (type === "ai") {
       const l = view.levers[`ai${parts[1]}`][Number(parts[2])];
-      return [
-        l.name,
-        [
-          l.who,
-          l.speed,
-          l.risk,
-          `${Math.round(l.perMinute)} parcels/min · ${money(l.costPerMinute)}/min`,
-        ],
-      ];
+      return [l.name, [`${cap(l.who)}, ${l.speed}.`, `Watch for: ${l.risk}.`]];
     }
     if (type === "checking") {
       const l = view.levers.checking[Number(parts[1])];
-      return [
-        l.name,
-        [
-          l.sends || `${l.checkedPer100} of 100 checked`,
-          `${l.per100 ?? l.checkedPer100} of every 100 parcels. Human elves do the checking.`,
-        ],
-      ];
+      return [l.name, [`${cap(l.sends)}: ${l.per100} in 100 parcels.`]];
     }
     if (type === "action") {
       const a = view.actions[parts[1]];
       return [
         {
           ask: "Ask the child",
-          bypass: "Let waiting parcels through",
-          train: "Train checkers",
-          ai0: "Read letters",
-          ai1: "Make toys",
-          checking: "Human checking",
+          bypass: "Let through",
+          ai0: "AI at reading",
+          ai1: "AI at toy-making",
+          checking: "How much to check",
         }[parts[1]],
-        [
-          a.cost,
-          a.why,
-          parts[1] === "bypass"
-            ? `${view.queues.check.parcels.length} waiting parcels would leave checking. ${view.bypassed} already let through.`
-            : "",
-        ].filter(Boolean),
+        [a.why ? `${cap(a.why)}.` : "", `${cap(a.cost)}.`].filter(Boolean),
       ];
     }
     if (type === "queue") {
@@ -771,14 +1910,15 @@
       return [
         q.name,
         [
-          `${q.parcels.length} waiting, room for ${q.limit}.`,
-          `${Math.round(q.rate)} parcels a minute with the current staffing and AI setting.`,
-          rateChanges.has(parts[1])
-            ? `Last move: ${Math.round(rateChanges.get(parts[1]).before)} → ${Math.round(rateChanges.get(parts[1]).after)} parcels per minute.`
-            : "",
-          q.blocked || "Work can move through this pile.",
-          "Larger gifts cost more when wrong. ? means unsure; ! marks a known faulty batch.",
-        ],
+          parts[1] === "pass"
+            ? "Parcels going to the sleigh without a check."
+            : `${q.parcels.length} of ${q.limit} waiting, ${Math.round(q.rate)} a minute going out.`,
+          q.blocked
+            ? `${cap(q.blocked)}.`
+            : ["letters", "clarify"].includes(parts[1])
+              ? ""
+              : bigGiftSentence(),
+        ].filter(Boolean),
       ];
     }
     if (type === "elf") {
@@ -786,11 +1926,8 @@
       return [
         e.name,
         [
-          e.doing,
-          `Tiredness ${Math.round(e.tired)} out of 100.`,
-          e.resting
-            ? "Finishing a cocoa break."
-            : "Drag this elf, or select then tap a destination.",
+          `${cap(e.doing)}, tiredness ${Math.round(e.tired)} of 100.`,
+          e.resting ? "Back after this cocoa break." : "Drag to move.",
         ],
       ];
     }
@@ -800,16 +1937,17 @@
       return [
         stationNames[s],
         [
-          `${v.staff} elves: ${v.working} working, ${v.idle} idle.`,
-          v.blocked ||
-            "Move elves here to change the available human capacity.",
-          view.pace.behind && view.pace.slowest === s
-            ? "This station is holding up the target pace."
-            : "",
-          s === 2
-            ? "The checkers are people. AI does not check its own work."
-            : "AI settings change who does the work.",
-        ],
+          [
+            "Elves read the letters, with or without AI.",
+            "Elves or the toy machine make the toys.",
+            "Elves check parcels before the sleigh; AI never checks its own work.",
+          ][s],
+          v.blocked
+            ? `${cap(v.blocked)}.`
+            : view.pace.slowest === s
+              ? "This station's pile is filling: it holds the line up."
+              : "",
+        ].filter(Boolean),
       ];
     }
     if (type === "option") {
@@ -817,9 +1955,8 @@
       return [
         o?.label || "Decision",
         [
-          o?.scope,
-          `${o?.seconds || 0} seconds · ${money(o?.money || 0)}`,
-          o?.why,
+          o?.scope ? `${cap(o.scope)}.` : "",
+          o?.why ? `${cap(o.why)}.` : "",
         ].filter(Boolean),
       ];
     }
@@ -829,79 +1966,52 @@
     }
     if (type === "lastWrong") {
       return [
-        "Last wrong delivery",
+        "Last wrong gift",
         [
-          `Wish: ${lastWrong.wish}`,
-          `Wanted: ${lastWrong.wanted.icon} ${lastWrong.wanted.name}`,
-          `Made: ${lastWrong.made.icon} ${lastWrong.made.name}`,
-          lastWrong.big
-            ? "A costly mistake: this is a big gift."
-            : "The child received the wrong toy.",
-        ],
+          `"${lastWrong.wish}" Wanted ${lastWrong.wanted.name}, got ${lastWrong.made.name}.`,
+          lastWrong.big ? "A big gift, so a costly mistake." : "",
+        ].filter(Boolean),
       ];
     }
     const fixed = {
-      goal: [
-        "Correct gifts",
-        [
-          `Deliver ${view.target} correct gifts before departure. Wrong gifts do not count.`,
-        ],
-      ],
       clock: [
         "Until departure",
         [
-          "The sleigh leaves when this clock reaches zero.",
-          "Guidance and your Pause button stop the clock. Reading information and answering cases use workshop time.",
+          "The sleigh leaves at zero. Pause and walkthrough cards stop the clock.",
         ],
       ],
-      wrong: [
-        "Wrong gifts",
-        [
-          `${view.sleigh.wrong} wrong gifts currently aboard. Tap the red gift in the sleigh to compare wish and toy.`,
-        ],
-      ],
-      budget: [
-        "Budget",
-        [
-          `${money(view.budget.left)} left. People, AI, checks and repairs all cost money. Overspending continues to count in the final account.`,
-        ],
-      ],
+      budget: ["Budget", ["Elves, AI, checks and fixes all cost money."]],
       movement: [
         "Moving elves",
         [
-          "Drag an elf to a station or cocoa. Or tap an elf, then tap a highlighted destination.",
-          "The pile shows its actual before and after capacity for five seconds. An automated machine may keep the same rate.",
+          "Drag an elf to a station or to cocoa, or tap the elf, then the place.",
         ],
       ],
       cocoa: [
-        "Cocoa breaks",
-        [
-          "Tired elves work less well. Move an elf here to rest; a break takes time before they can return.",
-        ],
+        "Cocoa break",
+        ["Tired elves miss mistakes. A short break here makes them fresh."],
       ],
       sleigh: [
         "The sleigh",
-        [
-          "Correct gifts meet the goal. Wrong gifts bring a cost. The last wrong arrival stays visible so you can inspect it.",
-        ],
+        ["Right gifts count towards the target; wrong ones cost money."],
       ],
       vigilance: [
         "Checker attention",
         [
-          `${view.vigilance.state}. ${view.vigilance.skipped} checks skipped.`,
-          `${view.vigilance.secondsPerCheck} seconds per check now.`,
-          view.vigilance.trained
-            ? "Checkers have been trained."
-            : "A long run of clean parcels can make checkers relax.",
+          "After a long run of clean parcels, checkers start waving parcels through unchecked.",
+          view.vigilance.skipped
+            ? `${view.vigilance.skipped} checks skipped so far; train them at a break or rest them.`
+            : "Train them at a break, or rest them with cocoa.",
         ],
       ],
     };
-    return (
-      fixed[key] || [
-        "Workshop",
-        ["Tap an elf or a control to make a decision."],
-      ]
-    );
+    return fixed[key] || ["Workshop", ["Tap an elf or a control."]];
+  }
+  function infoPositionAnchor() {
+    return infoKey?.startsWith("elf:")
+      ? document.querySelector(`[data-elf="${infoKey.split(":")[1]}"]`) ||
+          infoAnchor
+      : infoAnchor;
   }
   function renderInfo() {
     const [title, lines] = getInfo(infoKey);
@@ -909,7 +2019,7 @@
     $("infoContent").replaceChildren(
       ...lines.filter(Boolean).map((line) => make("p", "", line)),
     );
-    positionPanel($("infoPopover"), infoAnchor);
+    positionPanel($("infoPopover"), infoPositionAnchor());
   }
   function openInfo(anchor, key, pinned = false) {
     closeInfo();
@@ -926,13 +2036,16 @@
     infoKey = null;
     infoPinned = false;
     $("infoPopover").hidden = true;
+    hidePopupPointer("infoPopover");
   }
+  let hoverArmed = false;
   let pointerFocus = false,
     recentTouchUntil = 0;
   document.addEventListener(
     "pointerdown",
     (e) => {
       pointerFocus = true;
+      hoverArmed = false;
       if (
         infoPinned &&
         !$("infoPopover").contains(e.target) &&
@@ -955,11 +2068,25 @@
     const target = e.target.closest("[data-info]");
     if (
       target &&
-      e.pointerType !== "touch" &&
+      hoverArmed &&
+      e.pointerType === "mouse" &&
+      matchMedia("(hover: hover)").matches &&
       performance.now() > recentTouchUntil &&
       !infoPinned &&
       !drag
     )
+      openInfo(target, target.dataset.info);
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (
+      e.pointerType !== "mouse" ||
+      !(e.movementX || e.movementY) ||
+      !matchMedia("(hover: hover) and (pointer: fine)").matches
+    )
+      return;
+    hoverArmed = true;
+    const target = e.target.closest("[data-info]");
+    if (target && target !== infoAnchor && !infoPinned && !drag)
       openInfo(target, target.dataset.info);
   });
   document.addEventListener("pointerout", (e) => {
@@ -976,7 +2103,7 @@
   });
   document.addEventListener("pointercancel", () => {
     drag = null;
-    selected = null;
+    if (nativeDragElf === null) selected = null;
     paint();
     $("dragGhost").hidden = true;
     document
@@ -988,6 +2115,7 @@
       closeInfo();
       caseOpen = false;
       $("casePanel").hidden = true;
+      hidePopupPointer("casePanel");
     }
   });
   document.addEventListener("click", (e) => {
@@ -1011,7 +2139,12 @@
     }
     if (target.dataset.ai) {
       const [s, l] = target.dataset.ai.split(",").map(Number);
+      const wasAutomated = view.ai[s] === 2;
       perform(() => game.setAi(s, l));
+      if (l === 2 && !wasAutomated) {
+        spareHints.set(s, performance.now() + 5000);
+        paint();
+      }
       return;
     }
     if (target.dataset.checking !== undefined) {
@@ -1023,14 +2156,16 @@
       perform(() => (a === "ask" ? game.setAsk(!view.ask) : game[a]()));
       return;
     }
-    if (target.dataset.resolve) {
-      perform(() => game.resolve(view.case.id, target.dataset.resolve));
+    if (
+      target.dataset.choose &&
+      view.choice &&
+      String(view.choice.id) === target.dataset.choiceId
+    ) {
+      perform(() => game.choose(view.choice.id, target.dataset.choose));
       return;
     }
-    if (target.dataset.version) {
-      guided = $("walkthrough").checked;
-      version = target.dataset.version;
-      reset();
+    if (target.dataset.resolve) {
+      perform(() => game.resolve(view.case.id, target.dataset.resolve));
       return;
     }
   });
@@ -1047,6 +2182,7 @@
     node.addEventListener("drop", (e) => {
       e.preventDefault();
       node.classList.remove("drop");
+      if (nativeDragElf !== null) selected = nativeDragElf;
       moveElf(Number(node.dataset.destination));
     });
   });
@@ -1054,9 +2190,18 @@
     const elf = e.target.closest("[data-elf]");
     if (!elf) return;
     closeInfo();
-    selected = Number(elf.dataset.elf);
+    nativeDragElf = Number(elf.dataset.elf);
+    selected = nativeDragElf;
     e.dataTransfer.setData("text/plain", String(selected));
     e.dataTransfer.effectAllowed = "move";
+    paint();
+  });
+  document.addEventListener("dragend", () => {
+    nativeDragElf = null;
+    selected = null;
+    document
+      .querySelectorAll(".drop")
+      .forEach((node) => node.classList.remove("drop"));
     paint();
   });
   document.addEventListener("pointerdown", (e) => {
@@ -1106,14 +2251,36 @@
     if (e.pointerType === "touch" && help)
       openInfo(help, help.dataset.help, true);
   });
+  $("breakDialog").addEventListener("cancel", (event) =>
+    event.preventDefault(),
+  );
+  $("copyResult").onclick = async () => {
+    const end = view.end;
+    const link = new URL(location.href);
+    link.searchParams.set("seed", seed);
+    link.searchParams.delete("version");
+    const result = `Santa’s AI Workshop: ${end.points} points, ${end.stars}/${view.score.best} stars. ${end.right} correct gifts, ${end.wrong} wrong. ${link.href}`;
+    try {
+      await navigator.clipboard.writeText(result);
+      text("copyStatus", "Result copied.");
+      $("copyFallback").hidden = true;
+    } catch {
+      $("copyFallback").value = result;
+      $("copyFallback").hidden = false;
+      $("copyFallback").focus();
+      $("copyFallback").select();
+      text("copyStatus", "Select and copy your result below.");
+    }
+  };
   $("start").onclick = () => {
     if (guided !== $("walkthrough").checked) {
       guided = $("walkthrough").checked;
-      reset(false);
+      reset(false, false);
     }
     if (!guided) game.skipGuidance();
     started = true;
     $("intro").close();
+    $("board").scrollLeft = 0;
     paint();
   };
   $("pause").onclick = () => {
@@ -1123,16 +2290,26 @@
   $("continue").onclick = acknowledge;
   $("guidanceContinue").onclick = acknowledge;
   $("caseContinue").onclick = acknowledge;
-  $("dismissTutorial").onclick = acknowledge;
   $("skipGuidance").onclick = skip;
   $("caseCue").onclick = () => {
     caseOpen = !caseOpen;
-    paintCase();
+    if (caseOpen && view.case && innerWidth < 1000) {
+      const anchor = caseAnchor(view.case),
+        rect = anchor.getBoundingClientRect();
+      if (
+        rect.left < 0 ||
+        rect.right > innerWidth ||
+        rect.top < 0 ||
+        rect.bottom > innerHeight
+      )
+        anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    paint();
   };
   $("closeCase").onclick = () => {
     caseOpen = false;
     if (view.moment?.control === "case") acknowledge();
-    paintCase();
+    paint();
   };
   $("guidanceToggle").onclick = () => {
     if (!started) {
@@ -1169,7 +2346,8 @@
   $("restartDialog").addEventListener("cancel", () => (restartOpen = false));
   $("replay").onclick = () => {
     guided = false;
-    reset();
+    reset(false);
+    $("start").click();
   };
   $("closeReport").onclick = () => $("report").close();
   $("motion").onclick = () => {
@@ -1187,6 +2365,7 @@
       !restartOpen &&
       !document.hidden &&
       !view.moment &&
+      !view.choice &&
       !view.end
     ) {
       game.step(dt);
@@ -1202,13 +2381,330 @@
     lastTime = performance.now();
     paint();
   });
-  window.addEventListener("resize", () => {
+  function repositionPopups() {
     paintGuidance();
     paintCase();
-    if (infoAnchor) renderInfo();
-  });
+    if (infoAnchor) positionPanel($("infoPopover"), infoPositionAnchor());
+  }
+  window.addEventListener("resize", repositionPopups);
+  document.addEventListener("scroll", repositionPopups, true);
+  // The checking gauge: a half circle from too little (0) to too much (1), with "about right"
+  // between 0.2 and 0.8 as the rules decide, and a pin where this game came out.
+  function dialSVG(position, verdict) {
+    const cx = 180,
+      cy = 166,
+      r = 118;
+    const at = (p, radius) => {
+      const angle = Math.PI * (1 - p);
+      return [cx + radius * Math.cos(angle), cy - radius * Math.sin(angle)].map(
+        (n) => Math.round(n * 10) / 10,
+      );
+    };
+    const arc = (from, to, radius = r) => {
+      const [x1, y1] = at(from, radius),
+        [x2, y2] = at(to, radius);
+      return `M${x1} ${y1} A${radius} ${radius} 0 0 1 ${x2} ${y2}`;
+    };
+    const p = Math.max(0, Math.min(1, position));
+    const zone = (cls, from, to, word) =>
+      `<path class="dial-zone ${cls}${verdict === word ? " on" : ""}" d="${arc(from, to)}"/>`;
+    const [px, py] = at(p, r),
+      [nx, ny] = at(p, r - 20),
+      [lx, ly] = at(p, r + 37);
+    return (
+      `<svg viewBox="0 0 360 212" aria-hidden="true">` +
+      `<path id="dialMiddle" class="dial-guide" d="${arc(0.2, 0.8, r - 6)}"/>` +
+      zone("zone-little", 0, 0.2, "too little") +
+      zone("zone-much", 0.8, 1, "too much") +
+      zone("zone-right", 0.2, 0.8, "about right") +
+      [0.2, 0.8]
+        .map((b) => {
+          const [x1, y1] = at(b, r - 17),
+            [x2, y2] = at(b, r + 17);
+          return `<line class="dial-split" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+        })
+        .join("") +
+      `<text class="dial-word${verdict === "about right" ? " on" : ""}"><textPath href="#dialMiddle" startOffset="${p < 0.5 ? 75 : 25}%" text-anchor="middle">About right</textPath></text>` +
+      `<text class="dial-end${verdict === "too little" ? " on" : ""}" x="${cx - r}" y="${cy + 38}" text-anchor="middle">Too little</text>` +
+      `<text class="dial-end${verdict === "too much" ? " on" : ""}" x="${cx + r}" y="${cy + 38}" text-anchor="middle">Too much</text>` +
+      `<line class="dial-needle" x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}"/>` +
+      `<circle class="dial-hub" cx="${cx}" cy="${cy}" r="11"/><circle class="dial-hub-dot" cx="${cx}" cy="${cy}" r="4"/>` +
+      `<circle class="dial-pin" cx="${px}" cy="${py}" r="11"/>` +
+      `<g class="dial-you" transform="translate(${lx} ${ly})"><rect x="-23" y="-12" width="46" height="24" rx="12"/><text y="4.5" text-anchor="middle">You</text></g>` +
+      `</svg>`
+    );
+  }
+  const firstSentence = (words) => {
+    const match = String(words).match(/^.*?[.!?](?=\s|$)/);
+    return match ? match[0] : String(words);
+  };
+  const groupVerdicts = {
+    paid: "Worth it",
+    "cost more than it saved": "Cost more than it saved",
+    "left exposed": "Left exposed",
+  };
+  function paintAssurance(end) {
+    const a = end.assurance;
+    $("assurance").hidden = !a;
+    $("checkingPaid").hidden = !a;
+    if (a) {
+      $("assuranceDial").setAttribute(
+        "aria-label",
+        `Checking: ${a.verdict}, on a dial from too little to too much`,
+      );
+      $("assuranceDial").innerHTML = dialSVG(a.position, a.verdict);
+      $("assurance").dataset.verdict = a.verdict;
+      text(
+        "assuranceVerdict",
+        a.verdict.charAt(0).toUpperCase() + a.verdict.slice(1),
+      );
+      text("underCost", money(a.underCost));
+      text("overCost", money(a.overCost));
+      addExpand(
+        $("assuranceText"),
+        firstSentence(a.text),
+        a.text,
+        "The whole verdict",
+      );
+      $("assuranceText").title = a.text;
+      $("assuranceGroups").replaceChildren();
+      // One shared scale, so a long bar means the same money on every card.
+      const scale = Math.max(
+        1,
+        ...a.groups.flatMap((g) => [
+          g.checkCost,
+          g.prevented,
+          g.shippedUnchecked ? g.shippedUncheckedCost : 0,
+        ]),
+      );
+      for (const group of a.groups) {
+        const row = make("article", "assurance-group");
+        row.dataset.group = group.id;
+        row.dataset.verdict = group.verdict;
+        row.title = group.text;
+        const none = !group.parcels;
+        row.dataset.none = String(none);
+        const head = make("div", "group-head");
+        head.append(
+          iconNode(`gift-${group.id}`, "group-icon"),
+          make("b", "", group.name),
+          make(
+            "span",
+            "group-verdict",
+            none
+              ? "none this game"
+              : groupVerdicts[group.verdict] || group.verdict,
+          ),
+        );
+        row.append(head);
+        addMore(head, group.text, `More about ${group.name}`, row);
+        if (!none) {
+          const bars = make("div", "group-bars");
+          for (const [cls, label, value] of [
+            ["spent", "Spent on checks", money(group.checkCost)],
+            [
+              "stopped",
+              "Mistakes stopped",
+              `${money(group.prevented)} (estimate)`,
+            ],
+            ...(group.shippedUnchecked
+              ? [["through", "Got through", money(group.shippedUncheckedCost)]]
+              : []),
+          ]) {
+            const amount =
+              cls === "spent"
+                ? group.checkCost
+                : cls === "stopped"
+                  ? group.prevented
+                  : group.shippedUncheckedCost;
+            const bar = make("div", `group-bar bar-${cls}`);
+            const track = make("span", "bar-track");
+            const fill = make("span", "bar-fill");
+            fill.style.width = `${amount > 0 ? Math.max(2, (amount / scale) * 100) : 0}%`;
+            track.append(fill);
+            bar.append(
+              make("span", "bar-label", label),
+              make("b", "bar-value", value),
+              track,
+            );
+            bars.append(bar);
+          }
+          row.append(bars);
+        }
+        $("assuranceGroups").append(row);
+      }
+      $("noChecks").replaceChildren(
+        iconNode("mistakes", "spend-icon"),
+        make("b", "", "With no checks (estimate): "),
+        `${a.noChecks.wrong} wrong gifts, ${money(a.noChecks.cost)}`,
+      );
+    }
+    $("practices").hidden = !end.used;
+    $("practiceTiles").replaceChildren();
+    if (!end.used) return;
+    for (const [icon, practice, actions] of [
+      [
+        "human-in-loop",
+        "Human in the loop",
+        [["assist", "Elves confirmed the AI's drafts"]],
+      ],
+      [
+        "risk-check",
+        "Risk-based checking",
+        [["risky", "Checked the risky parcels"]],
+      ],
+      [
+        "escalate",
+        "Ask a person when unsure",
+        [["asked", "Asked the child about an unclear wish"]],
+      ],
+      [
+        "test-release",
+        "Test before release, keep a way back",
+        [
+          ["tested", "Tested the update first"],
+          ["rolledBack", "Rolled back a faulty update"],
+        ],
+      ],
+      [
+        "oversight",
+        "Keep human oversight sharp",
+        [
+          ["trained", "Trained the checkers"],
+          ["rested", "Gave the elves a cocoa break"],
+        ],
+      ],
+    ]) {
+      const used = actions.some(([flag]) => end.used[flag]);
+      const tile = make("article", "practice-tile");
+      tile.dataset.used = String(used);
+      const top = make("div", "practice-top");
+      const badge = make("span", "practice-badge");
+      badge.innerHTML = used ? tickSVG : "";
+      badge.append(used ? "You did this" : "Not this time");
+      top.append(iconNode(icon, "practice-icon"), badge);
+      tile.append(top, make("h4", "practice-name", practice));
+      for (const [flag, label] of actions) {
+        const action = make("p", "practice-action", label);
+        action.dataset.used = String(end.used[flag]);
+        action.dataset.practice = flag;
+        tile.append(action);
+      }
+      tile.setAttribute(
+        "aria-label",
+        `${practice}: ${actions.map(([flag, label]) => `${label}, ${end.used[flag] ? "done" : "not this time"}`).join("; ")}`,
+      );
+      $("practiceTiles").append(tile);
+    }
+  }
+  const tickSVG =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function showReport() {
     const e = view.end;
+    paintAssurance(e);
+    const hadPreviousGame = personalBest !== null;
+    const canCelebrate = hadPreviousGame && e.points >= 0;
+    const newBest =
+      Number.isFinite(e.points) &&
+      (!personalBest || e.points > personalBest.points);
+    const newStars =
+      Number.isFinite(e.stars) &&
+      (!personalBest || e.stars > personalBest.stars);
+    if (Number.isFinite(e.points))
+      personalBest = {
+        points: newBest ? e.points : personalBest.points,
+        stars: newStars ? e.stars : personalBest.stars,
+      };
+    const collection = new Map(
+      collectedBlunders.map((item) => [item.id, item]),
+    );
+    for (const item of e.blunders || []) collection.set(item.id, item);
+    collectedBlunders = [...collection.values()];
+    try {
+      if (personalBest)
+        localStorage.setItem(
+          "workshop-personal-best",
+          JSON.stringify(personalBest),
+        );
+      localStorage.setItem(
+        "workshop-blunders",
+        JSON.stringify(collectedBlunders),
+      );
+    } catch {}
+    text("endPoints", Number.isFinite(e.points) ? `${e.points} points` : "");
+    $("endStars").replaceChildren();
+    if (e.stars !== undefined)
+      $("endStars").append(
+        make("span", "end-stars-number", e.stars),
+        make("small", "", ` / ${view.score.best}`),
+        make("span", "end-stars-label", "stars"),
+      );
+    text(
+      "personalBest",
+      hadPreviousGame && personalBest
+        ? `${canCelebrate && newBest ? "New best score! " : ""}${canCelebrate && newStars ? "New best stars! " : ""}Best: ${personalBest.points} points, ${personalBest.stars} stars`
+        : "",
+    );
+    $("endRuns").replaceChildren();
+    for (const run of e.runs || []) {
+      const card = make("article", "run-report");
+      card.dataset.stars = run.stars;
+      const head = make("div", "run-head");
+      head.append(
+        iconNode(`cargo-${run.cargo.id}`, "run-cargo-icon"),
+        make("b", "", `Run ${run.run}`),
+        make("span", "run-cargo", run.cargo.name),
+      );
+      // Stars and figures share a line; the first missed goal is the card's hover text.
+      const row = make("div", "run-row");
+      row.append(
+        goalMarks(run.goals || []),
+        make("p", "", `${run.right}/${run.target} right · ${run.wrong} wrong`),
+      );
+      card.append(head, row);
+      if (run.missedBy) {
+        card.title = run.missedBy;
+        addMore(card, run.missedBy, `What run ${run.run} missed`);
+      }
+      // Goals within their limit that never counted, because the sleigh stayed under two thirds full.
+      const waiting = (run.goals || []).find((g) => g.waiting && g.note);
+      if (waiting) card.append(make("small", "goal-wait", waiting.note));
+      if (run.bonus)
+        card.append(
+          make("small", "run-bonus", `+${run.bonus} clean-run bonus`),
+        );
+      $("endRuns").append(card);
+    }
+    text(
+      "collectionTitle",
+      e.blunderTotal !== undefined
+        ? `Christmas blunders · ${collectedBlunders.length}/${e.blunderTotal} found`
+        : "Christmas blunders",
+    );
+    $("blunderCollection").replaceChildren(
+      ...collectedBlunders.map((item) => {
+        const card = make("div", "blunder");
+        card.append(
+          drawnToy(item.name, false, "blunder-art"),
+          make("b", "", item.name),
+        );
+        return card;
+      }),
+    );
+    const missing =
+      e.blunderTotal !== undefined
+        ? e.blunderTotal - collectedBlunders.length
+        : 0;
+    if (missing > 0) {
+      const locked = make("div", "blunder blunder-locked");
+      locked.append(
+        make("span", "blunder-art", "?"),
+        make("b", "", `${missing} more to find`),
+      );
+      $("blunderCollection").append(locked);
+    }
+    text("copyStatus", "");
+    $("copyFallback").hidden = true;
     text(
       "resultTitle",
       e.rating === 3
@@ -1217,33 +2713,69 @@
           ? "Christmas needs a little rework."
           : "Some wishes are still waiting.",
     );
-    text(
-      "resultSummary",
-      `${e.right} correct gifts / ${view.target} · ${e.wrong} wrong gifts aboard · ${e.lost} letters lost`,
+    $("resultSummary").replaceChildren(
+      ...[
+        ["right", "gift", "Right gifts", e.right, `of ${view.target} needed`],
+        ["wrong", "wrong-gift", "Wrong gifts delivered", e.wrong, ""],
+        ["lost", "lost-letter", "Letters lost", e.lost, "never loaded"],
+      ].map(([cls, icon, label, value, note]) => {
+        const tile = make("div", `end-tile tile-${cls}`);
+        const top = make("span", "end-tile-label");
+        top.append(iconNode(icon, "end-tile-icon"), label);
+        tile.append(top, make("b", "", value));
+        if (note) tile.append(make("small", "", note));
+        return tile;
+      }),
     );
     text("lessonTitle", e.lesson.title);
-    text("lessonText", e.lesson.text);
-    $("account").replaceChildren();
-    for (const [label, key] of [
-      ["People", "people"],
-      ["AI", "ai"],
-      ["Checking", "checking"],
-      ["Fixing mistakes", "fixing"],
-      ["Delivered mistakes", "mistakes"],
-      ["Total cost", "total"],
-      ["Available budget", "budget"],
-    ]) {
-      const dt = document.createElement("dt"),
-        dd = document.createElement("dd");
-      dt.textContent = label;
-      dd.textContent = money(e.costs[key]);
-      $("account").append(dt, dd);
-    }
-    text(
-      "prevented",
-      `${money(e.costs.prevented)} in estimated losses prevented by catching mistakes.`,
+    addExpand(
+      $("lessonText"),
+      firstSentence(e.lesson.text),
+      e.lesson.text,
+      "The whole lesson",
     );
+    $("lessonText").title = e.lesson.text;
+    paintCauses(
+      $("endCauses"),
+      e.causes || [],
+      "No wrong gifts this Christmas.",
+    );
+    $("account").replaceChildren();
+    const spent =
+      e.costs.people + e.costs.ai + e.costs.checking + e.costs.fixing;
+    for (const [icon, label, value, cls] of [
+      ["people", "People", money(e.costs.people), ""],
+      ["ai", "AI", money(e.costs.ai), ""],
+      ["checks", "Checking", money(e.costs.checking), ""],
+      ["fixing", "Fixing mistakes", money(e.costs.fixing), ""],
+      [
+        "budget",
+        "Spent from budget",
+        `${money(spent)} of ${money(e.costs.budget)}`,
+        "account-total",
+      ],
+      [
+        "mistakes",
+        "Cost of wrong gifts delivered",
+        money(e.costs.mistakes),
+        "account-loss",
+      ],
+      [
+        "prevented",
+        "Estimated losses prevented",
+        money(e.costs.prevented),
+        "account-saved",
+      ],
+    ]) {
+      const row = make("tr", cls);
+      const name = make("th", "");
+      name.scope = "row";
+      name.append(iconNode(icon, "account-icon"), label);
+      row.append(name, make("td", "", value));
+      $("account").append(row);
+    }
     $("report").showModal();
+    $("report").scrollTop = 0;
   }
   reset();
   requestAnimationFrame(frame);

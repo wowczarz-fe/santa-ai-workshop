@@ -2327,7 +2327,7 @@
     link.searchParams.set("seed", seed);
     link.searchParams.delete("version");
     const verdict = end.assurance?.verdict;
-    const result = `Santa's AI Workshop: ${end.points} points, ${end.stars}/${view.score.best} stars. ${end.right} right gifts, ${end.wrong} wrong.${verdict ? ` Checking: ${dialHeadings[verdict] || verdict}.` : ""} ${link.href}`;
+    const result = `Santa's AI Workshop: ${end.points} points, ${end.stars}/${view.score.best} stars. ${end.right} right gifts, ${end.wrong} wrong.${verdict ? ` Checking: ${verdict}.` : ""} ${link.href}`;
     try {
       await navigator.clipboard.writeText(result);
       text("copyStatus", "Result copied.");

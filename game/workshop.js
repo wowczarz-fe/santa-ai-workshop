@@ -1406,7 +1406,7 @@ class Workshop {
     }
     this.reveal(x);
     const text = x.wrong
-      ? `Caught: ${x.w.child} got ${a(x.made.name)}, not ${a(x.w.wanted.name)}.`
+      ? `Caught: ${this.mixUp(x)}.`
       : `Checked: ${x.w.child}'s ${x.w.wanted.name} is right.`;
     this.say("checked", text, {
       check: this.copy(x, Math.round(this.secondsPerCheck() * 10) / 10, "elf"),
@@ -1420,6 +1420,14 @@ class Workshop {
     this.vig.cleanRun = Math.max(0, this.vig.cleanRun - CATCH_SHARPENS);
     this.sighting(x, "checker");
     this.toRework(x, ELF_SECONDS.remake);
+  }
+
+  // A wrong gift in a few words: "Nina got a big rock, not a toy guitar", or for a tired elf's slip
+  // "Rosa's chess set came out the wrong size".
+  mixUp(x) {
+    return x.made.name === this.slipToy(x).name
+      ? `${x.w.child}'s ${x.w.wanted.name} came out the wrong size`
+      : `${x.w.child} got ${a(x.made.name)}, not ${a(x.w.wanted.name)}`;
   }
 
   cleanParcel() {
@@ -1498,7 +1506,7 @@ class Workshop {
     this.reveal(x);
     this.aboard.push(x);
     if (!x.wrong) return;
-    const text = `Wrong gift: ${x.w.child} got ${a(x.made.name)}, not ${a(x.w.wanted.name)}.`;
+    const text = `Wrong gift: ${this.mixUp(x)}.`;
     const cause = this.causeId(x);
     const waiting = this.waitingCause(x);
     // Remembered for the end lesson: this gift went aboard while its decision waited.

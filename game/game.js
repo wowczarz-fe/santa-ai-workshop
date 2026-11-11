@@ -2037,7 +2037,7 @@
         row.dataset.group = group.id;
         row.append(
           make("strong", "", `${group.icon} ${group.name}`),
-          make("span", "", `${money(group.checkCost)} checking paid`),
+          make("span", "", `${money(group.checkCost)} spent on checks`),
           make(
             "span",
             "",
@@ -2097,6 +2097,8 @@
   function showReport() {
     const e = view.end;
     paintAssurance(e);
+    const hadPreviousGame = personalBest !== null;
+    const canCelebrate = hadPreviousGame && e.points >= 0;
     const newBest =
       Number.isFinite(e.points) &&
       (!personalBest || e.points > personalBest.points);
@@ -2131,8 +2133,8 @@
     );
     text(
       "personalBest",
-      personalBest
-        ? `${newBest ? "New best score! " : ""}${newStars ? "New best stars! " : ""}Best score: ${personalBest.points} · Best stars: ${personalBest.stars} ★`
+      hadPreviousGame && personalBest
+        ? `${canCelebrate && newBest ? "New best score! " : ""}${canCelebrate && newStars ? "New best stars! " : ""}Best score: ${personalBest.points} · Best stars: ${personalBest.stars} ★`
         : "",
     );
     $("endRuns").replaceChildren();
@@ -2184,15 +2186,19 @@
       ["AI", "ai"],
       ["Checking", "checking"],
       ["Fixing mistakes", "fixing"],
-      ["Delivered mistakes", "mistakes"],
-      ["Estimated losses prevented", "prevented"],
-      ["Total cost", "total"],
+      ["Spent from budget", "spent"],
       ["Available budget", "budget"],
+      ["Cost of wrong gifts delivered", "mistakes"],
+      ["Estimated losses prevented", "prevented"],
     ]) {
       const dt = document.createElement("dt"),
         dd = document.createElement("dd");
       dt.textContent = label;
-      dd.textContent = money(e.costs[key]);
+      dd.textContent = money(
+        key === "spent"
+          ? e.costs.people + e.costs.ai + e.costs.checking + e.costs.fixing
+          : e.costs[key],
+      );
       $("account").append(dt, dd);
     }
     $("report").showModal();

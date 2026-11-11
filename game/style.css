@@ -2029,8 +2029,8 @@ dialog p {
   margin: 10px 0;
 }
 .assurance-dial {
-  height: 12px;
-  margin: 18px 8px 9px;
+  height: 18px;
+  margin: 35px 8px 12px;
   border-radius: 10px;
   background: linear-gradient(
     90deg,
@@ -2043,9 +2043,9 @@ dialog p {
 }
 #assuranceMarker {
   position: absolute;
-  top: -5px;
-  width: 4px;
-  height: 22px;
+  top: -6px;
+  width: 7px;
+  height: 30px;
   background: #193b35;
   transform: translateX(-50%);
   border-radius: 3px;
@@ -2150,4 +2150,21 @@ dialog p {
   border-radius: 7px;
   text-decoration: none;
   font-weight: 600;
+}
+
+#assuranceVerdict {
+  font:
+    bold 22px Georgia,
+    serif;
+  margin: 8px 0;
+  text-transform: capitalize;
+}
+#assuranceMarker b {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  padding-bottom: 4px;
+  color: var(--ink);
 }

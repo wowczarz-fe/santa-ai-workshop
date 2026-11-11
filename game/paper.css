@@ -1310,3 +1310,155 @@ body[data-look="paper"] #piles0 .stack {
     margin-left: 32px;
   }
 }
+
+/* ==== Break card and end screen: paper look ====
+   Same layout as style.css; cream paper on pine, serif headings, red primary. */
+body[data-look="paper"] #breakDialog,
+body[data-look="paper"] #report {
+  --bc-paper: #f4ead3;
+  --bc-card: #fbf6e9;
+  --bc-line: #d8c49c;
+  --bc-ink: #2b1c14;
+  --bc-muted: #6e5a44;
+  --bc-hero1: #122b22;
+  --bc-hero2: #1e4434;
+  --bc-hero-ink: #f4ead3;
+  --bc-hero-muted: #d6c8a6;
+  --bc-accent: #1e4434;
+  --bc-accent-deep: #1e4434;
+  --bc-accent-soft: #e2e4cb;
+  --bc-gold: #d2a447;
+  --bc-gold-ink: #7a5514;
+  --bc-gold-soft: #f3e2b4;
+  --bc-red: #a3263a;
+  --bc-red-deep: #8f1f31;
+  --bc-red-soft: #f2d7cd;
+  --bc-ok: #2c6a43;
+  --bc-ok-soft: #dde6c8;
+  --bc-blue: #2e5470;
+  --bc-frost: #ece0c2;
+  --bc-off: #cdb98f;
+  --bc-press: #b59b72;
+  --bc-serif: Georgia, serif;
+  --bc-title-font: Georgia, serif;
+  --bc-zone-little: #e6bcae;
+  --bc-zone-right: #c3d4a8;
+  --bc-zone-much: #ecd59d;
+  --bc-zone-little-on: #c7586a;
+  --bc-zone-right-on: #7fac76;
+  --bc-zone-much-on: #d8aa45;
+  --bc-scene-roofs: #0e221b;
+  --bc-scene-line: #f4ead3;
+  --bc-scene-window: #d2a447;
+  --bc-scene-moon: #f4ead3;
+}
+body[data-look="paper"] #breakDialog {
+  border: 1px solid #a78c62;
+  box-shadow: 0 24px 70px #0a1a1480;
+}
+body[data-look="paper"] .break-hero {
+  border-bottom: 4px solid #a3263a;
+}
+body[data-look="paper"] .scene-roof-line {
+  stroke-width: 4;
+  opacity: 1;
+}
+body[data-look="paper"] .next-cargo,
+body[data-look="paper"] .goal-slot,
+body[data-look="paper"] .break-causes,
+body[data-look="paper"] .break-last,
+body[data-look="paper"] #report .end-card,
+body[data-look="paper"] .end-tile {
+  box-shadow: 0 2px 0 #c9b48e;
+}
+body[data-look="paper"] .next-cargo-icon,
+body[data-look="paper"] .upgrade-icon,
+body[data-look="paper"] .cause-icon,
+body[data-look="paper"] .group-icon,
+body[data-look="paper"] .practice-icon {
+  border-radius: 50%;
+}
+body[data-look="paper"] .upgrade-card[data-kind="update"] .upgrade-icon {
+  background: #a3263a;
+  color: #f4ead3;
+}
+body[data-look="paper"] .upgrade-card[data-kind="tested"] .upgrade-icon {
+  background: #1e4434;
+  color: #f4ead3;
+}
+body[data-look="paper"] .upgrade-card[data-kind="train"] .upgrade-icon {
+  background: #d2a447;
+  color: #2b1c14;
+}
+body[data-look="paper"] .upgrade-card[data-kind="rest"] .upgrade-icon {
+  background: #e7d6b4;
+  color: #a3263a;
+}
+body[data-look="paper"] #breakDialog .upgrade-card strong {
+  font-family: Georgia, serif;
+  font-size: 17px;
+}
+body[data-look="paper"] .upgrade-cost {
+  background: none;
+  padding-left: 0;
+  color: var(--bc-accent-deep);
+}
+body[data-look="paper"] #report {
+  --bc-hero1: #f4ead3;
+  --bc-hero2: #fbf6e9;
+  --bc-hero-ink: #1e4434;
+  --bc-hero-muted: #6e5a44;
+  --bc-run-bg: #ece0c2;
+  --bc-mini-off: #c4ae84;
+  --bc-mini-on: #c58f1c;
+  --bc-snow: #d8c49c;
+  --bc-sleigh: #a3263a;
+  background: #15332a;
+}
+body[data-look="paper"] .end-hero {
+  border: 1px solid #c9b48e;
+  box-shadow: 0 2px 0 #c9b48e;
+}
+body[data-look="paper"] #report .end-score-copy p,
+body[data-look="paper"] #endPoints {
+  color: var(--bc-ink);
+}
+body[data-look="paper"] .run-report p {
+  color: var(--bc-ink);
+}
+body[data-look="paper"] #report .end-top .eyebrow {
+  color: #d6c8a6;
+}
+body[data-look="paper"] #report #closeReport {
+  border-color: #a78c62;
+  background: #f4ead3;
+}
+body[data-look="paper"] .end-foot,
+body[data-look="paper"] .explore-link {
+  color: #f4ead3;
+}
+body[data-look="paper"] .end-actions {
+  border-top: 1px solid #2c5244;
+  background: #15332a;
+  box-shadow: 0 -6px 18px #0000004d;
+}
+body[data-look="paper"] #report #copyStatus {
+  color: #f4ead3;
+}
+body[data-look="paper"] #report #replay {
+  font-family: Georgia, serif;
+  font-size: 19px;
+  box-shadow: 0 3px 0 #6e1726;
+}
+body[data-look="paper"] #report .blunder {
+  border-color: #d8c49c;
+  background: #f4ead3;
+}
+body[data-look="paper"] .slip-wish {
+  font-family: Georgia, serif;
+  color: #26407a;
+}
+body[data-look="paper"] .dial-word {
+  fill: #14321f;
+}
+/* ==== End of break card and end screen: paper look ==== */

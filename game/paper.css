@@ -1473,3 +1473,7 @@ body[data-look="paper"] .dial-word {
   fill: #14321f;
 }
 /* ==== End of break card and end screen: paper look ==== */
+
+.look-choice[hidden] {
+  display: none;
+}

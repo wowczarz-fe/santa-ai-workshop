@@ -1,9 +1,9 @@
 (() => {
   "use strict";
   const look =
-    new URLSearchParams(location.search).get("look") === "polish"
-      ? "polish"
-      : "paper";
+    new URLSearchParams(location.search).get("look") === "paper"
+      ? "paper"
+      : "polish";
   document.body.dataset.look = look;
   const Art =
     look === "polish" && typeof PolishArt !== "undefined"

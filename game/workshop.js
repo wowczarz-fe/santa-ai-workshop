@@ -49,35 +49,39 @@ const STATION_QUEUES = [
 // and good updates make the toy machine faster still.
 const ELF_SECONDS = {
   read: [5.5, 2.6],
+  readUnclear: 9, // an elf reading an unclear wish by hand works out what the child means
   make: [5.5, 2.6],
-  ask: 12,
+  ask: 15,
   check: 2.9,
   pass: 0.16,
   remake: 5.3,
-  recall: 10.7,
+  recall: 20, // fetching a gift back off a loaded sleigh, then remaking it
 };
 const AI_SECONDS = { read: 0.6, make: 1.6 };
 const INVESTIGATE_SECONDS = 5;
 const ROLLBACK_SECONDS = 8;
 const TRAINING_SECONDS = 10;
 
-// What goes wrong. Elves get worse as they tire; the AI is steady on clear work and confidently
-// wrong on unclear wishes; a faulty update makes the same wrong toy again and again.
+// What goes wrong. Elves get worse as they tire. The AI is steady on everyday work, slips on big
+// gifts it has seen less of, and is confidently wrong on unclear wishes; a faulty update makes the
+// same wrong toy again and again.
 const RISK = {
-  elfRead: 0.02,
-  elfGuess: 0.3,
+  elfRead: 0.005,
   aiRead: 0.02,
+  aiReadBig: 0.08,
   aiGuess: 0.5,
   asked: 0.01,
-  elfMake: 0.02,
+  elfMake: 0.005,
   aiMake: 0.03,
+  aiMakeBig: 0.12,
   fault: 0.65,
-  perStrain: 0.004,
+  perStrain: 0.008, // per point of tiredness above SLIPS_FROM
 };
 const CONFIRM_CATCH = 0.85; // an elf confirming an AI draft spots a wrong one
 const WATCH_CATCH = 0.4; // a watching elf spots one faulty toy
 const CHECK_CATCH = 0.9;
 const UNSURE_IF_WRONG = 0.7;
+const CATCH_SHARPENS = 1; // clean parcels a caught mistake takes off the checkers' run
 const UNSURE_IF_RIGHT = 0.06;
 const SAMPLE = 0.08; // share of parcels "a few" sends to the checking pile
 const NOTICE_AFTER = 4; // faulty trains seen by checkers or on the sleigh before anyone says so
@@ -88,7 +92,7 @@ const UPDATES_AT = [50, 100, 150];
 const SPEED_UP = 1.5;
 const SIGN_IF_FAULTY = 0.7;
 const SIGN_IF_GOOD = 0.3;
-const TEST_SECONDS = 25;
+const TEST_SECONDS = 40;
 const TEST_TOYS = 4;
 const KEEP_AGAIN = 20; // seconds before a kept-running update is raised again
 const ABOARD_AT = 5;
@@ -110,9 +114,12 @@ const FRESH = 30;
 const TIRED_SLOWS = 0.014;
 const TIRED_MISSES = 0.01;
 const strain = (tired) => Math.max(0, tired - FRESH);
+// Elves working by hand make almost no mistakes until properly tired, and then only ordinary slips.
+const SLIPS_FROM = 50;
+const slipping = (tired) => Math.max(0, tired - SLIPS_FROM);
 const CHECKER_STRAIN = 0.25; // checking tires more than reading or making
 
-const BUDGET = 1000;
+const BUDGET = 1400;
 const WAGE = 0.15; // a working elf, per second
 const COCOA_WAGE = 0.08;
 const AI_PRICE = [0, 0.22, 0.72]; // per station, per second
@@ -122,11 +129,13 @@ const PRICE = {
   remake: 3,
   rollback: 65,
   made: 15,
-  recall: 40,
+  recall: 20,
+  recallEach: 22, // per gift brought back, on top of its remake
   investigate: 10,
-  test: 10,
+  ask: 3, // a letter back to the child
+  test: 20,
 };
-const WRONG_PRICE = { everyday: 12, big: 60 };
+const WRONG_PRICE = { everyday: 12, big: 100 };
 
 const AT = { timmy: 45, rush: 110, calm: 150, close: 211 };
 const INFLOW = 0.88;
@@ -622,6 +631,19 @@ class Workshop {
     return this.elves.filter((e) => e.station === s);
   }
 
+  slipAt(s) {
+    const team = this.staff(s);
+    return sum(team.map((e) => slipping(e.tired))) / Math.max(1, team.length);
+  }
+
+  // What a tired elf gets wrong: the right toy in the wrong size, not something absurd.
+  slipToy(x) {
+    return {
+      name: `${x.w.wanted.name} in the wrong size`,
+      icon: x.w.wanted.icon,
+    };
+  }
+
   strainAt(s) {
     const team = this.staff(s);
     return sum(team.map((e) => strain(e.tired))) / Math.max(1, team.length);
@@ -659,8 +681,12 @@ class Workshop {
   }
 
   seconds(id, x) {
-    if (id === "letters")
-      return this.ai[0] === 2 ? AI_SECONDS.read : ELF_SECONDS.read[this.ai[0]];
+    if (id === "letters") {
+      if (this.ai[0] === 2) return AI_SECONDS.read;
+      return this.ai[0] === 0 && x?.w.unclear && !x.asked
+        ? ELF_SECONDS.readUnclear
+        : ELF_SECONDS.read[this.ai[0]];
+    }
     if (id === "orders")
       return this.ai[1] === 2
         ? AI_SECONDS.make / this.machineSpeed
@@ -726,13 +752,13 @@ class Workshop {
 
   confirmCatch(s) {
     return (
-      Math.max(0, CONFIRM_CATCH - this.strainAt(s) * TIRED_MISSES) *
+      Math.max(0, CONFIRM_CATCH - this.slipAt(s) * TIRED_MISSES) *
       (1 - this.vigilance().trust)
     );
   }
 
   checkCatch() {
-    return Math.max(0.35, CHECK_CATCH - this.strainAt(2) * TIRED_MISSES);
+    return Math.max(0.35, CHECK_CATCH - this.slipAt(2) * TIRED_MISSES);
   }
 
   suspect(x) {
@@ -880,8 +906,7 @@ class Workshop {
   finishWork(id, x) {
     if (id === "letters") this.read(x);
     else if (id === "clarify") {
-      x.asked = true;
-      x.wrong = x.roll.read < RISK.asked;
+      this.asked(x);
       this.report.ask.asked++;
       this.q.orders.push(x);
     } else if (id === "orders") this.make(x);
@@ -892,30 +917,35 @@ class Workshop {
     } else this.remade(x);
   }
 
+  // A child has explained the wish; the elf who asked rarely gets it wrong, and then only slightly.
+  asked(x) {
+    x.asked = true;
+    this.pay("people", PRICE.ask);
+    x.wrong = x.roll.read < RISK.asked;
+    if (x.wrong) x.wrongToy = this.slipToy(x);
+  }
+
   // How the AI reads a letter, decided by the letter's own roll so a case can show it in advance.
   aiReading(x) {
     const guess = x.w.unclear && !x.asked;
-    return x.w === TIMMY || x.roll.read < (guess ? RISK.aiGuess : RISK.aiRead)
-      ? x.w.wrong
-      : x.w.wanted;
+    const risk = guess ? RISK.aiGuess : x.w.big ? RISK.aiReadBig : RISK.aiRead;
+    return x.w === TIMMY || x.roll.read < risk ? x.w.wrong : x.w.wanted;
   }
 
   read(x) {
     const level = this.ai[0];
     const guess = x.w.unclear && !x.asked;
-    if (level === 0)
-      x.wrong =
-        x.roll.read <
-        (guess ? RISK.elfGuess : RISK.elfRead) +
-          this.strainAt(0) * RISK.perStrain;
-    else {
+    if (level === 0) {
+      x.wrong = x.roll.read < RISK.elfRead + this.slipAt(0) * RISK.perStrain;
+      if (x.wrong) x.wrongToy = this.slipToy(x);
+    } else {
       const draftWrong = this.aiReading(x) !== x.w.wanted;
       x.byAi = true;
       x.confident = guess;
       x.wrong =
         draftWrong && !(level === 1 && x.roll.confirm < this.confirmCatch(0));
+      if (x.wrong) x.wrongToy = x.w.wrong;
     }
-    if (x.w === TIMMY) x.wrong = true;
     this.q.orders.push(x);
   }
 
@@ -925,17 +955,20 @@ class Workshop {
     x.batch = Boolean(this.incident?.fault) && level > 0;
     let faulty = false;
     let slip;
-    if (level === 0)
-      slip = x.roll.make < RISK.elfMake + this.strainAt(1) * RISK.perStrain;
-    else {
+    if (level === 0) {
+      slip = x.roll.make < RISK.elfMake + this.slipAt(1) * RISK.perStrain;
+      if (slip && !x.wrong) x.wrongToy = this.slipToy(x);
+    } else {
       x.byAi = true;
       faulty = x.batch && x.roll.make < RISK.fault;
-      const draftWrong = faulty || x.roll.make < RISK.aiMake;
+      const draftWrong =
+        faulty || x.roll.make < (x.w.big ? RISK.aiMakeBig : RISK.aiMake);
       const confirmed =
         level === 1 && draftWrong && x.roll.confirm < this.confirmCatch(1);
       if (confirmed && faulty) this.notice("watcher");
       if (confirmed) faulty = false;
       slip = draftWrong && !confirmed;
+      if (slip && !x.wrong) x.wrongToy = x.w.wrong;
       // What a parcel made now is likely to be, for the incident's facts.
       x.batchRisk = x.batch
         ? RISK.fault * (level === 1 ? 1 - this.confirmCatch(1) : 1)
@@ -944,7 +977,7 @@ class Workshop {
     x.wrong ||= slip;
     this.stats.toys++;
     if (slip) this.stats.toyMistakes++;
-    x.made = faulty ? LOCOMOTIVE : x.wrong ? x.w.wrong : x.w.wanted;
+    x.made = faulty ? LOCOMOTIVE : x.wrong ? x.wrongToy : x.w.wanted;
     x.unsure =
       x.byAi &&
       x.roll.unsure <
@@ -1004,7 +1037,8 @@ class Workshop {
       return this.load(x);
     }
     this.caught(x);
-    this.vig.cleanRun = 0;
+    // A caught mistake sharpens the checkers for a while; it does not wipe out a long clean stretch.
+    this.vig.cleanRun = Math.max(0, this.vig.cleanRun - CATCH_SHARPENS);
     this.sighting(x, "checker");
     this.toRework(x, ELF_SECONDS.remake);
   }
@@ -1473,8 +1507,8 @@ class Workshop {
             "ask",
             "Ask the child",
             ELF_SECONDS.ask,
-            0,
-            `this letter; an elf at reading for ${ELF_SECONDS.ask} s`,
+            PRICE.ask,
+            `this letter; an elf at reading for ${ELF_SECONDS.ask} s and a letter back`,
             this.staff(0).length ? null : "nobody at reading to ask",
           ),
           o(
@@ -1591,7 +1625,7 @@ class Workshop {
               "bringBack",
               "Bring them back",
               n * ELF_SECONDS.recall,
-              PRICE.recall + n * PRICE.remake,
+              PRICE.recall + n * (PRICE.recallEach + PRICE.remake),
               `${plural(n, "wrong gift")}, about ${Math.round(n * ELF_SECONDS.recall)} s of checkers`,
               broke ?? checker,
             ),
@@ -1666,10 +1700,10 @@ class Workshop {
       }
     } else if (c.kind === "unclear") {
       if (optionId === "ask") {
-        Object.assign(x, { asked: true, wrong: x.roll.read < RISK.asked });
+        this.asked(x);
         this.q.orders.push(x);
-        text = `An elf spent ${ELF_SECONDS.ask} s asking ${x.w.child}: the letter went on as ${a(x.w.wanted.name)}.`;
-        outcome = { seconds: ELF_SECONDS.ask, parcels: 1 };
+        text = `An elf spent ${ELF_SECONDS.ask} s and ${money(PRICE.ask)} asking ${x.w.child}: the letter went on as ${a(x.w.wanted.name)}.`;
+        outcome = { seconds: ELF_SECONDS.ask, money: PRICE.ask, parcels: 1 };
       } else {
         x.accepted = true;
         this.q.letters.unshift(x);
@@ -1865,21 +1899,21 @@ class Workshop {
           left: n,
           caught: 0,
           avoided: 0,
-          money: PRICE.recall,
+          money: PRICE.recall + n * PRICE.recallEach,
           since: this.t,
         };
         list.forEach((x) => this.toRework(x, ELF_SECONDS.recall, job));
-        this.pay("fixing", PRICE.recall);
+        this.pay("fixing", PRICE.recall + n * PRICE.recallEach);
         this.say(
           "recalled",
           `${plural(n, "wrong gift")} came back off the sleigh to be remade.`,
           { count: n },
         );
         tell(
-          `${does(n, "wrong gift", "comes", "come")} back to be remade: about ${Math.round(n * ELF_SECONDS.recall)} s of checkers and ${money(PRICE.recall + n * PRICE.remake)}.`,
+          `${does(n, "wrong gift", "comes", "come")} back to be remade: about ${Math.round(n * ELF_SECONDS.recall)} s of checkers and ${money(PRICE.recall + n * (PRICE.recallEach + PRICE.remake))}.`,
           {
             seconds: n * ELF_SECONDS.recall,
-            money: PRICE.recall + n * PRICE.remake,
+            money: PRICE.recall + n * (PRICE.recallEach + PRICE.remake),
             parcels: n,
           },
         );
@@ -2133,6 +2167,18 @@ class Workshop {
     );
   }
 
+  // Average seconds an elf at reading spends per letter at a level: unclear letters are asked about
+  // when asking is on, and take a hand reader longer when it is off.
+  elfReadSeconds(level) {
+    const unclear = share((w) => w.unclear);
+    const unclearSeconds = this.ask
+      ? ELF_SECONDS.ask
+      : level === 0
+        ? ELF_SECONDS.readUnclear
+        : ELF_SECONDS.read[level];
+    return (1 - unclear) * ELF_SECONDS.read[level] + unclear * unclearSeconds;
+  }
+
   // Parcels a second each station manages at its steady speed now.
   rates() {
     const unclear = share((w) => w.unclear);
@@ -2145,9 +2191,7 @@ class Workshop {
             1 / AI_SECONDS.read / (1 - asking),
             asking ? elves(0) / ELF_SECONDS.ask / asking : Infinity,
           )
-        : elves(0) /
-          ((1 - asking) * ELF_SECONDS.read[this.ai[0]] +
-            asking * ELF_SECONDS.ask);
+        : elves(0) / this.elfReadSeconds(this.ai[0]);
     const making =
       this.ai[1] === 2
         ? this.machineSpeed / AI_SECONDS.make
@@ -2200,7 +2244,8 @@ class Workshop {
       const perMinute = [0, 1, 2].map((level) =>
         level === 2
           ? (60 / AI_SECONDS[kind]) * (s === 1 ? this.machineSpeed : 1)
-          : (elves(s) * 60) / ELF_SECONDS[kind][level],
+          : (elves(s) * 60) /
+            (s === 0 ? this.elfReadSeconds(level) : ELF_SECONDS.make[level]),
       );
       return LEVELS.map((name, level) => {
         const who = [
@@ -2240,7 +2285,7 @@ class Workshop {
                   : `guesses unclear wishes: ${unclearWaiting} waiting`
                 : fault
                   ? "faulty update: same wrong toy"
-                  : "steady, unless an update fails";
+                  : `big gifts: ${chance(RISK.aiMakeBig).replace("about ", "")} wrong`;
         return {
           name,
           who,
@@ -2253,7 +2298,10 @@ class Workshop {
     };
     const checking = [
       ["A few", "elves check a few at random"],
-      ["The risky ones", "elves check big, unclear, unsure"],
+      [
+        "The risky ones",
+        "elves check big, unclear and unsure parcels, where the AI slips most",
+      ],
       ["All", "elves check every single parcel"],
     ].map(([name, sends], level) => ({
       name,
@@ -2498,7 +2546,7 @@ class Workshop {
     return {
       ai0: `${perMinute(1)} a minute on assist, ${perMinute(2)} on automate`,
       ai1: `${perMinute(1)} a minute on assist, ${perMinute(2)} on automate`,
-      ask: `each unclear letter takes an elf about ${ELF_SECONDS.ask} seconds; nothing else`,
+      ask: `each unclear letter takes an elf about ${ELF_SECONDS.ask} seconds and a ${money(PRICE.ask)} letter back`,
       checking: `each check takes a checker about ${Math.round(this.secondsPerCheck())} seconds and costs ${money(PRICE.check)}`,
       bypass: `lets ${plural(waiting, "waiting parcel")} through unchecked; free, but nobody looks at them`,
       train: `${money(PRICE.train)} and ${TRAINING_SECONDS} s of half-speed checks; about ${this.aiParcelsToCome()} AI parcels still to come`,

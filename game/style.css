@@ -1878,3 +1878,33 @@ dialog p {
   pointer-events: none;
   overflow: hidden;
 }
+.tutorial[data-control="ai0"],
+.tutorial[data-control="ai1"] {
+  padding: 8px;
+}
+.tutorial[data-control="ai0"] .panel-head,
+.tutorial[data-control="ai1"] .panel-head {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+}
+.tutorial[data-control="ai0"] .panel-head .eyebrow,
+.tutorial[data-control="ai1"] .panel-head .eyebrow,
+.tutorial[data-control="ai0"] .panel-actions,
+.tutorial[data-control="ai1"] .panel-actions,
+.tutorial[data-control="ai0"] #tutorialPause,
+.tutorial[data-control="ai1"] #tutorialPause {
+  display: none;
+}
+.tutorial[data-control="ai0"] h3,
+.tutorial[data-control="ai1"] h3 {
+  font-size: 15px;
+  line-height: 18px;
+  margin: 0 28px 5px 0;
+}
+.tutorial[data-control="ai0"] p,
+.tutorial[data-control="ai1"] p {
+  font-size: 11.5px;
+  line-height: 14px;
+  margin: 0;
+}

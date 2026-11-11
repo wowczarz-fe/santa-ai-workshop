@@ -674,7 +674,18 @@
       gap = 12,
       w = innerWidth,
       h = innerHeight;
-    const horizontal = Math.max(12, Math.min(r.left, w - p.width - 12));
+    let horizontal = Math.max(12, Math.min(r.left, w - p.width - 12));
+    if (
+      panel.id === "tutorial" &&
+      ["ai0", "ai1"].includes(panel.dataset.control)
+    ) {
+      const column = anchor.closest(".station").getBoundingClientRect();
+      if (p.width <= column.width - 2 && column.left >= 0 && column.right <= w)
+        horizontal = Math.max(
+          column.left + 1,
+          Math.min(horizontal, column.right - p.width - 1),
+        );
+    }
     const vertical = Math.max(12, Math.min(r.top, h - p.height - 12));
     const protectedBounds = protectedNodes
       .map((node) => node.getBoundingClientRect())
@@ -803,6 +814,7 @@
       lastMoment = null;
       return;
     }
+    $("tutorial").dataset.control = moment.control;
     text("tutorialTitle", moment.title);
     text("tutorialText", moment.text);
     text(
@@ -817,7 +829,13 @@
       caseOpen = true;
       paintCase();
     } else {
+      const ai = moment.control === "ai0" || moment.control === "ai1";
       const anchor =
+        (ai
+          ? document.querySelector(
+              moment.control === "ai0" ? '[data-ai="0,1"]' : '[data-ai="1,2"]',
+            )
+          : null) ||
         actionGroups.get(moment.control) ||
         $(
           moment.control === "cocoa"
@@ -829,6 +847,14 @@
       const protectedNodes = [
         ...document.querySelectorAll(".crew, [data-move]:not([hidden])"),
         $("cocoa"),
+        ...(ai
+          ? [
+              actionGroups.get(moment.control),
+              ...document.querySelectorAll(
+                `#station${moment.control === "ai0" ? 0 : 1} .queue`,
+              ),
+            ]
+          : []),
         anchor,
       ];
       positionPanel($("tutorial"), anchor, protectedNodes);

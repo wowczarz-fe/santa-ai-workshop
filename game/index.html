@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=8962583-impact1" />
+    <link rel="stylesheet" href="style.css?v=5b3f363-assurance1" />
   </head>
   <body>
     <header>
@@ -241,6 +241,7 @@
         </div>
         <div id="breakSlips" class="break-slips"></div>
       </div>
+      <p id="breakSpend" class="break-spend" hidden></p>
       <p id="breakMore" class="muted"></p>
       <div id="breakOptions" class="break-options"></div>
     </dialog>
@@ -257,6 +258,51 @@
       <p id="resultSummary"></p>
       <div id="endRuns" class="end-runs"></div>
 
+      <section id="assurance" hidden aria-labelledby="assuranceTitle">
+        <h3 id="assuranceTitle">Checking in this run</h3>
+        <div class="assurance-dial" role="img" id="assuranceDial">
+          <span id="assuranceMarker"></span>
+        </div>
+        <div class="assurance-labels">
+          <span>Too little</span><strong id="assuranceVerdict"></strong
+          ><span>Too much</span>
+        </div>
+        <div class="assurance-costs">
+          <div>
+            <span>Unchecked mistakes and late fixes · actual cost</span
+            ><strong id="underCost"></strong>
+          </div>
+          <div>
+            <span>Overchecking · estimated cost</span
+            ><strong id="overCost"></strong>
+          </div>
+        </div>
+        <p id="assuranceText"></p>
+        <div id="assuranceGroups"></div>
+        <p id="noChecks"></p>
+        <details class="estimate-help">
+          <summary>ⓘ How these estimates work</summary>
+          <p>
+            Without checks assumes every wrong toy made would have shipped. It
+            is not a simulated alternative policy. Prevented losses estimate the
+            cost of caught mistakes. Estimated overchecking combines checking
+            spend above estimated losses prevented with the estimated value of
+            gifts left waiting for checks. Underchecking counts wrong gifts
+            delivered without a check and their late recall or remake costs.
+            Mistakes missed by a checker who looked are included in wrong gifts
+            shipped, not in this underchecking cost.
+          </p>
+        </details>
+      </section>
+      <section id="practices" hidden>
+        <h3>What you just did, in the real world</h3>
+        <div id="practiceTiles"></div>
+        <p>
+          Deciding how much assurance is worth it is what Frontier Economics
+          does
+        </p>
+        <a href="#article">Read the article</a>
+      </section>
       <section class="end-account">
         <h3>The Christmas account</h3>
         <dl id="account"></dl>
@@ -300,7 +346,7 @@
     <div id="celebration" class="celebration" aria-hidden="true"></div>
     <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
-    <script src="workshop.js?v=8962583-impact1"></script>
-    <script src="game.js?v=8962583-impact1"></script>
+    <script src="workshop.js?v=5b3f363-assurance1"></script>
+    <script src="game.js?v=5b3f363-assurance1"></script>
   </body>
 </html>

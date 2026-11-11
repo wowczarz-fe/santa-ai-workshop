@@ -2018,3 +2018,136 @@ dialog p {
 .tutorial[data-compact="true"] {
   width: min(300px, calc(100vw - 24px));
 }
+
+#assurance,
+#practices {
+  margin: 18px 0;
+}
+#assurance h3,
+#practices h3 {
+  font-size: 17px;
+  margin: 10px 0;
+}
+.assurance-dial {
+  height: 12px;
+  margin: 18px 8px 9px;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    #cc7866,
+    #c5ce9b 45%,
+    #c5ce9b 55%,
+    #d3a970
+  );
+  position: relative;
+}
+#assuranceMarker {
+  position: absolute;
+  top: -5px;
+  width: 4px;
+  height: 22px;
+  background: #193b35;
+  transform: translateX(-50%);
+  border-radius: 3px;
+}
+.assurance-labels,
+.assurance-costs {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.assurance-labels {
+  font-size: 12px;
+}
+.assurance-costs {
+  margin: 14px 0;
+}
+.assurance-costs > div {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #d8ded4;
+  border-radius: 8px;
+}
+.assurance-costs span,
+.assurance-costs strong {
+  display: block;
+}
+.assurance-costs span {
+  font-size: 12px;
+}
+.assurance-costs strong {
+  font:
+    26px Georgia,
+    serif;
+  margin-top: 4px;
+}
+.assurance-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.3fr 1fr;
+  gap: 6px 12px;
+  border-top: 1px solid #d8ded4;
+  padding: 10px 0;
+  font-size: 12px;
+}
+.assurance-group p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+#assuranceText,
+#noChecks,
+.estimate-help,
+#practices > p,
+.break-spend {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.estimate-help summary {
+  cursor: pointer;
+}
+#practiceTiles {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+}
+.practice-tile {
+  border: 1px solid #d8ded4;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.practice-icon {
+  font-size: 26px;
+}
+.practice-action {
+  margin-top: 6px;
+}
+.practice-action strong,
+.practice-action span {
+  display: block;
+}
+.practice-action[data-used="false"] {
+  color: #69756d;
+}
+.practice-action[data-used="true"] strong {
+  color: #1b6450;
+}
+@media (max-width: 600px) {
+  .assurance-group {
+    grid-template-columns: 1fr 1fr;
+  }
+  #practiceTiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .assurance-costs {
+    gap: 8px;
+  }
+}
+#practices > a {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px solid #71887b;
+  border-radius: 7px;
+  text-decoration: none;
+  font-weight: 600;
+}

@@ -99,7 +99,7 @@
     const station = make("section", "station");
     station.id = `station${s}`;
     station.dataset.destination = s;
-    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine"><svg viewBox="0 0 100 80" aria-hidden="true">${machineArt[s]}</svg><strong class="station-rate" id="rate${s}"></strong><span class="station-bottleneck" id="bottleneck${s}"></span><span class="capacity-label">${["Reading", "Toy making", "Human checks + passing"][s]}</span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine"><svg viewBox="0 0 100 80" aria-hidden="true">${machineArt[s]}</svg><strong class="station-rate" id="rate${s}"></strong><span class="station-bottleneck" id="bottleneck${s}"></span><span class="capacity-label">${["Reading", "Toy making", "Dispatch at current checking"][s]}</span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
     station
       .querySelector(".column-heading")
       .append(
@@ -342,6 +342,7 @@
         node.classList.toggle("full", q.parcels.length >= q.limit);
         node.querySelector("progress").value = q.progress;
         const change = rateChanges.get(id);
+        node.querySelector(".queue-rate").hidden = id === "pass";
         node.querySelector(".queue-rate").textContent =
           change && change.until > performance.now()
             ? `${Math.round(change.after - change.before) > 0 ? "+" : ""}${Math.round(change.after - change.before)} a minute${Math.round(change.after - change.before) === 0 ? " unchanged" : ""}`
@@ -590,6 +591,26 @@
         `${report.right} / ${report.target} correct · ${report.wrong} wrong`,
       );
       text("breakMissed", report.missedBy || "");
+      $("breakSpend").hidden = !report.spent && !report.assurance;
+      text(
+        "breakSpend",
+        [
+          ...(report.spent
+            ? [
+                ["🧑 People", report.spent.people],
+                ["🤖 AI", report.spent.ai],
+                ["🔎 Checks", report.spent.checking],
+                ["🔧 Fixing", report.spent.fixing],
+              ].map(([label, value]) => `${label} ${money(value)}`)
+            : []),
+          ...(report.assurance
+            ? [
+                `${report.assurance.caught} caught · ${money(report.assurance.prevented)} estimated losses prevented`,
+              ]
+            : []),
+        ].join(" · "),
+      );
+
       text(
         "breakBonus",
         report.bonus ? `+${report.bonus} clean-run bonus` : "",
@@ -1240,7 +1261,9 @@
         q.name,
         [
           `${q.parcels.length} waiting, room for ${q.limit}.`,
-          `${Math.round(q.rate)} parcels a minute with the current staffing and AI setting.`,
+          parts[1] === "pass"
+            ? `Straight-through conveyor capacity: ${Math.round(q.rate)} parcels a minute. The dispatch station shows capacity at the current checking policy.`
+            : `${Math.round(q.rate)} parcels a minute with the current staffing and AI setting.`,
           q.inflow !== undefined
             ? `${Math.round(q.inflow)} parcels arriving per minute.`
             : "",
@@ -1743,8 +1766,86 @@
   }
   window.addEventListener("resize", repositionPopups);
   document.addEventListener("scroll", repositionPopups, true);
+  function paintAssurance(end) {
+    const a = end.assurance;
+    $("assurance").hidden = !a;
+    if (a) {
+      $("assuranceDial").setAttribute(
+        "aria-label",
+        `Checking: ${a.verdict}, from too little to too much`,
+      );
+      $("assuranceMarker").style.left =
+        `${Math.max(0, Math.min(1, a.position)) * 100}%`;
+      text("assuranceVerdict", a.verdict);
+      text("underCost", money(a.underCost));
+      text("overCost", money(a.overCost));
+      text("assuranceText", a.text);
+      $("assuranceGroups").replaceChildren();
+      for (const group of a.groups) {
+        const row = make("article", "assurance-group");
+        row.dataset.group = group.id;
+        row.append(
+          make("strong", "", `${group.icon} ${group.name}`),
+          make("span", "", `${money(group.checkCost)} checking paid`),
+          make(
+            "span",
+            "",
+            `${group.caught} caught · ${money(group.prevented)} estimated saved`,
+          ),
+          make(
+            "span",
+            "",
+            `${group.shipped} wrong shipped · ${money(group.shippedCost)}`,
+          ),
+          make("p", "", group.text),
+        );
+        $("assuranceGroups").append(row);
+      }
+      text(
+        "noChecks",
+        `Estimated without checks: ${a.noChecks.wrong} wrong gifts · ${money(a.noChecks.cost)}`,
+      );
+    }
+    $("practices").hidden = !end.used;
+    $("practiceTiles").replaceChildren();
+    if (!end.used) return;
+    for (const [icon, actions] of [
+      ["🧑🤖", [["assist", "Elves confirm AI drafts", "Human in the loop"]]],
+      ["🔎", [["risky", "Check risky ones", "Risk-based checking"]]],
+      ["💬", [["asked", "Ask child", "Escalate ambiguity to a person"]]],
+      [
+        "🧪",
+        [
+          ["tested", "Test update", "Test before release"],
+          ["rolledBack", "Roll back", "Way to undo"],
+        ],
+      ],
+      [
+        "☕",
+        [
+          ["trained", "Train checkers", "Keep human oversight sharp"],
+          ["rested", "Rest checkers", "Keep human oversight sharp"],
+        ],
+      ],
+    ]) {
+      const tile = make("article", "practice-tile");
+      tile.append(make("span", "practice-icon", icon));
+      for (const [flag, label, meaning] of actions) {
+        const action = make("div", "practice-action");
+        action.dataset.used = String(end.used[flag]);
+        action.dataset.practice = flag;
+        action.append(
+          make("strong", "", `${end.used[flag] ? "✓" : "○"} ${label}`),
+          make("span", "", meaning),
+        );
+        tile.append(action);
+      }
+      $("practiceTiles").append(tile);
+    }
+  }
   function showReport() {
     const e = view.end;
+    paintAssurance(e);
     const newBest =
       Number.isFinite(e.points) &&
       (!personalBest || e.points > personalBest.points);

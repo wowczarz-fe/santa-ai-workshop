@@ -24,6 +24,8 @@ Animate positive changes in the observed correct-gift count, and show supplied m
 
 Start replay immediately without guidance, using a fresh seed unless the address fixes one. Remember highest points and highest stars independently, plus uniquely identified blunders revealed by the rules. Storage failure keeps the game playable. Copy a result only when the player presses the copy button, with selectable text when clipboard access fails.
 
+Show the rules-owned assurance verdict, group outcomes and real-world practice flags above the expanded money account. Underchecking counts actual costs of unchecked wrong deliveries and their late fixes; checked mistakes that were missed remain in shipped outcomes. Overchecking, prevented losses and the without-checks comparison are estimates. Explain that the comparison assumes all wrong toys made would ship, rather than simulating an alternative policy. Keep each paired practice flag separate. The practice terminology and article placeholder are provisional user wording.
+
 ## Consequences
 
 The player can compare causes, costs and upgrades before the next run. Replays have variety while explicit seeds still reproduce a game. Local records belong to this browser. Movement, break cards, storage failure and touch information controls require browser checks alongside the rules checks.

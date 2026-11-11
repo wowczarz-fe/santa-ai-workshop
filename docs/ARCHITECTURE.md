@@ -116,7 +116,8 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
   or where checks did not pay, when there is one.
 - `end.used` is `{ assist, risky, asked, tested, rolledBack, trained, rested }`, each `true` once the
   player has done that thing in this game, set when the action succeeds and never cleared:
-  `assist` an AI level set to assist at either station, `risky` checking set to the risky ones,
+  `assist` an AI level on Assist for at least 10 seconds of play in all, `risky` checking on the
+  risky ones for at least 10 seconds, so one click does not count,
   `asked` a child asked (with asking on, or from a case), `tested` the test-it-first break option,
   `rolledBack` a faulty update rolled back, `trained` the training break option, `rested` the
   cocoa-for-everyone break option.
@@ -182,7 +183,8 @@ shippedCost, shippedUnchecked, shippedUncheckedCost, verdict, text }` for `id` `
   than checking the rest of that kind would have, else `"cost more than it saved"` when its checks
   cost more than they prevented, else `"paid"`. `text` is one short sentence with the figures.
 - `end.lesson` agrees with the verdict: a lesson about how much was checked, or about the
-  bottleneck, takes its title and text from `assurance`. When lost letters were the largest loss
+  bottleneck, takes its title from `assurance`, and its text says what to do next time, so it
+  never repeats `assurance.text`. When lost letters were the largest loss
   the lesson is "Letters piled up", naming the station that held things up longest. When the
   faulty update's trains that went aboard while its decision waited unanswered made at least half
   of what the wrong gifts cost, the lesson says so.
@@ -227,10 +229,11 @@ A case is `{ id, kind, step, text, facts, evidence, affected, options, resolving
   `wanted` or `result`.
 - `affected` is `{ count, ids }`: the parcels an option could cover.
 - `options` is `[{ id, label, seconds, money, scope, goal, available, why }]`. The options depend on the
-  kind. `scope` is how many parcels that option covers, in words. `goal` is `null` or a few words on
+  kind. `scope` is what the option does, in words; the part before the first semicolon is a few
+  words a chip can show, and a time longer than the run left reads "longer than the run". `goal` is `null` or a few words on
   what the option does to the run's goals, set on the `"aboard"` step: leaving the wrong gifts when
-  they are more than the mistakes goal allows reads "Right gifts goal lost"; bringing them back reads
-  "Right gifts goal saved", and adds "Within budget goal lost" when the recall's price would push the
+  they are more than the mistakes goal allows reads "Few mistakes goal lost"; bringing them back reads
+  "Few mistakes goal saved", and adds "Within budget goal lost" when the recall's price would push the
   run over its allowance. The goal names come from `run.goals`. `scope` ends with the same words
   after a semicolon. `available` is `false` with a
   short `why` when the option cannot be chosen now, for example when no checker is free.
@@ -287,7 +290,7 @@ Every item has `id`, `t`, `kind` and `text`. Some carry more:
 | `resolved`    | `caseId`, `option`, `outcome`, `check` when one parcel was judged                       | The player answered a case                           |
 | `bypassed`    | `count`                                                                                 | The player let waiting parcels through unchecked     |
 | `timmy`       |                                                                                         | Timmy's letter arrives                               |
-| `update`      |                                                                                         | The faulty AI update lands                           |
+| `update`      |                                                                                         | An update was installed on the toy machine           |
 | `noticed`     | `by`: `"watcher"` (an elf confirming toys on Assist), `"checker"`, `"sleigh"`, `"case"` | The faulty update became known                       |
 | `rolledBack`  |                                                                                         | The rollback finished                                |
 | `quarantined` | `count`                                                                                 | The suspect batch went to be remade                  |
@@ -299,7 +302,7 @@ Every item has `id`, `t`, `kind` and `text`. Some carry more:
 | `broke`       |                                                                                         | The money ran out; paid actions stop                 |
 | `blocked`     | `station`                                                                               | A station stopped because the next one is full       |
 | `lost`        | `count`                                                                                 | Letters were lost to a full pile                     |
-| `behind`      | `station`, or `null` when no station is holding things up                               | The pace first falls short of the target             |
+| `behind`      | `station`: the station holding things up                                                | The pace first falls short and a station holds it up |
 | `milestone`   | `right`                                                                                 | The sleigh passed a round number of right gifts      |
 | `cleared`     | `queue`                                                                                 | A pile that was more than half full has been emptied |
 | `departed`    | `run`, `right`, `wrong`, `target`, `stars`                                              | A sleigh run left                                    |
@@ -339,7 +342,7 @@ up to `target`.
   `[{ id, name, now, need, text, met, waiting }]` with `id` `"full"`, `"right"` or
   `"cost"`. `now` and `need` are the figures (right gifts against the target, wrong gifts aboard
   against the most allowed, money spent with wrong gifts against the allowance), and `text` is a short phrase such
-  as "at most 3 wrong gifts". `met` is whether the star would be earned if the sleigh left now.
+  as "at most 3 wrong gifts". The names are "Full sleigh", "Few mistakes" and "Within budget". `met` is whether the star would be earned if the sleigh left now.
   `waiting` is `true` for a `right` or `cost` goal whose figures are within its limit while the
   sleigh is not yet two thirds full, so the star is not earned yet. `full` never waits.
 - `run.goalsCountFrom` is the number of right gifts aboard from which the `right` and `cost`
@@ -389,7 +392,7 @@ A choice is `{ id, run, report, next, title, text, options, openCase }`.
   faulty update under `faulty`.
 
 - `openCase` is `{ id, title }` for the first decision still waiting for an answer, or `null`.
-  `title` names it in a few words, such as "Stop new mistakes" for a faulty update still running.
+  `title` names it in a few words, such as "Faulty update" for a faulty update still running.
   The page can offer to open it from the break; a case can be answered while the break is open.
 - `next` is `{ cargo, target }`: what the run about to start carries and the right gifts it needs
   for three stars, so the player can set up for it during the break.
@@ -397,7 +400,9 @@ A choice is `{ id, run, report, next, title, text, options, openCase }`.
   `kind` is `"update"` (install an AI update now), `"tested"` (test it first: if the test is clean
   it is installed part-way through the next run, if not nothing is installed), `"train"` (train the
   checkers) or `"rest"` (cocoa for every elf, which halves each elf's tiredness). `facts` is at most three `{ label, value }`: what
-  the option gives, what it risks, what it costs.
+  the option gives (`Gives`), what it risks (`Risk`, on the install option only: how likely the
+  update is faulty) and what it costs (`Costs`). The test option has `Stops` in place of a risk.
+  `"train"` is left out when the AI was used in the run but none of its gifts are still to come.
 - No option wins whatever the situation. What an update promises and how likely it is to go wrong
   are shown and differ from break to break; training is worth more the more relaxed the checkers
   are and the more AI-made parcels are still to come; rest is worth more the more tired the elves
@@ -416,7 +421,8 @@ during the first run. `score.stars` is their sum and `score.best` the most a gam
 ### Cargo
 
 Each sleigh run carries a cargo, so the set-up that pays changes from run to run. A cargo is
-`{ id, name, icon, text }`, where `text` is one plain sentence a player can act on.
+`{ id, name, icon, text }`, where `text` is a few plain words a player can act on, short enough to
+follow the cargo's name in a heading.
 
 - `"everyday"`: the plain mix of all wishes. The first run always carries it.
 - `"big"`: mostly big gifts. The AI slips more on them and a wrong one costs the big price.

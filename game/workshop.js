@@ -156,6 +156,19 @@ const WRONG_CAUSES = {
     fix: "Send elves for cocoa before they get tired.",
   },
 };
+// Seconds Assist or risky checking must run before the end summary counts it as used, so one click
+// does not earn the practice.
+const USED_FOR = 10;
+// The lesson under the checking dial: what to do next time, so it never repeats the dial's figures.
+const CHECKING_ADVICE = {
+  "too little":
+    "Check where the AI slips and a mistake costs most: big gifts and unclear wishes.",
+  "about right": "Checks went where mistakes were likeliest and dearest.",
+  "too much":
+    "Check where a mistake is likely or dear, and let the rest through.",
+  bottleneck:
+    "A full checking pile stops the whole line, however good the checks.",
+};
 const BREAK_PRICE = { update: 20, tested: 20, train: 70, rest: 40 };
 const TEST_DELAY = 20; // seconds into the next run a tested update goes in, when the test is clean
 
@@ -486,9 +499,9 @@ const DOING = {
   letters: ["reading letters", "confirming the AI's readings"],
   clarify: ["asking a child"],
   orders: ["making toys", "confirming the AI's toys"],
-  check: ["checking parcels"],
-  pass: ["loading parcels"],
-  rework: ["remaking parcels"],
+  check: ["checking gifts"],
+  pass: ["loading gifts"],
+  rework: ["remaking gifts"],
 };
 
 class Workshop {
@@ -1023,7 +1036,7 @@ class Workshop {
       case "letters":
         if (nobody) return "nobody reading";
         if (this.q.letters[0] && this.waitsToAsk(this.q.letters[0]))
-          return "the clarify pile is full";
+          return "the asking pile is full";
         return this.full("orders") ? "the toy pile is full" : null;
       case "clarify":
         if (nobody) return "nobody here to ask";
@@ -1036,7 +1049,7 @@ class Workshop {
       default:
         if (nobody) return "no checkers here";
         return id !== "rework" && this.holding()
-          ? "waiting for the parcels being remade"
+          ? "waiting for gifts being remade"
           : null;
     }
   }
@@ -1049,7 +1062,7 @@ class Workshop {
         : this.full("pass")
           ? "the straight-through pile is full"
           : null;
-    return this.holding() ? "waiting for the parcels being remade" : null;
+    return this.holding() ? "waiting for gifts being remade" : null;
   }
 
   vigilance() {
@@ -2275,7 +2288,7 @@ class Workshop {
       team.forEach((e, i) => {
         if (c?.resolving && c.station === s && i === 0)
           e.doing = {
-            remake: "remaking a parcel",
+            remake: "remaking a gift",
             ask: "asking a child",
             investigate: "investigating a pattern",
           }[c.resolving.optionId];
@@ -2674,9 +2687,9 @@ class Workshop {
       ["A few", "elves check a few at random"],
       [
         "The risky ones",
-        "elves check big, unclear and unsure parcels, where the AI slips most",
+        "elves check big, unclear and unsure gifts, where the AI slips most",
       ],
-      ["All", "elves check every single parcel"],
+      ["All", "elves check every gift"],
     ].map(([name, sends], level) => ({
       name,
       sends,
@@ -2711,8 +2724,8 @@ class Workshop {
     const biggest = this.biggestLoss(right, mistakes);
     const assurance = this.assurance(biggest);
     let lesson = this.lesson(rating, right, costs, biggest);
-    // A lesson about how much was checked takes its title and words from the assurance verdict, so
-    // the two always agree and both tell how this game turned out.
+    // A lesson about how much was checked takes its title from the assurance verdict, so the two
+    // always agree, and says what to do next time while the dial gives the figures.
     const titles = {
       "too little": "Too little checking",
       "about right": "Checking in the right places",
@@ -2720,7 +2733,10 @@ class Workshop {
       bottleneck: "Checking was the bottleneck",
     };
     if (Object.values(titles).includes(lesson.title))
-      lesson = { title: titles[assurance.verdict], text: assurance.text };
+      lesson = {
+        title: titles[assurance.verdict],
+        text: CHECKING_ADVICE[assurance.verdict],
+      };
     this.end = {
       right,
       wrong: wrongGifts.length,
@@ -2739,7 +2755,11 @@ class Workshop {
       lesson,
       assurance,
       checkingAnswer: this.checkingAnswer(assurance),
-      used: { ...this.used },
+      used: {
+        ...this.used,
+        assist: this.stats.ai[1] >= USED_FOR,
+        risky: this.stats.checking[1] >= USED_FOR,
+      },
       causes: this.causes(this.delivered.filter((x) => x.wrong)),
       stars: sum(this.reports.map((r) => r.stars)),
       points: Math.round(this.points),
@@ -2785,7 +2805,7 @@ class Workshop {
     const checkCost = sum(a.groups.map((g) => g.checkCost));
     const unchecked = sum(a.groups.map((g) => g.shippedUncheckedCost));
     if (!checked)
-      return `Nothing was checked, and unchecked wrong gifts cost ${money(unchecked)}.`;
+      return `Nothing was checked; wrong gifts that skipped a check cost ${money(unchecked)}.`;
     const paid = a.prevented >= checkCost;
     const exposed = a.groups
       .filter((g) => g.verdict === "left exposed")
@@ -2842,10 +2862,10 @@ class Workshop {
         : "no wrong gifts";
       const text = {
         paid: t.checked
-          ? `This time, checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${stopped}.`
-          : `This time, no ${kind} were checked, and their unchecked slips cost ${money(t.shippedUncheckedCost)}.`,
-        "cost more than it saved": `This time, checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${t.prevented ? "only " : ""}${stopped}.`,
-        "left exposed": `This time, wrong ${kind} that went out unchecked cost ${money(t.shippedUncheckedCost)}, more than the ${money(unchecked * PRICE.check)} that checking the other ${unchecked} would have cost.`,
+          ? `Checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${stopped}.`
+          : `No ${kind} were checked; their wrong ones cost ${money(t.shippedUncheckedCost)}.`,
+        "cost more than it saved": `Checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${t.prevented ? "only " : ""}${stopped}.`,
+        "left exposed": `Wrong ${kind} that skipped a check cost ${money(t.shippedUncheckedCost)}, more than the ${money(unchecked * PRICE.check)} that checking the other ${unchecked} would have cost.`,
       }[verdict];
       const { wrongMadeCost, ...shown } = t;
       return {
@@ -2904,9 +2924,9 @@ class Workshop {
       : "extra checks";
     const held = a.heldBy.some;
     const text = {
-      "too little": `Too little checking. Unchecked mistakes cost ${under}, ${extra} only ${over}.`,
-      "about right": `Checking was about right. Unchecked mistakes cost ${under}, ${extra} ${over}.`,
-      "too much": `Too much checking. ${extra[0].toUpperCase() + extra.slice(1)} cost ${over}, unchecked mistakes ${under}.`,
+      "too little": `Too little checking. Wrong gifts that skipped a check cost ${under}, ${extra} only ${over}.`,
+      "about right": `Checking was about right. Wrong gifts that skipped a check cost ${under}, ${extra} ${over}.`,
+      "too much": `Too much checking. ${extra[0].toUpperCase() + extra.slice(1)} cost ${over}, wrong gifts that skipped a check ${under}.`,
       bottleneck: `Checking held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh: move an elf to checking when its pile fills.`,
     }[verdict];
     return {
@@ -3286,7 +3306,7 @@ class Workshop {
     if (missed && st.ai[0] / (2 * d) >= 0.6 && right < this.target)
       return L(
         "By hand is careful but slow",
-        `Your elves delivered only ${right} right gifts from ${this.lastId + this.lost} letters. With the AI doing some of the work, the same elves could have delivered far more and checked it too.`,
+        `Only ${right} right gifts from ${this.lastId + this.lost} letters. Let the AI do some of the work, and check what it makes.`,
       );
     // Their words come from the assurance verdict, which follows the same loss.
     if (missed && biggest === "held")
@@ -3296,7 +3316,7 @@ class Workshop {
       const longest = st.holding.indexOf(Math.max(...st.holding));
       return L(
         "Letters piled up",
-        `${this.lost} letters were lost in full piles, and ${STATION_NAMES[longest].toLowerCase()} held things up longest. Move free elves there, and rest tired ones.`,
+        `${this.lost} letters lost in full piles; ${STATION_NAMES[longest].toLowerCase()} held things up longest. Move free elves there.`,
       );
     }
     // Wrong gifts that went aboard while the decision that would have stopped them waited.
@@ -3308,8 +3328,8 @@ class Workshop {
     );
     if (missed && waited > 0 && waited * 2 >= costs.mistakes)
       return L(
-        "The decision waited",
-        `The faulty update's trains cost ${money(waited)} of the ${money(costs.mistakes)} in wrong gifts while its decision waited unanswered. Open a waiting decision as soon as it shows.`,
+        "A decision waited too long",
+        `The faulty update's trains cost ${money(waited)} of ${money(costs.mistakes)} in wrong gifts while its decision waited. Open a waiting decision as soon as it shows.`,
       );
     // Where most of what the delivered mistakes cost came from, when one cause stands out. Weighed by
     // cost, so a few wrong big gifts outweigh many cheap slips.
@@ -3320,28 +3340,28 @@ class Workshop {
     )[0];
     const byCause = {
       "the AI guessed an unclear wish": [
-        "Unclear wishes, guessed",
-        "Most of what your wrong gifts cost came from unclear wishes the AI guessed. Asking the child, or checking unclear wishes, stops them.",
+        "The AI guessed unclear wishes",
+        "Most of the wrong-gift cost came from unclear wishes the AI guessed. Ask the child, or check unclear wishes.",
       ],
       "the AI on a big gift": [
         "Big gifts the AI got wrong",
-        "Most of what your wrong gifts cost came from big gifts the AI got wrong. Check the big ones: they cost the most.",
+        "Most of the wrong-gift cost came from big gifts the AI got wrong. Check the big ones: they cost the most.",
       ],
       "made by the faulty update": [
-        "The faulty update's trains",
-        "Most of what your wrong gifts cost came from the faulty update. Roll it back as soon as it shows, then deal with what it made.",
+        "A faulty update ran unchecked",
+        "Most of the wrong-gift cost came from the faulty update. Roll it back as soon as it shows, then deal with what it made.",
       ],
       "waved through by relaxed checkers": [
-        "Waved through",
-        "Most of what your wrong gifts cost came from gifts relaxed checkers waved through. Training them at a break keeps them careful.",
+        "Checkers stopped looking",
+        "Most of the wrong-gift cost came from gifts the checkers waved through. Training them at a break keeps them sharp.",
       ],
       "let through unchecked": [
         "Let through unchecked",
-        "Most of what your wrong gifts cost came from gifts let through without a check. One more checker would have kept the pile moving.",
+        "Most of the wrong-gift cost came from gifts let through without a check. One more checker would have kept the pile moving.",
       ],
       "a tired elf": [
-        "Tired hands",
-        "Most of what your wrong gifts cost came from slips by tired elves. A short cocoa break keeps them sharp.",
+        "Tired elves slipped",
+        "Most of the wrong-gift cost came from slips by tired elves. A short cocoa break keeps them sharp.",
       ],
     };
     if (
@@ -3372,12 +3392,12 @@ class Workshop {
     if (missed && this.bypassed >= 15)
       return L(
         "Let through unchecked",
-        `You let ${this.bypassed} parcels skip the checking pile to keep the line moving, and wrong gifts cost ${money(costs.mistakes)}. One more elf at the checking pile would have kept them checked.`,
+        `You let ${this.bypassed} gifts skip the checking pile, and wrong gifts cost ${money(costs.mistakes)}. One more checker would have kept them checked.`,
       );
     if (st.faulty >= 15)
       return L(
         "The faulty update ran too long",
-        `The broken update kept making full-sized trains for ${Math.round(st.faulty)} seconds after they were spotted. When the AI suddenly goes wrong, stop it first, then deal with what it made.`,
+        `The faulty update kept making full-sized trains for ${Math.round(st.faulty)} s after they were spotted. Stop it first, then deal with what it made.`,
       );
     if (
       missed &&
@@ -3397,8 +3417,8 @@ class Workshop {
     // Fires even with a top rating when the checkers were never trained: those mistakes are in the bill.
     if (!this.vig.trained && st.waved >= 2)
       return L(
-        "The checkers trusted the AI too much",
-        `After long runs of clean AI parcels the checkers skipped ${this.vig.skipped} checks and waved ${st.waved} wrong gifts through, costing ${money(st.wavedCost)}. Training keeps them careful.`,
+        "Checkers stopped looking",
+        `After long clean stretches the checkers skipped ${this.vig.skipped} checks and waved ${st.waved} wrong gifts through, costing ${money(st.wavedCost)}. Training keeps them sharp.`,
       );
     if (!missed && st.checking[1] / d >= 0.5)
       return L(
@@ -3408,17 +3428,17 @@ class Workshop {
     if (!missed && st.rolledBack)
       return L(
         "The faulty update, handled",
-        `You spotted the broken update, rolled it back and cleared up what it made. Checking cost ${money(costs.checking)} and stopped mistakes worth about ${money(costs.prevented)}.`,
+        `You spotted the faulty update, rolled it back and cleared up what it made. Checking cost ${money(costs.checking)} and stopped about ${money(costs.prevented)} of wrong gifts.`,
       );
     if (!missed)
       return L(
         "Santa leaves happy",
-        `${right} right gifts on time and within budget. Checking cost ${money(costs.checking)} and stopped mistakes worth about ${money(costs.prevented)}.`,
+        `${right} right gifts on time, with money to spare. Checking cost ${money(costs.checking)} and stopped about ${money(costs.prevented)} of wrong gifts.`,
       );
     if (costs.total > BUDGET)
       return L(
-        "Over budget",
-        `The workshop cost ${money(costs.total)} against a budget of ${money(BUDGET)}, wrong gifts included. Look at which line of the bill grew most.`,
+        "Spent more than Santa had",
+        `The workshop cost ${money(costs.total)}, wrong gifts included, against Santa's ${money(BUDGET)}. Look at which line of the bill grew most.`,
       );
     if (this.lost >= 15)
       return L(
@@ -3524,11 +3544,11 @@ class Workshop {
     const perMinute = (level) => money(AI_PRICE[level] * 60);
     const waiting = this.q.check.length;
     return {
-      ai0: `${perMinute(1)} a minute on assist, ${perMinute(2)} on automate`,
-      ai1: `${perMinute(1)} a minute on assist, ${perMinute(2)} on automate`,
+      ai0: `${perMinute(1)} a minute on Assist, ${perMinute(2)} on Automate`,
+      ai1: `${perMinute(1)} a minute on Assist, ${perMinute(2)} on Automate`,
       ask: `each unclear letter takes an elf about ${ELF_SECONDS.ask} seconds and a ${money(PRICE.ask)} letter back`,
       checking: `each check takes a checker about ${Math.round(this.secondsPerCheck())} seconds and costs ${money(PRICE.check)}`,
-      bypass: `lets ${plural(waiting, "waiting parcel")} through unchecked; free, but nobody looks at them`,
+      bypass: `lets ${plural(waiting, "waiting gift")} through unchecked; free, but nobody looks at them`,
     }[name];
   }
 

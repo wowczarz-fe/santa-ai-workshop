@@ -91,6 +91,54 @@ const ABOARD_AT = 5;
 const RUNS = 4;
 const RUN_SECONDS = 60;
 const POINTS = { right: 10, star: 20, clean: 50, budgetLeft: 0.2 };
+// Each sleigh run has three goals, one star each. full: the right gifts aboard reach the target.
+// right: wrong gifts aboard, a big one counting BIG_WRONG_WEIGHT, stay within one for every
+// WRONG_PER gifts of target, at least one. cost: the money spent during the run, the break before it
+// included, stays within ALLOWANCE.base plus ALLOWANCE.perGift for each gift of target. The right
+// and cost goals count only once the sleigh holds GOALS_FROM of its target, so a near-empty sleigh
+// earns nothing.
+const WRONG_PER = 12;
+const BIG_WRONG_WEIGHT = 2;
+const ALLOWANCE = { base: 300, perGift: 4 };
+const GOALS_FROM = 2 / 3;
+// Where a wrong gift that reached the sleigh came from, and the control that would have stopped it.
+const WRONG_CAUSES = {
+  guessed: {
+    name: "The AI guessed unclear wishes",
+    control: "ask",
+    fix: "Turn on Ask the child, or put reading on Assist.",
+  },
+  big: {
+    name: "AI slips on big gifts that went out unchecked",
+    control: "checking",
+    fix: "Check the risky ones, so every big gift gets a check.",
+  },
+  misread: {
+    name: "AI misreadings of everyday letters",
+    control: "ai0",
+    fix: "Put reading on Assist so an elf confirms, or check a few more.",
+  },
+  misMade: {
+    name: "AI slips making everyday toys",
+    control: "ai1",
+    fix: "Put toys on Assist so an elf confirms, or check a few more.",
+  },
+  waved: {
+    name: "Checkers let mistakes through",
+    control: "train",
+    fix: "Train the checkers at a break, and send tired ones for cocoa.",
+  },
+  faulty: {
+    name: "The faulty update",
+    control: "update",
+    fix: "Roll a faulty update back as soon as it shows, or test updates first.",
+  },
+  tired: {
+    name: "Tired elves' slips",
+    control: "cocoa",
+    fix: "Send elves for cocoa before they get tired.",
+  },
+};
 const BREAK_PRICE = { update: 20, tested: 20, train: 70, rest: 40 };
 const TEST_DELAY = 20; // seconds into the next run a tested update goes in, when the test is clean
 
@@ -145,7 +193,7 @@ const GROUPS = [
 const groupOf = (w) => (w.big ? "big" : w.unclear ? "unclear" : "everyday");
 // The end summary dial: below little it reads too little checking, above much too much. settle is the
 // share of all money spent that the two losses must reach before the dial moves far from the middle.
-const ASSURANCE = { little: 0.35, much: 0.65, settle: 0.1 };
+const ASSURANCE = { little: 0.2, much: 0.8, settle: 0.1 };
 
 const AT = { close: 211 };
 // When the letters speed up, when Timmy writes, and the latest each card may wait for its real
@@ -1388,7 +1436,12 @@ class Workshop {
         ? " A relaxed checker waved it through."
         : "";
     const text = `Wrong gift aboard! ${x.w.child} wished for ${a(x.w.wanted.name)} and got ${a(x.made.name)}.${slipped}`;
-    this.say("loaded", text, { check: this.copy(x) });
+    const cause = this.causeId(x);
+    this.say("loaded", text, {
+      check: this.copy(x),
+      cause,
+      control: WRONG_CAUSES[cause].control,
+    });
     if (this.t >= this.opening.timmy) this.reach("checking", x.id);
     if (x.exit === "skipped" && !this.vig.trained) {
       const elf = this.staff(2)[0]?.name ?? "A checker";
@@ -2600,6 +2653,7 @@ class Workshop {
       lesson,
       assurance,
       used: { ...this.used },
+      causes: this.causes(this.delivered.filter((x) => x.wrong)),
       stars: sum(this.reports.map((r) => r.stars)),
       points: Math.round(this.points),
       runs: this.reports.map((r) => ({
@@ -2608,6 +2662,8 @@ class Workshop {
         spent: { ...r.spent },
         assurance: { ...r.assurance },
         cargo: { ...r.cargo },
+        goals: r.goals.map((g) => ({ ...g })),
+        causes: r.causes.map((c) => ({ ...c })),
       })),
       blunders: [...this.blunders.values()].map((b) => ({ ...b })),
       blunderTotal: BLUNDER_TOTAL,
@@ -2615,10 +2671,12 @@ class Workshop {
   }
 
   // Whether checking was too little, about right or too much, in the game's own money.
-  //   underCost: what under-checking lost: wrong gifts that reached children without a check (never
-  //     sent for one, waved through by relaxed checkers, or let through), plus the recalls and
-  //     remakes of such gifts brought back off the sleigh. A mistake that slipped past a checker who
-  //     did look is the price of checks being imperfect, not of checking too little.
+  //   underCost: what under-checking lost: for each kind of gift, what its wrong gifts that reached
+  //     children without a check (never sent for one, waved through, or let through) cost beyond
+  //     what checking every unchecked parcel of that kind would have cost, plus the recalls and
+  //     remakes of unchecked gifts brought back off the sleigh. Leaving cheap mistakes unchecked when
+  //     checking them all would cost more is not under-checking, and a mistake that slipped past a
+  //     checker who did look is the price of checks being imperfect.
   //   overCost: what over-checking lost: the checking money spent on kinds of parcel where the checks
   //     cost more than the mistakes they stopped, plus LATE_PRICE for each gift that missed a sleigh
   //     because checking held it up.
@@ -2666,7 +2724,17 @@ class Workshop {
       };
     });
     const total = (field) => sum(Object.values(a.groups).map((t) => t[field]));
-    const underCost = total("shippedUncheckedCost") + a.recallCost;
+    // Only the avoidable part of an unchecked mistake counts: what the wrong gifts of a kind cost
+    // beyond what checking every unchecked parcel of that kind would have cost.
+    const underCost =
+      sum(
+        Object.values(a.groups).map((t) =>
+          Math.max(
+            0,
+            t.shippedUncheckedCost - (t.parcels - t.checked) * PRICE.check,
+          ),
+        ),
+      ) + a.recallCost;
     const overCost =
       sum(
         Object.values(a.groups)
@@ -2717,22 +2785,87 @@ class Workshop {
     return [...this.delivered, ...this.aboard].filter((x) => !x.wrong).length;
   }
 
-  stars(right, wrong, target) {
-    const wrongShare = wrong / Math.max(1, right + wrong);
-    if (right >= target && wrongShare <= 0.1) return 3;
-    return right >= target * 0.8 && wrongShare <= 0.2 ? 2 : 1;
+  // The three goals of a sleigh run, as they stand for the gifts aboard now.
+  goals(n = this.runNumber) {
+    const target = this.runTargets[n - 1];
+    const right = this.aboard.filter((x) => !x.wrong).length;
+    const wrong = sum(
+      this.aboard
+        .filter((x) => x.wrong)
+        .map((x) => (x.w.big ? BIG_WRONG_WEIGHT : 1)),
+    );
+    const allowed = Math.max(1, Math.floor(target / WRONG_PER));
+    const allowance = Math.round(ALLOWANCE.base + ALLOWANCE.perGift * target);
+    const spent = Math.round(
+      sum(
+        Object.keys(this.spent).map((k) => this.spent[k] - this.spentAtRun[k]),
+      ),
+    );
+    const loaded = right >= target * GOALS_FROM;
+    const counts = BIG_WRONG_WEIGHT === 2 ? "double" : `as ${BIG_WRONG_WEIGHT}`;
+    return [
+      {
+        id: "full",
+        name: "Full sleigh",
+        now: right,
+        need: target,
+        met: right >= target,
+        text: `${target} right gifts`,
+      },
+      {
+        id: "right",
+        name: "Right gifts",
+        now: wrong,
+        need: allowed,
+        met: loaded && wrong <= allowed,
+        text: `at most ${plural(allowed, "wrong gift")}, big ones count ${counts}`,
+      },
+      {
+        id: "cost",
+        name: "Within budget",
+        now: spent,
+        need: allowance,
+        met: loaded && spent <= allowance,
+        text: `spend at most ${money(allowance)}`,
+      },
+    ];
   }
 
-  // How far a run was from its next star, in the player's words.
-  missedBy(right, wrong, target, stars) {
-    if (stars === 3) return null;
-    const [goal, limit, next] =
-      stars === 2
-        ? [target, 0.1, "three stars"]
-        : [Math.ceil(target * 0.8), 0.2, "two stars"];
-    if (right < goal) return `${plural(goal - right, "gift")} short of ${next}`;
-    const allowed = Math.floor((limit * right) / (1 - limit));
-    return `${plural(Math.max(1, wrong - allowed), "wrong gift")} too many for ${next}`;
+  // Which cause a wrong gift on the sleigh comes under: what let it through a check, else what made it wrong.
+  causeId(x) {
+    if (x.made === LOCOMOTIVE || x.cause === "made by the faulty update")
+      return "faulty";
+    if (x.slipped || x.exit === "skipped") return "waved";
+    if (x.cause === "a tired elf") return "tired";
+    if (x.cause === "the AI guessed an unclear wish") return "guessed";
+    if (x.w.big) return "big";
+    return x.cause === "the AI made the wrong toy" ? "misMade" : "misread";
+  }
+
+  // Up to three causes of the wrong gifts given, dearest first.
+  causes(list) {
+    return Object.entries(Object.groupBy(list, (x) => this.causeId(x)))
+      .map(([id, xs]) => ({
+        id,
+        name: WRONG_CAUSES[id].name,
+        wrong: xs.length,
+        cost: sum(xs.map((x) => this.price(x))),
+        control: WRONG_CAUSES[id].control,
+        fix: WRONG_CAUSES[id].fix,
+      }))
+      .sort((p, q) => q.cost - p.cost || q.wrong - p.wrong)
+      .slice(0, 3);
+  }
+
+  // The first goal a run missed, in the player's words, or null when it earned all three.
+  missedGoal(goals) {
+    const [full, right, cost] = goals;
+    if (!full.met)
+      return `${plural(full.need - full.now, "gift")} short of a full sleigh`;
+    if (!right.met)
+      return `${plural(right.now - right.need, "wrong gift")} too many`;
+    if (!cost.met) return `${money(cost.now - cost.need)} over the allowance`;
+    return null;
   }
 
   // What let a wrong gift reach a child: how it went past dispatch, or else how it was made wrong.
@@ -2749,7 +2882,8 @@ class Workshop {
     const right = this.aboard.filter((x) => !x.wrong).length;
     const wrongGifts = this.aboard.filter((x) => x.wrong);
     const target = this.runTargets[n - 1];
-    const stars = this.stars(right, wrongGifts.length, target);
+    const goals = this.goals(n);
+    const stars = goals.filter((g) => g.met).length;
     const bonus = right >= target && !wrongGifts.length ? POINTS.clean : 0;
     this.points +=
       right * POINTS.right -
@@ -2787,7 +2921,7 @@ class Workshop {
       wrong: wrongGifts.length,
       target,
       stars,
-      missedBy: this.missedBy(right, wrongGifts.length, target, stars),
+      missedBy: this.missedGoal(goals),
       bonus,
       slips: slips.slice(0, 3),
       more: Math.max(0, slips.length - 3),
@@ -2801,6 +2935,8 @@ class Workshop {
       ),
       assurance: round(this.assure.run),
       cargo: this.cargoView(this.cargo[n - 1]),
+      goals,
+      causes: this.causes(wrongGifts),
     };
     this.spentAtRun = { ...this.spent };
     this.assure.run = this.freshRun();
@@ -3327,6 +3463,8 @@ class Workshop {
           spent: { ...this.choice.report.spent },
           assurance: { ...this.choice.report.assurance },
           cargo: { ...this.choice.report.cargo },
+          goals: this.choice.report.goals.map((g) => ({ ...g })),
+          causes: this.choice.report.causes.map((c) => ({ ...c })),
         },
         next: {
           cargo: { ...this.choice.next.cargo },
@@ -3347,6 +3485,7 @@ class Workshop {
         of: RUNS,
         target: this.runTargets[this.runNumber - 1],
         cargo: this.cargoView(this.cargo[this.runNumber - 1]),
+        goals: this.goals(),
         leavesIn: Math.max(
           0,
           Math.round(this.runNumber * RUN_SECONDS - this.t),
@@ -3403,7 +3542,10 @@ class Workshop {
           spent: { ...r.spent },
           assurance: { ...r.assurance },
           cargo: { ...r.cargo },
+          goals: r.goals.map((g) => ({ ...g })),
+          causes: r.causes.map((c) => ({ ...c })),
         })),
+        causes: this.end.causes.map((c) => ({ ...c })),
       },
     };
   }

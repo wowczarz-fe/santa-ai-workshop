@@ -335,6 +335,14 @@ function checkHidden(v, w) {
     Array.isArray(v.run.stars) && v.run.stars.length === v.run.number - 1,
     "run.stars lists each finished run",
   );
+  assert.strictEqual(v.run.goals.map((g) => g.id).join(), "full,right,cost");
+  for (const g of v.run.goals)
+    assert.strictEqual(Object.keys(g).join(), "id,name,now,need,met,text");
+  for (const n of v.news.filter((n) => n.kind === "loaded"))
+    assert(
+      n.cause in WRONG_CAUSES && n.control === WRONG_CAUSES[n.cause].control,
+      `a wrong gift aboard names its cause (${n.cause})`,
+    );
   assert.strictEqual(
     v.score.stars,
     v.run.stars.reduce((a, b) => a + b, 0),
@@ -416,7 +424,7 @@ function checkChoice(v, w) {
   );
   assert.strictEqual(
     Object.keys(ch.report).join(),
-    "run,right,wrong,target,stars,missedBy,bonus,slips,more,spent,assurance,cargo",
+    "run,right,wrong,target,stars,missedBy,bonus,slips,more,spent,assurance,cargo,goals,causes",
   );
   for (const s of ch.report.slips)
     assert(CAUSES.includes(s.cause), `slip cause "${s.cause}"`);
@@ -837,8 +845,8 @@ for (const version of VERSION_IDS)
     );
   }
 
-// The end summary reads too little for few checks on automation and too much for checking
-// everything with two checkers. A player who sets up for each run's cargo sits between the two.
+// The end summary reads too little for few checks on automation, too much for checking everything
+// with two checkers, and about right for a player who sets up for each run's cargo.
 function assuranceOf(seed, plan) {
   const w = new Workshop({ seed });
   const setUp = ({ ai, ask = false, checking, staff }) => {
@@ -898,9 +906,10 @@ for (const seed of SEEDS.slice(0, 3)) {
     "too much",
     `seed ${seed}: two checkers on everything read ${all.verdict}`,
   );
-  assert(
-    few.position < fitted.position && fitted.position < all.position,
-    `seed ${seed}: setting up for each cargo sits between (${few.position} < ${fitted.position} < ${all.position})`,
+  assert.strictEqual(
+    fitted.verdict,
+    "about right",
+    `seed ${seed}: setting up for each cargo reads ${fitted.verdict} at ${fitted.position}`,
   );
 }
 

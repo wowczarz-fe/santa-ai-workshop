@@ -393,7 +393,8 @@ function checkMoment(v) {
     );
   const live = {
     case: () => v.case,
-    cocoa: () => v.elves.some((e) => e.station < 3 && e.tired >= 60),
+    cocoa: () =>
+      v.elves[m.elf]?.station < 3 && v.elves[m.elf].tired >= COCOA_MOMENT_AT,
     bypass: () => v.queues.check.parcels.length >= v.queues.check.limit,
   }[m.id];
   assert(!live || live(), `moment ${m.id} shown after its example has gone`);
@@ -654,7 +655,7 @@ for (const version of VERSION_IDS) {
       `${version}: the sensible player beats ${name}`,
     );
   }
-  // Stars: nothing earns three on a run without the player, and a sensible game earns about two a run.
+  // Stars: nothing earns three on a run without the player, and a sensible game earns two to three a run.
   const handsOff = [...SEEDS, ...MORE_SEEDS].map((seed) => {
     const w = new Workshop({ seed, version });
     while (!w.end) {
@@ -674,8 +675,8 @@ for (const version of VERSION_IDS) {
   console.log(`  sensible stars by run: ${starsOf(sensibleEnds).join(" ")}`);
   const sensibleStars = mean(sensibleEnds, (e) => e.stars);
   assert(
-    sensibleStars >= 7 && sensibleStars <= 9.5,
-    `${version}: a sensible game earns about two stars a run (${sensibleStars.toFixed(1)})`,
+    sensibleStars >= 8 && sensibleStars <= 11.5,
+    `${version}: a sensible game earns two to three stars a run (${sensibleStars.toFixed(1)})`,
   );
   warn(
     Object.keys(players).some((name) =>
@@ -834,7 +835,7 @@ for (const version of VERSION_IDS)
 // Spending past the budget says so once and stops the paid one-off actions.
 {
   const w = new Workshop({ seed: 1 });
-  w.spent.fixing += 1500;
+  w.spent.fixing += w.view().budget.left + 100;
   w.step(1);
   everyRun.push({ kinds: new Set(w.view().news.map((n) => n.kind)) });
   assert(

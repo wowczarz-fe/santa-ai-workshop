@@ -43,12 +43,12 @@ const ELF_SECONDS = {
   readUnclear: 9, // an elf reading an unclear wish by hand works out what the child means
   make: [5.5, 2.6],
   ask: 15,
-  check: 2.9,
+  check: 4.5,
   pass: 0.16,
   remake: 5.3,
   recall: 20, // fetching a gift back off a loaded sleigh, then remaking it
 };
-const AI_SECONDS = { read: 0.6, make: 1.6 };
+const AI_SECONDS = { read: 0.6, make: 0.75 };
 const INVESTIGATE_SECONDS = 5;
 const ROLLBACK_SECONDS = 8;
 
@@ -58,12 +58,12 @@ const ROLLBACK_SECONDS = 8;
 const RISK = {
   elfRead: 0.005,
   aiRead: 0.02,
-  aiReadBig: 0.08,
-  aiGuess: 0.5,
+  aiReadBig: 0.15,
+  aiGuess: 0.6,
   asked: 0.01,
   elfMake: 0.005,
-  aiMake: 0.03,
-  aiMakeBig: 0.12,
+  aiMake: 0.05,
+  aiMakeBig: 0.2,
   fault: 0.65,
   perStrain: 0.008, // per point of tiredness above SLIPS_FROM
 };
@@ -71,7 +71,7 @@ const CONFIRM_CATCH = 0.85; // an elf confirming an AI draft spots a wrong one
 const WATCH_CATCH = 0.4; // a watching elf spots one faulty toy
 const CHECK_CATCH = 0.9;
 const UNSURE_IF_WRONG = 0.7;
-const CATCH_SHARPENS = 1; // clean parcels a caught mistake takes off the checkers' run
+const CATCH_SHARPENS = 5; // clean parcels a caught mistake takes off the checkers' run
 const UNSURE_IF_RIGHT = 0.06;
 const SAMPLE = 0.08; // share of parcels "a few" sends to the checking pile
 const NOTICE_AFTER = 4; // faulty trains seen by checkers or on the sleigh before anyone says so
@@ -115,9 +115,10 @@ const strain = (tired) => Math.max(0, tired - FRESH);
 // Elves working by hand make almost no mistakes until properly tired, and then only ordinary slips.
 const SLIPS_FROM = 50;
 const slipping = (tired) => Math.max(0, tired - SLIPS_FROM);
-const CHECKER_STRAIN = 0.25; // checking tires more than reading or making
+const CHECKER_STRAIN = 0.6; // checking tires more than reading or making
+const COCOA_MOMENT_AT = 55; // tiredness at which a guided run suggests cocoa for a working elf
 
-const BUDGET = 1400;
+const BUDGET = 1800;
 const WAGE = 0.15; // a working elf, per second
 const COCOA_WAGE = 0.08;
 const AI_PRICE = [0, 0.22, 0.72]; // per station, per second
@@ -320,13 +321,9 @@ const MOMENTS = {
     control: "cocoa",
     unlocks: [],
     completes: ["move"],
-    title: "A tired elf",
-    text: (w) => {
-      const e = w.elves
-        .filter((e) => e.station < BREAK)
-        .sort((x, y) => y.tired - x.tired)[0];
-      return `${e.name} is at ${Math.round(e.tired)} tiredness and slowing down. Send ${e.name} for cocoa before burning out.`;
-    },
+    title: "Send a tired elf for cocoa",
+    text: (w, x, e) =>
+      `${e.name} is getting tired and will slow down and miss mistakes. Drag them to cocoa for a short break before they burn out.`,
   },
   case: {
     control: "case",
@@ -562,12 +559,12 @@ class Workshop {
 
   // A moment waits for its turn: the first ones in a fixed order, then as they come, with at least
   // MOMENT_GAP seconds of play between two. Controls that matter at once work before their card shows.
-  reach(id, parcelId = null) {
+  reach(id, parcelId = null, elf = null) {
     if (!this.guided || this.happened.has("moment:" + id)) return;
     this.happened.add("moment:" + id);
     if (URGENT_MOMENTS.includes(id))
       MOMENTS[id].unlocks.forEach((c) => this.unlocked.add(c));
-    this.momentQueue.push({ id, parcelId });
+    this.momentQueue.push({ id, parcelId, elf });
     this.showMoment();
   }
 
@@ -575,7 +572,8 @@ class Workshop {
   showMoment() {
     if (
       this.moment &&
-      this.example(this.moment.id, this.moment.parcelId) === false
+      this.example(this.moment.id, this.moment.parcelId, this.moment.elf) ===
+        false
     ) {
       this.forget(this.moment.id);
       this.moment = null;
@@ -587,7 +585,7 @@ class Workshop {
       const i = next ? this.momentQueue.findIndex((q) => q.id === next) : 0;
       if (i < 0) return;
       const [q] = this.momentQueue.splice(i, 1);
-      const parcelId = this.example(q.id, q.parcelId);
+      const parcelId = this.example(q.id, q.parcelId, q.elf);
       if (parcelId === false) {
         this.forget(q.id);
         continue;
@@ -604,8 +602,9 @@ class Workshop {
         id: q.id,
         control: m.control,
         title: m.title,
-        text: m.text(this, x),
+        text: m.text(this, x, this.elves[q.elf]),
         parcelId,
+        elf: q.elf,
         completes: [...m.completes],
       };
       return;
@@ -618,7 +617,7 @@ class Workshop {
   }
 
   // The parcel a moment points at now, null when it points at no parcel, or false when its example has gone.
-  example(id, parcelId) {
+  example(id, parcelId, elf = null) {
     switch (id) {
       case "bypass":
         return this.full("check") ? this.q.check[0].id : false;
@@ -627,10 +626,12 @@ class Workshop {
         if (this.find(parcelId)) return parcelId;
         return this.q.letters.find((x) => x.w.unclear && !x.asked)?.id ?? false;
       }
-      case "cocoa":
-        return this.elves.some((e) => e.station < BREAK && e.tired >= 60)
+      case "cocoa": {
+        const e = this.elves[elf];
+        return e && e.station < BREAK && e.tired >= COCOA_MOMENT_AT
           ? null
           : false;
+      }
       case "case":
         return this.cases.length ? null : false;
       default:
@@ -646,8 +647,10 @@ class Workshop {
     ].find((x) => x.id === id);
   }
 
-  did(call) {
-    if (this.moment?.completes.includes(call)) this.moment = null;
+  // After a player action the pace is worked out afresh, so the page sees its effect at once.
+  did(call, closes = true) {
+    ({ projected: this.projected, slowest: this.slowest } = this.estimate());
+    if (closes && this.moment?.completes.includes(call)) this.moment = null;
   }
 
   acknowledge(momentId) {
@@ -936,8 +939,10 @@ class Workshop {
     if (this.t >= o.checking) this.reach("checking");
     if (this.happened.has("moment:checking") && this.full("check"))
       this.reach("bypass", this.q.check[0].id);
-    if (this.elves.some((e) => e.station < BREAK && e.tired >= 60))
-      this.reach("cocoa");
+    const tired = this.elves.findIndex(
+      (e) => e.station < BREAK && e.tired >= COCOA_MOMENT_AT,
+    );
+    if (tired >= 0) this.reach("cocoa", null, tired);
     this.showMoment();
   }
 
@@ -2509,7 +2514,10 @@ class Workshop {
       text: `The update is tried on a few toys first. If they come out right it goes in ${TEST_DELAY} s into the next run; if not, nothing is installed.`,
       facts: [
         fact("Gives", `the same, ${TEST_DELAY} s later, if clean`),
-        fact("Risk", "a good update fails 1 in 9"),
+        fact(
+          "Risk",
+          `a good update fails 1 in ${Math.round(1 / (1 - (1 - RISK.aiMake) ** TEST_TOYS))}`,
+        ),
         fact("Costs", money(BREAK_PRICE.tested)),
       ],
     };
@@ -2768,7 +2776,7 @@ class Workshop {
       return false;
     e.station = station;
     this.assignWork();
-    this.did("move");
+    this.did("move", this.moment?.id !== "cocoa" || station === BREAK);
     return true;
   }
 
@@ -2919,7 +2927,8 @@ class Workshop {
     const v = this.vigilance();
     const moment =
       this.moment &&
-      this.example(this.moment.id, this.moment.parcelId) !== false
+      this.example(this.moment.id, this.moment.parcelId, this.moment.elf) !==
+        false
         ? this.moment
         : null;
     return {
@@ -2939,7 +2948,7 @@ class Workshop {
       ask: this.ask,
       checking: this.checking,
       levers: this.levers(),
-      stations: [0, 1, 2].map((s) => {
+      stations: this.rates().map((rate, s) => {
         const working = this.staff(s).filter(
           (e) => e.doing !== "nothing to do",
         ).length;
@@ -2949,6 +2958,7 @@ class Workshop {
           idle: this.staff(s).length - working,
           queues: [...STATION_QUEUES[s]],
           blocked: this.stationBlocked(s),
+          rate: Math.round(rate * 60),
         };
       }),
       queues: Object.fromEntries(

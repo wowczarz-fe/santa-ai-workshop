@@ -47,7 +47,7 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
 | `elves`                   | `[{ name, station, tired, resting, doing }]`                                                                 |
 | `ai`, `ask`, `checking`   | Current lever positions                                                                                      |
 | `levers`                  | `{ ai0, ai1, checking }`: what each position does now                                                        |
-| `stations`                | Three of `{ staff, working, idle, queues, blocked }`                                                         |
+| `stations`                | Three of `{ staff, working, idle, queues, blocked, rate }`                                                   |
 | `queues`                  | `{ letters, clarify, orders, check, pass, rework }`, each a queue                                            |
 | `bypassed`                | How many parcels the player has let through unchecked                                                        |
 | `vigilance`               | `{ state, cleanRun, secondsPerCheck, skipped, trained }`: how the checkers are checking                      |
@@ -72,7 +72,8 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
   "nothing to do" or "having cocoa".
 - A station's `staff` is how many elves are there, `working` and `idle` split them, `queues` lists
   the ids of the queues it works on in the order to draw them, and `blocked` is `null` or a short
-  reason such as "the toy pile is full".
+  reason such as "the toy pile is full". `rate` is the parcels a minute the station manages at its
+  current staffing and AI level.
 - A queue is `{ id, name, parcels, limit, rate, inflow, trend, progress, blocked }`. `inflow` is
   parcels a minute arriving and `trend` is `"growing"`, `"steady"` or `"shrinking"`, so the page can
   show at a glance whether the player's last move helped. `rate` is parcels a minute at
@@ -90,7 +91,9 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
   clean AI-made parcels the checkers have seen in a row, `secondsPerCheck` what a check takes them
   now, `skipped` how many checks they have skipped, and `trained` whether training has been done.
 - `pace.projected` is the right gifts expected at departure at the current pace, `behind` whether
-  that is short of the target, and `slowest` the station holding things up.
+  that is short of the target, and `slowest` the station holding things up. Each step smooths
+  `projected` over about 15 seconds; a player action works both out afresh at once, even while the
+  clock is stopped.
 - `actions` has a key for each of `ai0`, `ai1`, `ask`, `checking` and `bypass`. `unlocked` says whether the guided run
   `available` whether it can be used now, `why` is one short phrase when it cannot, and `cost` is
   what using it costs in time, money and parcels covered, in the player's words.
@@ -163,14 +166,18 @@ A case is `{ id, kind, step, text, facts, evidence, affected, options, resolving
 
 ### Tutorial moments
 
-A moment is `{ id, control, title, text, parcelId, completes }`.
+A moment is `{ id, control, title, text, parcelId, elf, completes }`.
 
 - `control` is the control or place it points at: an `actions` key, `"elves"`, `"cocoa"`, `"sleigh"`
-  or `"case"`. `parcelId` is the example that triggered it, or `null`.
+  or `"case"`. `parcelId` is the example that triggered it, or `null`. `elf` is the index of the
+  elf it is about, or `null`.
 - `completes` lists the calls that close it, such as `["setAi"]`. `acknowledge(id)` always closes
   it. The rules do not advance while a moment is open only because the page stops calling `step`;
   the page never resumes a game the player paused by hand.
 - A moment appears at the first real example of a decision in a guided run, once per decision.
+- The `cocoa` moment appears the first time a working elf reaches 55 tiredness (`COCOA_MOMENT_AT`).
+  Its `elf` is that elf and its `control` is `"cocoa"`. Moving an elf to cocoa (station 3) closes
+  it; a move elsewhere does not. It goes away if that elf rests, burns out or is no longer tired.
 
 ## News
 
@@ -294,4 +301,4 @@ checker asks the player to judge one toy against its wish.
   running, let go, leave) states the time, money, parcels and risk taken, and does not say whether
   it was right.
 - Asking a child takes an elf 15 seconds. The budget
-  is 1,400. A wrong everyday gift costs 12 and a wrong big gift 100.
+  is 1,800. A wrong everyday gift costs 12 and a wrong big gift 100.

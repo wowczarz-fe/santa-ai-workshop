@@ -1192,6 +1192,7 @@ class Workshop {
       ),
     );
     if (this.pendingTest && this.t >= this.pendingTest.at) this.finishTest();
+    this.dropEmptyIncidents();
     this.raiseIncident();
     // Guided runs fall back to these times when the real example has not come by then.
     // Each AI lever comes as the answer to a pile that has started to grow.
@@ -1669,6 +1670,18 @@ class Workshop {
       inc.keptAt = null;
       this.openCase({ kind: "incident", step: "source" });
     }
+  }
+
+  // A made or aboard decision whose gifts have all gone (loaded, or away with the sleigh) has
+  // nothing left to decide, so it closes without an answer.
+  dropEmptyIncidents() {
+    this.cases = this.cases.filter(
+      (c) =>
+        c.resolving ||
+        c.kind !== "incident" ||
+        !["made", "aboard"].includes(c.step) ||
+        this.affected(c).length > 0,
+    );
   }
 
   // Wrong gifts on the sleigh reach five more than last time: bring them back or leave them.
@@ -2932,7 +2945,7 @@ class Workshop {
     const extra = a.heldBy.all
       ? "extra checks and the gifts they held back"
       : "extra checks";
-    const held = a.heldBy.some;
+    const held = a.heldBy.all + a.heldBy.some;
     const text = {
       "too little": `Too little checking. Wrong gifts that skipped a check cost ${under}, ${extra} only ${over}.`,
       "about right": `Checking was about right. Wrong gifts that skipped a check cost ${under}, ${extra} ${over}.`,
@@ -2950,7 +2963,8 @@ class Workshop {
       prevented: Math.round(total("prevented")),
       shipped: total("shipped"),
       shippedCost: Math.round(total("shippedCost")),
-      held: a.held,
+      // Every gift checking held back, the figure the bottleneck text names.
+      held,
       spent: Math.round(this.spent.checking + a.askCost + a.trainCost),
       groups,
       noChecks: {
@@ -3138,6 +3152,7 @@ class Workshop {
     this.delivered.push(...this.aboard);
     this.aboard = [];
     this.aboardSeen = 0;
+    this.dropEmptyIncidents();
     this.say(
       "departed",
       `Sleigh ${n} is away: ${right} right, ${wrongGifts.length} wrong, ${plural(stars, "star")}.`,
@@ -3172,10 +3187,7 @@ class Workshop {
       label: "Test the update first",
       text: `${TEST_TOYS} test toys first. If they pass, it goes in ${TEST_DELAY} s into the run; if not, nothing is installed. A good update fails the test 1 in ${Math.round(1 / (1 - (1 - RISK.aiMake) ** TEST_TOYS))} times.`,
       facts: [
-        fact(
-          "Gives",
-          `installs ${TEST_DELAY} s into the run if the test toys pass`,
-        ),
+        fact("Gives", `installs at ${TEST_DELAY} s if it passes`),
         fact("Stops", "a bad update"),
         fact("Costs", money(BREAK_PRICE.tested)),
       ],

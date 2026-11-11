@@ -1806,3 +1806,26 @@ body[data-look="polish"] .paper-sleigh-scene .cargo-badge {
   font-size: 11px;
   font-weight: 700;
 }
+
+/* Decision chips: what an option does to the run's goals */
+body[data-look="polish"] .opt-chip.chip-goal {
+  font-weight: 700;
+}
+body[data-look="polish"] .opt-chip.chip-goal-saved {
+  background: #e3f1e6;
+  color: #23633a;
+}
+body[data-look="polish"] .opt-chip.chip-goal-lost {
+  background: #fbe9e5;
+  color: #9a3326;
+}
+/* Goal tiles are solid so the scoreboard snow passes behind the figures, not through them */
+body[data-look="polish"] .dashboard .hud-slot {
+  background: linear-gradient(#ffffff12, #ffffff12), #1e4d50;
+}
+body[data-look="polish"] .dashboard .hud-slot:hover:not(:disabled) {
+  background: linear-gradient(#ffffff21, #ffffff21), #1e4d50;
+}
+body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] {
+  background: linear-gradient(#c6423533, #c6423533), #1e4d50;
+}

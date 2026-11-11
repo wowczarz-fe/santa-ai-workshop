@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=3c5ad2d-polish8" />
-    <link rel="stylesheet" href="paper.css?v=3c5ad2d-polish8" />
-    <link rel="stylesheet" href="polish.css?v=3c5ad2d-polish8" />
+    <link rel="stylesheet" href="style.css?v=review1" />
+    <link rel="stylesheet" href="paper.css?v=review1" />
+    <link rel="stylesheet" href="polish.css?v=review1" />
   </head>
   <body>
     <header>
@@ -95,7 +95,7 @@
       <nav id="stationPicker" aria-label="Workshop stations">
         <button data-station-page="0" aria-pressed="true">Letters</button
         ><button data-station-page="1" aria-pressed="false">Toys</button
-        ><button data-station-page="2" aria-pressed="false">Checks</button
+        ><button data-station-page="2" aria-pressed="false">Checking</button
         ><button data-station-page="3" aria-pressed="false">
           Sleigh · cocoa
         </button>
@@ -242,10 +242,6 @@
         <p id="caseProgressText"></p>
         <progress id="caseProgress" max="1" value="0"></progress>
       </div>
-      <div id="caseGuidance" hidden>
-        <small id="caseGuidanceText"></small
-        ><button id="caseContinue">Continue playing</button>
-      </div>
     </aside>
     <aside id="infoPopover" class="info-popover" role="tooltip" hidden>
       <b id="infoTitle"></b>
@@ -374,12 +370,10 @@
           <details class="checking-detail">
             <summary>By kind of gift</summary>
             <div id="assuranceGroups" class="assurance-groups"></div>
-            <p id="noChecks"></p>
             <p class="estimate-help">
               Mistakes stopped: about what the wrong gifts caught would have
               cost. Extra checks: checks that cost more than they stopped, and
-              gifts held up while every parcel was checked. With no checks:
-              every wrong toy made, had it shipped.
+              gifts held up while every gift was checked.
             </p>
           </details>
         </section>
@@ -433,10 +427,10 @@
     <div id="celebration" class="celebration" aria-hidden="true"></div>
     <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
-    <script src="workshop.js?v=3c5ad2d-polish8"></script>
-    <script src="paper-art.js?v=3c5ad2d-polish8"></script>
-    <script src="polish-art.js?v=3c5ad2d-polish8"></script>
-    <script src="shared-art.js?v=3c5ad2d-polish8"></script>
-    <script src="game.js?v=3c5ad2d-polish8"></script>
+    <script src="workshop.js?v=review1"></script>
+    <script src="paper-art.js?v=review1"></script>
+    <script src="polish-art.js?v=review1"></script>
+    <script src="shared-art.js?v=review1"></script>
+    <script src="game.js?v=review1"></script>
   </body>
 </html>

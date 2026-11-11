@@ -138,7 +138,7 @@ beforehand: a risky batch can happen to come out clean.
 | `wrongMade`              | Wrong toys the workshop made in the whole game                                                     |
 | `caught`, `prevented`    | Wrong toys stopped before the sleigh, and about what they would have cost (an estimate)            |
 | `shipped`, `shippedCost` | Wrong gifts that reached children and stayed, checked or not, and what they cost                   |
-| `held`                   | Gifts waiting at checking, or stuck behind a full checking pile, when a sleigh left                |
+| `held`                   | Gifts held back by checking in the whole game (below), the figure the bottleneck `text` names      |
 | `spent`                  | £ on checking, asking children, training and investigating                                         |
 | `groups`                 | One row per kind of parcel (below)                                                                 |
 | `noChecks`               | `{ wrong, cost }`: every wrong toy made, and about what they would have cost had none been checked |
@@ -251,6 +251,8 @@ A case is `{ id, kind, step, text, facts, evidence, affected, options, resolving
   spare at that moment (elves, time, money). A player who reads the case can choose well; a player
   who always picks the same option cannot. The outcome is never a coin toss that only hindsight
   explains.
+- An incident's `"made"` or `"aboard"` case closes without an answer once it covers no parcels:
+  its gifts were all loaded, or left with the sleigh.
 - An open case is never replaced and a held parcel stays held until its case is resolved. Waiting
   cases take their turn in this order: incident source, made, aboard, then the other
   kinds. A source case answered with keep running comes back only after that incident's made and

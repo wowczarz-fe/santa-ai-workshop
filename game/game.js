@@ -41,7 +41,7 @@
     ["orders"],
     ["check", "pass", "rework"],
   ];
-  const stationNames = ["LETTERS", "TOYS", "ELVES CHECK"];
+  const stationNames = ["LETTERS", "TOYS", "CHECKING"];
   let game,
     view,
     started = false,
@@ -364,16 +364,6 @@
     $("goals").append(slot);
     goalSlots[id] = slot;
   }
-  // From how many right gifts aboard the mistakes and spend stars count; marked on the sleigh bar.
-  // Until the rules give goalsCountFrom, it is read from the goal note, remembered per run.
-  const notedFrom = new Map();
-  function goalsFrom() {
-    const noted = Number(
-      /(\d+) right/.exec(view.run.goals?.find((g) => g.note)?.note)?.[1],
-    );
-    if (noted) notedFrom.set(view.run.number, noted);
-    return view.run.goalsCountFrom ?? notedFrom.get(view.run.number) ?? null;
-  }
   function paintGoals() {
     text(
       "goalsTitle",
@@ -394,17 +384,13 @@
     goalSlots.right.classList.toggle("hud-previewing", after !== null);
     goalSlots.right.querySelector(".hud-preview").textContent =
       after !== null ? `${after} after recall` : "";
-    const from = goalsFrom();
-    const full = (view.run.goals || []).find((g) => g.id === "full");
-    goalSlots.full.querySelector(".hud-tick").hidden = !from || !full;
-    if (from && full)
-      goalSlots.full
-        .querySelector(".hud-tick")
-        .style.setProperty(
-          "--tick",
-          Math.min(1, from / Math.max(1, full.need)),
-        );
-    for (const goal of view.run.goals || []) {
+    // From how many right gifts aboard the mistakes and spend stars count; marked on the sleigh bar.
+    const from = view.run.goalsCountFrom;
+    const full = view.run.goals.find((g) => g.id === "full");
+    goalSlots.full
+      .querySelector(".hud-tick")
+      .style.setProperty("--tick", Math.min(1, from / Math.max(1, full.need)));
+    for (const goal of view.run.goals) {
       const slot = goalSlots[goal.id];
       if (!slot) continue;
       const figure = (n) => (goal.id === "cost" ? money(n) : String(n));
@@ -456,8 +442,15 @@
     pendingCause = null;
   const hintLabel = make("span", "mistake-hint-label");
   hintLabel.setAttribute("role", "status");
+  // A control already set the way its tag advises gets no tag: the gift was on its way before.
+  const alreadySet = {
+    ask: () => view.ask,
+    checking: () => view.checking >= 1,
+    ai0: () => view.ai[0] <= 1,
+    ai1: () => view.ai[1] <= 1,
+  };
   function showMistakeHint(control) {
-    if (!hintWords[control]) return;
+    if (!hintWords[control] || alreadySet[control]?.()) return;
     mistakeHint = { control, until: performance.now() + 3000 };
     setTimeout(paintMistakeHint, 3100);
   }
@@ -557,7 +550,6 @@
     lastMoment = null;
     lastCase = null;
     openedCases.clear();
-    notedFrom.clear();
     resolvedAt = -Infinity;
     ended = false;
     lastWrong = null;
@@ -1281,7 +1273,7 @@
   function paintBreakLines(choice) {
     const report = choice.report;
     const lines = [];
-    const top = (report.causes || [])[0];
+    const top = report.causes[0];
     const slip = report.slips[0];
     if (choice.openCase) {
       const line = breakLine(
@@ -1298,9 +1290,7 @@
       }
       lines.push(line);
     } else if (report.wrong && top) {
-      const cost =
-        report.assurance?.shippedCost ??
-        report.causes.reduce((sum, c) => sum + c.cost, 0);
+      const cost = report.assurance.shippedCost;
       const line = breakLine(
         "break-line-cause",
         "",
@@ -1330,8 +1320,8 @@
         ),
       );
     }
-    const full = (report.goals || []).find((g) => g.id === "full");
-    if ((report.tired ?? 0) >= 50 && full && !full.met)
+    const full = report.goals.find((g) => g.id === "full");
+    if (report.tired >= 50 && !full.met)
       lines.push(
         breakLine(
           "break-line-tired",
@@ -1373,7 +1363,7 @@
       );
       $("breakSlips").append(card);
     }
-    paintCauses($("breakCauses"), report.causes || [], "");
+    paintCauses($("breakCauses"), report.causes, "");
   }
   function paintBreakOptions(choice) {
     $("breakOptions").replaceChildren();
@@ -1462,7 +1452,7 @@
       );
       text("nextCargoText", next.cargo.text);
       $("breakGoals").replaceChildren(
-        ...(report.goals || []).map((g) => goalSlot(g, report.goalsCountFrom)),
+        ...report.goals.map((g) => goalSlot(g, report.goalsCountFrom)),
       );
       $("breakLines").dataset.case = String(choice.openCase?.id ?? "");
       paintBreakLines(choice);
@@ -1724,7 +1714,6 @@
   function paintGuidance() {
     const moment = started && !view.end ? view.moment : null;
     $("tutorial").hidden = !moment || moment.control === "case";
-    $("caseGuidance").hidden = !moment || moment.control !== "case";
     if (!moment) {
       hidePopupPointer("tutorial");
       delete $("tutorial").dataset.anchorVisit;
@@ -1746,7 +1735,6 @@
         ? moment.text.replace(/Drag them to cocoa/, `Tap ${elfName}, then Rest`)
         : moment.text,
     );
-    text("caseGuidanceText", moment.text);
     if (moment.control === "case") {
       hidePopupPointer("tutorial");
       caseOpen = true;
@@ -1817,36 +1805,47 @@
     const said = /(\d+) wrong gift/.exec(o.scope || "");
     return said ? Number(said[1]) : c.affected.count;
   }
-  // Chips for an option: what it does (the first part of its scope), money, time, or why it is shut.
+  // Chips for an option: what it does (the first part of its scope), what it does to the run's
+  // goals, money, time, or why it is shut. An option with no price gets no money chip: what it
+  // loses is in its scope.
   function optionChips(c, o) {
-    const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
     const recall = recallCount(c, o);
     const does =
       recall !== null
         ? `${plural(recall, "wrong gift")} off the sleigh`
-        : (o.scope || "").split(/;\s*/)[0];
+        : o.scope.split(/;\s*/)[0];
     const chips = [];
     if (!o.available && o.why) chips.push(["chip-why", "", o.why]);
     if (does) chips.push(["chip-does", "", does]);
-    chips.push(["chip-money", "budget", o.money ? money(o.money) : "free"]);
-    if (o.seconds) chips.push(["chip-time", "clock", `${o.seconds} s`]);
+    if (o.goal)
+      for (const part of o.goal.split(/,\s*/))
+        chips.push([
+          `chip-goal ${/lost/.test(part) ? "chip-goal-lost" : "chip-goal-saved"}`,
+          /lost/.test(part) ? "star-empty" : "star",
+          part,
+        ]);
+    if (o.money) chips.push(["chip-money", "budget", money(o.money)]);
+    if (o.seconds)
+      chips.push([
+        "chip-time",
+        "clock",
+        o.seconds > view.run.leavesIn
+          ? "longer than the run"
+          : `${o.seconds} s`,
+      ]);
     return chips;
   }
+  // The rules' names for each decision, by incident step or by kind.
   const caseHeadings = {
-    update: { offered: "AI update offer", tested: "Update test result" },
-    incident: {
-      source: "Stop new mistakes",
-      made: "Gifts in the workshop",
-      aboard: "Wrong gifts on sleigh",
-    },
-    judge: "Checker question",
-    unclear: "Clarify this wish",
+    source: "Faulty update",
+    made: "Faulty update's gifts",
+    aboard: "Wrong gifts on sleigh",
+    judge: "Checker unsure",
+    unclear: "Unclear wish",
     pattern: "Repeated mistake",
   };
   const caseHeading = (c) =>
-    typeof caseHeadings[c.kind] === "string"
-      ? caseHeadings[c.kind]
-      : caseHeadings[c.kind]?.[c.step] || "Workshop decision";
+    caseHeadings[c.step] || caseHeadings[c.kind] || "Decision";
   // The decision cue is gold and pulses until its case is opened; a wrong gift caused by that
   // case going aboard makes it pulse again. Built once, so later frames change only its words.
   $("caseCue").innerHTML =
@@ -1855,7 +1854,7 @@
     const cue = $("caseCue"),
       resolving = !!c.resolving,
       art = resolving ? "clock" : "ask",
-      waiting = (view.casesWaiting ?? 0) + 1;
+      waiting = view.casesWaiting + 1;
     if (cue.dataset.icon !== art) {
       cue.dataset.icon = art;
       cue.querySelector(".cue-icon").innerHTML = icon(art);
@@ -2068,7 +2067,10 @@
       return [
         "All evidence",
         [
-          ...(view.case?.facts || []).map((f) => `${f.label}: ${f.value}.`),
+          // The whole game's time left is not the run's, so it stays out of view.
+          ...(view.case?.facts || [])
+            .filter((f) => f.label !== "Time left")
+            .map((f) => `${f.label}: ${f.value}.`),
           ...(view.case?.options || []).map(
             (o) => `${o.label}: ${o.scope}${o.why ? ` (${o.why})` : ""}.`,
           ),
@@ -2078,15 +2080,12 @@
       type = parts[0];
     if (type === "goal") {
       const goal = view.run.goals.find((g) => g.id === parts[1]);
-      const from = goalsFrom();
       return [
         goal.name,
         [
           `${cap(goal.text)}.`,
-          from
-            ? `Stars for mistakes and spend count once ${from} right gifts are aboard.`
-            : "",
-        ].filter(Boolean),
+          `Stars for mistakes and spend count once ${view.run.goalsCountFrom} right gifts are aboard.`,
+        ],
       ];
     }
     if (type === "ai") {
@@ -2095,7 +2094,7 @@
     }
     if (type === "checking") {
       const l = view.levers.checking[Number(parts[1])];
-      return [l.name, [`${cap(l.sends)}: ${l.per100} in 100 parcels.`]];
+      return [l.name, [`${cap(l.sends)}: ${l.per100} in 100 gifts.`]];
     }
     if (type === "action") {
       const a = view.actions[parts[1]];
@@ -2116,7 +2115,7 @@
         q.name,
         [
           parts[1] === "pass"
-            ? "Parcels going to the sleigh without a check."
+            ? "Gifts going to the sleigh without a check."
             : `${q.parcels.length} of ${q.limit} waiting, ${Math.round(q.rate)} a minute going out.`,
           q.blocked
             ? `${cap(q.blocked)}.`
@@ -2145,7 +2144,7 @@
           [
             "Elves read the letters, with or without AI.",
             "Elves or the toy machine make the toys.",
-            "Elves check parcels before the sleigh; AI never checks its own work.",
+            "Elves check gifts before the sleigh; AI never checks its own work.",
           ][s],
           v.blocked
             ? `${cap(v.blocked)}.`
@@ -2203,7 +2202,7 @@
       vigilance: [
         "Checker attention",
         [
-          "After a long run of clean parcels, checkers start waving parcels through unchecked.",
+          "After a long run of clean gifts, checkers start waving gifts through unchecked.",
           view.vigilance.skipped
             ? `${view.vigilance.skipped} checks skipped so far; train them at a break or rest them.`
             : "Train them at a break, or rest them with cocoa.",
@@ -2367,7 +2366,7 @@
     if (target.dataset.checking !== undefined) {
       perform(() => game.setChecking(Number(target.dataset.checking)));
       const lever = view.levers.checking[view.checking];
-      sayResult(`Checking ${lever.per100} in 100 parcels.`);
+      sayResult(`Checking ${lever.per100} in 100 gifts.`);
       return;
     }
     if (target.dataset.action) {
@@ -2547,7 +2546,6 @@
     paint();
   };
   $("continue").onclick = acknowledge;
-  $("caseContinue").onclick = acknowledge;
   $("skipGuidance").onclick = skip;
   $("caseCue").onclick = () => {
     caseOpen = !caseOpen;
@@ -2683,8 +2681,7 @@
     bottleneck: "Checking was the bottleneck",
   };
   function dialSVG(position, verdict, thresholds) {
-    const little = thresholds?.little ?? 0.1,
-      much = thresholds?.much ?? 0.8;
+    const { little, much } = thresholds;
     const stuck = verdict === "bottleneck";
     const cx = 180,
       cy = 166,
@@ -2812,11 +2809,6 @@
       }
       $("assuranceGroups").append(row);
     }
-    $("noChecks").replaceChildren(
-      iconNode("mistakes", "spend-icon"),
-      make("b", "", "With no checks (estimate): "),
-      `${plural(a.noChecks.wrong, "wrong gift")}, ${money(a.noChecks.cost)}`,
-    );
   }
   function paintAssurance(end) {
     const a = end.assurance;
@@ -2837,7 +2829,7 @@
       // The two figures above already say how much each side cost; only a bottleneck needs words.
       text("assuranceText", a.verdict === "bottleneck" ? a.text : "");
       $("assuranceText").hidden = a.verdict !== "bottleneck";
-      text("checkingAnswer", end.checkingAnswer ?? "");
+      text("checkingAnswer", end.checkingAnswer);
       $("checkingPaid").querySelector("details").open = false;
       paintGroups(a);
     }
@@ -2853,7 +2845,7 @@
       [
         "risk-check",
         "Risk-based checking",
-        [["risky", "Checked the risky parcels"]],
+        [["risky", "Checked the risky ones"]],
       ],
       [
         "escalate",
@@ -3047,13 +3039,7 @@
         ? `${canCelebrate && newBest ? "New best score! " : ""}${canCelebrate && newStars ? "New best stars! " : ""}Best: ${personalBest.points} points, ${personalBest.stars} stars`
         : "",
     );
-    text(
-      "resultTitle",
-      e.headline ??
-        (e.rating === 3
-          ? "Christmas, carefully delivered."
-          : "Some wishes are still waiting."),
-    );
+    text("resultTitle", e.headline);
     // One lesson line under the headline; its title names it for screen readers and on hover.
     text("lessonText", e.lesson.text || e.lesson.title);
     $("lessonText").title = e.lesson.title;

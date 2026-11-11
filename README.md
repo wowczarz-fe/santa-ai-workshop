@@ -10,6 +10,9 @@ With a browser on the same machine as the files, opening `game/index.html` from 
 
 Address: <https://wowczarz-fe.github.io/santa-ai-workshop/>
 
+Three design directions for testers to compare, as static mock-ups in `game/designs/`:
+<https://wowczarz-fe.github.io/santa-ai-workshop/designs/>
+
 Every push to `main` publishes the `game/` folder exactly as it is, through the
 [`publish-game.yml`](.github/workflows/publish-game.yml) workflow. There is no build step. To
 publish again without a new push, run "Publish game" by hand from the repository's Actions tab.

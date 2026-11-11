@@ -1,0 +1,1226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Santa's AI Workshop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Source+Serif+4:opsz,wght@8..60,500..700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Current build tokens, kept */
+  --ink: #2d2926;
+  --teal: #286e73;
+  --aqua: #8ed0d2;
+  --red: #c64235;
+  --paper: #f8f8f4;
+  --line: #d6ddd5;
+  --green: #e7f0e4;
+  --gold: #bf9b45;
+  /* Grown-up additions in the same family */
+  --teal-deep: #1d585c;
+  --pine: #163f43;
+  --pine-2: #1b4c50;
+  --red-deep: #a3332a;
+  --red-soft: #fbe5e0;
+  --gold-ink: #74560f;
+  --gold-soft: #fbf0d3;
+  --frost: #edf4f0;
+  --floor: #f1e9dc;
+  --muted: #545e51;
+  --ok: #2f7a4e;
+  --sans: "Archivo", Arial, sans-serif;
+  --serif: "Source Serif 4", Georgia, serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 14px/1.35 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+button:focus-visible { outline: 3px solid #c78d2a; outline-offset: 2px; }
+svg { display: block; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- Mock screen switcher (not part of the design) ---------- */
+.mock-tabs {
+  position: fixed; z-index: 100; right: 10px; bottom: 8px;
+  display: flex; gap: 2px; align-items: center;
+  padding: 3px; border-radius: 7px;
+  background: #111; color: #fff;
+  font: 11px/1 ui-monospace, Menlo, monospace;
+  box-shadow: 0 4px 14px rgba(0,0,0,.35);
+}
+.mock-tabs span { padding: 0 6px; opacity: .7; }
+.mock-tabs button {
+  border: 0; background: transparent; color: #fff; font: inherit;
+  padding: 6px 8px; border-radius: 5px;
+}
+.mock-tabs button[aria-pressed="true"] { background: #fff; color: #111; }
+
+/* ---------- Screens ---------- */
+.app { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto auto; height: 100vh; height: 100dvh; max-width: 1480px; margin: 0 auto; }
+body[data-screen="end"] .play-only { display: none !important; }
+body:not([data-screen="end"]) .end { display: none; }
+body:not([data-screen="decision"]) .decision, body:not([data-screen="decision"]) .bridge { display: none; }
+body:not([data-screen="break"]) .overlay-break { display: none; }
+body[data-screen="end"] .app { grid-template-rows: auto minmax(0, 1fr) auto; }
+
+/* ---------- Masthead ---------- */
+.masthead {
+  display: flex; align-items: center; gap: 18px;
+  height: 48px; padding: 0 18px;
+  background: #fff; border-bottom: 1px solid var(--line);
+}
+.title { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 21px; font-weight: 700; font-stretch: 92%; letter-spacing: -.01em; white-space: nowrap; }
+.title svg { width: 22px; height: 22px; color: var(--teal); }
+.runs { display: flex; align-items: center; gap: 8px; margin-left: 8px; font-size: 13px; color: var(--muted); }
+.runs b { color: var(--ink); }
+.pips { display: flex; gap: 4px; }
+.pip { width: 26px; height: 8px; border-radius: 4px; background: #e2e8e1; }
+.pip.done { background: var(--teal); }
+.pip.now { background: linear-gradient(90deg, var(--gold) 58%, #ead9ab 58%); }
+.head-actions { margin-left: auto; display: flex; gap: 6px; }
+.tool {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 11px; border-radius: 8px;
+  border: 1px solid #c3cfc6; background: #fff; font-size: 13px; font-weight: 600;
+}
+.tool svg { width: 16px; height: 16px; }
+.tool.icon { width: 32px; padding: 0; justify-content: center; }
+
+/* ---------- Scoreboard ---------- */
+.scoreboard {
+  position: relative; overflow: hidden;
+  display: grid; grid-template-columns: 1.75fr 1.1fr .95fr 1fr 1.3fr; align-items: stretch;
+  padding: 10px 10px 24px;
+  background: radial-gradient(120% 140% at 15% 0%, #21585c 0%, var(--pine) 60%);
+  color: #fff;
+}
+.score { position: relative; z-index: 1; padding: 2px 18px; border-left: 1px solid rgba(255,255,255,.14); display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.score:first-child { border-left: 0; }
+.score-label { font-size: 12.5px; color: #cfe3de; font-weight: 500; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.score-label svg { width: 14px; height: 14px; }
+.score-value { font-size: 36px; line-height: 1; font-weight: 700; font-stretch: 94%; font-variant-numeric: tabular-nums; margin-top: 4px; white-space: nowrap; }
+.score-value small { font-size: 20px; font-weight: 600; color: #a9cdc6; margin-left: 2px; }
+.target-row { display: flex; align-items: flex-end; gap: 14px; }
+.target-row .score-value { font-size: 40px; }
+.gauge { flex: 1; min-width: 90px; padding-bottom: 5px; }
+.gauge-track { position: relative; height: 12px; border-radius: 6px; background: rgba(255,255,255,.14); overflow: visible; }
+.gauge-fill { position: absolute; inset: 0 auto 0 0; width: 43.5%; border-radius: 6px; background: linear-gradient(90deg, #e9c869, #f4dc95); }
+.gauge-pace { position: absolute; inset: 0 auto 0 43.5%; width: 45%; background: repeating-linear-gradient(135deg, rgba(244,220,149,.38) 0 4px, transparent 4px 8px); border-radius: 0 6px 6px 0; }
+.gauge-mark { position: absolute; top: -4px; bottom: -4px; right: 0; width: 3px; border-radius: 2px; background: #fff; }
+.gauge-legend { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11.5px; color: #cfe3de; }
+.clock { flex-direction: row; align-items: center; gap: 12px; justify-content: flex-start; }
+.clock-ring { width: 52px; height: 52px; flex: 0 0 52px; }
+.wrong-value { display: inline-flex; align-items: center; gap: 9px; }
+.wrong-badge { display: inline-grid; place-items: center; min-width: 44px; height: 40px; padding: 0 8px; border-radius: 10px; background: var(--red); box-shadow: 0 0 0 3px rgba(198,66,53,.3); font-size: 28px; }
+.wrong-value em { font-style: normal; font-size: 12.5px; font-weight: 500; color: #ffd2c9; line-height: 1.2; }
+.stars-runs { display: flex; gap: 8px; margin-top: 6px; }
+.star-run { display: flex; gap: 1px; padding: 3px 4px; border-radius: 6px; background: rgba(255,255,255,.08); }
+.star-run.now { box-shadow: inset 0 0 0 1.5px rgba(233,200,105,.75); }
+.star-run svg { width: 15px; height: 15px; color: rgba(255,255,255,.25); }
+.star-run svg.on { color: #f0cf6c; }
+.stars-total { font-size: 13px; color: #cfe3de; margin-top: 4px; }
+.stars-total b { color: #fff; font-size: 15px; }
+.garland { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; z-index: 2; pointer-events: none; }
+.garland svg { width: 100%; height: 22px; }
+
+/* ---------- Snow ---------- */
+.snow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.flake { position: absolute; top: -8px; border-radius: 50%; background: #fff; opacity: .7; animation: fall linear infinite; }
+@keyframes fall { to { transform: translate(var(--dx, 10px), var(--fall, 140px)); } }
+
+/* ---------- Board ---------- */
+.board-wrap { position: relative; min-height: 0; }
+.station-tabs { display: none; }
+.board {
+  height: 100%; min-height: 0;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr);
+  gap: 10px; padding: 12px 14px 10px;
+}
+.board > section:nth-of-type(1) { grid-column: 1; }
+.board > section:nth-of-type(2) { grid-column: 2; }
+.board > section:nth-of-type(3) { grid-column: 3; }
+.board > section:nth-of-type(4) { grid-column: 4; }
+.station {
+  grid-row: 1; position: relative; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column;
+  background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 1px 0 #e4e9e2;
+}
+.st-head {
+  position: relative; display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px 8px; background: var(--frost);
+  border-top: 4px solid var(--teal); border-radius: 12px 12px 0 0; border-bottom: 1px solid var(--line);
+}
+.st-head::before { /* snow on the roof */
+  content: ""; position: absolute; left: 8px; right: 8px; top: -8px; height: 10px;
+  background:
+    radial-gradient(circle at 6px 9px, #fff 6px, transparent 6.5px) 0 0 / 22px 10px repeat-x,
+    radial-gradient(circle at 17px 10px, #fff 5px, transparent 5.5px) 0 0 / 22px 10px repeat-x;
+  filter: drop-shadow(0 1px 0 rgba(22,63,67,.18));
+}
+.st-num { width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; }
+.st-head h2 { margin: 0; font-size: 16.5px; font-weight: 700; font-stretch: 95%; }
+.rate { margin-left: auto; display: inline-flex; align-items: baseline; gap: 4px; padding: 3px 9px; border-radius: 20px; background: #fff; border: 1px solid #cddbd2; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.rate b { font-size: 16px; color: var(--teal-deep); font-variant-numeric: tabular-nums; }
+.bneck { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 5px; border-radius: 5px; background: var(--gold); color: #2b2005; font-size: 11.5px; font-weight: 700; }
+.bneck svg { width: 13px; height: 13px; }
+.station.bottleneck .st-head { border-top-color: var(--gold); background: var(--gold-soft); }
+.station.bottleneck .rate { border-color: var(--gold); background: #fff; }
+.station.bottleneck .rate b { color: var(--gold-ink); }
+.st-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 9px; padding: 10px 11px 0; }
+
+/* AI switch */
+.ctl-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 4px; border-radius: 12px; background: #dce6e0; box-shadow: inset 0 2px 3px rgba(22,63,67,.16); }
+.seg button {
+  position: relative; border: 0; background: transparent; border-radius: 9px;
+  min-height: 48px; padding: 5px 2px 4px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-size: 12px; font-weight: 500; color: #42503f;
+}
+.seg .ico { display: flex; gap: 1px; height: 22px; align-items: center; }
+.seg .ico svg { width: 21px; height: 21px; }
+.seg button[aria-checked="true"] {
+  background: #fff; color: var(--teal-deep); font-weight: 700;
+  box-shadow: 0 2px 0 #aebfb5, 0 4px 8px rgba(22,63,67,.16);
+}
+.seg button[aria-checked="true"]::after { content: ""; position: absolute; top: 6px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: #3fb07a; box-shadow: 0 0 0 2px #d6f0e2; }
+
+/* Machine strip */
+.machine { position: relative; height: 34px; border-radius: 8px; background: #f1f5f2; border: 1px solid #e0e7e1; overflow: hidden; display: flex; align-items: center; gap: 8px; padding: 0 8px; font-size: 11.5px; color: var(--muted); }
+.machine svg { width: 34px; height: 28px; flex: 0 0 34px; }
+.machine .belt { position: absolute; left: 50px; right: 0; bottom: 0; height: 7px; background: repeating-linear-gradient(90deg, #b9cbc0 0 3px, #dbe5de 3px 14px); }
+.machine.on .belt { animation: belt 1.4s linear infinite; }
+.machine.on { background: #e6f2ec; }
+@keyframes belt { to { background-position: 28px 0; } }
+.machine .lamp-off { fill: #b8c2bb; }
+
+/* Checking knob */
+.knobctl { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 6px; border-radius: 12px; background: #dce6e0; box-shadow: inset 0 2px 3px rgba(22,63,67,.16); }
+.knob-wrap { position: relative; width: 70px; height: 70px; flex: 0 0 70px; }
+.knob-ticks { position: absolute; inset: 0; }
+.knob {
+  position: absolute; inset: 9px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, #fff 0 38%, transparent 39%),
+    repeating-conic-gradient(#e9efeb 0 6deg, #cdd8d1 6deg 12deg);
+  box-shadow: 0 3px 0 #9fb2a7, 0 5px 9px rgba(22,63,67,.25), inset 0 0 0 1px #b6c6bc;
+  transform: rotate(var(--a, 0deg));
+}
+.knob::after { content: ""; position: absolute; left: 50%; top: 50%; width: 22px; height: 5px; margin-top: -2.5px; border-radius: 3px; background: var(--teal); }
+.knob-opts { flex: 1; display: grid; gap: 3px; }
+.knob-opts button { display: flex; align-items: center; gap: 7px; border: 0; background: transparent; border-radius: 7px; padding: 4px 8px; min-height: 26px; font-size: 12.5px; text-align: left; color: #42503f; }
+.knob-opts button i { width: 8px; height: 8px; border-radius: 50%; background: #b2c2b8; flex: 0 0 8px; }
+.knob-opts button[aria-checked="true"] { background: #fff; color: var(--teal-deep); font-weight: 700; box-shadow: 0 2px 0 #aebfb5; }
+.knob-opts button[aria-checked="true"] i { background: #3fb07a; box-shadow: 0 0 0 2px #d6f0e2; }
+
+/* Piles */
+.piles { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.pile {
+  position: relative; flex: 1 1 0; min-height: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto;
+  column-gap: 8px; padding: 7px 10px 8px;
+  border-radius: 10px; background: #f6f8f3; border: 1px solid #e0e6dd; text-align: left; width: 100%;
+}
+.pile.minor { flex: 0 0 74px; }
+.pile-name { font-size: 13px; font-weight: 600; align-self: center; }
+.pile-count { grid-column: 2; grid-row: 1; justify-self: end; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
+.pile-count b { font-size: 25px; line-height: 1; color: var(--ink); font-weight: 700; }
+.trend { width: 14px; height: 14px; color: var(--red); }
+.heap { grid-column: 1 / -1; grid-row: 2; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding-top: 4px; }
+.heap svg { width: 100%; height: 100%; max-height: 132px; }
+.minor .heap svg { max-height: 30px; }
+.cap { grid-column: 1 / -1; grid-row: 3; height: 5px; margin-top: 6px; border-radius: 3px; background: #e2e8df; overflow: hidden; }
+.cap i { display: block; height: 100%; width: var(--f); background: var(--teal); border-radius: 3px; }
+.cap.warn i { background: var(--gold); }
+.empty { font-size: 12px; color: var(--muted); align-self: center; justify-self: start; }
+.pile.minor .heap { justify-content: flex-start; }
+.pile .flag { position: absolute; top: -10px; left: 84px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; background: var(--gold); color: #2b2005; font-size: 11.5px; font-weight: 700; box-shadow: 0 2px 0 #9b7c31; }
+
+/* Elves */
+.crew {
+  position: relative; flex: 0 0 auto;
+  display: flex; gap: 4px; align-items: flex-end;
+  margin: 0 -11px; padding: 6px 10px 8px;
+  background:
+    linear-gradient(180deg, transparent 0 74px, var(--floor) 74px),
+    #fff;
+  border-top: 1px dashed #dfe5dc;
+  border-radius: 0 0 12px 12px;
+}
+.crew::after { content: ""; position: absolute; left: 0; right: 0; top: 74px; height: 2px; background: #e4d6be; }
+.elf {
+  position: relative; z-index: 1; width: 76px; flex: 0 0 76px;
+  border: 1.5px solid transparent; background: transparent; border-radius: 12px;
+  padding: 0 2px 4px; display: flex; flex-direction: column; align-items: center;
+  cursor: grab; user-select: none;
+}
+.elf svg.fig { width: 60px; height: 80px; margin-bottom: -7px; }
+.elf b { font-size: 13px; line-height: 1.15; margin-top: 2px; }
+.elf small { font-size: 11px; line-height: 1.1; color: var(--muted); white-space: nowrap; }
+.energy { width: 42px; height: 5px; margin-top: 4px; border-radius: 3px; background: #ddd5c6; overflow: hidden; }
+.energy i { display: block; height: 100%; width: var(--e); background: #3f9a62; border-radius: 3px; }
+.energy.mid i { background: #d4a032; }
+.role { position: absolute; top: 2px; left: 1px; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 1px solid #cfd9d1; display: grid; place-items: center; color: var(--teal-deep); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.role svg { width: 13px; height: 13px; }
+.elf.tired { background: var(--red-soft); border-color: #e4a99e; }
+.elf.tired .energy i { background: var(--red); }
+.elf.tired .role { color: var(--red-deep); border-color: #e4a99e; }
+.elf.tired small { color: var(--red-deep); font-weight: 600; }
+.elf.tired svg.fig { animation: sway 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes sway { 50% { transform: rotate(-4deg); } }
+.elf.idle svg.fig { opacity: .92; }
+
+/* Sleigh */
+.sleigh .st-head { border-top-color: var(--red); }
+.sleigh-scene { position: relative; flex: 1; min-height: 0; border-radius: 10px; overflow: hidden; background: linear-gradient(180deg, #dcecec 0%, #f4f8f6 70%, #fff 100%); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 8px 8px 0; }
+.sleigh-scene svg.sleigh-art { margin-bottom: -6px; }
+.sleigh-scene .snow .flake { background: #fff; opacity: .95; box-shadow: 0 0 0 1px rgba(40,110,115,.08); }
+.sleigh-scene svg.sleigh-art { position: relative; z-index: 1; width: 100%; max-width: 280px; height: auto; }
+.drift { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: #fff; border-radius: 50% 50% 0 0 / 100% 100% 0 0; }
+.tally { position: relative; z-index: 2; text-align: center; margin: -2px 0 8px; }
+.moon { position: absolute; top: 12px; right: 14px; width: 34px; height: 34px; }
+.tally-num { font-family: var(--serif); font-weight: 600; font-size: 50px; line-height: 1; color: var(--teal-deep); font-variant-numeric: lining-nums tabular-nums; }
+.tally-num small { font-size: 26px; color: var(--muted); font-weight: 500; }
+.tally-label { font-size: 12.5px; color: var(--muted); }
+.aboard-wrong { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 10px; background: var(--red-soft); border: 1px solid #ecb8ad; }
+.aboard-wrong .parcels { display: flex; gap: 3px; }
+.aboard-wrong .parcels svg { width: 24px; height: 22px; }
+.aboard-wrong b { font-size: 20px; color: var(--red-deep); }
+.aboard-wrong span { font-size: 12.5px; color: var(--red-deep); font-weight: 600; }
+.loaded { display: flex; align-items: center; gap: 8px; padding-bottom: 10px; }
+.loaded > span { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.loaded .row { display: flex; gap: 4px; }
+.loaded .row i { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; background: var(--frost); }
+.loaded .row i svg { width: 20px; height: 18px; }
+.loaded .row i.bad { background: var(--red-soft); box-shadow: inset 0 0 0 1.5px var(--red); }
+
+/* Cocoa */
+.cocoa {
+  display: flex; align-items: center; gap: 14px;
+  margin: 0 14px; padding: 8px 14px; min-height: 68px;
+  border-radius: 12px; background: var(--floor); border: 1px solid #e3d5bc;
+}
+.cocoa-title { display: flex; align-items: center; gap: 10px; min-width: 200px; }
+.cocoa-title svg { width: 42px; height: 42px; }
+.cocoa-title b { display: block; font-size: 15.5px; }
+.cocoa-title span { display: block; font-size: 12px; color: #5e5340; }
+.slots { display: flex; gap: 8px; }
+.slot { width: 50px; height: 50px; border-radius: 12px; border: 2px dashed #c9b593; display: grid; place-items: center; background: rgba(255,255,255,.4); }
+.slot svg { width: 30px; height: 40px; opacity: .22; }
+.cocoa-hint { display: none; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--gold-ink); }
+.cocoa-hint svg { width: 46px; height: 18px; }
+body[data-screen="play"] .cocoa-hint { display: inline-flex; }
+.fire { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: #5e5340; }
+.fire svg { width: 70px; height: 44px; }
+
+/* Footer */
+.foot { display: flex; justify-content: space-between; align-items: center; height: 26px; padding: 0 16px; font-size: 11.5px; color: var(--muted); }
+
+/* ---------- Decision card ---------- */
+body[data-screen="decision"] .station:not(.check):not(.decision) { opacity: .4; filter: saturate(.5); }
+body[data-screen="decision"] .station.check { box-shadow: 0 0 0 3px var(--gold), 0 8px 24px rgba(22,63,67,.18); z-index: 3; }
+body[data-screen="decision"] .station.check .pile.unsure { border-color: var(--gold); background: #fffaf0; box-shadow: inset 0 0 0 1px var(--gold); }
+.bridge { position: absolute; z-index: 4; right: -14px; width: 15px; height: 34px; background: var(--gold); top: 220px; }
+.decision {
+  grid-column: 4; grid-row: 1; align-self: start; max-height: 100%; z-index: 5; min-width: 0; min-height: 0; overflow: auto;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 12px 12px 14px;
+  background: #fff; border-radius: 12px;
+  border: 1px solid #d7c18b; border-left: 6px solid var(--gold);
+  box-shadow: 0 14px 34px rgba(22,63,67,.24);
+}
+.dc-head { display: flex; align-items: center; gap: 9px; }
+.dc-head svg { width: 38px; height: 50px; flex: 0 0 38px; }
+.dc-head h3 { margin: 0; font-size: 16.5px; line-height: 1.2; }
+.dc-head p { margin: 1px 0 0; font-size: 12px; color: var(--muted); }
+.evidence { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.ev { margin: 0; border-radius: 10px; padding: 7px 8px 8px; display: flex; flex-direction: column; min-width: 0; }
+.ev .tag { font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.ev.wish { background: #fbf7ec; border: 1px solid #eadfc2; background-image: repeating-linear-gradient(180deg, transparent 0 17px, #efe5cb 17px 18px); }
+.ev.wish q { quotes: none; font-family: var(--serif); font-style: italic; font-size: 17px; line-height: 1.12; margin: 2px 0 4px; display: block; }
+.ev.wish small { font-size: 11.5px; color: var(--muted); }
+.ev.wish svg { width: 50px; height: 26px; margin-top: auto; align-self: flex-end; }
+.ev.made { background: var(--red-soft); border: 1px solid #ecb8ad; }
+.ev.made svg { width: 100%; height: auto; margin: 2px 0; }
+.ev.made b { font-size: 13px; line-height: 1.15; color: var(--red-deep); }
+.dc-q { margin: 2px 0 0; font-size: 13.5px; font-weight: 700; }
+.opts { display: grid; gap: 7px; }
+.opt {
+  display: grid; grid-template-columns: 34px 1fr; grid-template-rows: auto auto; column-gap: 8px; row-gap: 3px; align-items: center;
+  width: 100%; text-align: left; padding: 8px 10px; border-radius: 10px;
+  border: 1.5px solid #c9d6cd; background: #fff; box-shadow: 0 2px 0 #c9d6cd;
+}
+.opt:hover { border-color: var(--teal); }
+.opt > svg { grid-row: 1 / 3; width: 30px; height: 30px; color: var(--teal-deep); }
+.opt b { font-size: 14px; }
+.costs { display: flex; gap: 5px; flex-wrap: wrap; }
+.cost { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px 1px 5px; border-radius: 20px; background: var(--frost); font-size: 12px; font-weight: 600; color: #34413a; font-variant-numeric: tabular-nums; }
+.cost svg { width: 12px; height: 12px; }
+.cost.risk { background: var(--red-soft); color: var(--red-deep); }
+.cost.free { background: #e3f1e5; color: #22603a; }
+
+/* ---------- Break card ---------- */
+.overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px; background: rgba(22,63,67,.55); backdrop-filter: blur(2px); }
+.modal { width: min(940px, 100%); max-height: calc(100dvh - 40px); overflow: auto; background: var(--paper); border-radius: 16px; box-shadow: 0 24px 70px rgba(10,30,32,.5); }
+.break-hero { position: relative; height: 172px; overflow: hidden; background: linear-gradient(180deg, #0f3134 0%, #1d585c 100%); color: #fff; border-radius: 16px 16px 0 0; }
+.break-hero > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.break-hero .copy { position: absolute; left: 28px; top: 26px; z-index: 2; }
+.break-hero .copy p { margin: 0; font-size: 13px; color: #cfe3de; font-weight: 500; }
+.break-hero h2 { margin: 4px 0 0; font-family: var(--serif); font-weight: 600; font-size: 34px; line-height: 1.05; }
+.break-body { padding: 18px 26px 24px; }
+.results { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.2fr; gap: 10px; }
+.res { padding: 10px 14px; border-radius: 12px; background: #fff; border: 1px solid var(--line); }
+.res span { display: block; font-size: 12.5px; color: var(--muted); }
+.res b { font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.res b small { font-size: 16px; color: var(--muted); font-weight: 500; }
+.res.right b { color: var(--teal-deep); }
+.res.wrong b { color: var(--red-deep); }
+.res .stars-big { display: flex; gap: 3px; margin-top: 4px; }
+.res .stars-big svg { width: 26px; height: 26px; color: #dfe4dc; }
+.res .stars-big svg.on { color: var(--gold); }
+.res em { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
+.choose { display: flex; align-items: baseline; justify-content: space-between; margin: 18px 0 10px; }
+.choose h3 { margin: 0; font-size: 18px; }
+.choose span { font-size: 12.5px; color: var(--muted); }
+.choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.choice {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left;
+  padding: 14px 14px 12px; border-radius: 12px; background: #fff;
+  border: 1.5px solid #c9d6cd; box-shadow: 0 3px 0 #c9d6cd;
+}
+.choice:hover { border-color: var(--teal); box-shadow: 0 3px 0 var(--teal); }
+.choice > svg { width: 44px; height: 44px; }
+.choice b { font-size: 15px; line-height: 1.2; }
+.choice p { margin: 0; font-size: 12.5px; line-height: 1.35; color: #3f4a3c; flex: 1; }
+
+/* ---------- End screen ---------- */
+.end { min-height: 0; overflow: auto; width: 100%; max-width: 1200px; margin: 0 auto; padding: 16px 18px; display: grid; grid-template-columns: 1.02fr 1fr; gap: 16px; align-content: center; }
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+.end-hero { position: relative; overflow: hidden; display: grid; grid-template-columns: auto 1fr; gap: 6px 22px; padding: 26px 24px 22px; align-items: center; background: linear-gradient(180deg, #1b4c50, var(--pine)); color: #fff; border: 0; }
+.end-hero .snow { z-index: 0; }
+.end-hero > *:not(.snow) { position: relative; z-index: 1; }
+.end-hero .fly { position: absolute; right: 18px; top: 10px; width: 104px; height: 56px; transform: rotate(-8deg); z-index: 1; }
+.end-hero .big { font-family: var(--serif); font-weight: 600; font-size: 76px; line-height: .9; font-variant-numeric: lining-nums; }
+.end-hero .big small { font-size: 34px; color: #a9cdc6; font-weight: 500; }
+.end-hero h2 { margin: 0 0 6px; font-size: 21px; }
+.end-hero .stars-runs { margin-top: 0; }
+.end-hero .star-run svg { width: 20px; height: 20px; }
+.end-hero p { grid-column: 1 / -1; margin: 6px 0 0; font-size: 13px; color: #cfe3de; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.tile { padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+.tile span { display: block; font-size: 12.5px; color: var(--muted); }
+.tile b { font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tile.right b { color: var(--teal-deep); }
+.tile.wrong b { color: var(--red-deep); }
+.tile.lost b { color: var(--gold-ink); }
+.dial-panel { margin-top: 12px; display: grid; grid-template-columns: 300px 1fr; padding: 22px 20px; gap: 14px; align-items: center; }
+.dial-panel svg { width: 100%; height: auto; }
+.dial-panel h3, .panel h3 { margin: 0 0 6px; font-size: 16px; }
+.dial-panel p { margin: 0; font-size: 13px; line-height: 1.45; color: #3f4a3c; }
+.account { display: grid; grid-template-columns: 1fr auto; margin: 0; font-size: 13.5px; }
+.account dt, .account dd { margin: 0; padding: 6px 0; border-bottom: 1px solid #eaeee8; }
+.account dt { display: flex; align-items: center; gap: 8px; }
+.account dt i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.account dd { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.account .neg { color: var(--red-deep); }
+.account .pos { color: #22603a; }
+.account .total { font-weight: 800; border-bottom: 0; font-size: 15px; }
+.collection { margin-top: 12px; }
+.found { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.gift { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; padding: 8px 4px; border-radius: 10px; background: #fbf7ec; border: 1px solid #eadfc2; }
+.gift { padding: 14px 4px 12px; }
+.gift .e { font-size: 40px; line-height: 1.1; }
+.gift span { font-size: 11.5px; line-height: 1.2; color: var(--muted); }
+.gift b { font-size: 12px; line-height: 1.2; }
+.gift.locked { background: #f1f4f0; border-style: dashed; border-color: #c5d0c7; justify-content: center; }
+.gift.locked .e { color: #9aa79d; font-family: var(--serif); }
+.end-actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+.btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 22px; border-radius: 12px; border: 0; background: var(--red); color: #fff; font-size: 16px; font-weight: 700; box-shadow: 0 3px 0 var(--red-deep); }
+.btn-primary svg { width: 18px; height: 18px; }
+.btn-ghost { height: 46px; padding: 0 16px; border-radius: 12px; border: 1.5px solid #c3cfc6; background: #fff; font-weight: 600; }
+
+/* ---------- Phone ---------- */
+@media (max-width: 760px) {
+  .app, body[data-screen="end"] .app { display: block; height: auto; }
+  .masthead { height: auto; flex-wrap: wrap; gap: 6px 10px; padding: 8px 16px; }
+  .title { font-size: 18px; }
+  .runs { order: 3; width: 100%; margin-left: 0; font-size: 12.5px; }
+  .tool .lbl { display: none; }
+  .tool { width: 34px; padding: 0; justify-content: center; }
+  .scoreboard { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 10px 8px 26px; row-gap: 10px; }
+  .score { padding: 0 8px; }
+  .score.target { grid-column: 1 / -1; border-left: 0; }
+  .score.clock { border-left: 0; flex-direction: column; align-items: flex-start; gap: 0; }
+  .clock-ring { display: none; }
+  .score-label { font-size: 11.5px; white-space: normal; line-height: 1.15; min-height: 26px; align-items: flex-end; }
+  .score-value { font-size: 25px; }
+  .target-row .score-value { font-size: 34px; }
+  .wrong-badge { font-size: 21px; height: 32px; min-width: 36px; }
+  .wrong-value em { display: none; }
+  .stars-runs { display: none; }
+  .stars-total { margin-top: 4px; }
+  .stars-total b { font-size: 25px; }
+  .station-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 10px 16px 0; }
+  .station-tabs button { position: relative; border: 1px solid var(--line); background: #fff; border-radius: 8px; height: 36px; font-size: 12.5px; font-weight: 600; }
+  .station-tabs button[aria-current="true"] { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .station-tabs button.bn::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+  .board { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 16px; padding: 14px 16px 12px; gap: 10px; height: auto; }
+  .station { flex: 0 0 calc(100% - 22px); scroll-snap-align: start; }
+  .board { align-items: flex-start; }
+  .st-body { flex: none; }
+  .piles { flex: none; }
+  .pile { flex: none; height: 168px; }
+  .pile.minor { height: 74px; }
+  .sleigh-scene { flex: none; height: 300px; }
+  .end-hero .fly { display: none; }
+  .crew { flex-wrap: wrap; }
+  .cocoa { flex-wrap: wrap; margin: 0 16px; gap: 10px; }
+  .cocoa-title { min-width: 0; }
+  .fire { display: none; }
+  .foot { padding: 12px 16px 56px; height: auto; }
+  /* decision as a bottom sheet */
+  .decision { position: fixed; left: 0; right: 0; bottom: 0; max-height: 74vh; z-index: 50; border-radius: 18px 18px 0 0; border-left: 1px solid #d7c18b; border-top: 6px solid var(--gold); padding: 14px 16px 60px; }
+  body[data-screen="decision"]::after { content: ""; position: fixed; inset: 0; z-index: 45; background: rgba(22,63,67,.35); }
+  .bridge { display: none !important; }
+  /* break */
+  .overlay { padding: 10px; align-items: start; overflow: auto; }
+  .modal { max-height: none; }
+  .break-hero { height: 140px; }
+  .break-hero .copy { left: 18px; top: 18px; }
+  .break-hero h2 { font-size: 27px; }
+  .break-body { padding: 14px 14px 64px; }
+  .results { grid-template-columns: 1fr 1fr; }
+  .res b { font-size: 25px; }
+  .choose { flex-direction: column; gap: 2px; }
+  .choices { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .choice { padding: 12px 10px 10px; }
+  .choice > svg { width: 36px; height: 36px; }
+  /* end */
+  .end { display: block; padding: 12px 16px 60px; }
+  .end > * + * { margin-top: 12px; }
+  .end-hero .big { font-size: 60px; }
+  .tiles { gap: 6px; }
+  .tile { padding: 8px 10px; }
+  .tile b { font-size: 24px; }
+  .dial-panel { grid-template-columns: 1fr; }
+  .dial-panel svg { max-width: 280px; margin: 0 auto; }
+  .found { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .end-actions { flex-wrap: wrap; }
+  .btn-primary { flex: 1; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; }
+  .snow { display: none; }
+}
+</style>
+</head>
+<body data-screen="play">
+
+<!-- ================= Shared drawings ================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Elf body: colours come from CSS custom properties on each elf -->
+    <symbol id="elf" viewBox="0 0 48 64">
+      <ellipse cx="24" cy="61.5" rx="15" ry="2.4" fill="#000" opacity=".13"/>
+      <path d="M15 56h7v4h-9.5a2.3 2.3 0 0 1 2.5-4z" fill="#3b2f2a"/>
+      <path d="M26 56h7a2.3 2.3 0 0 1 2.5 4H26z" fill="#3b2f2a"/>
+      <path d="M17 42 Q11 47 12 52.5" stroke="var(--coat)" stroke-width="4.4" stroke-linecap="round" fill="none"/>
+      <path d="M31 42 Q37 47 36 52.5" stroke="var(--coat)" stroke-width="4.4" stroke-linecap="round" fill="none"/>
+      <circle cx="12" cy="53.5" r="2.6" fill="var(--skin)"/>
+      <circle cx="36" cy="53.5" r="2.6" fill="var(--skin)"/>
+      <path d="M14.5 57 L17 40.5 Q24 37.5 31 40.5 L33.5 57 Z" fill="var(--coat)"/>
+      <path d="M16.6 40.6 L19 45 L21.5 41.2 L24 45.6 L26.5 41.2 L29 45 L31.4 40.6 Q24 37 16.6 40.6Z" fill="#f4f0e7"/>
+      <rect x="15.4" y="50" width="17.2" height="3.4" fill="#2d2926"/>
+      <rect x="22" y="49.5" width="4" height="4.4" rx=".8" fill="none" stroke="#e2bf5c" stroke-width="1.3"/>
+      <path d="M14 27.5 L5 22.5 L13.2 33.5Z" fill="var(--skin)"/>
+      <path d="M34 27.5 L43 22.5 L34.8 33.5Z" fill="var(--skin)"/>
+      <circle cx="24" cy="29.5" r="11" fill="var(--skin)"/>
+      <path d="M13.3 28 Q14.6 20.4 24 20.4 Q33.4 20.4 34.7 28 Q30.5 24.2 24 25 Q17.5 24.2 13.3 28Z" fill="var(--hair)"/>
+      <circle cx="17.6" cy="33" r="2.1" fill="#e2735f" opacity=".42"/>
+      <circle cx="30.4" cy="33" r="2.1" fill="#e2735f" opacity=".42"/>
+      <path d="M21.4 35.3 Q24 37.6 26.6 35.3" stroke="#5a2e22" stroke-width="1.25" fill="none" stroke-linecap="round"/>
+      <path d="M12.2 22.5 Q13.5 9 26 4.6 Q35 2 40.5 8.5 Q33.5 7.5 31.5 12.5 L36 22.5 Z" fill="var(--hat)"/>
+      <rect x="11" y="19.6" width="26" height="5.2" rx="2.6" fill="var(--brim, #f4f0e7)"/>
+      <circle cx="40.5" cy="9.2" r="3.5" fill="var(--brim, #f4f0e7)"/>
+    </symbol>
+    <symbol id="eyes" viewBox="0 0 48 64">
+      <circle cx="20" cy="29.6" r="1.7" fill="#2d2926"/><circle cx="28" cy="29.6" r="1.7" fill="#2d2926"/>
+      <circle cx="20.6" cy="29" r=".55" fill="#fff"/><circle cx="28.6" cy="29" r=".55" fill="#fff"/>
+    </symbol>
+    <symbol id="eyes-tired" viewBox="0 0 48 64">
+      <path d="M17.6 29.4 Q20 31.6 22.4 29.4 M25.6 29.4 Q28 31.6 30.4 29.4" stroke="#2d2926" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      <path d="M18 32 Q20 33 22 32 M26 32 Q28 33 30 32" stroke="#7a5a8a" stroke-width=".9" fill="none" opacity=".55"/>
+    </symbol>
+    <symbol id="glasses" viewBox="0 0 48 64">
+      <circle cx="20" cy="29.6" r="3.5" fill="none" stroke="#2d2926" stroke-width="1.1"/>
+      <circle cx="28" cy="29.6" r="3.5" fill="none" stroke="#2d2926" stroke-width="1.1"/>
+      <path d="M23.5 29.4h1" stroke="#2d2926" stroke-width="1.1"/>
+    </symbol>
+    <symbol id="scarf" viewBox="0 0 48 64">
+      <path d="M16 39.5 Q24 43.5 32 39.5 L32.5 42.6 Q24 46.5 15.5 42.6Z" fill="var(--scarf)"/>
+      <path d="M27 43 L29.5 51 L26 51.6 L24.8 44Z" fill="var(--scarf)"/>
+      <path d="M26.2 49.2 l3 -.4" stroke="#fff" stroke-width=".8" opacity=".7"/>
+    </symbol>
+    <symbol id="braids" viewBox="0 0 48 64">
+      <path d="M13.5 26 Q11 33 12.4 40" stroke="var(--hair)" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+      <path d="M34.5 26 Q37 33 35.6 40" stroke="var(--hair)" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+      <circle cx="12.4" cy="41" r="1.6" fill="var(--red)"/><circle cx="35.6" cy="41" r="1.6" fill="var(--red)"/>
+    </symbol>
+    <symbol id="bell" viewBox="0 0 48 64">
+      <circle cx="40.5" cy="9.6" r="4" fill="#e2bf5c" stroke="#9b7c31" stroke-width=".8"/>
+      <path d="M38.2 10.6h4.6" stroke="#7a5c15" stroke-width="1"/>
+    </symbol>
+    <symbol id="freckles" viewBox="0 0 48 64">
+      <g fill="#7a4a2a" opacity=".55"><circle cx="17" cy="31.6" r=".6"/><circle cx="18.6" cy="32.8" r=".6"/><circle cx="16.4" cy="33.4" r=".6"/><circle cx="31" cy="31.6" r=".6"/><circle cx="29.4" cy="32.8" r=".6"/><circle cx="31.6" cy="33.4" r=".6"/></g>
+    </symbol>
+    <symbol id="bun" viewBox="0 0 48 64">
+      <circle cx="34.5" cy="25" r="4" fill="var(--hair)"/>
+    </symbol>
+    <symbol id="elf-ghost" viewBox="0 0 48 64">
+      <path d="M12 22 Q14 9 26 5 Q35 2 40 8 L36 22Z M24 18.5a11 11 0 1 1 0 22 11 11 0 0 1 0-22z M14.5 57 L17 40.5 Q24 37.5 31 40.5 L33.5 57Z" fill="#7a6440"/>
+    </symbol>
+
+    <!-- Pile things -->
+    <symbol id="env" viewBox="0 0 30 20">
+      <rect x=".7" y=".7" width="28.6" height="18.6" rx="2" fill="#fff" stroke="#8f9c90" stroke-width="1.1"/>
+      <path d="M1.4 1.6 L15 11 L28.6 1.6" fill="none" stroke="#8f9c90" stroke-width="1.1"/>
+      <rect x="22.5" y="3.5" width="4" height="4.6" fill="var(--stamp, #c64235)"/>
+    </symbol>
+    <symbol id="slip" viewBox="0 0 26 30">
+      <path d="M1 1h18l6 6v22H1z" fill="#fff" stroke="#8f9c90" stroke-width="1.1"/>
+      <path d="M19 1v6h6" fill="#eef2ee" stroke="#8f9c90" stroke-width="1.1"/>
+      <circle cx="8" cy="10" r="4" fill="var(--toy, #286e73)"/>
+      <path d="M5 18h15M5 22h11" stroke="#b6c1b8" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="parcel" viewBox="0 0 28 24">
+      <rect x="1" y="5" width="26" height="18" rx="2" fill="var(--wrap, #286e73)"/>
+      <rect x="1" y="5" width="26" height="18" rx="2" fill="none" stroke="rgba(0,0,0,.18)"/>
+      <rect x="12" y="5" width="4" height="18" fill="var(--rib, #f2d27a)"/>
+      <path d="M14 5 Q8 -1 7 3.5 Q7 6 14 5 Q20 -1 21 3.5 Q21 6 14 5Z" fill="var(--rib, #f2d27a)"/>
+    </symbol>
+    <symbol id="parcel-wrong" viewBox="0 0 28 24">
+      <use href="#parcel" width="28" height="24" style="--wrap:#c64235;--rib:#f4f0e7"/>
+      <circle cx="22" cy="17" r="6" fill="#fff" stroke="#a3332a" stroke-width="1.4"/>
+      <path d="M22 13.6v4.2" stroke="#a3332a" stroke-width="2" stroke-linecap="round"/><circle cx="22" cy="20.2" r="1.1" fill="#a3332a"/>
+    </symbol>
+    <symbol id="parcel-q" viewBox="0 0 28 24">
+      <use href="#parcel" width="28" height="24" style="--wrap:#286e73;--rib:#f2d27a"/>
+      <circle cx="22" cy="16" r="6.5" fill="#bf9b45" stroke="#74560f" stroke-width="1.2"/>
+      <text x="22" y="19.6" text-anchor="middle" font-family="Arial" font-weight="700" font-size="10" fill="#2b2005">?</text>
+    </symbol>
+
+    <!-- Icons -->
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 21.5v-6.7L5 11.6a1.7 1.7 0 0 1 2.4-2.4L9 10.8V4.6a1.6 1.6 0 0 1 3.2 0v5.1V3.6a1.6 1.6 0 0 1 3.2 0v6.1V5.2a1.6 1.6 0 0 1 3.2 0V15c0 3.7-2.6 6.5-6 6.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-robot" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4.5" y="8" width="15" height="12" rx="3.2"/><path d="M12 8V4.6"/><path d="M2.5 12.5v3.5M21.5 12.5v3.5"/></g><circle cx="12" cy="3.6" r="1.5" fill="currentColor"/><circle cx="9.3" cy="13.2" r="1.6" fill="currentColor"/><circle cx="14.7" cy="13.2" r="1.6" fill="currentColor"/><path d="M10 16.8h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-env" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M3.3 6.5 12 13l8.7-6.5"/></g></symbol>
+    <symbol id="i-hammer" viewBox="0 0 24 24"><path d="M12.6 3.2 20.8 11.4 18.4 13.8 15.9 11.3 6.7 20.5a1.8 1.8 0 0 1-2.5-2.5l9.2-9.2-2.6-2.6z" fill="currentColor"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1.8 12S5.6 5.5 12 5.5 22.2 12 22.2 12 18.4 18.5 12 18.5 1.8 12 1.8 12z" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="12" cy="12" r="3.3" fill="currentColor"/></symbol>
+    <symbol id="i-mag" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6.3" fill="none" stroke="currentColor" stroke-width="2.3"/><path d="M14.8 14.8 21 21" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3" fill="currentColor"/><circle cx="12" cy="12" r="2.3" fill="currentColor"/><circle cx="19" cy="12" r="2.3" fill="currentColor"/></symbol>
+    <symbol id="i-zz" viewBox="0 0 24 24"><path d="M3 6h7l-7 8h7M13 11h8l-8 9h8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 6.8V12l3.6 2.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-coin" viewBox="0 0 24 24"><ellipse cx="12" cy="16.5" rx="8" ry="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12.5c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2M4 8.5v8M20 8.5v8" fill="none" stroke="currentColor" stroke-width="2"/><ellipse cx="12" cy="8.5" rx="8" ry="3.2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.6l2.9 6 6.5.8-4.8 4.5 1.2 6.5L12 17.2l-5.8 3.2 1.2-6.5-4.8-4.5 6.5-.8z" fill="currentColor"/></symbol>
+    <symbol id="i-funnel" viewBox="0 0 24 24"><path d="M2.5 4h19l-7.3 8.6v6.6l-4.4 2.3v-8.9z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.2" fill="currentColor"/><rect x="14" y="4.5" width="4" height="15" rx="1.2" fill="currentColor"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/><path d="M4 3.5v5.5h5.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.2 2.6c-.9.5-1.4 1-1.4 2.1" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 4 21 18H3z" fill="currentColor"/></symbol>
+    <symbol id="i-flake" viewBox="0 0 24 24"><g stroke="currentColor" stroke-width="1.9" stroke-linecap="round" fill="none"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/><path d="M9.5 3.8 12 6l2.5-2.2M9.5 20.2 12 18l2.5 2.2M3.5 10.4l3.2-.9-.8-3.2M20.5 13.6l-3.2.9.8 3.2M5.9 17.8l.8-3.3-3.2-.9M18.1 6.2l-.8 3.3 3.2.9"/></g></symbol>
+    <symbol id="i-ask" viewBox="0 0 24 24"><path d="M4 4.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-9l-5 4v-4H4A1.5 1.5 0 0 1 2.5 15V6A1.5 1.5 0 0 1 4 4.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><text x="12" y="14.2" text-anchor="middle" font-family="Arial" font-weight="700" font-size="9" fill="currentColor">?</text></symbol>
+    <symbol id="i-sleigh" viewBox="0 0 24 24"><path d="M3 16.5h15.5c2 0 3-1.3 3-2.8M5 12.5c-.8-2.6-.4-5.4 1-7h2.5c-.2 2.8.7 5 3 5h6c1.4 0 2 .8 2 2v1H5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 19.5h16.5c2.6 0 4-1.6 3.6-3.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+
+    <!-- Mug -->
+    <symbol id="mug" viewBox="0 0 44 44">
+      <path d="M14 13 q-3 -4 0 -8 q3 -4 0 -8" transform="translate(0 10)" fill="none" stroke="#b9a582" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M22 13 q-3 -4 0 -8 q3 -4 0 -8" transform="translate(0 9)" fill="none" stroke="#b9a582" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M8 18h24v14a8 8 0 0 1-8 8h-8a8 8 0 0 1-8-8z" fill="#c64235"/>
+      <path d="M32 21h3a5 5 0 0 1 0 10h-3" fill="none" stroke="#c64235" stroke-width="3.2"/>
+      <ellipse cx="20" cy="18.4" rx="12" ry="2.6" fill="#6b3f22"/>
+      <rect x="14" y="15" width="5" height="4.4" rx="1.2" fill="#fff"/><rect x="20" y="14.4" width="5" height="4.4" rx="1.2" fill="#fbeedd"/>
+      <path d="M8 26h24" stroke="#f4f0e7" stroke-width="2.4"/>
+    </symbol>
+
+    <!-- Sleigh -->
+    <symbol id="sleigh" viewBox="0 0 280 150">
+      <g>
+        <use href="#parcel" x="68" y="54" width="40" height="38" style="--wrap:#286e73;--rib:#f2d27a"/>
+        <use href="#parcel" x="100" y="40" width="48" height="50" style="--wrap:#bf9b45;--rib:#c64235"/>
+        <use href="#parcel" x="140" y="58" width="36" height="32" style="--wrap:#2f7a4e;--rib:#f4f0e7"/>
+        <use href="#parcel" x="170" y="50" width="42" height="40" style="--wrap:#f4f0e7;--rib:#c64235"/>
+        <use href="#parcel" x="204" y="66" width="30" height="26" style="--wrap:#c64235;--rib:#f2d27a"/>
+        <use href="#parcel" x="114" y="12" width="32" height="32" style="--wrap:#c64235;--rib:#f4f0e7"/>
+        <use href="#parcel" x="148" y="24" width="30" height="30" style="--wrap:#8ed0d2;--rib:#c64235"/>
+        <use href="#parcel" x="180" y="30" width="26" height="24" style="--wrap:#286e73;--rib:#f4f0e7"/>
+      </g>
+      <path d="M34 114 C24 92 23 64 33 44 L64 44 C62 68 72 84 98 86 L216 86 C236 86 244 98 241 114 Z" fill="#c64235"/>
+      <path d="M33 44 L64 44 C62 68 72 84 98 86 L216 86 C236 86 244 98 241 114" fill="none" stroke="#e2bf5c" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M34 114 H241" stroke="#a3332a" stroke-width="3"/>
+      <path d="M80 102 q10 -10 22 0 q10 8 22 0 q10 -8 20 0" fill="none" stroke="#e2bf5c" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="50" cy="94" r="6" fill="none" stroke="#e2bf5c" stroke-width="2.4"/>
+      <g stroke="#6e5414" stroke-width="5" stroke-linecap="round"><path d="M62 114v16M130 114v16M200 114v16"/></g>
+      <path d="M22 130 H222 C256 130 266 104 250 92 C238 84 226 96 234 104" fill="none" stroke="#6e5414" stroke-width="6" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- Toy train and locomotive -->
+    <symbol id="toytrain" viewBox="0 0 50 26">
+      <rect x="4" y="8" width="20" height="10" rx="2" fill="#286e73"/><rect x="22" y="3" width="12" height="15" rx="1.5" fill="#c64235"/><rect x="7" y="3" width="4" height="6" fill="#2d2926"/>
+      <rect x="36" y="9" width="12" height="9" rx="1.5" fill="#bf9b45"/>
+      <g fill="#2d2926"><circle cx="9" cy="20.5" r="3"/><circle cx="19" cy="20.5" r="3"/><circle cx="29" cy="20.5" r="3"/><circle cx="42" cy="20.5" r="3"/></g>
+    </symbol>
+    <symbol id="loco" viewBox="0 0 170 92">
+      <circle cx="40" cy="12" r="7" fill="#d9dfdb"/><circle cx="50" cy="7" r="5" fill="#e6ebe8"/><circle cx="31" cy="9" r="5" fill="#e6ebe8"/>
+      <rect x="35" y="16" width="12" height="18" fill="#2b3a35"/><rect x="32" y="14" width="18" height="5" rx="2" fill="#2b3a35"/>
+      <rect x="18" y="32" width="96" height="34" rx="12" fill="#24463f"/>
+      <rect x="18" y="44" width="96" height="4" fill="#bf9b45"/>
+      <rect x="104" y="14" width="46" height="54" rx="3" fill="#a3332a"/><rect x="112" y="22" width="16" height="16" rx="2" fill="#f2d27a"/><rect x="132" y="22" width="12" height="16" rx="2" fill="#f2d27a"/>
+      <rect x="100" y="10" width="54" height="6" rx="2" fill="#2b3a35"/>
+      <path d="M18 66 L4 82 H30Z" fill="#6e5414"/>
+      <rect x="10" y="66" width="146" height="6" fill="#2b3a35"/>
+      <g fill="#c64235" stroke="#2b3a35" stroke-width="3"><circle cx="46" cy="78" r="11"/><circle cx="76" cy="78" r="11"/><circle cx="128" cy="80" r="8"/></g>
+      <path d="M46 78 L128 80" stroke="#bfc6c2" stroke-width="3"/>
+      <path d="M0 89 H170" stroke="#9aa79d" stroke-width="2"/>
+      <!-- an elf for scale -->
+      <use href="#elf" x="152" y="62" width="18" height="24" style="--hat:#286e73;--coat:#2f7a4e;--skin:#f1c7a3;--hair:#6b3f22"/>
+      <use href="#eyes" x="152" y="62" width="18" height="24"/>
+    </symbol>
+  </defs>
+</svg>
+
+<nav class="mock-tabs" aria-label="Mock screens">
+  <span>mock</span>
+  <button data-s="play" aria-pressed="true">Play</button>
+  <button data-s="decision">Decision</button>
+  <button data-s="break">Break</button>
+  <button data-s="end">End</button>
+</nav>
+
+<div class="app">
+  <!-- ================= Masthead ================= -->
+  <header class="masthead">
+    <h1 class="title"><svg aria-hidden="true"><use href="#i-flake"/></svg>Santa's AI Workshop</h1>
+    <div class="runs play-only" aria-label="Sleigh run 2 of 4">
+      <span>Sleigh run <b>2</b> of 4</span>
+      <span class="pips"><i class="pip done"></i><i class="pip now"></i><i class="pip"></i><i class="pip"></i></span>
+    </div>
+    <div class="head-actions">
+      <button class="tool play-only"><svg aria-hidden="true"><use href="#i-pause"/></svg><span class="lbl">Pause</span></button>
+      <button class="tool"><svg aria-hidden="true"><use href="#i-restart"/></svg><span class="lbl">Restart</span></button>
+      <button class="tool icon" aria-label="How to play"><svg aria-hidden="true"><use href="#i-help"/></svg></button>
+    </div>
+  </header>
+
+  <!-- ================= Scoreboard ================= -->
+  <section class="scoreboard play-only" aria-label="This sleigh run">
+    <div class="snow" data-flakes="34"></div>
+    <div class="score target">
+      <div class="score-label"><svg aria-hidden="true"><use href="#i-sleigh"/></svg>Right gifts aboard</div>
+      <div class="target-row">
+        <div class="score-value">27<small>/ 62</small></div>
+        <div class="gauge" aria-hidden="true">
+          <div class="gauge-track"><div class="gauge-pace"></div><div class="gauge-fill"></div><div class="gauge-mark"></div></div>
+          <div class="gauge-legend"><span>On pace for 55</span><span>Target 62</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="score clock">
+      <svg class="clock-ring" viewBox="0 0 52 52" aria-hidden="true">
+        <circle cx="26" cy="26" r="21" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="6"/>
+        <circle cx="26" cy="26" r="21" fill="none" stroke="#f0cf6c" stroke-width="6" stroke-linecap="round" stroke-dasharray="77 132" transform="rotate(-90 26 26)"/>
+        <use href="#i-sleigh" x="15" y="15" width="22" height="22" style="color:#fff"/>
+      </svg>
+      <div>
+        <div class="score-label">Until departure</div>
+        <div class="score-value">0:35</div>
+      </div>
+    </div>
+    <div class="score">
+      <div class="score-label">Wrong gifts aboard</div>
+      <div class="score-value wrong-value"><span class="wrong-badge">3</span><em>would reach<br>children</em></div>
+    </div>
+    <div class="score">
+      <div class="score-label"><svg aria-hidden="true"><use href="#i-coin"/></svg>Budget left</div>
+      <div class="score-value">£1,770</div>
+    </div>
+    <div class="score">
+      <div class="score-label"><svg aria-hidden="true"><use href="#i-star"/></svg>Stars</div>
+      <div class="stars-runs" aria-hidden="true">
+        <span class="star-run"><svg class="on"><use href="#i-star"/></svg><svg class="on"><use href="#i-star"/></svg><svg><use href="#i-star"/></svg></span>
+        <span class="star-run now"><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg></span>
+        <span class="star-run"><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg></span>
+        <span class="star-run"><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg></span>
+      </div>
+      <div class="stars-total"><b>2</b> of 12</div>
+    </div>
+    <div class="garland" aria-hidden="true">
+      <svg preserveAspectRatio="none">
+        <defs>
+          <pattern id="swag" width="96" height="22" patternUnits="userSpaceOnUse">
+            <path d="M0 3 Q24 19 48 3 Q72 19 96 3" fill="none" stroke="#2c6a43" stroke-width="5" stroke-linecap="round"/>
+            <path d="M0 3 Q24 19 48 3 Q72 19 96 3" fill="none" stroke="#3f8a57" stroke-width="2" stroke-dasharray="2 4"/>
+            <circle cx="24" cy="15" r="3.6" fill="#c64235"/><circle cx="72" cy="15" r="3.6" fill="#e9c869"/>
+            <circle cx="10" cy="9" r="2.6" fill="#8ed0d2"/><circle cx="58" cy="9" r="2.6" fill="#f4f0e7"/>
+            <circle cx="38" cy="9" r="2.6" fill="#e9c869"/><circle cx="86" cy="9" r="2.6" fill="#c64235"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="22" fill="url(#swag)"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ================= Workshop floor ================= -->
+  <div class="board-wrap play-only">
+    <nav class="station-tabs" aria-label="Stations">
+      <button data-go="0" aria-current="true">Letters</button>
+      <button data-go="1" class="bn">Toys</button>
+      <button data-go="2">Check</button>
+      <button data-go="3">Sleigh</button>
+    </nav>
+    <main class="board" id="board">
+
+      <!-- 1 Letters -->
+      <section class="station" aria-label="Letters">
+        <div class="st-head"><span class="st-num">1</span><h2>Letters</h2><span class="rate"><b>28</b>a minute</span></div>
+        <div class="st-body">
+          <div>
+            <div class="ctl-label"><span>AI at reading</span></div>
+            <div class="seg" role="radiogroup" aria-label="AI at reading">
+              <button role="radio" aria-checked="true"><span class="ico"><svg aria-hidden="true"><use href="#i-hand"/></svg></span>By hand</button>
+              <button role="radio" aria-checked="false"><span class="ico"><svg aria-hidden="true" style="width:17px"><use href="#i-hand"/></svg><svg aria-hidden="true" style="width:17px"><use href="#i-robot"/></svg></span>Assist</button>
+              <button role="radio" aria-checked="false"><span class="ico"><svg aria-hidden="true"><use href="#i-robot"/></svg></span>Automate</button>
+            </div>
+          </div>
+          <div class="piles">
+            <div class="pile">
+              <span class="pile-name">Letters</span>
+              <span class="pile-count"><b>10</b>/24</span>
+              <div class="heap">
+                <svg viewBox="0 0 150 76" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+                  <use href="#env" x="12" y="54" width="30" height="20" transform="rotate(-5 27 64)"/>
+                  <use href="#env" x="42" y="55" width="30" height="20" transform="rotate(3 57 65)" style="--stamp:#286e73"/>
+                  <use href="#env" x="72" y="54" width="30" height="20" transform="rotate(-2 87 64)"/>
+                  <use href="#env" x="102" y="55" width="30" height="20" transform="rotate(6 117 65)" style="--stamp:#bf9b45"/>
+                  <use href="#env" x="27" y="38" width="30" height="20" transform="rotate(4 42 48)" style="--stamp:#2f7a4e"/>
+                  <use href="#env" x="58" y="37" width="30" height="20" transform="rotate(-6 73 47)"/>
+                  <use href="#env" x="88" y="38" width="30" height="20" transform="rotate(2 103 48)" style="--stamp:#286e73"/>
+                  <use href="#env" x="43" y="21" width="30" height="20" transform="rotate(-3 58 31)" style="--stamp:#bf9b45"/>
+                  <use href="#env" x="73" y="21" width="30" height="20" transform="rotate(5 88 31)"/>
+                  <use href="#env" x="58" y="4" width="30" height="20" transform="rotate(-8 73 14)" style="--stamp:#2f7a4e"/>
+                </svg>
+              </div>
+              <span class="cap" aria-hidden="true"><i style="--f:42%"></i></span>
+            </div>
+            <div class="pile minor">
+              <span class="pile-name">Ask the child</span>
+              <span class="pile-count"><b>0</b>/8</span>
+              <span class="empty heap">Nothing to ask</span>
+              <span class="cap" aria-hidden="true"><i style="--f:0%"></i></span>
+            </div>
+          </div>
+          <div class="crew">
+            <button class="elf" style="--hat:#c64235;--coat:#286e73;--skin:#f2c9a6;--hair:#6b3f22">
+              <span class="role" title="Reading"><svg aria-hidden="true"><use href="#i-env"/></svg></span>
+              <svg class="fig" viewBox="0 0 48 64" aria-hidden="true"><use href="#elf"/><use href="#eyes"/><use href="#glasses"/></svg>
+              <b>Pip</b><small>reading</small><span class="energy" aria-hidden="true"><i style="--e:82%"></i></span>
+            </button>
+            <button class="elf" style="--hat:#2f7a4e;--coat:#c64235;--skin:#c98d63;--hair:#2d1d16;--brim:#f2d27a">
+              <span class="role" title="Reading"><svg aria-hidden="true"><use href="#i-env"/></svg></span>
+              <svg class="fig" viewBox="0 0 48 64" aria-hidden="true"><use href="#braids"/><use href="#elf"/><use href="#eyes"/></svg>
+              <b>Holly</b><small>reading</small><span class="energy" aria-hidden="true"><i style="--e:70%"></i></span>
+            </button>
+            <button class="elf idle" style="--hat:#bf9b45;--coat:#3d6f8f;--skin:#8d5b3e;--hair:#1f1512">
+              <span class="role" title="Idle"><svg aria-hidden="true"><use href="#i-dots"/></svg></span>
+              <svg class="fig" viewBox="0 0 48 64" aria-hidden="true"><use href="#elf"/><use href="#eyes"/><use href="#freckles"/></svg>
+              <b>Fig</b><small>idle</small><span class="energy" aria-hidden="true"><i style="--e:95%"></i></span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 Toys -->
+      <section class="station bottleneck" aria-label="Toys">
+        <div class="st-head"><span class="st-num">2</span><h2>Toys</h2><span class="bneck"><svg aria-hidden="true"><use href="#i-funnel"/></svg>Bottleneck</span><span class="rate"><b>18</b>a minute</span></div>
+        <div class="st-body">
+          <div>
+            <div class="ctl-label"><span>AI at toy-making</span></div>
+            <div class="seg" role="radiogroup" aria-label="AI at toy-making">
+              <button role="radio" aria-checked="false"><span class="ico"><svg aria-hidden="true"><use href="#i-hand"/></svg></span>By hand</button>
+              <button role="radio" aria-checked="true"><span class="ico"><svg aria-hidden="true" style="width:17px"><use href="#i-hand"/></svg><svg aria-hidden="true" style="width:17px"><use href="#i-robot"/></svg></span>Assist</button>
+              <button role="radio" aria-checked="false"><span class="ico"><svg aria-hidden="true"><use href="#i-robot"/></svg></span>Automate</button>
+            </div>
+          </div>
+          <div class="machine on">
+            <svg viewBox="0 0 34 28" aria-hidden="true"><rect x="2" y="6" width="26" height="20" rx="3" fill="#286e73"/><rect x="6" y="10" width="12" height="8" rx="1.5" fill="#8ed0d2"/><circle cx="23" cy="12" r="2.6" fill="#7fe0a6"/><rect x="11" y="1" width="6" height="6" fill="#1d585c"/></svg>
+            <span>Toy machine running, Ivy watching</span>
+            <i class="belt"></i>
+          </div>
+          <div class="piles">
+            <div class="pile">
+              <span class="pile-name">Toy orders</span>
+              <span class="pile-count"><svg class="trend" aria-label="growing"><use href="#i-up"/></svg><b>6</b>/20</span>
+              <div class="heap">
+                <svg viewBox="0 0 150 76" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+                  <use href="#slip" x="34" y="44" width="26" height="30" transform="rotate(-8 47 59)" style="--toy:#c64235"/>
+                  <use href="#slip" x="62" y="45" width="26" height="30" transform="rotate(4 75 60)"/>
+                  <use href="#slip" x="90" y="44" width="26" height="30" transform="rotate(-3 103 59)" style="--toy:#bf9b45"/>
+                  <use href="#slip" x="48" y="20" width="26" height="30" transform="rotate(6 61 35)" style="--toy:#2f7a4e"/>
+                  <use href="#slip" x="76" y="19" width="26" height="30" transform="rotate(-5 89 34)" style="--toy:#c64235"/>
+                  <use href="#slip" x="62" y="-2" width="26" height="30" transform="rotate(10 75 13)" style="--toy:#8ed0d2"/>
+                </svg>
+              </div>
+              <span class="cap warn" aria-hidden="true"><i style="--f:30%"></i></span>
+            </div>
+          </div>
+          <div class="crew">
+            <button class="elf" style="--hat:#286e73;--coat:#a83a2f;--skin:#f6dcc4;--hair:#c7772f;--scarf:#e9c869">
+              <span class="role" title="Making"><svg aria-hidden="true"><use href="#i-hammer"/></svg></span>
+              <svg class="fig" viewBox="0 0 48 64" aria-hidden="true"><use href="#elf"/><use href="#eyes"/><use href="#scarf"/><use href="#freckles"/></svg>
+              <b>Noel</b><small>making</small><span class="energy" aria-hidden="true"><i style="--e:64%"></i></span>
+            </button>
+            <button class="elf" style="--hat:#c64235;--coat:#4f7f3a;--skin:#e2b08a;--hair:#3b2a20">
+              <span class="role" title="Making"><svg aria-hidden="true"><use href="#i-hammer"/></svg></span>
+              <svg class="fig" viewBox="0 0 48 64" aria-hidden="true"><use href="#elf"/><use href="#eyes"/><use href="#bell"/></svg>
+              <b>Jingle</b><small>making</small><span class="energy mid" aria-hidden="true"><i style="--e:48%"></i></span>
+            </button>
+            <button class="elf" style="--hat:#4e8f6a;--coat:#286e73;--skin:#b07850;--hair:#5a3524;--scarf:#c64235">
+              <span class="role" title="Watching the machine"><svg aria-hidden="true"><use href="#i-eye"/></svg></span>
+              <svg class="fig" viewBox="0 0 48 64" aria-hidden="true"><use href="#bun"/><use href="#elf"/><use href="#eyes"/><use href="#scarf"/></svg>
+              <b>Ivy</b><small>watching AI</small><span class="energy" aria-hidden="true"><i style="--e:88%"></i></span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 Elves check -->
+      <section class="station check" aria-label="Elves check">
+        <div class="st-head"><span class="st-num">3</span><h2>Elves check</h2><span class="rate"><b>31</b>a minute</span></div>
+        <div class="st-body">
+          <div>
+            <div class="ctl-label"><span>How much to check</span></div>
+            <div class="knobctl">
+              <div class="knob-wrap" aria-hidden="true">
+                <svg class="knob-ticks" viewBox="0 0 70 70"><g fill="#8aa197"><circle cx="64" cy="16" r="2.4"/><circle cx="67.5" cy="35" r="2.4"/><circle cx="64" cy="54" r="2.4"/></g></svg>
+                <div class="knob" style="--a:0deg"></div>
+              </div>
+              <div class="knob-opts" role="radiogroup" aria-label="How much to check">
+                <button role="radio" aria-checked="false"><i></i>A few</button>
+                <button role="radio" aria-checked="true"><i></i>The risky ones</button>
+                <button role="radio" aria-checked="false"><i></i>All</button>
+              </div>
+            </div>
+          </div>
+          <div class="piles">
+            <div class="pile unsure">
+              <span class="flag play-flag">1 unsure</span>
+              <span class="pile-name">To check</span>
+              <span class="pile-count"><b>7</b>/10</span>
+              <div class="heap">
+                <svg viewBox="8 16 134 60" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+                  <use href="#parcel" x="16" y="48" width="30" height="26" style="--wrap:#286e73"/>
+                  <use href="#parcel" x="46" y="48" width="30" height="26" style="--wrap:#f4f0e7;--rib:#c64235"/>
+                  <use href="#parcel" x="76" y="48" width="30" height="26" style="--wrap:#2f7a4e;--rib:#f4f0e7"/>
+                  <use href="#parcel" x="106" y="48" width="30" height="26" style="--wrap:#bf9b45;--rib:#c64235"/>
+                  <use href="#parcel" x="32" y="23" width="30" height="26" style="--wrap:#c64235;--rib:#f4f0e7"/>
+                  <use href="#parcel-q" x="62" y="23" width="30" height="26"/>
+                  <use href="#parcel" x="92" y="23" width="30" height="26" style="--wrap:#8ed0d2;--rib:#c64235"/>
+                </svg>
+              </div>
+              <span class="cap warn" aria-hidden="true"><i style="--f:70%"></i></span>
+            </div>
+            <div class="pile minor">
+              <span class="pile-name">To remake</span>
+              <span class="pile-count"><b>2</b>/30</span>
+              <div class="heap">
+                <svg viewBox="0 0 150 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true">
+                  <use href="#parcel-wrong" x="0" y="4" width="30" height="26"/>
+                  <use href="#parcel-wrong" x="32" y="4" width="30" height="26"/>
+                </svg>
+              </div>
+              <span class="cap" aria-hidden="true"><i style="--f:7%"></i></span>
+            </div>
+          </div>
+          <div class="crew">
+            <button class="elf" style="--hat:#6c8fb0;--coat:#c64235;--skin:#f0c39d;--hair:#d9b45a;--scarf:#8ed0d2">
+              <span class="role" title="Checking"><svg aria-hidden="true"><use href="#i-mag"/></svg></span>
+              <svg class="fig" viewBox="0 0 48 64" aria-hidden="true"><use href="#elf"/><use href="#eyes"/><use href="#scarf"/></svg>
+              <b>Tinsel</b><small>checking</small><span class="energy" aria-hidden="true"><i style="--e:74%"></i></span>
+            </button>
+            <button class="elf tired" style="--hat:#7b4a2e;--coat:#2f7a4e;--skin:#9a6243;--hair:#241812">
+              <span class="role" title="Tired"><svg aria-hidden="true"><use href="#i-zz"/></svg></span>
+              <svg class="fig" viewBox="0 0 48 64" aria-hidden="true"><use href="#elf"/><use href="#eyes-tired"/></svg>
+              <b>Coco</b><small>worn out</small><span class="energy" aria-hidden="true"><i style="--e:14%"></i></span>
+            </button>
+          </div>
+          <i class="bridge" aria-hidden="true"></i>
+        </div>
+      </section>
+
+      <!-- 4 Sleigh -->
+      <section class="station sleigh" aria-label="Sleigh">
+        <div class="st-head"><span class="st-num">4</span><h2>Sleigh</h2><span class="rate"><b>26</b>a minute</span></div>
+        <div class="st-body">
+          <div class="sleigh-scene">
+            <div class="snow" data-flakes="22"></div>
+            <svg class="moon" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="14" fill="#fbf0d3"/><circle cx="27" cy="15" r="12" fill="#dcecec"/></svg>
+            <svg class="sleigh-art" viewBox="0 0 280 150" aria-hidden="true"><use href="#sleigh"/></svg>
+            <span class="drift"></span>
+            <div class="tally">
+              <div class="tally-num">27<small> / 62</small></div>
+              <div class="tally-label">right gifts aboard</div>
+            </div>
+          </div>
+          <div class="aboard-wrong">
+            <span class="parcels" aria-hidden="true"><svg><use href="#parcel-wrong"/></svg><svg><use href="#parcel-wrong"/></svg><svg><use href="#parcel-wrong"/></svg></span>
+            <b>3</b><span>wrong aboard</span>
+          </div>
+          <div class="loaded">
+            <span>Just loaded</span>
+            <span class="row" aria-hidden="true">
+              <i><svg><use href="#parcel" style="--wrap:#286e73"/></svg></i>
+              <i><svg><use href="#parcel" style="--wrap:#bf9b45;--rib:#c64235"/></svg></i>
+              <i class="bad"><svg><use href="#parcel-wrong"/></svg></i>
+              <i><svg><use href="#parcel" style="--wrap:#2f7a4e;--rib:#f4f0e7"/></svg></i>
+              <i><svg><use href="#parcel" style="--wrap:#c64235;--rib:#f4f0e7"/></svg></i>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Decision card, docked beside Elves check -->
+      <aside class="decision" aria-label="Checker unsure about a parcel">
+        <div class="dc-head">
+          <svg viewBox="0 0 48 64" aria-hidden="true" style="--hat:#6c8fb0;--coat:#c64235;--skin:#f0c39d;--hair:#d9b45a;--scarf:#8ed0d2"><use href="#elf"/><use href="#eyes"/><use href="#scarf"/></svg>
+          <div><h3>Tinsel isn't sure about this one</h3><p>The clock keeps running while you decide</p></div>
+        </div>
+        <div class="evidence">
+          <figure class="ev wish">
+            <span class="tag">Wish</span>
+            <q>"A little train, please."</q>
+            <small>Timmy, 6</small>
+            <svg viewBox="0 0 50 26" aria-hidden="true"><use href="#toytrain"/></svg>
+          </figure>
+          <figure class="ev made">
+            <span class="tag">Made</span>
+            <svg viewBox="0 0 170 92" aria-hidden="true"><use href="#loco"/></svg>
+            <b>A full-sized locomotive</b>
+          </figure>
+        </div>
+        <div class="opts">
+          <button class="opt"><svg aria-hidden="true"><use href="#i-hammer"/></svg><b>Send back to remake</b>
+            <span class="costs"><span class="cost"><svg aria-hidden="true"><use href="#i-clock"/></svg>+6 s</span><span class="cost"><svg aria-hidden="true"><use href="#i-coin"/></svg>£40</span></span></button>
+          <button class="opt"><svg aria-hidden="true"><use href="#i-ask"/></svg><b>Ask Timmy</b>
+            <span class="costs"><span class="cost"><svg aria-hidden="true"><use href="#i-clock"/></svg>+10 s</span><span class="cost"><svg aria-hidden="true"><use href="#i-coin"/></svg>£15</span></span></button>
+          <button class="opt"><svg aria-hidden="true"><use href="#i-sleigh"/></svg><b>Load it anyway</b>
+            <span class="costs"><span class="cost free"><svg aria-hidden="true"><use href="#i-clock"/></svg>0 s</span><span class="cost risk"><svg aria-hidden="true"><use href="#i-coin"/></svg>£250 if wrong</span></span></button>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- ================= Cocoa break ================= -->
+  <section class="cocoa play-only" aria-label="Cocoa break">
+    <div class="cocoa-title">
+      <svg aria-hidden="true"><use href="#mug"/></svg>
+      <div><b>Cocoa break</b><span>Tired elves recover here</span></div>
+    </div>
+    <div class="slots" aria-hidden="true">
+      <span class="slot"><svg viewBox="0 0 48 64"><use href="#elf-ghost"/></svg></span>
+      <span class="slot"><svg viewBox="0 0 48 64"><use href="#elf-ghost"/></svg></span>
+      <span class="slot"><svg viewBox="0 0 48 64"><use href="#elf-ghost"/></svg></span>
+    </div>
+    <span class="cocoa-hint">
+      <svg viewBox="0 0 46 18" aria-hidden="true"><path d="M44 9 H8" stroke="#74560f" stroke-width="2.4" stroke-dasharray="4 3" stroke-linecap="round"/><path d="M12 3 L4 9 L12 15" fill="none" stroke="#74560f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Coco needs a break. Drag her here.
+    </span>
+    <div class="fire" aria-hidden="true">
+      <svg viewBox="0 0 70 44"><rect x="2" y="6" width="66" height="38" rx="3" fill="#8a4b32"/><rect x="0" y="2" width="70" height="7" rx="2" fill="#6b3a26"/><path d="M14 44 V22 a21 21 0 0 1 42 0 V44Z" fill="#2d2926"/><path d="M35 42 c-10 0 -12 -8 -6 -15 c1 5 4 5 4 1 c0 -5 3 -8 6 -10 c-1 5 5 7 5 14 c0 6 -4 10 -9 10z" fill="#e9a23b"/><path d="M35 42 c-5 0 -6 -4 -3 -8 c1 3 3 3 3 0 c2 2 5 4 5 7 c0 1 -2 1 -5 1z" fill="#f6dc7d"/><path d="M8 6 q6 6 12 0 q6 6 12 0 q6 6 12 0 q6 6 12 0 q6 6 8 0" fill="none" stroke="#2c6a43" stroke-width="3"/><circle cx="20" cy="9" r="2" fill="#c64235"/><circle cx="44" cy="9" r="2" fill="#e9c869"/></svg>
+    </div>
+  </section>
+
+  <!-- ================= End screen ================= -->
+  <main class="end" aria-label="Christmas Eve results">
+    <div>
+      <section class="panel end-hero">
+        <div class="snow" data-flakes="26"></div>
+        <svg class="fly" viewBox="0 0 280 150" aria-hidden="true"><use href="#sleigh"/></svg>
+        <div class="big">7<small> / 12</small></div>
+        <div>
+          <h2>Stars on Christmas Eve</h2>
+          <div class="stars-runs" aria-label="Stars by sleigh run: 2, 2, 1, 2">
+            <span class="star-run"><svg class="on"><use href="#i-star"/></svg><svg class="on"><use href="#i-star"/></svg><svg><use href="#i-star"/></svg></span>
+            <span class="star-run"><svg class="on"><use href="#i-star"/></svg><svg class="on"><use href="#i-star"/></svg><svg><use href="#i-star"/></svg></span>
+            <span class="star-run"><svg class="on"><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg></span>
+            <span class="star-run"><svg class="on"><use href="#i-star"/></svg><svg class="on"><use href="#i-star"/></svg><svg><use href="#i-star"/></svg></span>
+          </div>
+        </div>
+        <p>Four sleigh runs, eight elves, one toy machine.</p>
+      </section>
+      <div class="tiles">
+        <div class="tile right"><span>Right gifts</span><b>214</b></div>
+        <div class="tile wrong"><span>Wrong gifts delivered</span><b>11</b></div>
+        <div class="tile lost"><span>Lost, never loaded</span><b>9</b></div>
+      </div>
+      <section class="panel dial-panel">
+        <svg viewBox="0 0 300 186" role="img" aria-label="Dial: you checked a bit too little">
+          <path d="M30 150 A120 120 0 0 1 90 46.08" fill="none" stroke="#efb9ae" stroke-width="28"/>
+          <path d="M90 46.08 A120 120 0 0 1 210 46.08" fill="none" stroke="#a9d6b3" stroke-width="28"/>
+          <path d="M210 46.08 A120 120 0 0 1 270 150" fill="none" stroke="#b6cfdf" stroke-width="28"/>
+          <path d="M91.5 44.5 l-3 3.2 M208.5 44.5 l3 3.2" stroke="#fff" stroke-width="3"/>
+          <text x="150" y="20" text-anchor="middle" font-family="Archivo, Arial" font-size="13" font-weight="700" fill="#22603a">About right</text>
+          <line x1="150" y1="150" x2="84.4" y2="71.8" stroke="#2d2926" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="150" cy="150" r="11" fill="#2d2926"/><circle cx="150" cy="150" r="4" fill="#bf9b45"/>
+          <g transform="translate(62 82)"><rect x="-22" y="-12" width="44" height="22" rx="11" fill="#c64235"/><text x="0" y="4" text-anchor="middle" font-family="Archivo, Arial" font-size="12.5" font-weight="700" fill="#fff">You</text></g>
+          <text x="30" y="178" text-anchor="middle" font-family="Archivo, Arial" font-size="12.5" fill="#545e51">Too little</text>
+          <text x="270" y="178" text-anchor="middle" font-family="Archivo, Arial" font-size="12.5" fill="#545e51">Too much</text>
+          <text x="150" y="178" text-anchor="middle" font-family="Archivo, Arial" font-size="12.5" fill="#545e51">checking</text>
+        </svg>
+        <div>
+          <h3>A bit too little checking</h3>
+          <p>Checking only the risky ones kept costs down, but the toy machine made more odd gifts than your checkers could catch. With mistakes this likely and this costly, checking all toys from run 3 would have paid for itself.</p>
+        </div>
+      </section>
+    </div>
+    <div>
+      <section class="panel">
+        <h3>Where the money went</h3>
+        <dl class="account">
+          <dt><i style="--c:#286e73"></i>Elves' wages</dt><dd>£2,400</dd>
+          <dt><i style="--c:#8ed0d2"></i>AI reading and toy machine</dt><dd>£900</dd>
+          <dt><i style="--c:#bf9b45"></i>Checking</dt><dd>£1,150</dd>
+          <dt><i style="--c:#b6cfdf"></i>Fixing mistakes</dt><dd>£420</dd>
+          <dt><i style="--c:#c64235"></i>Wrong gifts delivered</dt><dd class="neg">-£1,320</dd>
+          <dt><i style="--c:#2f7a4e"></i>Mistakes caught in time</dt><dd class="pos">+£2,080</dd>
+          <dt class="total">Budget left</dt><dd class="total">£630</dd>
+        </dl>
+      </section>
+      <section class="panel collection">
+        <h3>Wrong gifts you found</h3>
+        <div class="found">
+          <div class="gift"><span class="e" aria-hidden="true">🚂</span><span>"a little train"</span><b>a locomotive</b></div>
+          <div class="gift"><span class="e" aria-hidden="true">🐻</span><span>"a teddy bear"</span><b>a live bear cub</b></div>
+          <div class="gift"><span class="e" aria-hidden="true">🐐</span><span>"a toy boat"</span><b>a goat</b></div>
+          <div class="gift"><span class="e" aria-hidden="true">🐴</span><span>"a pony book"</span><b>a pony</b></div>
+          <div class="gift locked"><span class="e" aria-hidden="true">?</span><span>3 more to find</span></div>
+        </div>
+      </section>
+      <div class="end-actions">
+        <button class="btn-primary"><svg aria-hidden="true"><use href="#i-restart"/></svg>Play again</button>
+        <button class="btn-ghost">Read the article</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="foot"><span>Frontier Economics</span><span>Illustrative costs and risks</span></footer>
+</div>
+
+<!-- ================= Break card ================= -->
+<div class="overlay overlay-break" role="dialog" aria-modal="true" aria-label="Between sleigh runs">
+  <section class="modal">
+    <div class="break-hero">
+      <svg viewBox="0 0 940 172" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+        <circle cx="820" cy="54" r="30" fill="#fbf0d3"/><circle cx="832" cy="46" r="26" fill="#123639" opacity=".35"/>
+        <g fill="#fff" opacity=".8"><circle cx="420" cy="20" r="1.4"/><circle cx="520" cy="44" r="1.2"/><circle cx="660" cy="18" r="1.6"/><circle cx="740" cy="98" r="1.2"/><circle cx="890" cy="120" r="1.4"/><circle cx="350" cy="64" r="1.1"/></g>
+        <path d="M420 112 C500 90 560 96 620 70" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 7" opacity=".55"/>
+        <g transform="translate(614 34) rotate(-12) scale(.32)"><use href="#sleigh" width="280" height="150"/></g>
+        <path d="M0 172 V138 L40 118 L80 138 V128 L120 108 L160 128 V150 L200 150 V120 L250 96 L300 120 V172Z M300 172 V136 L360 112 L420 136 V172Z M420 172 V146 L470 126 L520 146 V172 Z M520 172 V132 L580 104 L640 132 V172Z M640 172 V140 L700 116 L760 140 V172Z M760 172 V128 L820 102 L880 128 V172Z M880 172 V144 L940 120 V172Z" fill="#0d2a2d"/>
+        <g fill="#f2d27a"><rect x="96" y="140" width="9" height="11"/><rect x="220" y="132" width="9" height="11"/><rect x="236" y="132" width="9" height="11"/><rect x="566" y="140" width="9" height="11"/><rect x="806" y="136" width="9" height="11"/><rect x="460" y="152" width="9" height="11"/></g>
+        <path d="M0 172 V138 L40 118 L80 138 V128 L120 108 L160 128 V150 L200 150 V120 L250 96 L300 120 V136 L360 112 L420 136 V146 L470 126 L520 146 V132 L580 104 L640 132 V140 L700 116 L760 140 V128 L820 102 L880 128 V144 L940 120" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round" opacity=".85"/>
+      </svg>
+      <div class="snow" data-flakes="30"></div>
+      <div class="copy"><p>Sleigh run 2 of 4</p><h2>The sleigh is away</h2></div>
+    </div>
+    <div class="break-body">
+      <div class="results">
+        <div class="res right"><span>Right gifts</span><b>58<small> / 62</small></b><em>4 short of the target</em></div>
+        <div class="res wrong"><span>Wrong gifts delivered</span><b>3</b><em>£360 in returns</em></div>
+        <div class="res"><span>Budget left</span><b>£1,410</b></div>
+        <div class="res"><span>Stars this run</span><div class="stars-big"><svg class="on"><use href="#i-star"/></svg><svg class="on"><use href="#i-star"/></svg><svg><use href="#i-star"/></svg></div><em>4 of 12 so far</em></div>
+      </div>
+      <div class="choose"><h3>Before run 3, choose one</h3><span>Run 3 target: 70 right gifts</span></div>
+      <div class="choices">
+        <button class="choice">
+          <svg viewBox="0 0 44 44" aria-hidden="true"><rect x="4" y="4" width="36" height="36" rx="10" fill="#e3f1ef"/><use href="#i-robot" x="10" y="10" width="24" height="24" style="color:#286e73"/><circle cx="34" cy="10" r="7" fill="#bf9b45"/><path d="M34 6.5v7M30.5 10h7" stroke="#2b2005" stroke-width="2"/></svg>
+          <b>Install the AI update</b><p>Toys come out faster. Nobody has tried it yet.</p>
+          <span class="costs"><span class="cost"><svg aria-hidden="true"><use href="#i-coin"/></svg>£300</span></span>
+        </button>
+        <button class="choice">
+          <svg viewBox="0 0 44 44" aria-hidden="true"><rect x="4" y="4" width="36" height="36" rx="10" fill="#e3f1ef"/><use href="#i-robot" x="8" y="12" width="20" height="20" style="color:#286e73"/><use href="#i-mag" x="20" y="16" width="18" height="18" style="color:#bf9b45"/></svg>
+          <b>Test it first</b><p>Try it on spare orders, install it for run 4.</p>
+          <span class="costs"><span class="cost"><svg aria-hidden="true"><use href="#i-coin"/></svg>£450</span></span>
+        </button>
+        <button class="choice">
+          <svg viewBox="0 0 44 44" aria-hidden="true"><rect x="4" y="4" width="36" height="36" rx="10" fill="#fbf0d3"/><use href="#i-mag" x="10" y="10" width="24" height="24" style="color:#74560f"/></svg>
+          <b>Train the checkers</b><p>Checkers spot more of the odd toys.</p>
+          <span class="costs"><span class="cost"><svg aria-hidden="true"><use href="#i-coin"/></svg>£250</span></span>
+        </button>
+        <button class="choice">
+          <svg viewBox="0 0 44 44" aria-hidden="true"><rect x="4" y="4" width="36" height="36" rx="10" fill="#fbe5e0"/><use href="#mug" x="9" y="7" width="27" height="27"/></svg>
+          <b>Rest the elves</b><p>Everyone starts run 3 fresh.</p>
+          <span class="costs"><span class="cost free">Free</span><span class="cost"><svg aria-hidden="true"><use href="#i-clock"/></svg>8 s shorter run</span></span>
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var tabs = document.querySelectorAll(".mock-tabs button");
+  var board = document.getElementById("board");
+  var narrow = window.matchMedia("(max-width: 760px)");
+  function goStation(i) {
+    var st = board.querySelectorAll(".station")[i];
+    if (st) board.scrollTo({ left: st.offsetLeft - 16, behavior: "instant" });
+    document.querySelectorAll(".station-tabs button").forEach(function (b) {
+      b.setAttribute("aria-current", String(Number(b.dataset.go) === i));
+    });
+  }
+  function show(s) {
+    document.body.dataset.screen = s;
+    tabs.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.s === s)); });
+    if (location.hash.slice(1) !== s) history.replaceState(null, "", "#" + s);
+    if (narrow.matches) goStation(s === "decision" ? 2 : 0);
+  }
+  tabs.forEach(function (b) { b.addEventListener("click", function () { show(b.dataset.s); }); });
+  document.querySelectorAll(".station-tabs button").forEach(function (b) {
+    b.addEventListener("click", function () { goStation(Number(b.dataset.go)); });
+  });
+  function fromHash() {
+    var h = location.hash.slice(1);
+    show(["play", "decision", "break", "end"].indexOf(h) >= 0 ? h : "play");
+  }
+  window.addEventListener("hashchange", fromHash);
+  fromHash();
+
+  // Gentle snow
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.querySelectorAll(".snow").forEach(function (zone) {
+      var n = Number(zone.dataset.flakes) || 20;
+      for (var i = 0; i < n; i++) {
+        var f = document.createElement("i");
+        var size = 2 + Math.random() * 3;
+        f.className = "flake";
+        f.style.left = Math.random() * 100 + "%";
+        f.style.width = f.style.height = size + "px";
+        f.style.opacity = (0.35 + Math.random() * 0.5).toFixed(2);
+        f.style.animationDuration = 6 + Math.random() * 8 + "s";
+        f.style.animationDelay = -Math.random() * 14 + "s";
+        f.style.setProperty("--dx", (Math.random() * 40 - 20).toFixed(0) + "px");
+        f.style.setProperty("--fall", (zone.clientHeight || 200) + 16 + "px");
+        zone.appendChild(f);
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

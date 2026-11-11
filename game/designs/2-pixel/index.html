@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Santa's AI Workshop: pixel night</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Tiny5&display=swap" rel="stylesheet">
+<style>
+:root {
+  --night: #13112b;
+  --indigo: #1e1a44;
+  --violet: #3a2c6e;
+  --wall: #2a2152;
+  --edge: #0d0b20;
+  --snow: #eef0ff;
+  --dim: #bdb8e8;
+  --teal: #3fd6c4;
+  --gold: #ffcf4d;
+  --berry: #ff6680;
+  --pine: #5ad895;
+  --wood: #4a2f2a;
+  --wood-d: #2e1c1a;
+  --display: "Tiny5", ui-monospace, monospace;
+  --body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --s: 5;
+  --notch: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px));
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html { background: #13112b; }
+body {
+  min-height: 100vh;
+  color: var(--snow);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.35;
+  background: linear-gradient(#0e0c24 0 18%, #13102e 18% 36%, #19143a 36% 54%, #201848 54% 72%, #281c55 72%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+  font-synthesis: none;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px dashed var(--gold); outline-offset: 3px; }
+.sky { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.aurora { position: fixed; inset: 0 0 auto 0; height: 46vh; z-index: 0; pointer-events: none; filter: blur(40px); opacity: .55;
+  background: radial-gradient(40% 50% at 25% 40%, rgba(63, 214, 196, .35), transparent 70%), radial-gradient(35% 45% at 70% 30%, rgba(155, 107, 255, .35), transparent 70%); }
+#snow { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; image-rendering: pixelated; }
+.spr { display: block; shape-rendering: crispEdges; }
+.ol { filter: drop-shadow(3px 0 0 var(--edge)) drop-shadow(-3px 0 0 var(--edge)) drop-shadow(0 3px 0 var(--edge)) drop-shadow(0 -3px 0 var(--edge)); }
+.num, .big, h1, h2, .disp { font-family: var(--display); font-weight: 600; letter-spacing: .01em; }
+.px { border: 4px solid var(--edge); clip-path: var(--notch); box-shadow: inset 0 4px 0 rgba(255, 255, 255, .07), inset 0 -4px 0 rgba(0, 0, 0, .28); }
+.screen { display: none; position: relative; z-index: 2; }
+body[data-screen="play"] .scr-play, body[data-screen="decision"] .scr-play { display: grid; }
+body[data-screen="break"] .scr-break, body[data-screen="end"] .scr-end { display: grid; }
+
+/* ---------- HUD ---------- */
+.scr-play { height: 100vh; min-height: 640px; grid-template-rows: auto 1fr; gap: 10px; padding: 12px 16px; }
+.hud { display: flex; gap: 10px; align-items: stretch; }
+.plate { background: var(--indigo); padding: 6px 14px 7px; display: grid; align-content: center; min-width: 0; }
+.plate .lbl { font-size: 13px; color: var(--dim); }
+.plate .num { font-size: 30px; line-height: 1.05; }
+.plate .num small { font-size: 18px; color: var(--dim); font-weight: 500; }
+.run .pips { display: flex; gap: 4px; margin-top: 3px; color: var(--gold); }
+.run .pips svg { width: 18px; height: 12px; }
+.run .pips .todo { color: #5a5390; }
+.clock { min-width: 210px; grid-template-columns: auto 1fr; column-gap: 12px; background: #2a1d4f; }
+.clock .num { font-size: 44px; color: var(--gold); grid-row: span 2; align-self: center; text-shadow: 0 0 14px rgba(255, 207, 77, .35); }
+.clock .drain { height: 8px; background: #120f2a; margin-top: 4px; }
+.clock .drain i { display: block; height: 100%; width: 58%; background: var(--gold); }
+.stars .num { display: flex; align-items: center; gap: 6px; }
+.stars .num svg { color: var(--gold); width: 22px; height: 22px; }
+.hud .spacer { flex: 1; }
+.hint { align-self: center; color: var(--dim); font-size: 14px; display: flex; gap: 8px; align-items: center; }
+.hint svg { width: 18px; height: 18px; color: var(--teal); }
+.pause { width: 60px; background: var(--violet); border: 4px solid var(--edge); clip-path: var(--notch); cursor: pointer; display: grid; place-items: center; }
+.pause i { display: inline-block; width: 6px; height: 20px; background: var(--snow); margin: 0 3px; }
+.hud-sleigh { display: none; }
+
+/* ---------- Stage ---------- */
+.stage { position: relative; display: grid; grid-template-columns: 1fr 1fr 1fr 300px; grid-template-rows: 62px 1fr 112px; min-height: 0; }
+.roof { grid-column: 1 / 4; grid-row: 1; position: relative; display: grid; place-items: center; background: linear-gradient(#5b3a34 0 8px, var(--wood) 8px); border: 4px solid var(--edge); border-bottom: 0; margin: 0 -10px; clip-path: polygon(0 100%, 0 20px, 12px 20px, 12px 12px, 24px 12px, 24px 0, calc(100% - 24px) 0, calc(100% - 24px) 12px, calc(100% - 12px) 12px, calc(100% - 12px) 20px, 100% 20px, 100% 100%); }
+.roof::before { content: ""; position: absolute; left: 20px; right: 20px; top: 0; height: 12px; background:
+  linear-gradient(90deg, transparent 0 0) , repeating-linear-gradient(90deg, #eef0ff 0 20px, #eef0ff 20px 28px); clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+.roof::after { content: ""; position: absolute; left: 20px; right: 20px; top: 12px; height: 4px; background: repeating-linear-gradient(90deg, #eef0ff 0 4px, transparent 4px 24px, #eef0ff 24px 32px, transparent 32px 44px); }
+.roofsign { position: relative; z-index: 1; margin-top: 10px; padding: 3px 18px 4px; background: #1b1238; font-family: var(--display); font-size: 22px; font-weight: 600; color: var(--gold); text-shadow: 0 0 12px rgba(255, 207, 77, .5); }
+.chimney { position: absolute; left: 7%; top: -26px; width: 36px; height: 30px; background: #6b3c38; border: 4px solid var(--edge); border-bottom: 0; box-shadow: inset 0 6px 0 #eef0ff; }
+
+.room { position: relative; grid-row: 2; display: grid; grid-template-rows: auto auto 1fr auto; gap: 10px; padding: 12px 14px 22px; min-width: 0;
+  background: radial-gradient(110% 55% at 50% 0%, rgba(255, 186, 92, .17), transparent 65%), repeating-linear-gradient(90deg, rgba(255, 255, 255, .028) 0 4px, transparent 4px 36px), var(--wall);
+  border-left: 8px solid var(--wood-d); }
+.room.r1 { grid-column: 1; border-left-width: 10px; }
+.room.r2 { grid-column: 2; }
+.room.r3 { grid-column: 3; border-right: 10px solid var(--wood-d); }
+.sign { display: flex; align-items: center; gap: 10px; background: #1b1238; padding: 6px 12px; position: relative; }
+.sign h2 { margin: 0; font-size: 22px; font-weight: 600; flex: 1; }
+.rate { margin: 0; display: flex; align-items: baseline; gap: 5px; color: var(--dim); font-size: 13px; white-space: nowrap; }
+.rate b { font-family: var(--display); font-size: 28px; color: var(--teal); font-weight: 600; }
+.bottleneck .sign { --edge: #ff6680; }
+.bottleneck .rate b { color: var(--berry); }
+.bn { position: absolute; z-index: 2; left: 28px; top: 0; background: var(--berry); color: #1a0d1f; font-family: var(--display); font-size: 17px; padding: 1px 8px 2px; clip-path: var(--notch); animation: bn 1.6s steps(2) infinite; }
+@keyframes bn { 50% { transform: translateY(-3px); } }
+
+.console { display: flex; align-items: center; gap: 8px; }
+.cap { font-size: 13px; color: var(--dim); width: 54px; flex: none; line-height: 1.15; }
+.seg { display: flex; flex: 1; background: #120f2a; padding: 3px; gap: 3px; clip-path: var(--notch); }
+.seg button { flex: 1; display: grid; justify-items: center; gap: 3px; padding: 5px 2px 4px; border: 0; background: transparent; color: var(--dim); cursor: pointer; font-size: 13px; line-height: 1.1; clip-path: var(--notch); }
+.seg button .ico { display: flex; gap: 2px; height: 14px; align-items: center; }
+.seg button .ico svg { width: 14px; height: 14px; }
+.seg button.on { background: var(--teal); color: #0b1d22; font-weight: 700; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .25); }
+.seg .share { display: flex; gap: 2px; height: 14px; align-items: center; }
+.seg .share i { width: 7px; height: 9px; background: currentColor; opacity: .3; }
+.seg .share i.y { opacity: 1; }
+
+.pile { display: flex; align-items: center; gap: 12px; min-height: 0; }
+.count { display: grid; gap: 2px; }
+.count .lbl { font-size: 14px; color: var(--dim); }
+.count .num { font-size: 48px; line-height: 1; }
+.count .num small { font-size: 24px; color: var(--dim); font-weight: 500; }
+.meter { width: 96px; height: 8px; background: #120f2a; display: block; }
+.meter i { display: block; height: 100%; background: var(--snow); }
+.machine { filter: drop-shadow(0 0 12px rgba(63, 214, 196, .55)); }
+.bot-off { opacity: .8; }
+.offtag { font-size: 12px; color: var(--dim); text-align: center; margin-top: 2px; }
+
+.floor { display: flex; justify-content: center; align-items: flex-end; gap: 8px; }
+.elf { position: relative; display: grid; justify-items: center; gap: 1px; background: none; border: 0; padding: 30px 4px 0; cursor: grab; min-width: 64px; }
+.elf .spr { width: calc(14px * var(--s)); height: calc(23px * var(--s)); margin-bottom: 6px; }
+.elf .nm { font-family: var(--display); font-size: 16px; font-weight: 600; line-height: 1; }
+.elf .role { font-size: 12.5px; color: var(--dim); line-height: 1.1; }
+.en { display: flex; gap: 2px; margin-top: 3px; }
+.en i { width: 8px; height: 6px; background: var(--pine); }
+.en i.off { background: #3b3466; }
+.en.e1 i:not(.off) { background: var(--berry); }
+.en.e2 i:not(.off) { background: var(--gold); }
+.bubble { position: absolute; top: 0; left: 50%; transform: translateX(-30%); background: var(--snow); color: #2a2152; padding: 3px 5px; height: 24px; min-width: 26px; display: grid; place-items: center; clip-path: var(--notch); }
+.bubble svg { width: 14px; height: 14px; }
+.bubble.zz { background: var(--berry); color: #1a0d1f; font-family: var(--display); font-weight: 700; font-size: 16px; line-height: 1; display: flex; align-items: flex-start; }
+.bubble.zz small { font-size: 11px; }
+.bubble.dots { display: flex; gap: 3px; }
+.bubble.dots i { width: 4px; height: 4px; background: #5a5390; }
+.elf.tired .nm { color: #ffb3c0; }
+.elf.tired .spr { transform: translateY(5px); margin-bottom: 1px; }
+
+.belt { position: absolute; left: 0; bottom: 112px; width: calc(100% - 210px); height: 18px; background: #221c3c; border-top: 4px solid #6a64a0; border-bottom: 4px solid var(--edge); z-index: 1; }
+.belt::before { content: ""; position: absolute; inset: 3px 0; background: repeating-linear-gradient(90deg, #4a4478 0 8px, transparent 8px 20px); animation: belt 1s linear infinite; }
+@keyframes belt { to { background-position: 20px 0; } }
+.belt .item { position: absolute; bottom: 14px; }
+.room .belt-m { display: none; }
+
+/* ---------- Yard ---------- */
+.yard { grid-column: 4; grid-row: 1 / 4; position: relative; display: flex; flex-direction: column; gap: 10px; padding: 0 0 0 22px; }
+.yard .sign { flex: none; }
+.tally { background: var(--indigo); padding: 10px 14px 12px; }
+.tally .lbl, .wrongp .lbl { font-size: 14px; color: var(--dim); }
+.tally .big { font-size: 64px; line-height: 1; color: var(--pine); }
+.tally .big small { font-size: 30px; color: var(--dim); font-weight: 500; }
+.bar { position: relative; height: 14px; background: #120f2a; margin: 8px 0 6px; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--pine); }
+.bar em { position: absolute; top: -4px; bottom: -4px; width: 4px; background: var(--gold); }
+.pace { font-size: 14px; color: var(--dim); }
+.pace b { color: var(--gold); font-family: var(--display); font-size: 18px; }
+.wrongp { background: #3a1830; --edge: #0d0b20; padding: 8px 14px; display: flex; align-items: center; gap: 12px; }
+.wrongp .num { font-size: 42px; color: var(--berry); line-height: 1; }
+.sleighwrap { margin-top: auto; position: relative; height: 150px; margin-bottom: 104px; }
+.sleighwrap .sl { position: absolute; left: 14px; bottom: 0; }
+.sleighwrap .gifts { position: absolute; left: 44px; bottom: 50px; }
+.ground { position: absolute; left: -60px; right: -16px; bottom: -12px; height: 128px; background: linear-gradient(#eef0ff 0 8px, #d8dcf6 8px 40px, #c3c6ea 40px); border-top: 4px solid #fff; clip-path: polygon(0 12px, 40px 12px, 40px 4px, 120px 4px, 120px 0, 100% 0, 100% 100%, 0 100%); z-index: 0; }
+.brand { position: absolute; right: 16px; bottom: 22px; margin: 0; font-size: 13px; color: #3a2c6e; z-index: 2; }
+.brand b { font-weight: 700; }
+
+/* ---------- Cocoa ---------- */
+.cocoa { grid-column: 1 / 4; grid-row: 3; position: relative; display: flex; align-items: center; gap: 22px; padding: 10px 24px 10px 20px;
+  background: radial-gradient(40% 120% at 9% 60%, rgba(255, 159, 67, .28), transparent 70%), repeating-linear-gradient(0deg, rgba(0, 0, 0, .14) 0 4px, transparent 4px 22px), #3a2034;
+  border: 10px solid var(--wood-d); border-top: 6px solid #6b4436; }
+.cocoa .fire { filter: drop-shadow(0 0 14px rgba(255, 159, 67, .6)); }
+.cocoa h2 { margin: 0; font-size: 22px; }
+.cocoa p { margin: 2px 0 0; color: #e8cfe0; font-size: 14px; max-width: 30ch; }
+.seats { display: flex; gap: 12px; margin-left: auto; }
+.seat { width: 82px; height: 78px; border: 3px dashed rgba(238, 240, 255, .45); display: grid; place-items: center; align-content: center; gap: 2px; color: #e8cfe0; font-size: 12px; }
+.seat.hot { border-color: var(--gold); color: var(--gold); background: rgba(255, 207, 77, .08); }
+
+/* ---------- Decision card ---------- */
+.veil { display: none; }
+.decide { display: none; }
+body[data-screen="decision"] .veil { display: block; position: absolute; inset: -12px -16px; background: rgba(9, 7, 24, .66); z-index: 5; }
+body[data-screen="decision"] .room.r3 { z-index: 6; box-shadow: 0 0 0 4px var(--gold), 0 0 40px rgba(255, 207, 77, .35); }
+body[data-screen="decision"] .decide { display: block; position: absolute; z-index: 7; left: 60px; top: 104px; width: 590px; }
+.decide .box { background: var(--indigo); padding: 16px 18px 18px; display: grid; grid-template-columns: 96px 1fr; gap: 6px 16px; }
+.decide .tail { position: absolute; right: -26px; top: 150px; width: 30px; height: 36px; }
+.who { display: grid; justify-items: center; align-content: start; gap: 6px; }
+.portrait { width: 96px; height: 96px; background: #2a2152; border: 4px solid var(--edge); clip-path: var(--notch); display: grid; place-items: end center; overflow: hidden; }
+.portrait svg { width: 84px; height: 84px; }
+.nametag { font-family: var(--display); font-weight: 600; font-size: 16px; background: var(--edge); padding: 1px 8px; }
+.nametag small { display: block; font-family: var(--body); font-weight: 400; font-size: 12px; color: var(--dim); text-align: center; }
+.say { margin: 2px 0 10px; font-size: 19px; font-family: var(--display); font-weight: 500; }
+.compare { display: grid; grid-template-columns: 1fr auto 1.35fr; align-items: center; gap: 10px; margin-bottom: 14px; }
+.compare figure { margin: 0; height: 100%; padding: 10px 12px; display: grid; gap: 4px; align-content: start; }
+.compare figcaption { font-size: 13px; color: var(--dim); }
+.wish { background: #f4f2ff; color: #2a2152; }
+.wish figcaption { color: #5a5390; }
+.wish blockquote { margin: 0; font-size: 19px; font-style: italic; line-height: 1.2; font-weight: 700; }
+.wish small { color: #5a5390; }
+.made { background: #2a2152; }
+.made .spr { margin: 4px 0 2px; }
+.made small { color: #ffb3c0; font-weight: 700; font-size: 14px; }
+.vs { font-family: var(--display); color: var(--dim); }
+.opts { grid-column: 1 / -1; display: grid; gap: 8px; }
+.opt { display: grid; grid-template-columns: 1fr 86px 150px; align-items: center; gap: 10px; text-align: left; background: var(--violet); border: 4px solid var(--edge); clip-path: var(--notch); padding: 8px 12px; cursor: pointer; }
+.opt:hover { background: #4a3a86; }
+.opt b { font-size: 16px; }
+.cost { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-size: 21px; }
+.cost svg { width: 16px; height: 16px; flex: none; }
+.cost .i-t { color: var(--teal); }
+.cost .i-m { color: var(--gold); }
+.cost small { font-family: var(--body); font-size: 12.5px; color: #ffb3c0; line-height: 1.1; }
+.opt.risky { background: #3a1830; }
+
+/* ---------- Break + end ---------- */
+.scr-break, .scr-end { min-height: 100vh; padding: 28px 16px 40px; place-items: center; align-content: center; gap: 18px; }
+.dlg { background: var(--indigo); width: min(880px, 100%); padding: 20px 22px 22px; }
+.dlg-top { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+.dlg h1 { margin: 0; font-size: 34px; line-height: 1.05; }
+.dlg .sub { margin: 4px 0 0; color: var(--dim); }
+.res { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.res .plate { padding: 6px 14px; background: #120f2a; }
+.res .num.ok, .tot .ok { color: var(--pine); }
+.res .num.bad, .tot .bad { color: var(--berry); }
+.starrow { display: flex; gap: 4px; align-items: center; }
+.starrow svg { width: 22px; height: 22px; color: var(--gold); }
+.starrow svg.dark { color: #4a4478; }
+.pick { margin: 20px 0 10px; font-size: 20px; }
+.choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.choice { text-align: left; background: #2a2152; border: 4px solid var(--edge); clip-path: var(--notch); padding: 12px 12px 14px; display: grid; gap: 6px; align-content: start; cursor: pointer; }
+.choice .ic { width: 44px; height: 44px; background: #120f2a; display: grid; place-items: center; clip-path: var(--notch); color: var(--teal); }
+.choice .ic svg { width: 27px; height: 27px; }
+.choice b { font-family: var(--display); font-size: 18px; font-weight: 600; line-height: 1.1; }
+.choice span { font-size: 14px; color: var(--dim); }
+.choice .price { font-family: var(--display); color: var(--gold); font-size: 16px; margin-top: auto; }
+.choice.sel { background: #3a2c6e; border-color: var(--gold); box-shadow: inset 0 0 0 2px var(--gold); }
+.go { margin-top: 18px; display: inline-flex; align-items: center; gap: 12px; background: var(--gold); color: #2a1a05; border: 4px solid var(--edge); clip-path: var(--notch); font-family: var(--display); font-weight: 700; font-size: 22px; padding: 8px 22px; cursor: pointer; box-shadow: inset 0 -5px 0 #c9922e; }
+.go svg { width: 14px; height: 18px; }
+.foot { text-align: right; color: var(--dim); font-size: 13px; margin: 10px 0 0; }
+.flying { position: absolute; top: 3vh; right: 9vw; opacity: .9; }
+
+.scr-end .dlg { width: min(1180px, 100%); }
+.endhead { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+.endhead h1 { font-size: 40px; }
+.bigstars { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.bigstars svg { width: 30px; height: 30px; color: var(--gold); filter: drop-shadow(0 0 6px rgba(255, 207, 77, .35)); }
+.bigstars svg.dark { color: #4a4478; filter: none; }
+.tot { display: flex; gap: 10px; margin-left: auto; }
+.tot .plate { background: #120f2a; min-width: 108px; }
+.tot .num { font-size: 34px; }
+.endgrid { display: grid; grid-template-columns: 1fr 1.05fr 1.1fr; gap: 14px; margin-top: 16px; }
+.panel { background: #2a2152; padding: 14px 16px 16px; }
+.panel h2 { margin: 0 0 8px; font-size: 19px; font-weight: 600; }
+.dialbox { display: grid; justify-items: center; min-width: 0; }
+.gauge { max-width: 100%; height: auto; }
+.dial-l { display: flex; justify-content: space-between; width: 100%; font-size: 13px; color: var(--dim); margin-top: 4px; }
+.dial-l span:nth-child(2) { color: var(--pine); }
+.verdict { margin: 10px 0 0; font-size: 15px; }
+.ledger { display: grid; gap: 7px; margin: 0; }
+.ledger div { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: baseline; }
+.ledger dt { font-size: 14px; }
+.ledger dd { margin: 0; font-family: var(--display); font-size: 17px; font-weight: 600; text-align: right; }
+.ledger .lb { grid-column: 1 / -1; height: 6px; background: #120f2a; }
+.ledger .lb i { display: block; height: 100%; background: #8f86d8; }
+.ledger .neg dd { color: var(--berry); } .ledger .neg .lb i { background: var(--berry); }
+.ledger .pos dd { color: var(--pine); } .ledger .pos .lb i { background: var(--pine); }
+.ledger hr { border: 0; border-top: 2px dashed #4a4478; margin: 3px 0; }
+.found { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.card { background: #1b1238; padding: 8px 6px 8px; display: grid; justify-items: center; gap: 4px; text-align: center; clip-path: var(--notch); }
+.card .art { height: 50px; display: grid; place-items: center; }
+.card b { font-size: 12.5px; line-height: 1.15; }
+.card span { font-size: 12px; color: var(--dim); line-height: 1.15; }
+.card.locked { background: repeating-linear-gradient(45deg, #1b1238 0 6px, #211845 6px 12px); color: #6a64a0; }
+.card.locked .art { font-family: var(--display); font-size: 30px; color: #6a64a0; }
+.endact { display: flex; gap: 18px; align-items: center; margin-top: 14px; }
+.endact .go { margin-top: 0; }
+.endact a { color: var(--teal); font-weight: 700; }
+.endact .brand2 { margin-left: auto; color: var(--dim); font-size: 13px; }
+
+/* ---------- Mock tabs (outside the design) ---------- */
+.mocktabs { position: fixed; right: 12px; bottom: 12px; z-index: 100; display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 12px; background: #fff; color: #222; border-radius: 999px; font: 12px/1 system-ui, sans-serif; box-shadow: 0 2px 10px rgba(0, 0, 0, .4); }
+.mocktabs span { color: #666; margin-right: 4px; }
+.mocktabs button { border: 0; background: #eee; border-radius: 999px; padding: 6px 10px; cursor: pointer; font: inherit; color: #222; }
+.mocktabs button[aria-current="true"] { background: #222; color: #fff; }
+body.clean .mocktabs { display: none; }
+
+@media (prefers-reduced-motion: reduce) { .belt::before, .bn { animation: none; } }
+
+/* ---------- Phone ---------- */
+@media (max-width: 760px) {
+  :root { --s: 3; }
+  body { font-size: 14px; }
+  .scr-play { height: auto; min-height: 0; padding: 0 10px 70px; gap: 8px; }
+  .hud { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: auto auto 1fr auto 40px; gap: 6px; padding: 8px 10px; margin: 0 -10px; background: rgba(19, 17, 43, .94); border-bottom: 4px solid var(--edge); }
+  .plate { padding: 4px 7px 5px; }
+  .plate .lbl { font-size: 11px; }
+  .plate .num { font-size: 23px; white-space: nowrap; }
+  .plate .num small { font-size: 13px; }
+  .res .num { font-size: 28px; }
+  .run .pips { display: none; }
+  .clock { min-width: 0; display: grid; grid-template-columns: 1fr; }
+  .clock .num { font-size: 22px; grid-row: auto; }
+  .clock .drain { height: 5px; margin-top: 2px; }
+  .stars .num svg { width: 14px; height: 14px; }
+  .stars .num { gap: 3px; }
+  .hud .spacer, .hint { display: none; }
+  .pause { width: 40px; }
+  .clock .lbl { white-space: nowrap; }
+  .pause i { width: 4px; height: 14px; margin: 0 2px; }
+  .hud-sleigh { display: flex; grid-column: 1 / -1; align-items: center; gap: 10px; background: var(--indigo); padding: 5px 10px; font-size: 13px; color: var(--dim); }
+  .hud-sleigh .num { font-size: 22px; color: var(--pine); }
+  .hud-sleigh .num small { font-size: 13px; color: var(--dim); }
+  .hud-sleigh .bar { flex: 1; margin: 0; height: 10px; }
+  .hud-sleigh .w { color: var(--berry); font-family: var(--display); font-size: 20px; font-weight: 600; }
+  .stage { display: flex; flex-direction: column; }
+  .roof { margin: 22px 0 0; height: 56px; }
+  .roofsign { font-size: 18px; }
+  .room { border-left: 10px solid var(--wood-d); border-right: 10px solid var(--wood-d); border-bottom: 8px solid var(--wood-d); grid-template-columns: 128px 1fr; grid-template-rows: auto auto auto; gap: 10px 8px; padding: 18px 10px 20px; }
+  .room.r3 { border-right-width: 10px; }
+  .room .sign, .room .console { grid-column: 1 / -1; }
+  .sign h2 { font-size: 19px; }
+  .pile { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .pile .art { display: flex; align-items: flex-end; gap: 4px; }
+  .pile .spr { width: auto; height: 46px; }
+  .pile .machine { height: 54px; }
+  .pile .art:has(.bot-off) { display: none !important; }
+  .count .num { font-size: 32px; }
+  .floor { gap: 0; justify-content: space-around; }
+  .elf { min-width: 58px; padding-top: 28px; }
+  .belt { display: none; }
+  .room .belt-m { display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 12px; background: repeating-linear-gradient(90deg, #4a4478 0 8px, #221c3c 8px 20px); border-top: 3px solid #6a64a0; }
+  .yard { padding: 18px 0 0; gap: 8px; }
+  .yard .sleighwrap { margin: 0; height: 104px; }
+  .yard .sl { width: 160px; height: 64px; left: 4px; }
+  .yard .gifts { width: 105px; height: 67px; left: 26px; bottom: 34px; }
+  .yard .tally { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; }
+  .yard .tally .lbl, .yard .tally .pace { grid-column: 1 / -1; }
+  .yard .tally .bar { margin: 0; }
+  .ground { left: -10px; right: -10px; bottom: 0; height: 40px; }
+  .brand { position: relative; text-align: right; color: #3a2c6e; margin: -30px 6px 10px; }
+  .tally .big { font-size: 40px; }
+  .cocoa { flex-wrap: wrap; gap: 10px 14px; padding: 12px; border-width: 10px; border-top-width: 6px; margin-top: 8px; }
+  .cocoa .fire { width: 70px; height: auto; }
+  .cocoa .txt { flex: 1; min-width: 160px; }
+  .seats { margin: 0; width: 100%; justify-content: space-between; }
+  .seat { flex: 1; height: 64px; }
+  body[data-screen="decision"] .veil { position: fixed; inset: 0; }
+  body[data-screen="decision"] .decide { position: fixed; left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 72vh; overflow: auto; }
+  .decide .box { grid-template-columns: 1fr; padding: 12px; }
+  .decide .who { grid-template-columns: auto 1fr; justify-items: start; align-items: center; }
+  .portrait { width: 64px; height: 64px; }
+  .portrait svg { width: 56px; height: 56px; }
+  .decide .tail { display: none; }
+  .say { font-size: 17px; margin: 0 0 6px; }
+  .compare { grid-template-columns: 1fr 1.2fr; }
+  .compare .vs { display: none; }
+  .compare .made .spr { width: 136px; height: auto; }
+  .wish blockquote { font-size: 16px; }
+  .opt { grid-template-columns: 1fr auto auto; gap: 2px 12px; padding: 8px 10px; }
+  .opt b { font-size: 15px; }
+  .cost { font-size: 18px; }
+  .cost small { position: absolute; right: 12px; bottom: -1px; }
+  .opt.risky { position: relative; padding-bottom: 20px; }
+  body[data-screen="decision"] .decide { max-height: 66vh; }
+  .scr-break, .scr-end { padding: 16px 10px 70px; align-content: start; }
+  .dlg { padding: 14px; }
+  .dlg h1 { font-size: 26px; }
+  .dlg-top { grid-template-columns: 72px 1fr; gap: 10px 12px; }
+  .dlg-top > div:last-child { display: contents; }
+  .dlg-top .portrait { width: 72px !important; height: 72px !important; }
+  .dlg-top .spr { width: 56px; height: 56px; }
+  .res { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; margin-top: 0; }
+  .choices { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .choice { padding: 10px; }
+  .choice b { font-size: 16px; }
+  .choice span { font-size: 13px; }
+  .flying { display: none; }
+  .endhead h1 { font-size: 30px; }
+  .bigstars svg { width: 22px; height: 22px; }
+  .tot { margin: 0; width: 100%; }
+  .tot .plate { min-width: 0; flex: 1; }
+  .tot .num { font-size: 26px; }
+  .endgrid { grid-template-columns: 1fr; }
+  .endact { flex-wrap: wrap; }
+  .endact .brand2 { margin-left: 0; width: 100%; }
+  .mocktabs { left: 8px; right: 8px; bottom: 8px; justify-content: center; }
+  .mocktabs span { display: none; }
+}
+</style>
+</head>
+<body data-screen="play">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="s-elf-A"><path style="fill:#f4f2ff" d="M9 0h2v1h-2zM8 1h3v1h-3zM2 7h10v1h-10zM5 13h4v1h-4zM3 21h3v1h-3zM8 21h3v1h-3z"/><path style="fill:var(--hat)" d="M7 2h2v1h-2zM6 3h3v1h-3zM5 4h4v1h-4zM4 5h5v1h-5zM3 6h6v1h-6z"/><path style="fill:var(--hat-d)" d="M9 5h1v1h-1zM9 6h2v1h-2z"/><path style="fill:#d99a7a" d="M1 8h1v1h-1zM12 8h1v1h-1zM1 9h1v1h-1zM12 9h1v1h-1zM6 11h2v1h-2z"/><path style="fill:#f5c7a0" d="M3 8h8v1h-8zM2 9h2v1h-2zM5 9h4v1h-4zM10 9h2v1h-2zM2 10h2v1h-2zM5 10h4v1h-4zM10 10h2v1h-2zM4 11h2v1h-2zM8 11h2v1h-2zM4 12h6v1h-6zM1 17h1v1h-1zM12 17h1v1h-1z"/><path style="fill:#1a1530" d="M4 9h1v1h-1zM9 9h1v1h-1zM4 10h1v1h-1zM9 10h1v1h-1z"/><path style="fill:#ff8fa3" d="M3 11h1v1h-1zM10 11h1v1h-1z"/><path style="fill:var(--tunic)" d="M3 13h2v1h-2zM9 13h2v1h-2zM2 14h10v1h-10zM1 15h12v1h-12zM1 16h1v1h-1zM3 16h8v1h-8zM12 16h1v1h-1zM2 18h10v1h-10zM3 19h8v1h-8z"/><path style="fill:var(--tunic-d)" d="M2 16h1v1h-1zM11 16h1v1h-1zM2 19h1v1h-1zM11 19h1v1h-1z"/><path style="fill:#3a2418" d="M2 17h4v1h-4zM8 17h4v1h-4z"/><path style="fill:#ffcf4d" d="M6 17h2v1h-2z"/><path style="fill:var(--tunic-d)" d="M3 20h3v1h-3zM8 20h3v1h-3z"/><path style="fill:#4a2a20" d="M1 22h4v1h-4zM9 22h4v1h-4z"/></g>
+<g id="s-elf-A-tired"><path style="fill:#f4f2ff" d="M9 0h2v1h-2zM8 1h3v1h-3zM2 7h10v1h-10zM5 13h4v1h-4zM3 21h3v1h-3zM8 21h3v1h-3z"/><path style="fill:var(--hat)" d="M7 2h2v1h-2zM6 3h3v1h-3zM5 4h4v1h-4zM4 5h5v1h-5zM3 6h6v1h-6z"/><path style="fill:var(--hat-d)" d="M9 5h1v1h-1zM9 6h2v1h-2z"/><path style="fill:#d99a7a" d="M1 8h1v1h-1zM12 8h1v1h-1zM1 9h1v1h-1zM12 9h1v1h-1zM6 12h1v1h-1z"/><path style="fill:#f5c7a0" d="M3 8h8v1h-8zM2 9h10v1h-10zM2 10h2v1h-2zM6 10h2v1h-2zM10 10h2v1h-2zM4 11h6v1h-6zM4 12h2v1h-2zM7 12h3v1h-3zM1 17h1v1h-1zM12 17h1v1h-1z"/><path style="fill:#1a1530" d="M4 10h2v1h-2zM8 10h2v1h-2z"/><path style="fill:#ff8fa3" d="M3 11h1v1h-1zM10 11h1v1h-1z"/><path style="fill:var(--tunic)" d="M3 13h2v1h-2zM9 13h2v1h-2zM2 14h10v1h-10zM1 15h12v1h-12zM1 16h1v1h-1zM3 16h8v1h-8zM12 16h1v1h-1zM2 18h10v1h-10zM3 19h8v1h-8z"/><path style="fill:var(--tunic-d)" d="M2 16h1v1h-1zM11 16h1v1h-1zM2 19h1v1h-1zM11 19h1v1h-1z"/><path style="fill:#3a2418" d="M2 17h4v1h-4zM8 17h4v1h-4z"/><path style="fill:#ffcf4d" d="M6 17h2v1h-2z"/><path style="fill:var(--tunic-d)" d="M3 20h3v1h-3zM8 20h3v1h-3z"/><path style="fill:#4a2a20" d="M1 22h4v1h-4zM9 22h4v1h-4z"/></g>
+<g id="s-elf-B"><path style="fill:#f4f2ff" d="M6 0h2v1h-2zM5 1h4v1h-4zM2 7h10v1h-10zM5 13h4v1h-4zM3 21h3v1h-3zM8 21h3v1h-3z"/><path style="fill:var(--hat)" d="M5 2h4v1h-4zM4 3h6v1h-6zM2 5h10v1h-10z"/><path style="fill:var(--hat-d)" d="M3 4h8v1h-8zM2 6h10v1h-10z"/><path style="fill:#d99a7a" d="M1 8h1v1h-1zM12 8h1v1h-1zM1 9h1v1h-1zM12 9h1v1h-1zM6 11h2v1h-2z"/><path style="fill:#f5c7a0" d="M3 8h8v1h-8zM2 9h2v1h-2zM5 9h4v1h-4zM10 9h2v1h-2zM2 10h2v1h-2zM5 10h4v1h-4zM10 10h2v1h-2zM4 11h2v1h-2zM8 11h2v1h-2zM4 12h6v1h-6zM1 17h1v1h-1zM12 17h1v1h-1z"/><path style="fill:#1a1530" d="M4 9h1v1h-1zM9 9h1v1h-1zM4 10h1v1h-1zM9 10h1v1h-1z"/><path style="fill:#ff8fa3" d="M3 11h1v1h-1zM10 11h1v1h-1z"/><path style="fill:var(--tunic)" d="M3 13h2v1h-2zM9 13h2v1h-2zM2 14h10v1h-10zM1 15h12v1h-12zM1 16h1v1h-1zM3 16h8v1h-8zM12 16h1v1h-1zM2 18h10v1h-10zM3 19h8v1h-8z"/><path style="fill:var(--tunic-d)" d="M2 16h1v1h-1zM11 16h1v1h-1zM2 19h1v1h-1zM11 19h1v1h-1z"/><path style="fill:#3a2418" d="M2 17h4v1h-4zM8 17h4v1h-4z"/><path style="fill:#ffcf4d" d="M6 17h2v1h-2z"/><path style="fill:var(--tunic-d)" d="M3 20h3v1h-3zM8 20h3v1h-3z"/><path style="fill:#4a2a20" d="M1 22h4v1h-4zM9 22h4v1h-4z"/></g>
+<g id="s-elf-B-tired"><path style="fill:#f4f2ff" d="M6 0h2v1h-2zM5 1h4v1h-4zM2 7h10v1h-10zM5 13h4v1h-4zM3 21h3v1h-3zM8 21h3v1h-3z"/><path style="fill:var(--hat)" d="M5 2h4v1h-4zM4 3h6v1h-6zM2 5h10v1h-10z"/><path style="fill:var(--hat-d)" d="M3 4h8v1h-8zM2 6h10v1h-10z"/><path style="fill:#d99a7a" d="M1 8h1v1h-1zM12 8h1v1h-1zM1 9h1v1h-1zM12 9h1v1h-1zM6 12h1v1h-1z"/><path style="fill:#f5c7a0" d="M3 8h8v1h-8zM2 9h10v1h-10zM2 10h2v1h-2zM6 10h2v1h-2zM10 10h2v1h-2zM4 11h6v1h-6zM4 12h2v1h-2zM7 12h3v1h-3zM1 17h1v1h-1zM12 17h1v1h-1z"/><path style="fill:#1a1530" d="M4 10h2v1h-2zM8 10h2v1h-2z"/><path style="fill:#ff8fa3" d="M3 11h1v1h-1zM10 11h1v1h-1z"/><path style="fill:var(--tunic)" d="M3 13h2v1h-2zM9 13h2v1h-2zM2 14h10v1h-10zM1 15h12v1h-12zM1 16h1v1h-1zM3 16h8v1h-8zM12 16h1v1h-1zM2 18h10v1h-10zM3 19h8v1h-8z"/><path style="fill:var(--tunic-d)" d="M2 16h1v1h-1zM11 16h1v1h-1zM2 19h1v1h-1zM11 19h1v1h-1z"/><path style="fill:#3a2418" d="M2 17h4v1h-4zM8 17h4v1h-4z"/><path style="fill:#ffcf4d" d="M6 17h2v1h-2z"/><path style="fill:var(--tunic-d)" d="M3 20h3v1h-3zM8 20h3v1h-3z"/><path style="fill:#4a2a20" d="M1 22h4v1h-4zM9 22h4v1h-4z"/></g>
+<g id="s-elf-C"><path style="fill:#ffcf4d" d="M6 0h2v1h-2zM6 17h2v1h-2z"/><path style="fill:var(--hat)" d="M6 1h2v1h-2zM5 2h3v1h-3zM5 3h3v1h-3zM4 4h4v1h-4zM4 5h4v1h-4zM3 6h6v1h-6z"/><path style="fill:var(--hat-d)" d="M8 2h1v1h-1zM8 3h1v1h-1zM8 4h2v1h-2zM8 5h2v1h-2zM9 6h2v1h-2z"/><path style="fill:#f4f2ff" d="M2 7h10v1h-10zM5 13h4v1h-4zM3 21h3v1h-3zM8 21h3v1h-3z"/><path style="fill:#d99a7a" d="M1 8h1v1h-1zM12 8h1v1h-1zM1 9h1v1h-1zM12 9h1v1h-1zM6 11h2v1h-2z"/><path style="fill:#f5c7a0" d="M3 8h8v1h-8zM2 9h2v1h-2zM5 9h4v1h-4zM10 9h2v1h-2zM2 10h2v1h-2zM5 10h4v1h-4zM10 10h2v1h-2zM4 11h2v1h-2zM8 11h2v1h-2zM4 12h6v1h-6zM1 17h1v1h-1zM12 17h1v1h-1z"/><path style="fill:#1a1530" d="M4 9h1v1h-1zM9 9h1v1h-1zM4 10h1v1h-1zM9 10h1v1h-1z"/><path style="fill:#ff8fa3" d="M3 11h1v1h-1zM10 11h1v1h-1z"/><path style="fill:var(--tunic)" d="M3 13h2v1h-2zM9 13h2v1h-2zM2 14h10v1h-10zM1 15h12v1h-12zM1 16h1v1h-1zM3 16h8v1h-8zM12 16h1v1h-1zM2 18h10v1h-10zM3 19h8v1h-8z"/><path style="fill:var(--tunic-d)" d="M2 16h1v1h-1zM11 16h1v1h-1zM2 19h1v1h-1zM11 19h1v1h-1z"/><path style="fill:#3a2418" d="M2 17h4v1h-4zM8 17h4v1h-4z"/><path style="fill:var(--tunic-d)" d="M3 20h3v1h-3zM8 20h3v1h-3z"/><path style="fill:#4a2a20" d="M1 22h4v1h-4zM9 22h4v1h-4z"/></g>
+<g id="s-elf-C-tired"><path style="fill:#ffcf4d" d="M6 0h2v1h-2zM6 17h2v1h-2z"/><path style="fill:var(--hat)" d="M6 1h2v1h-2zM5 2h3v1h-3zM5 3h3v1h-3zM4 4h4v1h-4zM4 5h4v1h-4zM3 6h6v1h-6z"/><path style="fill:var(--hat-d)" d="M8 2h1v1h-1zM8 3h1v1h-1zM8 4h2v1h-2zM8 5h2v1h-2zM9 6h2v1h-2z"/><path style="fill:#f4f2ff" d="M2 7h10v1h-10zM5 13h4v1h-4zM3 21h3v1h-3zM8 21h3v1h-3z"/><path style="fill:#d99a7a" d="M1 8h1v1h-1zM12 8h1v1h-1zM1 9h1v1h-1zM12 9h1v1h-1zM6 12h1v1h-1z"/><path style="fill:#f5c7a0" d="M3 8h8v1h-8zM2 9h10v1h-10zM2 10h2v1h-2zM6 10h2v1h-2zM10 10h2v1h-2zM4 11h6v1h-6zM4 12h2v1h-2zM7 12h3v1h-3zM1 17h1v1h-1zM12 17h1v1h-1z"/><path style="fill:#1a1530" d="M4 10h2v1h-2zM8 10h2v1h-2z"/><path style="fill:#ff8fa3" d="M3 11h1v1h-1zM10 11h1v1h-1z"/><path style="fill:var(--tunic)" d="M3 13h2v1h-2zM9 13h2v1h-2zM2 14h10v1h-10zM1 15h12v1h-12zM1 16h1v1h-1zM3 16h8v1h-8zM12 16h1v1h-1zM2 18h10v1h-10zM3 19h8v1h-8z"/><path style="fill:var(--tunic-d)" d="M2 16h1v1h-1zM11 16h1v1h-1zM2 19h1v1h-1zM11 19h1v1h-1z"/><path style="fill:#3a2418" d="M2 17h4v1h-4zM8 17h4v1h-4z"/><path style="fill:var(--tunic-d)" d="M3 20h3v1h-3zM8 20h3v1h-3z"/><path style="fill:#4a2a20" d="M1 22h4v1h-4zM9 22h4v1h-4z"/></g>
+<g id="s-elf-D"><path style="fill:var(--hat)" d="M6 1h4v1h-4zM4 2h7v1h-7zM2 3h9v1h-9zM1 4h3v1h-3zM5 4h6v1h-6zM2 5h1v1h-1zM5 5h6v1h-6zM4 6h7v1h-7z"/><path style="fill:var(--hat-d)" d="M11 3h1v1h-1zM11 4h1v1h-1zM11 5h2v1h-2zM11 6h2v1h-2z"/><path style="fill:#f4f2ff" d="M0 5h2v1h-2zM0 6h2v1h-2zM2 7h10v1h-10zM5 13h4v1h-4zM3 21h3v1h-3zM8 21h3v1h-3z"/><path style="fill:#d99a7a" d="M1 8h1v1h-1zM12 8h1v1h-1zM1 9h1v1h-1zM12 9h1v1h-1zM6 11h2v1h-2z"/><path style="fill:#f5c7a0" d="M3 8h8v1h-8zM2 9h2v1h-2zM5 9h4v1h-4zM10 9h2v1h-2zM2 10h2v1h-2zM5 10h4v1h-4zM10 10h2v1h-2zM4 11h2v1h-2zM8 11h2v1h-2zM4 12h6v1h-6zM1 17h1v1h-1zM12 17h1v1h-1z"/><path style="fill:#1a1530" d="M4 9h1v1h-1zM9 9h1v1h-1zM4 10h1v1h-1zM9 10h1v1h-1z"/><path style="fill:#ff8fa3" d="M3 11h1v1h-1zM10 11h1v1h-1z"/><path style="fill:var(--tunic)" d="M3 13h2v1h-2zM9 13h2v1h-2zM2 14h10v1h-10zM1 15h12v1h-12zM1 16h1v1h-1zM3 16h8v1h-8zM12 16h1v1h-1zM2 18h10v1h-10zM3 19h8v1h-8z"/><path style="fill:var(--tunic-d)" d="M2 16h1v1h-1zM11 16h1v1h-1zM2 19h1v1h-1zM11 19h1v1h-1z"/><path style="fill:#3a2418" d="M2 17h4v1h-4zM8 17h4v1h-4z"/><path style="fill:#ffcf4d" d="M6 17h2v1h-2z"/><path style="fill:var(--tunic-d)" d="M3 20h3v1h-3zM8 20h3v1h-3z"/><path style="fill:#4a2a20" d="M1 22h4v1h-4zM9 22h4v1h-4z"/></g>
+<g id="s-elf-D-tired"><path style="fill:var(--hat)" d="M6 1h4v1h-4zM4 2h7v1h-7zM2 3h9v1h-9zM1 4h3v1h-3zM5 4h6v1h-6zM2 5h1v1h-1zM5 5h6v1h-6zM4 6h7v1h-7z"/><path style="fill:var(--hat-d)" d="M11 3h1v1h-1zM11 4h1v1h-1zM11 5h2v1h-2zM11 6h2v1h-2z"/><path style="fill:#f4f2ff" d="M0 5h2v1h-2zM0 6h2v1h-2zM2 7h10v1h-10zM5 13h4v1h-4zM3 21h3v1h-3zM8 21h3v1h-3z"/><path style="fill:#d99a7a" d="M1 8h1v1h-1zM12 8h1v1h-1zM1 9h1v1h-1zM12 9h1v1h-1zM6 12h1v1h-1z"/><path style="fill:#f5c7a0" d="M3 8h8v1h-8zM2 9h10v1h-10zM2 10h2v1h-2zM6 10h2v1h-2zM10 10h2v1h-2zM4 11h6v1h-6zM4 12h2v1h-2zM7 12h3v1h-3zM1 17h1v1h-1zM12 17h1v1h-1z"/><path style="fill:#1a1530" d="M4 10h2v1h-2zM8 10h2v1h-2z"/><path style="fill:#ff8fa3" d="M3 11h1v1h-1zM10 11h1v1h-1z"/><path style="fill:var(--tunic)" d="M3 13h2v1h-2zM9 13h2v1h-2zM2 14h10v1h-10zM1 15h12v1h-12zM1 16h1v1h-1zM3 16h8v1h-8zM12 16h1v1h-1zM2 18h10v1h-10zM3 19h8v1h-8z"/><path style="fill:var(--tunic-d)" d="M2 16h1v1h-1zM11 16h1v1h-1zM2 19h1v1h-1zM11 19h1v1h-1z"/><path style="fill:#3a2418" d="M2 17h4v1h-4zM8 17h4v1h-4z"/><path style="fill:#ffcf4d" d="M6 17h2v1h-2z"/><path style="fill:var(--tunic-d)" d="M3 20h3v1h-3zM8 20h3v1h-3z"/><path style="fill:#4a2a20" d="M1 22h4v1h-4zM9 22h4v1h-4z"/></g>
+<g id="s-envelope"><path style="fill:#f4f2ff" d="M0 0h10v1h-10zM0 1h1v1h-1zM2 1h6v1h-6zM9 1h1v1h-1zM0 2h2v1h-2zM3 2h4v1h-4zM8 2h2v1h-2zM0 3h3v1h-3zM7 3h3v1h-3zM0 4h4v1h-4zM6 4h4v1h-4zM0 5h10v1h-10z"/><path style="fill:#c3bfe8" d="M1 1h1v1h-1zM8 1h1v1h-1zM2 2h1v1h-1zM7 2h1v1h-1zM3 3h1v1h-1zM6 3h1v1h-1zM0 6h10v1h-10z"/><path style="fill:#e8405a" d="M4 3h2v1h-2zM4 4h2v1h-2z"/></g>
+<g id="s-ticket"><path style="fill:#f4f2ff" d="M0 0h8v1h-8zM0 1h1v1h-1zM6 1h2v1h-2zM0 2h8v1h-8zM0 3h1v1h-1zM7 3h1v1h-1zM0 4h8v1h-8zM0 5h1v1h-1zM5 5h3v1h-3zM0 6h8v1h-8z"/><path style="fill:var(--scr, #8ff5e6)" d="M1 1h5v1h-5z"/><path style="fill:#4a4478" d="M1 3h6v1h-6zM1 5h4v1h-4z"/><path style="fill:#c3bfe8" d="M0 7h8v1h-8z"/></g>
+<g id="s-parcel"><path style="fill:var(--rib, #ffcf4d)" d="M3 0h1v1h-1zM6 0h1v1h-1zM4 1h2v1h-2zM4 2h2v1h-2zM4 3h2v1h-2zM4 4h2v1h-2zM0 5h10v1h-10zM4 6h2v1h-2zM4 7h2v1h-2zM4 8h2v1h-2z"/><path style="fill:var(--box, #e8405a)" d="M0 2h4v1h-4zM6 2h4v1h-4zM0 3h4v1h-4zM6 3h4v1h-4zM0 4h4v1h-4zM6 4h4v1h-4zM0 6h4v1h-4zM6 6h4v1h-4z"/><path style="fill:var(--box-d, #a8283f)" d="M0 7h4v1h-4zM6 7h4v1h-4zM0 8h4v1h-4zM6 8h4v1h-4z"/></g>
+<g id="s-machine"><path style="fill:#221c3c" d="M8 0h12v1h-12zM9 1h1v1h-1zM18 1h1v1h-1zM10 2h1v1h-1zM17 2h1v1h-1zM3 3h22v1h-22zM3 4h1v1h-1zM24 4h1v1h-1zM3 5h1v1h-1zM5 5h18v1h-18zM24 5h1v1h-1zM3 6h1v1h-1zM5 6h1v1h-1zM22 6h1v1h-1zM24 6h1v1h-1zM3 7h1v1h-1zM5 7h1v1h-1zM22 7h1v1h-1zM24 7h1v1h-1zM3 8h1v1h-1zM5 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM3 9h1v1h-1zM5 9h1v1h-1zM22 9h1v1h-1zM24 9h1v1h-1zM3 10h1v1h-1zM5 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM3 11h1v1h-1zM5 11h1v1h-1zM22 11h1v1h-1zM24 11h1v1h-1zM3 12h1v1h-1zM5 12h18v1h-18zM24 12h1v1h-1zM3 13h1v1h-1zM24 13h1v1h-1zM3 14h1v1h-1zM24 14h1v1h-1zM3 15h1v1h-1zM24 15h1v1h-1zM3 16h1v1h-1zM24 16h4v1h-4zM3 17h1v1h-1zM24 17h1v1h-1zM27 17h1v1h-1zM3 18h1v1h-1zM24 18h4v1h-4zM3 19h1v1h-1zM24 19h1v1h-1zM3 20h22v1h-22zM4 21h2v1h-2zM22 21h2v1h-2zM4 22h2v1h-2zM22 22h2v1h-2z"/><path style="fill:#4a4478" d="M10 1h8v1h-8zM11 2h6v1h-6zM18 14h4v1h-4zM4 16h20v1h-20zM4 17h20v1h-20zM4 18h20v1h-20z"/><path style="fill:#7d77b0" d="M4 4h20v1h-20zM4 5h1v1h-1zM23 5h1v1h-1zM4 6h1v1h-1zM23 6h1v1h-1zM4 7h1v1h-1zM23 7h1v1h-1zM4 8h1v1h-1zM23 8h1v1h-1zM4 9h1v1h-1zM23 9h1v1h-1zM4 10h1v1h-1zM23 10h1v1h-1zM4 11h1v1h-1zM23 11h1v1h-1zM4 12h1v1h-1zM23 12h1v1h-1zM4 13h20v1h-20zM4 14h1v1h-1zM6 14h1v1h-1zM8 14h1v1h-1zM10 14h8v1h-8zM22 14h2v1h-2zM4 15h20v1h-20zM25 17h2v1h-2zM4 19h20v1h-20z"/><path style="fill:var(--scr-d, #1d7f78)" d="M6 6h16v1h-16zM6 7h2v1h-2zM10 7h8v1h-8zM20 7h2v1h-2zM6 8h2v1h-2zM10 8h8v1h-8zM20 8h2v1h-2zM6 9h16v1h-16zM6 10h4v1h-4zM18 10h4v1h-4zM6 11h16v1h-16z"/><path style="fill:var(--scr, #8ff5e6)" d="M8 7h2v1h-2zM18 7h2v1h-2zM8 8h2v1h-2zM18 8h2v1h-2zM10 10h8v1h-8z"/><path style="fill:#e8405a" d="M5 14h1v1h-1z"/><path style="fill:#ffcf4d" d="M7 14h1v1h-1z"/><path style="fill:#3fbf7f" d="M9 14h1v1h-1z"/></g>
+<g id="s-sleigh"><path style="fill:#ffcf4d" d="M1 0h2v1h-2zM0 1h1v1h-1zM3 1h1v1h-1zM0 2h1v1h-1zM4 2h1v1h-1zM0 3h1v1h-1zM5 3h1v1h-1zM36 3h2v1h-2zM0 4h1v1h-1zM6 4h1v1h-1zM35 4h1v1h-1zM38 4h1v1h-1zM0 5h1v1h-1zM7 5h28v1h-28zM37 5h1v1h-1zM0 6h1v1h-1zM36 6h1v1h-1zM0 7h1v1h-1zM35 7h1v1h-1zM0 8h1v1h-1zM34 8h1v1h-1zM1 9h1v1h-1zM33 9h1v1h-1zM2 10h1v1h-1zM31 10h1v1h-1zM3 11h29v1h-29zM38 13h2v1h-2zM1 14h37v1h-37zM39 14h1v1h-1z"/><path style="fill:#e8405a" d="M1 1h2v1h-2zM1 2h3v1h-3zM1 3h4v1h-4zM1 4h5v1h-5zM36 4h2v1h-2zM1 5h6v1h-6zM35 5h2v1h-2zM1 6h35v1h-35zM1 7h34v1h-34zM1 8h33v1h-33zM2 9h31v1h-31z"/><path style="fill:#a8283f" d="M3 10h28v1h-28z"/><path style="fill:#221c3c" d="M5 12h1v1h-1zM12 12h1v1h-1zM24 12h1v1h-1zM31 12h1v1h-1zM5 13h1v1h-1zM12 13h1v1h-1zM24 13h1v1h-1zM31 13h1v1h-1z"/><path style="fill:#c9922e" d="M0 14h1v1h-1zM38 14h1v1h-1zM1 15h38v1h-38z"/></g>
+<g id="s-loco"><path style="fill:#221c3c" d="M4 0h3v1h-3zM4 1h1v1h-1zM6 1h1v1h-1zM3 2h5v1h-5zM4 3h1v1h-1zM6 3h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM1 5h25v1h-25zM0 6h1v1h-1zM25 6h1v1h-1zM0 7h1v1h-1zM25 7h1v1h-1zM0 8h1v1h-1zM25 8h1v1h-1zM0 9h2v1h-2zM3 9h5v1h-5zM9 9h7v1h-7zM17 9h9v1h-9zM1 11h4v1h-4zM8 11h5v1h-5zM16 11h5v1h-5zM26 11h5v1h-5zM0 12h1v1h-1zM4 12h1v1h-1zM7 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM21 12h1v1h-1zM25 12h1v1h-1zM31 12h1v1h-1zM0 13h1v1h-1zM2 13h1v1h-1zM4 13h1v1h-1zM7 13h1v1h-1zM9 13h3v1h-3zM13 13h1v1h-1zM15 13h1v1h-1zM17 13h3v1h-3zM21 13h1v1h-1zM25 13h1v1h-1zM27 13h3v1h-3zM31 13h1v1h-1zM0 14h1v1h-1zM4 14h1v1h-1zM7 14h1v1h-1zM13 14h1v1h-1zM15 14h1v1h-1zM21 14h1v1h-1zM25 14h1v1h-1zM31 14h1v1h-1zM1 15h4v1h-4zM8 15h5v1h-5zM16 15h5v1h-5zM26 15h5v1h-5z"/><path style="fill:#4a4478" d="M5 1h1v1h-1zM5 3h1v1h-1zM5 4h1v1h-1zM1 6h24v1h-24zM1 7h1v1h-1zM24 7h1v1h-1zM1 8h24v1h-24zM1 12h1v1h-1zM8 12h1v1h-1zM12 12h1v1h-1zM16 12h1v1h-1zM20 12h1v1h-1zM26 12h1v1h-1zM30 12h1v1h-1zM1 14h1v1h-1zM8 14h1v1h-1zM12 14h1v1h-1zM16 14h1v1h-1zM20 14h1v1h-1zM26 14h1v1h-1zM30 14h1v1h-1z"/><path style="fill:#e8405a" d="M26 2h8v1h-8zM26 3h1v1h-1zM32 3h1v1h-1zM26 4h1v1h-1zM32 4h1v1h-1zM26 5h1v1h-1zM32 5h1v1h-1zM26 6h1v1h-1zM33 6h1v1h-1zM26 7h1v1h-1zM33 7h1v1h-1zM26 8h1v1h-1zM33 8h1v1h-1zM26 9h8v1h-8zM0 10h34v1h-34z"/><path style="fill:#a8283f" d="M27 3h5v1h-5zM27 4h1v1h-1zM31 4h1v1h-1zM27 5h1v1h-1zM31 5h1v1h-1zM27 6h6v1h-6zM27 7h6v1h-6zM27 8h6v1h-6z"/><path style="fill:#fff1a8" d="M28 4h3v1h-3zM28 5h3v1h-3z"/><path style="fill:#7d77b0" d="M2 7h22v1h-22zM2 12h2v1h-2zM9 12h3v1h-3zM17 12h3v1h-3zM27 12h3v1h-3zM1 13h1v1h-1zM3 13h1v1h-1zM8 13h1v1h-1zM12 13h1v1h-1zM16 13h1v1h-1zM20 13h1v1h-1zM26 13h1v1h-1zM30 13h1v1h-1zM2 14h2v1h-2zM9 14h3v1h-3zM17 14h3v1h-3zM27 14h3v1h-3z"/><path style="fill:#ffcf4d" d="M2 9h1v1h-1zM8 9h1v1h-1zM16 9h1v1h-1z"/></g>
+<g id="s-trainsmall"><path style="fill:#221c3c" d="M2 0h2v1h-2zM2 1h2v1h-2zM0 2h9v1h-9zM0 3h1v1h-1zM8 3h1v1h-1zM1 5h2v1h-2zM5 5h2v1h-2zM10 5h2v1h-2z"/><path style="fill:#e8405a" d="M9 1h4v1h-4zM9 2h1v1h-1zM12 2h1v1h-1zM9 3h5v1h-5zM0 4h14v1h-14z"/><path style="fill:#fff1a8" d="M10 2h2v1h-2z"/><path style="fill:#7d77b0" d="M1 3h7v1h-7z"/></g>
+<g id="s-bear"><path style="fill:#8a5a3a" d="M1 0h2v1h-2zM11 0h2v1h-2zM0 1h1v1h-1zM3 1h1v1h-1zM10 1h1v1h-1zM13 1h1v1h-1zM0 2h14v1h-14zM1 3h12v1h-12zM1 4h2v1h-2zM4 4h6v1h-6zM11 4h2v1h-2zM1 5h5v1h-5zM9 5h4v1h-4zM1 6h4v1h-4zM9 6h4v1h-4zM2 7h4v1h-4zM8 7h4v1h-4zM1 8h13v1h-13zM0 9h6v1h-6zM9 9h6v1h-6zM0 10h5v1h-5zM10 10h5v1h-5zM0 11h6v1h-6zM9 11h6v1h-6zM1 12h4v1h-4zM10 12h4v1h-4z"/><path style="fill:#5c3a26" d="M1 1h2v1h-2zM11 1h2v1h-2zM1 13h4v1h-4zM10 13h4v1h-4z"/><path style="fill:#1a1530" d="M3 4h1v1h-1zM10 4h1v1h-1zM6 6h2v1h-2z"/><path style="fill:#f5c7a0" d="M6 5h3v1h-3zM5 6h1v1h-1zM8 6h1v1h-1zM6 7h2v1h-2zM6 9h3v1h-3zM5 10h5v1h-5zM6 11h3v1h-3z"/></g>
+<g id="s-duck"><path style="fill:#ffcf4d" d="M6 0h4v1h-4zM5 1h6v1h-6zM5 2h2v1h-2zM8 2h3v1h-3zM5 3h6v1h-6zM6 4h4v1h-4zM1 5h1v1h-1zM5 5h6v1h-6zM0 6h13v1h-13zM0 7h14v1h-14zM1 8h13v1h-13zM2 9h11v1h-11z"/><path style="fill:#1a1530" d="M7 2h1v1h-1z"/><path style="fill:#ff9f43" d="M11 2h2v1h-2zM11 3h3v1h-3z"/><path style="fill:#c9922e" d="M0 8h1v1h-1zM1 9h1v1h-1zM13 9h1v1h-1zM2 10h12v1h-12z"/></g>
+<g id="s-rocket"><path style="fill:#f4f2ff" d="M4 0h2v1h-2zM3 1h4v1h-4zM3 2h1v1h-1zM6 2h1v1h-1zM2 3h6v1h-6zM2 4h2v1h-2zM6 4h2v1h-2zM2 5h2v1h-2zM6 5h2v1h-2zM2 6h6v1h-6zM2 7h6v1h-6zM2 8h6v1h-6zM2 9h6v1h-6z"/><path style="fill:#e8405a" d="M4 2h2v1h-2zM1 8h1v1h-1zM8 8h1v1h-1zM0 9h2v1h-2zM8 9h2v1h-2zM0 10h2v1h-2zM8 10h2v1h-2z"/><path style="fill:var(--scr, #8ff5e6)" d="M4 4h2v1h-2zM4 5h2v1h-2z"/><path style="fill:#4a4478" d="M3 10h4v1h-4z"/><path style="fill:#ff9f43" d="M4 11h2v1h-2zM3 12h1v1h-1zM6 12h1v1h-1zM4 13h2v1h-2z"/><path style="fill:#ffcf4d" d="M4 12h2v1h-2z"/></g>
+<g id="s-santa"><path style="fill:#e8405a" d="M6 0h4v1h-4zM4 1h8v1h-8zM3 2h10v1h-10zM0 14h2v1h-2zM14 14h2v1h-2zM0 15h4v1h-4zM12 15h4v1h-4z"/><path style="fill:#f4f2ff" d="M13 1h2v1h-2zM13 2h3v1h-3zM2 3h13v1h-13zM2 4h1v1h-1zM13 4h1v1h-1zM1 7h2v1h-2zM5 7h6v1h-6zM13 7h2v1h-2zM1 8h14v1h-14zM1 9h5v1h-5zM10 9h5v1h-5zM1 10h14v1h-14zM2 11h12v1h-12zM3 12h10v1h-10zM5 13h6v1h-6zM6 14h4v1h-4z"/><path style="fill:#f5c7a0" d="M3 4h10v1h-10zM2 5h2v1h-2zM5 5h6v1h-6zM12 5h2v1h-2zM2 6h1v1h-1zM4 6h3v1h-3zM9 6h3v1h-3zM13 6h1v1h-1zM3 7h2v1h-2zM11 7h2v1h-2zM6 9h4v1h-4z"/><path style="fill:#1a1530" d="M4 5h1v1h-1zM11 5h1v1h-1z"/><path style="fill:#ff8fa3" d="M3 6h1v1h-1zM12 6h1v1h-1z"/><path style="fill:#d99a7a" d="M7 6h2v1h-2z"/><path style="fill:#c3bfe8" d="M4 13h1v1h-1zM11 13h1v1h-1zM5 14h1v1h-1zM10 14h1v1h-1zM6 15h4v1h-4z"/></g>
+<g id="s-fire"><path style="fill:#5c3a26" d="M0 0h20v1h-20zM0 1h1v1h-1zM19 1h1v1h-1zM0 2h20v1h-20zM1 3h1v1h-1zM3 3h1v1h-1zM16 3h1v1h-1zM18 3h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM16 4h1v1h-1zM18 4h1v1h-1zM1 5h3v1h-3zM16 5h3v1h-3zM1 6h1v1h-1zM3 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM1 7h1v1h-1zM3 7h1v1h-1zM16 7h1v1h-1zM18 7h1v1h-1zM1 8h3v1h-3zM16 8h3v1h-3zM1 9h1v1h-1zM3 9h1v1h-1zM16 9h1v1h-1zM18 9h1v1h-1zM1 10h1v1h-1zM3 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM1 11h3v1h-3zM6 11h1v1h-1zM13 11h1v1h-1zM16 11h3v1h-3zM1 12h1v1h-1zM3 12h1v1h-1zM5 12h10v1h-10zM16 12h1v1h-1zM18 12h1v1h-1zM0 13h20v1h-20z"/><path style="fill:#8a5a3a" d="M1 1h18v1h-18zM2 3h1v1h-1zM4 3h12v1h-12zM17 3h1v1h-1zM2 4h1v1h-1zM17 4h1v1h-1zM2 6h1v1h-1zM17 6h1v1h-1zM2 7h1v1h-1zM17 7h1v1h-1zM2 9h1v1h-1zM17 9h1v1h-1zM2 10h1v1h-1zM17 10h1v1h-1zM2 12h1v1h-1zM17 12h1v1h-1z"/><path style="fill:#0d0b20" d="M4 4h12v1h-12zM4 5h12v1h-12zM4 6h5v1h-5zM10 6h6v1h-6zM4 7h4v1h-4zM10 7h2v1h-2zM13 7h3v1h-3zM4 8h3v1h-3zM10 8h1v1h-1zM13 8h3v1h-3zM4 9h2v1h-2zM14 9h2v1h-2zM4 10h2v1h-2zM14 10h2v1h-2zM4 11h2v1h-2zM14 11h2v1h-2zM4 12h1v1h-1zM15 12h1v1h-1z"/><path style="fill:#ffcf4d" d="M9 6h1v1h-1zM8 7h2v1h-2zM12 7h1v1h-1zM7 8h1v1h-1zM9 8h1v1h-1zM11 8h1v1h-1zM6 9h1v1h-1zM9 9h2v1h-2zM13 9h1v1h-1zM6 10h1v1h-1zM13 10h1v1h-1zM7 11h1v1h-1zM12 11h1v1h-1z"/><path style="fill:#ff9f43" d="M8 8h1v1h-1zM12 8h1v1h-1zM7 9h2v1h-2zM11 9h2v1h-2zM7 10h1v1h-1zM9 10h3v1h-3zM8 11h1v1h-1z"/><path style="fill:#e8405a" d="M8 10h1v1h-1zM12 10h1v1h-1zM9 11h3v1h-3z"/></g>
+<g id="s-mug"><path style="fill:#c3bfe8" d="M3 0h1v1h-1zM6 0h1v1h-1zM2 1h1v1h-1zM5 1h1v1h-1zM3 2h1v1h-1zM6 2h1v1h-1z"/><path style="fill:#5c3a26" d="M1 3h8v1h-8z"/><path style="fill:#e8405a" d="M1 4h10v1h-10zM1 5h1v1h-1zM8 5h1v1h-1zM11 5h1v1h-1zM1 6h10v1h-10zM1 7h8v1h-8zM2 8h6v1h-6z"/><path style="fill:#f4f2ff" d="M2 5h6v1h-6z"/></g>
+<g id="s-star"><path style="fill:var(--c, currentColor)" d="M4 0h1v1h-1zM4 1h1v1h-1zM3 2h3v1h-3zM0 3h9v1h-9zM1 4h7v1h-7zM2 5h5v1h-5zM2 6h2v1h-2zM5 6h2v1h-2zM1 7h2v1h-2zM6 7h2v1h-2zM1 8h1v1h-1zM7 8h1v1h-1z"/></g>
+<g id="s-i-hand"><path style="fill:var(--c, currentColor)" d="M3 0h1v1h-1zM5 0h1v1h-1zM1 1h1v1h-1zM3 1h1v1h-1zM5 1h1v1h-1zM7 1h1v1h-1zM1 2h1v1h-1zM3 2h1v1h-1zM5 2h1v1h-1zM7 2h1v1h-1zM1 3h7v1h-7zM0 4h8v1h-8zM0 5h8v1h-8zM1 6h7v1h-7zM2 7h5v1h-5zM3 8h4v1h-4z"/></g>
+<g id="s-i-bot"><path style="fill:var(--c, currentColor)" d="M4 0h1v1h-1zM4 1h1v1h-1zM1 2h7v1h-7zM0 3h2v1h-2zM3 3h3v1h-3zM7 3h2v1h-2zM0 4h2v1h-2zM3 4h3v1h-3zM7 4h2v1h-2zM0 5h9v1h-9zM1 6h1v1h-1zM3 6h1v1h-1zM5 6h1v1h-1zM7 6h1v1h-1zM1 7h7v1h-7zM2 8h1v1h-1zM6 8h1v1h-1z"/></g>
+<g id="s-i-mag"><path style="fill:var(--c, currentColor)" d="M1 0h4v1h-4zM0 1h1v1h-1zM5 1h1v1h-1zM0 2h1v1h-1zM5 2h1v1h-1zM0 3h1v1h-1zM5 3h1v1h-1zM0 4h1v1h-1zM5 4h1v1h-1zM1 5h5v1h-5zM5 6h2v1h-2zM6 7h2v1h-2zM7 8h2v1h-2z"/></g>
+<g id="s-i-hammer"><path style="fill:var(--c, currentColor)" d="M1 0h5v1h-5zM1 1h6v1h-6zM1 2h5v1h-5zM3 3h2v1h-2zM3 4h2v1h-2zM3 5h2v1h-2zM3 6h2v1h-2zM3 7h2v1h-2z"/></g>
+<g id="s-i-eye"><path style="fill:var(--c, currentColor)" d="M3 0h3v1h-3zM1 1h2v1h-2zM6 1h2v1h-2zM0 2h1v1h-1zM3 2h3v1h-3zM8 2h1v1h-1zM0 3h1v1h-1zM3 3h3v1h-3zM8 3h1v1h-1zM1 4h2v1h-2zM6 4h2v1h-2zM3 5h3v1h-3z"/></g>
+<g id="s-i-letter"><path style="fill:var(--c, currentColor)" d="M0 0h9v1h-9zM0 1h2v1h-2zM7 1h2v1h-2zM0 2h1v1h-1zM2 2h1v1h-1zM6 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM3 3h1v1h-1zM5 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1zM8 4h1v1h-1zM0 5h1v1h-1zM8 5h1v1h-1zM0 6h9v1h-9z"/></g>
+<g id="s-i-clock"><path style="fill:var(--c, currentColor)" d="M2 0h5v1h-5zM1 1h1v1h-1zM7 1h1v1h-1zM0 2h1v1h-1zM4 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM4 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM0 5h1v1h-1zM8 5h1v1h-1zM1 6h1v1h-1zM7 6h1v1h-1zM2 7h5v1h-5z"/></g>
+<g id="s-i-coin"><path style="fill:var(--c, currentColor)" d="M2 0h4v1h-4zM1 1h6v1h-6zM0 2h2v1h-2zM3 2h5v1h-5zM0 3h2v1h-2zM3 3h5v1h-5zM0 4h8v1h-8zM0 5h8v1h-8zM1 6h6v1h-6zM2 7h4v1h-4z"/></g>
+<g id="s-i-up"><path style="fill:var(--c, currentColor)" d="M0 0h9v1h-9zM0 1h1v1h-1zM4 1h1v1h-1zM8 1h1v1h-1zM0 2h1v1h-1zM3 2h3v1h-3zM8 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1zM8 4h1v1h-1zM0 5h1v1h-1zM4 5h1v1h-1zM8 5h1v1h-1zM0 6h1v1h-1zM4 6h1v1h-1zM8 6h1v1h-1zM0 7h9v1h-9z"/></g>
+<g id="s-i-flask"><path style="fill:var(--c, currentColor)" d="M2 0h5v1h-5zM3 1h1v1h-1zM5 1h1v1h-1zM3 2h1v1h-1zM5 2h1v1h-1zM2 3h1v1h-1zM6 3h1v1h-1zM1 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM2 5h5v1h-5zM8 5h1v1h-1zM0 6h9v1h-9zM1 7h7v1h-7z"/></g>
+<g id="s-i-sleigh"><path style="fill:var(--c, currentColor)" d="M0 0h1v1h-1zM0 1h2v1h-2zM0 2h8v1h-8zM1 3h6v1h-6zM2 4h1v1h-1zM6 4h1v1h-1zM0 5h9v1h-9z"/></g>
+</defs></svg>
+<svg class="sky" viewBox="0 0 320 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true" shape-rendering="crispEdges">
+<defs><filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<rect x="0" y="87" width="1" height="1" fill="#dcd8ff" opacity="0.85"/><rect x="170" y="31" width="1" height="1" fill="#9ff3e8" opacity="0.75"/><rect x="219" y="60" width="1" height="1" fill="#dcd8ff" opacity="0.66"/><rect x="226" y="66" width="1" height="1" fill="#dcd8ff" opacity="0.71"/><rect x="295" y="76" width="1" height="1" fill="#dcd8ff" opacity="0.96"/><rect x="220" y="61" width="1" height="1" fill="#9ff3e8" opacity="0.95"/><rect x="119" y="31" width="1" height="1" fill="#dcd8ff" opacity="0.53"/><rect x="95" y="40" width="1" height="1" fill="#9ff3e8" opacity="0.76"/><rect x="233" y="83" width="1" height="1" fill="#dcd8ff" opacity="0.76"/><rect x="162" y="40" width="1" height="1" fill="#9ff3e8" opacity="0.48"/><rect x="116" y="32" width="1" height="1" fill="#9ff3e8" opacity="0.73"/><rect x="52" y="38" width="1" height="1" fill="#dcd8ff" opacity="0.68"/><rect x="106" y="50" width="1" height="1" fill="#dcd8ff" opacity="0.95"/><rect x="146" y="81" width="1" height="1" fill="#dcd8ff" opacity="0.73"/><rect x="161" y="65" width="2" height="2" fill="#dcd8ff" opacity="0.84"/><rect x="80" y="55" width="1" height="1" fill="#dcd8ff" opacity="0.67"/><rect x="254" y="83" width="1" height="1" fill="#9ff3e8" opacity="0.49"/><rect x="130" y="14" width="1" height="1" fill="#9ff3e8" opacity="0.57"/><rect x="202" y="13" width="1" height="1" fill="#dcd8ff" opacity="0.53"/><rect x="294" y="84" width="2" height="2" fill="#9ff3e8" opacity="0.95"/><rect x="243" y="26" width="1" height="1" fill="#dcd8ff" opacity="0.49"/><rect x="0" y="58" width="1" height="1" fill="#9ff3e8" opacity="0.72"/><rect x="220" y="22" width="2" height="2" fill="#dcd8ff" opacity="0.66"/><rect x="286" y="11" width="1" height="1" fill="#dcd8ff" opacity="0.95"/><rect x="203" y="87" width="1" height="1" fill="#9ff3e8" opacity="0.55"/><rect x="309" y="53" width="1" height="1" fill="#dcd8ff" opacity="0.57"/><rect x="66" y="53" width="1" height="1" fill="#9ff3e8" opacity="0.84"/><rect x="228" y="47" width="1" height="1" fill="#dcd8ff" opacity="0.96"/><rect x="41" y="65" width="2" height="2" fill="#dcd8ff" opacity="0.94"/><rect x="275" y="94" width="2" height="2" fill="#9ff3e8" opacity="0.68"/><rect x="79" y="69" width="2" height="2" fill="#dcd8ff" opacity="0.58"/><rect x="129" y="84" width="1" height="1" fill="#dcd8ff" opacity="0.79"/><rect x="235" y="31" width="1" height="1" fill="#dcd8ff" opacity="0.56"/><rect x="99" y="93" width="2" height="2" fill="#dcd8ff" opacity="0.93"/><rect x="293" y="18" width="1" height="1" fill="#dcd8ff" opacity="0.72"/><rect x="178" y="73" width="2" height="2" fill="#dcd8ff" opacity="0.55"/><rect x="142" y="15" width="1" height="1" fill="#dcd8ff" opacity="0.76"/><rect x="162" y="71" width="1" height="1" fill="#9ff3e8" opacity="0.46"/><rect x="95" y="51" width="1" height="1" fill="#9ff3e8" opacity="0.61"/><rect x="75" y="62" width="1" height="1" fill="#dcd8ff" opacity="0.88"/><rect x="263" y="86" width="2" height="2" fill="#dcd8ff" opacity="0.98"/><rect x="8" y="72" width="1" height="1" fill="#9ff3e8" opacity="0.94"/><rect x="11" y="12" width="1" height="1" fill="#dcd8ff" opacity="0.50"/><rect x="3" y="57" width="2" height="2" fill="#dcd8ff" opacity="0.52"/><rect x="64" y="64" width="1" height="1" fill="#dcd8ff" opacity="1.00"/><rect x="135" y="64" width="1" height="1" fill="#dcd8ff" opacity="0.68"/><rect x="19" y="21" width="1" height="1" fill="#9ff3e8" opacity="0.53"/><rect x="296" y="48" width="1" height="1" fill="#dcd8ff" opacity="0.78"/><rect x="54" y="7" width="1" height="1" fill="#dcd8ff" opacity="0.76"/><rect x="153" y="94" width="1" height="1" fill="#dcd8ff" opacity="0.62"/><rect x="1" y="0" width="1" height="1" fill="#dcd8ff" opacity="0.58"/><rect x="295" y="73" width="1" height="1" fill="#dcd8ff" opacity="0.92"/><rect x="307" y="76" width="1" height="1" fill="#dcd8ff" opacity="0.64"/><rect x="130" y="47" width="1" height="1" fill="#dcd8ff" opacity="0.85"/><rect x="212" y="60" width="1" height="1" fill="#9ff3e8" opacity="0.91"/><rect x="316" y="41" width="1" height="1" fill="#9ff3e8" opacity="0.99"/><rect x="114" y="7" width="1" height="1" fill="#9ff3e8" opacity="0.84"/><rect x="236" y="90" width="1" height="1" fill="#dcd8ff" opacity="0.58"/><rect x="255" y="9" width="2" height="2" fill="#9ff3e8" opacity="0.80"/><rect x="227" y="50" width="1" height="1" fill="#9ff3e8" opacity="0.76"/><rect x="279" y="25" width="1" height="1" fill="#dcd8ff" opacity="0.67"/><rect x="60" y="55" width="1" height="1" fill="#9ff3e8" opacity="0.90"/><rect x="108" y="64" width="1" height="1" fill="#dcd8ff" opacity="0.62"/><rect x="294" y="0" width="1" height="1" fill="#dcd8ff" opacity="0.46"/><rect x="221" y="85" width="1" height="1" fill="#dcd8ff" opacity="0.97"/><rect x="223" y="16" width="1" height="1" fill="#dcd8ff" opacity="0.46"/><rect x="259" y="56" width="1" height="1" fill="#dcd8ff" opacity="0.63"/><rect x="228" y="90" width="1" height="1" fill="#dcd8ff" opacity="0.88"/><rect x="224" y="69" width="1" height="1" fill="#dcd8ff" opacity="0.47"/><rect x="196" y="21" width="1" height="1" fill="#dcd8ff" opacity="0.57"/>
+<path filter="url(#glow)" fill="#f3eccf" d="M268 21h0v1h-0zM264 22h8v1h-8zM263 23h10v1h-10zM261 24h14v1h-14zM261 25h14v1h-14zM260 26h16v1h-16zM260 27h16v1h-16zM259 28h18v1h-18zM259 29h18v1h-18zM259 30h18v1h-18zM259 31h18v1h-18zM259 32h18v1h-18zM260 33h16v1h-16zM260 34h16v1h-16zM261 35h14v1h-14zM261 36h14v1h-14zM263 37h10v1h-10zM264 38h8v1h-8zM268 39h0v1h-0z"/><path fill="#dcd2ad" d="M263 25h3v2h-3zM270 33h2v2h-2zM266 36h2v1h-2z"/>
+<path fill="#2c2766" d="M0 200V80H2V79H4V78H6V78H8V79H10V80H12V83H14V86H16V89H18V92H20V94H22V96H24V98H26V98H28V98H30V97H32V96H34V95H36V95H38V95H40V96H42V97H44V98H46V99H48V100H50V101H52V101H54V100H56V99H58V97H60V95H62V94H64V93H66V93H68V94H70V95H72V98H74V101H76V105H78V108H80V112H82V115H84V117H86V119H88V120H90V122H92V123H94V124H96V126H98V128H100V130H102V133H104V136H106V139H108V141H110V142H112V143H114V142H116V141H118V138H120V135H122V132H124V129H126V127H128V125H130V123H132V123H134V122H136V122H138V121H140V121H142V120H144V118H146V116H148V114H150V111H152V109H154V108H156V107H158V107H160V108H162V109H164V111H166V113H168V115H170V116H172V116H174V116H176V115H178V113H180V111H182V108H184V106H186V104H188V102H190V101H192V100H194V100H196V99H198V98H200V97H202V95H204V92H206V89H208V85H210V81H212V78H214V75H216V74H218V73H220V73H222V74H224V76H226V78H228V80H230V83H232V85H234V86H236V87H238V88H240V88H242V89H244V91H246V92H248V95H250V98H252V101H254V105H256V109H258V112H260V114H262V115H264V116H266V115H268V114H270V113H272V111H274V110H276V109H278V109H280V109H282V110H284V112H286V113H288V114H290V115H292V116H294V116H296V116H298V115H300V114H302V114H304V114H306V116H308V117H310V120H312V123H314V127H316V131H318V134H320V137H322V200Z"/><path fill="#5e58a8" d="M0 80h2v4h-2zM2 79h2v4h-2zM4 78h2v4h-2zM6 78h2v4h-2zM8 79h2v4h-2zM10 80h2v4h-2zM12 83h2v4h-2zM14 86h2v4h-2zM16 89h2v3h-2zM18 92h2v2h-2zM20 94h2v2h-2zM34 95h2v1h-2zM36 95h2v1h-2zM38 95h2v1h-2zM60 95h2v1h-2zM62 94h2v2h-2zM64 93h2v2h-2zM66 93h2v2h-2zM68 94h2v2h-2zM70 95h2v1h-2zM202 95h2v1h-2zM204 92h2v2h-2zM206 89h2v3h-2zM208 85h2v4h-2zM210 81h2v4h-2zM212 78h2v4h-2zM214 75h2v4h-2zM216 74h2v4h-2zM218 73h2v4h-2zM220 73h2v4h-2zM222 74h2v4h-2zM224 76h2v4h-2zM226 78h2v4h-2zM228 80h2v4h-2zM230 83h2v4h-2zM232 85h2v4h-2zM234 86h2v4h-2zM236 87h2v4h-2zM238 88h2v4h-2zM240 88h2v4h-2zM242 89h2v3h-2zM244 91h2v3h-2zM246 92h2v2h-2zM248 95h2v1h-2z"/>
+<path fill="#221d52" d="M0 200V144H2V145H4V146H6V147H8V148H10V148H12V148H14V148H16V148H18V148H20V148H22V148H24V149H26V150H28V152H30V154H32V156H34V158H36V160H38V162H40V164H42V165H44V165H46V165H48V164H50V163H52V162H54V160H56V159H58V157H60V156H62V156H64V155H66V155H68V154H70V153H72V152H74V151H76V149H78V146H80V143H82V140H84V137H86V134H88V132H90V130H92V128H94V127H96V127H98V127H100V127H102V128H104V128H106V128H108V129H110V129H112V128H114V128H116V127H118V126H120V126H122V126H124V126H126V126H128V127H130V129H132V130H134V131H136V133H138V134H140V134H142V134H144V133H146V132H148V130H150V128H152V126H154V124H156V123H158V121H160V120H162V120H164V120H166V120H168V120H170V120H172V119H174V119H176V118H178V117H180V116H182V114H184V113H186V113H188V112H190V112H192V113H194V115H196V117H198V119H200V122H202V125H204V128H206V130H208V132H210V134H212V135H214V136H216V137H218V138H220V139H222V140H224V142H226V143H228V145H230V147H232V149H234V151H236V153H238V154H240V155H242V155H244V154H246V153H248V152H250V150H252V149H254V147H256V146H258V146H260V145H262V146H264V146H266V147H268V148H270V148H272V149H274V149H276V149H278V148H280V147H282V147H284V146H286V146H288V147H290V147H292V148H294V150H296V152H298V154H300V157H302V159H304V160H306V162H308V162H310V163H312V162H314V161H316V160H318V159H320V158H322V200Z"/><path fill="#8f8ad6" d="M94 127h2v1h-2zM96 127h2v1h-2zM98 127h2v1h-2zM100 127h2v1h-2zM116 127h2v1h-2zM118 126h2v2h-2zM120 126h2v2h-2zM122 126h2v2h-2zM124 126h2v2h-2zM126 126h2v2h-2zM128 127h2v1h-2zM152 126h2v2h-2zM154 124h2v2h-2zM156 123h2v3h-2zM158 121h2v3h-2zM160 120h2v4h-2zM162 120h2v4h-2zM164 120h2v4h-2zM166 120h2v4h-2zM168 120h2v4h-2zM170 120h2v4h-2zM172 119h2v4h-2zM174 119h2v4h-2zM176 118h2v4h-2zM178 117h2v4h-2zM180 116h2v4h-2zM182 114h2v4h-2zM184 113h2v4h-2zM186 113h2v4h-2zM188 112h2v4h-2zM190 112h2v4h-2zM192 113h2v4h-2zM194 115h2v4h-2zM196 117h2v4h-2zM198 119h2v4h-2zM200 122h2v3h-2zM202 125h2v2h-2z"/>
+<path fill="#191540" d="M0 200V165H2V165H4V165H6V165H8V165H10V166H12V166H14V167H16V168H18V168H20V169H22V170H24V171H26V171H28V172H30V172H32V173H34V173H36V173H38V173H40V173H42V173H44V172H46V172H48V172H50V172H52V172H54V172H56V172H58V172H60V172H62V172H64V173H66V173H68V173H70V174H72V174H74V175H76V175H78V175H80V175H82V175H84V175H86V175H88V174H90V174H92V173H94V173H96V172H98V171H100V170H102V170H104V169H106V168H108V168H110V168H112V167H114V167H116V167H118V167H120V167H122V168H124V168H126V168H128V168H130V168H132V168H134V168H136V168H138V168H140V168H142V168H144V167H146V167H148V166H150V166H152V165H154V165H156V165H158V165H160V165H162V165H164V165H166V165H168V166H170V167H172V167H174V168H176V169H178V170H180V170H182V171H184V172H186V172H188V172H190V173H192V173H194V173H196V173H198V173H200V172H202V172H204V172H206V172H208V172H210V172H212V172H214V172H216V172H218V172H220V172H222V173H224V173H226V174H228V174H230V175H232V175H234V175H236V175H238V175H240V175H242V175H244V175H246V174H248V174H250V173H252V172H254V171H256V171H258V170H260V169H262V169H264V168H266V168H268V167H270V167H272V167H274V167H276V167H278V168H280V168H282V168H284V168H286V168H288V168H290V168H292V168H294V168H296V168H298V168H300V167H302V167H304V166H306V166H308V166H310V165H312V165H314V165H316V165H318V165H320V165H322V200Z"/>
+<path fill="#120f30" d="M-4 157h1v1h-1zM-4 158h1v1h-1zM-4 159h1v1h-1zM-5 160h2v1h-2zM-5 161h2v1h-2zM-4 162h1v1h-1zM-5 163h3v1h-3zM-5 164h3v1h-3zM-5 165h2v1h-2zM-6 166h4v1h-4zM-6 167h4v1h-4zM-6 168h4v1h-4zM-6 169h5v1h-5zM-6 170h5v1h-5zM-6 171h5v1h-5zM-7 172h6v1h-6zM-7 173h6v1h-6zM-7 174h6v1h-6zM-7 175h7v1h-7zM10 161h1v1h-1zM10 162h1v1h-1zM10 163h1v1h-1zM9 164h2v1h-2zM9 165h3v1h-3zM9 166h2v1h-2zM8 167h4v1h-4zM8 168h4v1h-4zM8 169h4v1h-4zM8 170h5v1h-5zM7 171h6v1h-6zM8 172h5v1h-5zM7 173h7v1h-7zM7 174h7v1h-7zM17 157h1v1h-1zM17 158h1v1h-1zM17 159h1v1h-1zM16 160h2v1h-2zM16 161h2v1h-2zM17 162h1v1h-1zM16 163h3v1h-3zM16 164h3v1h-3zM16 165h2v1h-2zM15 166h4v1h-4zM15 167h4v1h-4zM16 168h3v1h-3zM15 169h5v1h-5zM15 170h5v1h-5zM15 171h4v1h-4zM14 172h6v1h-6zM14 173h6v1h-6zM15 174h5v1h-5zM14 175h7v1h-7zM14 176h7v1h-7zM31 156h1v1h-1zM31 157h1v1h-1zM31 158h1v1h-1zM30 159h2v1h-2zM30 160h2v1h-2zM31 161h1v1h-1zM30 162h3v1h-3zM30 163h3v1h-3zM30 164h2v1h-2zM29 165h4v1h-4zM29 166h4v1h-4zM29 167h4v1h-4zM29 168h5v1h-5zM29 169h5v1h-5zM29 170h5v1h-5zM28 171h6v1h-6zM28 172h6v1h-6zM28 173h6v1h-6zM28 174h7v1h-7zM38 153h1v1h-1zM38 154h1v1h-1zM38 155h1v1h-1zM38 156h1v1h-1zM37 157h2v1h-2zM38 158h1v1h-1zM37 159h2v1h-2zM37 160h3v1h-3zM37 161h2v1h-2zM37 162h3v1h-3zM36 163h4v1h-4zM37 164h3v1h-3zM36 165h4v1h-4zM36 166h4v1h-4zM36 167h4v1h-4zM36 168h5v1h-5zM36 169h5v1h-5zM36 170h5v1h-5zM35 171h6v1h-6zM35 172h6v1h-6zM35 173h6v1h-6zM35 174h7v1h-7zM35 175h7v1h-7zM52 158h1v1h-1zM52 159h1v1h-1zM52 160h1v1h-1zM51 161h2v1h-2zM51 162h2v1h-2zM51 163h2v1h-2zM51 164h3v1h-3zM51 165h3v1h-3zM51 166h3v1h-3zM50 167h4v1h-4zM50 168h5v1h-5zM50 169h4v1h-4zM50 170h5v1h-5zM49 171h6v1h-6zM50 172h5v1h-5zM49 173h7v1h-7zM49 174h7v1h-7zM66 155h1v1h-1zM66 156h1v1h-1zM66 157h1v1h-1zM65 158h2v1h-2zM65 159h2v1h-2zM66 160h1v1h-1zM65 161h3v1h-3zM65 162h3v1h-3zM65 163h2v1h-2zM64 164h4v1h-4zM64 165h4v1h-4zM65 166h3v1h-3zM64 167h5v1h-5zM64 168h5v1h-5zM64 169h4v1h-4zM63 170h6v1h-6zM63 171h6v1h-6zM64 172h5v1h-5zM63 173h7v1h-7zM63 174h7v1h-7zM80 162h1v1h-1zM80 163h1v1h-1zM80 164h1v1h-1zM79 165h2v1h-2zM79 166h3v1h-3zM79 167h2v1h-2zM78 168h4v1h-4zM78 169h4v1h-4zM78 170h4v1h-4zM78 171h5v1h-5zM77 172h6v1h-6zM78 173h5v1h-5zM77 174h7v1h-7zM77 175h7v1h-7zM88 162h1v1h-1zM88 163h1v1h-1zM88 164h1v1h-1zM87 165h2v1h-2zM87 166h3v1h-3zM87 167h2v1h-2zM86 168h4v1h-4zM86 169h4v1h-4zM86 170h4v1h-4zM86 171h5v1h-5zM85 172h6v1h-6zM86 173h5v1h-5zM85 174h7v1h-7zM103 166h1v1h-1zM103 167h1v1h-1zM103 168h1v1h-1zM102 169h2v1h-2zM102 170h3v1h-3zM102 171h2v1h-2zM101 172h4v1h-4zM101 173h5v1h-5zM101 174h4v1h-4zM100 175h6v1h-6zM100 176h6v1h-6zM100 177h6v1h-6zM112 152h1v1h-1zM112 153h1v1h-1zM112 154h1v1h-1zM112 155h1v1h-1zM111 156h2v1h-2zM112 157h1v1h-1zM111 158h2v1h-2zM111 159h3v1h-3zM111 160h2v1h-2zM111 161h3v1h-3zM110 162h4v1h-4zM111 163h3v1h-3zM110 164h4v1h-4zM110 165h4v1h-4zM110 166h4v1h-4zM110 167h5v1h-5zM110 168h5v1h-5zM110 169h5v1h-5zM109 170h6v1h-6zM109 171h6v1h-6zM109 172h6v1h-6zM109 173h7v1h-7zM109 174h7v1h-7zM127 163h1v1h-1zM127 164h1v1h-1zM127 165h1v1h-1zM126 166h2v1h-2zM126 167h2v1h-2zM126 168h2v1h-2zM126 169h3v1h-3zM125 170h4v1h-4zM126 171h3v1h-3zM125 172h5v1h-5zM125 173h5v1h-5zM125 174h5v1h-5zM124 175h6v1h-6zM124 176h7v1h-7zM124 177h6v1h-6zM134 159h1v1h-1zM134 160h1v1h-1zM134 161h1v1h-1zM133 162h2v1h-2zM133 163h2v1h-2zM133 164h2v1h-2zM133 165h3v1h-3zM133 166h3v1h-3zM133 167h3v1h-3zM132 168h4v1h-4zM132 169h5v1h-5zM132 170h4v1h-4zM132 171h5v1h-5zM131 172h6v1h-6zM132 173h5v1h-5zM131 174h7v1h-7zM131 175h7v1h-7zM142 162h1v1h-1zM142 163h1v1h-1zM142 164h1v1h-1zM141 165h2v1h-2zM141 166h2v1h-2zM141 167h2v1h-2zM141 168h3v1h-3zM140 169h4v1h-4zM141 170h3v1h-3zM140 171h5v1h-5zM140 172h5v1h-5zM140 173h5v1h-5zM139 174h6v1h-6zM139 175h7v1h-7zM139 176h6v1h-6zM151 166h1v1h-1zM151 167h1v1h-1zM151 168h1v1h-1zM150 169h2v1h-2zM150 170h3v1h-3zM150 171h2v1h-2zM149 172h4v1h-4zM149 173h5v1h-5zM149 174h4v1h-4zM148 175h6v1h-6zM148 176h6v1h-6zM148 177h6v1h-6zM158 158h1v1h-1zM158 159h1v1h-1zM158 160h1v1h-1zM157 161h2v1h-2zM157 162h2v1h-2zM158 163h1v1h-1zM157 164h3v1h-3zM157 165h3v1h-3zM157 166h2v1h-2zM156 167h4v1h-4zM156 168h4v1h-4zM156 169h4v1h-4zM156 170h5v1h-5zM156 171h5v1h-5zM156 172h5v1h-5zM155 173h6v1h-6zM155 174h6v1h-6zM155 175h6v1h-6zM155 176h7v1h-7zM172 156h1v1h-1zM172 157h1v1h-1zM172 158h1v1h-1zM171 159h2v1h-2zM171 160h2v1h-2zM172 161h1v1h-1zM171 162h3v1h-3zM171 163h3v1h-3zM171 164h2v1h-2zM170 165h4v1h-4zM170 166h4v1h-4zM171 167h3v1h-3zM170 168h5v1h-5zM170 169h5v1h-5zM170 170h4v1h-4zM169 171h6v1h-6zM169 172h6v1h-6zM170 173h5v1h-5zM169 174h7v1h-7zM169 175h7v1h-7zM185 160h1v1h-1zM185 161h1v1h-1zM185 162h1v1h-1zM184 163h2v1h-2zM184 164h2v1h-2zM184 165h2v1h-2zM184 166h3v1h-3zM183 167h4v1h-4zM184 168h3v1h-3zM183 169h4v1h-4zM183 170h5v1h-5zM183 171h4v1h-4zM182 172h6v1h-6zM182 173h6v1h-6zM182 174h6v1h-6zM182 175h7v1h-7zM200 154h1v1h-1zM200 155h1v1h-1zM200 156h1v1h-1zM199 157h2v1h-2zM199 158h2v1h-2zM200 159h1v1h-1zM199 160h3v1h-3zM199 161h3v1h-3zM199 162h2v1h-2zM198 163h4v1h-4zM198 164h4v1h-4zM199 165h3v1h-3zM198 166h5v1h-5zM198 167h5v1h-5zM198 168h4v1h-4zM197 169h6v1h-6zM197 170h6v1h-6zM198 171h5v1h-5zM197 172h7v1h-7zM197 173h7v1h-7zM197 174h6v1h-6zM213 156h1v1h-1zM213 157h1v1h-1zM213 158h1v1h-1zM212 159h2v1h-2zM212 160h2v1h-2zM213 161h1v1h-1zM212 162h3v1h-3zM212 163h3v1h-3zM212 164h2v1h-2zM211 165h4v1h-4zM211 166h4v1h-4zM211 167h4v1h-4zM211 168h5v1h-5zM211 169h5v1h-5zM211 170h5v1h-5zM210 171h6v1h-6zM210 172h6v1h-6zM210 173h6v1h-6zM210 174h7v1h-7zM221 164h1v1h-1zM221 165h1v1h-1zM221 166h1v1h-1zM220 167h2v1h-2zM220 168h3v1h-3zM220 169h2v1h-2zM219 170h4v1h-4zM219 171h5v1h-5zM219 172h4v1h-4zM218 173h6v1h-6zM218 174h6v1h-6zM218 175h6v1h-6zM233 159h1v1h-1zM233 160h1v1h-1zM233 161h1v1h-1zM232 162h2v1h-2zM232 163h2v1h-2zM232 164h2v1h-2zM232 165h3v1h-3zM232 166h3v1h-3zM232 167h3v1h-3zM231 168h4v1h-4zM231 169h5v1h-5zM231 170h4v1h-4zM231 171h5v1h-5zM230 172h6v1h-6zM231 173h5v1h-5zM230 174h7v1h-7zM230 175h7v1h-7zM243 161h1v1h-1zM243 162h1v1h-1zM243 163h1v1h-1zM242 164h2v1h-2zM242 165h2v1h-2zM242 166h2v1h-2zM242 167h3v1h-3zM242 168h3v1h-3zM242 169h3v1h-3zM241 170h4v1h-4zM241 171h5v1h-5zM241 172h4v1h-4zM241 173h5v1h-5zM240 174h6v1h-6zM241 175h5v1h-5zM240 176h7v1h-7zM240 177h7v1h-7zM250 165h1v1h-1zM250 166h1v1h-1zM250 167h1v1h-1zM249 168h2v1h-2zM249 169h3v1h-3zM249 170h2v1h-2zM248 171h4v1h-4zM248 172h5v1h-5zM248 173h4v1h-4zM247 174h6v1h-6zM247 175h6v1h-6zM247 176h6v1h-6zM260 162h1v1h-1zM260 163h1v1h-1zM260 164h1v1h-1zM259 165h2v1h-2zM259 166h3v1h-3zM259 167h2v1h-2zM258 168h4v1h-4zM258 169h4v1h-4zM258 170h4v1h-4zM258 171h5v1h-5zM257 172h6v1h-6zM258 173h5v1h-5zM257 174h7v1h-7zM257 175h7v1h-7zM268 166h1v1h-1zM268 167h1v1h-1zM268 168h1v1h-1zM267 169h2v1h-2zM267 170h3v1h-3zM267 171h2v1h-2zM266 172h4v1h-4zM266 173h5v1h-5zM266 174h4v1h-4zM265 175h6v1h-6zM265 176h6v1h-6zM265 177h6v1h-6zM282 156h1v1h-1zM282 157h1v1h-1zM282 158h1v1h-1zM282 159h1v1h-1zM281 160h2v1h-2zM282 161h1v1h-1zM281 162h2v1h-2zM281 163h3v1h-3zM281 164h2v1h-2zM281 165h3v1h-3zM280 166h4v1h-4zM281 167h3v1h-3zM280 168h4v1h-4zM280 169h5v1h-5zM280 170h4v1h-4zM280 171h5v1h-5zM279 172h6v1h-6zM280 173h5v1h-5zM279 174h6v1h-6zM279 175h7v1h-7zM279 176h6v1h-6zM279 177h7v1h-7zM295 162h1v1h-1zM295 163h1v1h-1zM295 164h1v1h-1zM294 165h2v1h-2zM294 166h2v1h-2zM294 167h2v1h-2zM294 168h3v1h-3zM293 169h4v1h-4zM294 170h3v1h-3zM293 171h5v1h-5zM293 172h5v1h-5zM293 173h5v1h-5zM292 174h6v1h-6zM292 175h7v1h-7zM292 176h6v1h-6zM310 157h1v1h-1zM310 158h1v1h-1zM310 159h1v1h-1zM309 160h2v1h-2zM309 161h2v1h-2zM310 162h1v1h-1zM309 163h3v1h-3zM309 164h3v1h-3zM309 165h2v1h-2zM308 166h4v1h-4zM308 167h4v1h-4zM309 168h3v1h-3zM308 169h5v1h-5zM308 170h5v1h-5zM308 171h4v1h-4zM307 172h6v1h-6zM307 173h6v1h-6zM308 174h5v1h-5zM307 175h7v1h-7zM307 176h7v1h-7zM307 177h6v1h-6zM325 162h1v1h-1zM325 163h1v1h-1zM325 164h1v1h-1zM324 165h2v1h-2zM324 166h3v1h-3zM324 167h2v1h-2zM323 168h4v1h-4zM323 169h4v1h-4zM323 170h4v1h-4zM323 171h5v1h-5zM322 172h6v1h-6zM323 173h5v1h-5zM322 174h7v1h-7zM322 175h7v1h-7z"/>
+<rect x="0" y="182" width="320" height="18" fill="#120f30"/>
+</svg>
+<div class="aurora" aria-hidden="true"></div>
+<canvas id="snow" aria-hidden="true"></canvas>
+
+<!-- ===================== PLAY (+ decision overlay) ===================== -->
+<main class="screen scr-play" aria-label="Workshop, run 2 of 4">
+  <header class="hud">
+    <div class="plate px run"><span class="lbl">Run</span><span class="num">2 <small>of 4</small></span>
+      <span class="pips" aria-hidden="true"><svg viewBox="0 0 9 6" shape-rendering="crispEdges"><use href="#s-i-sleigh"/></svg><svg viewBox="0 0 9 6" shape-rendering="crispEdges"><use href="#s-i-sleigh"/></svg><svg class="todo" viewBox="0 0 9 6" shape-rendering="crispEdges"><use href="#s-i-sleigh"/></svg><svg class="todo" viewBox="0 0 9 6" shape-rendering="crispEdges"><use href="#s-i-sleigh"/></svg></span>
+    </div>
+    <div class="plate px clock"><span class="num">0:35</span><span class="lbl">Departs in</span><span class="drain" aria-hidden="true"><i></i></span></div>
+    <div class="plate px"><span class="lbl">Budget left</span><span class="num">&pound;1,770</span></div>
+    <div class="plate px stars"><span class="lbl">Stars</span><span class="num"><svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-star"/></svg>4 <small>/ 12</small></span></div>
+    <div class="spacer"></div>
+    <p class="hint"><svg viewBox="0 0 9 9" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-i-hand"/></svg>Drag elves between rooms</p>
+    <button class="pause" aria-label="Pause"><span><i></i><i></i></span></button>
+    <div class="hud-sleigh px"><span>Sleigh</span><span class="num">27<small>/62</small></span><span class="bar" aria-hidden="true"><i style="width:43.5%"></i><em style="left:69%"></em></span><span class="w">3</span><span>wrong</span></div>
+  </header>
+
+  <div class="stage">
+    <div class="roof"><span class="roofsign px">Santa's AI Workshop</span></div>
+
+    <!-- Letters -->
+    <section class="room r1 bottleneck" aria-label="Letters">
+      <span class="bn">Bottleneck</span><header class="sign px"><h2>Letters</h2><p class="rate"><b>28</b> a minute</p></header>
+      <div class="console"><span class="cap">AI at reading</span>
+        <div class="seg" role="radiogroup" aria-label="AI at reading">
+          <button role="radio" aria-checked="true" class="on"><span class="ico"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-hand"/></svg></span>By hand</button>
+          <button role="radio" aria-checked="false"><span class="ico"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-hand"/></svg><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-bot"/></svg></span>Assist</button>
+          <button role="radio" aria-checked="false"><span class="ico"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-bot"/></svg></span>Automate</button>
+        </div>
+      </div>
+      <div class="pile">
+        <div class="art">
+          <svg class="spr" width="102" height="66" viewBox="0 0 34 22" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-envelope" x="0" y="15"/><use href="#s-envelope" x="12" y="15"/><use href="#s-envelope" x="24" y="15"/><use href="#s-envelope" x="6" y="8"/><use href="#s-envelope" x="18" y="8"/><use href="#s-envelope" x="12" y="1"/></svg>
+        </div>
+        <div class="count"><span class="lbl">Letters waiting</span><span class="num">10<small>/24</small></span><span class="meter" aria-hidden="true"><i style="width:42%"></i></span></div>
+        <div class="art" style="margin-left:auto;display:grid;justify-items:center"><svg class="spr bot-off" style="--scr:#4a4478;--scr-d:#2a2442" width="56" height="46" viewBox="0 0 28 23" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-machine"/></svg><span class="offtag">AI off</span></div>
+      </div>
+      <div class="floor"><button class="elf" style="--hat:#ff4f6a;--hat-d:#b52a45;--tunic:#36b37e;--tunic-d:#1f7a55" aria-label="Pip, reads, energy 4 of 5"><span class="bubble" aria-hidden="true"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-letter"/></svg></span><svg class="spr ol" viewBox="0 0 14 23" shape-rendering="crispEdges"><use href="#s-elf-A"/></svg><span class="nm">Pip</span><span class="role">reads</span><span class="en e4"><i></i><i></i><i></i><i></i><i class="off"></i></span></button><button class="elf" style="--hat:#4fd18b;--hat-d:#24804f;--tunic:#e8405a;--tunic-d:#a8283f" aria-label="Holly, reads, energy 3 of 5"><span class="bubble" aria-hidden="true"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-letter"/></svg></span><svg class="spr ol" viewBox="0 0 14 23" shape-rendering="crispEdges"><use href="#s-elf-B"/></svg><span class="nm">Holly</span><span class="role">reads</span><span class="en e3"><i></i><i></i><i></i><i class="off"></i><i class="off"></i></span></button><button class="elf tired" style="--hat:#3fd6c4;--hat-d:#1d7f78;--tunic:#8f6bff;--tunic-d:#5a3fbf" aria-label="Jingle, reads, tired, energy 1 of 5"><span class="bubble zz" aria-hidden="true">z<small>z</small></span><svg class="spr ol" viewBox="0 0 14 23" shape-rendering="crispEdges"><use href="#s-elf-C-tired"/></svg><span class="nm">Jingle</span><span class="role">reads</span><span class="en e1"><i></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span></button></div>
+      <span class="belt-m" aria-hidden="true"></span>
+    </section>
+
+    <!-- Toys -->
+    <section class="room r2" aria-label="Toys">
+      <header class="sign px"><h2>Toys</h2><p class="rate"><b>33</b> a minute</p></header>
+      <div class="console"><span class="cap">AI at making</span>
+        <div class="seg" role="radiogroup" aria-label="AI at making">
+          <button role="radio" aria-checked="false"><span class="ico"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-hand"/></svg></span>By hand</button>
+          <button role="radio" aria-checked="true" class="on"><span class="ico"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-hand"/></svg><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-bot"/></svg></span>Assist</button>
+          <button role="radio" aria-checked="false"><span class="ico"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-bot"/></svg></span>Automate</button>
+        </div>
+      </div>
+      <div class="pile">
+        <div class="art"><svg class="spr machine" width="84" height="69" viewBox="0 0 28 23" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-machine"/></svg></div>
+        <div class="art"><svg class="spr" width="78" height="54" viewBox="0 0 26 18" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-ticket" x="0" y="10"/><use href="#s-ticket" x="9" y="10"/><use href="#s-ticket" x="18" y="10"/><use href="#s-ticket" x="4" y="2"/><use href="#s-ticket" x="13" y="2"/></svg></div>
+        <div class="count"><span class="lbl">Toy orders</span><span class="num">6<small>/20</small></span><span class="meter" aria-hidden="true"><i style="width:30%"></i></span></div>
+      </div>
+      <div class="floor"><button class="elf" style="--hat:#a07bff;--hat-d:#6a48c8;--tunic:#2bb5a6;--tunic-d:#1a7a70" aria-label="Noel, makes, energy 4 of 5"><span class="bubble" aria-hidden="true"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-hammer"/></svg></span><svg class="spr ol" viewBox="0 0 14 23" shape-rendering="crispEdges"><use href="#s-elf-D"/></svg><span class="nm">Noel</span><span class="role">makes</span><span class="en e4"><i></i><i></i><i></i><i></i><i class="off"></i></span></button><button class="elf" style="--hat:#ffcf4d;--hat-d:#c9922e;--tunic:#36b37e;--tunic-d:#1f7a55" aria-label="Ivy, watches, energy 5 of 5"><span class="bubble" aria-hidden="true"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-eye"/></svg></span><svg class="spr ol" viewBox="0 0 14 23" shape-rendering="crispEdges"><use href="#s-elf-A"/></svg><span class="nm">Ivy</span><span class="role">watches</span><span class="en e5"><i></i><i></i><i></i><i></i><i></i></span></button><button class="elf idle" style="--hat:#ff8a3d;--hat-d:#b85a1f;--tunic:#c0503a;--tunic-d:#7f2f22" aria-label="Coco, idle, energy 5 of 5"><span class="bubble dots" aria-hidden="true"><i></i><i></i><i></i></span><svg class="spr ol" viewBox="0 0 14 23" shape-rendering="crispEdges"><use href="#s-elf-D"/></svg><span class="nm">Coco</span><span class="role">idle</span><span class="en e5"><i></i><i></i><i></i><i></i><i></i></span></button></div>
+      <span class="belt-m" aria-hidden="true"></span>
+    </section>
+
+    <!-- Elves check -->
+    <section class="room r3" aria-label="Elves check">
+      <header class="sign px"><h2>Elves check</h2><p class="rate"><b>41</b> a minute</p></header>
+      <div class="console"><span class="cap">Checking</span>
+        <div class="seg" role="radiogroup" aria-label="How much is checked">
+          <button role="radio" aria-checked="false"><span class="share"><i class="y"></i><i></i><i></i><i></i></span>A few</button>
+          <button role="radio" aria-checked="true" class="on"><span class="share"><i class="y"></i><i class="y"></i><i></i><i></i></span>Risky ones</button>
+          <button role="radio" aria-checked="false"><span class="share"><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i></span>All</button>
+        </div>
+      </div>
+      <div class="pile">
+        <div class="art"><svg class="spr" width="102" height="84" viewBox="0 0 34 28" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-parcel" x="0" y="19" style="--box:#e8405a;--box-d:#a8283f"/><use href="#s-parcel" x="12" y="19" style="--box:#3fbf7f;--box-d:#24804f;--rib:#f4f2ff"/><use href="#s-parcel" x="24" y="19" style="--box:#9b6bff;--box-d:#6a48c8"/><use href="#s-parcel" x="6" y="10" style="--box:#3fd6c4;--box-d:#1d7f78;--rib:#f4f2ff"/><use href="#s-parcel" x="18" y="10" style="--box:#ff9f43;--box-d:#b85a1f;--rib:#f4f2ff"/><use href="#s-parcel" x="12" y="1" style="--box:#e8405a;--box-d:#a8283f"/></svg></div>
+        <div class="count"><span class="lbl">To check</span><span class="num">7<small>/10</small></span><span class="meter" aria-hidden="true"><i style="width:70%"></i></span></div>
+      </div>
+      <div class="floor"><button class="elf" style="--hat:#c25bd6;--hat-d:#7f2f91;--tunic:#e8a33a;--tunic-d:#a8701f" aria-label="Fig, checks, energy 3 of 5"><span class="bubble" aria-hidden="true"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-mag"/></svg></span><svg class="spr ol" viewBox="0 0 14 23" shape-rendering="crispEdges"><use href="#s-elf-B"/></svg><span class="nm">Fig</span><span class="role">checks</span><span class="en e3"><i></i><i></i><i></i><i class="off"></i><i class="off"></i></span></button><button class="elf" style="--hat:#cfd8ff;--hat-d:#8c97cc;--tunic:#4a7dff;--tunic-d:#2e4fb0" aria-label="Tinsel, checks, energy 4 of 5"><span class="bubble" aria-hidden="true"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-mag"/></svg></span><svg class="spr ol" viewBox="0 0 14 23" shape-rendering="crispEdges"><use href="#s-elf-C"/></svg><span class="nm">Tinsel</span><span class="role">checks</span><span class="en e4"><i></i><i></i><i></i><i></i><i class="off"></i></span></button></div>
+      <span class="belt-m" aria-hidden="true"></span>
+    </section>
+
+    <div class="belt" aria-hidden="true">
+      <svg class="spr item" style="left:30.5%" width="30" height="21" viewBox="0 0 10 7" shape-rendering="crispEdges"><use href="#s-envelope"/></svg>
+      <svg class="spr item" style="left:63%" width="30" height="27" viewBox="0 0 10 9" shape-rendering="crispEdges"><use href="#s-parcel" style="--box:#9b6bff;--box-d:#6a48c8"/></svg>
+      <svg class="spr item" style="left:93%" width="30" height="27" viewBox="0 0 10 9" shape-rendering="crispEdges"><use href="#s-parcel" style="--box:#3fbf7f;--box-d:#24804f;--rib:#f4f2ff"/></svg>
+    </div>
+
+    <!-- Sleigh -->
+    <aside class="yard" aria-label="Sleigh">
+      <header class="sign px"><h2>Sleigh</h2><p class="rate"><b>60</b> a minute</p></header>
+      <div class="tally px">
+        <div class="lbl">Right gifts aboard</div>
+        <div class="big">27<small>/62</small></div>
+        <div class="bar" aria-hidden="true"><i style="width:43.5%"></i><em style="left:69%"></em></div>
+        <div class="pace">On pace for <b>43</b> by departure</div>
+      </div>
+      <div class="wrongp px"><svg class="spr" width="30" height="27" viewBox="0 0 10 9" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-parcel" style="--box:#ff6680;--box-d:#a8283f;--rib:#1a0d1f"/></svg><span class="num">3</span><span class="lbl">wrong gifts aboard</span></div>
+      <div class="sleighwrap">
+        <svg class="spr gifts" width="150" height="96" viewBox="0 0 30 19" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-parcel" x="0" y="10" style="--box:#3fbf7f;--box-d:#24804f;--rib:#f4f2ff"/><use href="#s-parcel" x="10" y="10" style="--box:#9b6bff;--box-d:#6a48c8"/><use href="#s-parcel" x="20" y="10" style="--box:#3fd6c4;--box-d:#1d7f78;--rib:#f4f2ff"/><use href="#s-parcel" x="5" y="1" style="--box:#ff9f43;--box-d:#b85a1f;--rib:#f4f2ff"/><use href="#s-parcel" x="15" y="1" style="--box:#ff6680;--box-d:#a8283f;--rib:#1a0d1f"/></svg>
+        <svg class="spr sl ol" width="240" height="96" viewBox="0 0 40 16" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-sleigh"/></svg>
+      </div>
+      <div class="ground" aria-hidden="true"></div>
+      <p class="brand"><b>Frontier Economics</b></p>
+    </aside>
+
+    <!-- Cocoa -->
+    <section class="cocoa" aria-label="Cocoa break">
+      <svg class="spr fire" width="100" height="70" viewBox="0 0 20 14" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-fire"/></svg>
+      <div class="txt"><h2>Cocoa break</h2><p>Drop a tired elf here. Full energy again in 20 seconds.</p></div>
+      <div class="seats">
+        <div class="seat hot"><svg class="spr" width="36" height="27" viewBox="0 0 12 9" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-mug"/></svg>Free seat</div>
+        <div class="seat"><svg class="spr" width="36" height="27" viewBox="0 0 12 9" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-mug"/></svg>Free seat</div>
+        <div class="seat"><svg class="spr" width="36" height="27" viewBox="0 0 12 9" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-mug"/></svg>Free seat</div>
+      </div>
+    </section>
+
+    <div class="veil" aria-hidden="true"></div>
+    <div class="decide" role="dialog" aria-labelledby="dq">
+      <div class="box px">
+        <div class="who">
+          <div class="portrait" style="--hat:#c25bd6;--hat-d:#7f2f91;--tunic:#e8a33a;--tunic-d:#a8701f"><svg viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-elf-B"/></svg></div>
+          <span class="nametag">Fig<small>Elves check</small></span>
+        </div>
+        <div>
+          <p class="say" id="dq">Not sure about this one.</p>
+          <div class="compare">
+            <figure class="wish px"><figcaption>Maya, 6, wished for</figcaption><blockquote>"A little train, please."</blockquote><svg class="spr" width="42" height="18" viewBox="0 0 14 6" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-trainsmall"/></svg></figure>
+            <span class="vs">vs</span>
+            <figure class="made px"><figcaption>The machine made</figcaption><svg class="spr" width="170" height="80" viewBox="0 0 34 16" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-loco"/></svg><small>A full-sized locomotive</small></figure>
+          </div>
+        </div>
+        <div class="opts">
+          <button class="opt"><b>Remake it</b><span class="cost"><svg class="i-t" viewBox="0 0 9 8" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-i-clock"/></svg>8 s</span><span class="cost"><svg class="i-m" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-i-coin"/></svg>&pound;40</span></button>
+          <button class="opt"><b>Write to Maya to ask</b><span class="cost"><svg class="i-t" viewBox="0 0 9 8" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-i-clock"/></svg>15 s</span><span class="cost"><svg class="i-m" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-i-coin"/></svg>&pound;10</span></button>
+          <button class="opt risky"><b>Send it anyway</b><span class="cost"><svg class="i-t" viewBox="0 0 9 8" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-i-clock"/></svg>0 s</span><span class="cost"><svg class="i-m" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-i-coin"/></svg>&pound;0 <small>&pound;150 if it's wrong</small></span></button>
+        </div>
+      </div>
+      <svg class="tail" viewBox="0 0 10 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#0d0b20" d="M0 0h2v1h2v1h2v1h2v1h2v4h-2v1h-2v1h-2v1h-2v1h-2z"/><path fill="#1e1a44" d="M0 2h2v1h2v1h2v1h2v2h-2v1h-2v1h-2v1h-2z"/></svg>
+    </div>
+  </div>
+</main>
+
+<!-- ===================== BREAK ===================== -->
+<section class="screen scr-break" aria-label="Between sleigh runs">
+  <svg class="spr flying ol" width="200" height="80" viewBox="0 0 40 16" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-sleigh"/></svg>
+  <div class="dlg px">
+    <div class="dlg-top">
+      <div class="portrait" style="width:104px;height:104px;place-items:center"><svg class="spr" width="80" height="80" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-santa"/></svg></div>
+      <div>
+        <h1>Run 2 is away</h1>
+        <div class="res">
+          <div class="plate px"><span class="lbl">Right gifts</span><span class="num ok">49 <small>/ 62</small></span></div>
+          <div class="plate px"><span class="lbl">Wrong gifts</span><span class="num bad">4</span></div>
+          <div class="plate px"><span class="lbl">Stars this run</span><span class="starrow"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg class="dark" viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg></span></div>
+          <div class="plate px"><span class="lbl">All runs</span><span class="num">5 <small>/ 12 stars</small></span></div>
+        </div>
+      </div>
+    </div>
+    <h2 class="pick">Pick one before run 3</h2>
+    <div class="choices" role="radiogroup" aria-label="Choice before run 3">
+      <button class="choice" role="radio" aria-checked="false"><span class="ic"><svg viewBox="0 0 9 8" shape-rendering="crispEdges"><use href="#s-i-up"/></svg></span><b>Install the update</b><span>The toy machine gets faster. Nobody has tested it.</span><span class="price">Free</span></button>
+      <button class="choice sel" role="radio" aria-checked="true"><span class="ic"><svg viewBox="0 0 9 8" shape-rendering="crispEdges"><use href="#s-i-flask"/></svg></span><b>Test it first</b><span>Try the update on a few toys before trusting it.</span><span class="price">&pound;150 and 10 s</span></button>
+      <button class="choice" role="radio" aria-checked="false"><span class="ic"><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-i-mag"/></svg></span><b>Train the checkers</b><span>Checkers spot more of the wrong toys.</span><span class="price">&pound;200</span></button>
+      <button class="choice" role="radio" aria-checked="false"><span class="ic"><svg class="spr" width="30" height="22.5" viewBox="0 0 12 9" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-mug"/></svg></span><b>Rest the elves</b><span>Everyone starts run 3 with full energy.</span><span class="price">&pound;100</span></button>
+    </div>
+    <button class="go">Start run 3 <svg viewBox="0 0 4 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h1v1h1v1h1v1h1v1h-1v1h-1v1h-1v1h-1z"/></svg></button>
+    <p class="foot">Frontier Economics</p>
+  </div>
+</section>
+
+<!-- ===================== END ===================== -->
+<section class="screen scr-end" aria-label="Christmas delivered">
+  <div class="dlg px">
+    <div class="endhead">
+      <div>
+        <h1>Christmas delivered</h1>
+        <div class="bigstars" aria-label="8 of 12 stars">
+          <svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg class="dark" viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg class="dark" viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg class="dark" viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg><svg class="dark" viewBox="0 0 9 9" shape-rendering="crispEdges"><use href="#s-star"/></svg>
+          <span class="disp" style="margin-left:8px;font-size:22px;align-self:center">8 <span style="color:var(--dim)">of 12</span></span>
+        </div>
+      </div>
+      <div class="tot">
+        <div class="plate px"><span class="lbl">Right</span><span class="num ok">212</span></div>
+        <div class="plate px"><span class="lbl">Wrong</span><span class="num bad">9</span></div>
+        <div class="plate px"><span class="lbl">Lost</span><span class="num" style="color:var(--gold)">15</span></div>
+      </div>
+    </div>
+
+    <div class="endgrid">
+      <div class="panel px dialbox">
+        <h2 style="justify-self:start">How much you checked</h2>
+        <svg class="spr gauge" width="344" height="160" viewBox="0 0 86 40" shape-rendering="crispEdges" role="img" aria-label="Dial: you landed on too much checking"><path fill="#5ad895" d="M37 6h1v1h-1zM38 6h1v1h-1zM39 6h1v1h-1zM40 6h1v1h-1zM41 6h1v1h-1zM42 6h1v1h-1zM43 6h1v1h-1zM44 6h1v1h-1zM45 6h1v1h-1zM46 6h1v1h-1zM47 6h1v1h-1zM48 6h1v1h-1zM33 7h1v1h-1zM34 7h1v1h-1zM35 7h1v1h-1zM36 7h1v1h-1zM37 7h1v1h-1zM38 7h1v1h-1zM39 7h1v1h-1zM40 7h1v1h-1zM41 7h1v1h-1zM42 7h1v1h-1zM43 7h1v1h-1zM44 7h1v1h-1zM45 7h1v1h-1zM46 7h1v1h-1zM47 7h1v1h-1zM48 7h1v1h-1zM49 7h1v1h-1zM50 7h1v1h-1zM51 7h1v1h-1zM52 7h1v1h-1zM30 8h1v1h-1zM31 8h1v1h-1zM32 8h1v1h-1zM33 8h1v1h-1zM34 8h1v1h-1zM35 8h1v1h-1zM36 8h1v1h-1zM37 8h1v1h-1zM38 8h1v1h-1zM39 8h1v1h-1zM40 8h1v1h-1zM41 8h1v1h-1zM42 8h1v1h-1zM43 8h1v1h-1zM44 8h1v1h-1zM45 8h1v1h-1zM46 8h1v1h-1zM47 8h1v1h-1zM48 8h1v1h-1zM49 8h1v1h-1zM50 8h1v1h-1zM51 8h1v1h-1zM52 8h1v1h-1zM53 8h1v1h-1zM54 8h1v1h-1zM55 8h1v1h-1zM30 9h1v1h-1zM31 9h1v1h-1zM32 9h1v1h-1zM33 9h1v1h-1zM34 9h1v1h-1zM35 9h1v1h-1zM36 9h1v1h-1zM37 9h1v1h-1zM38 9h1v1h-1zM39 9h1v1h-1zM40 9h1v1h-1zM41 9h1v1h-1zM42 9h1v1h-1zM43 9h1v1h-1zM44 9h1v1h-1zM45 9h1v1h-1zM46 9h1v1h-1zM47 9h1v1h-1zM48 9h1v1h-1zM49 9h1v1h-1zM50 9h1v1h-1zM51 9h1v1h-1zM52 9h1v1h-1zM53 9h1v1h-1zM54 9h1v1h-1zM55 9h1v1h-1zM31 10h1v1h-1zM32 10h1v1h-1zM33 10h1v1h-1zM34 10h1v1h-1zM35 10h1v1h-1zM36 10h1v1h-1zM37 10h1v1h-1zM38 10h1v1h-1zM39 10h1v1h-1zM40 10h1v1h-1zM41 10h1v1h-1zM42 10h1v1h-1zM43 10h1v1h-1zM44 10h1v1h-1zM45 10h1v1h-1zM46 10h1v1h-1zM47 10h1v1h-1zM48 10h1v1h-1zM49 10h1v1h-1zM50 10h1v1h-1zM51 10h1v1h-1zM52 10h1v1h-1zM53 10h1v1h-1zM54 10h1v1h-1zM31 11h1v1h-1zM32 11h1v1h-1zM33 11h1v1h-1zM34 11h1v1h-1zM35 11h1v1h-1zM36 11h1v1h-1zM37 11h1v1h-1zM38 11h1v1h-1zM39 11h1v1h-1zM40 11h1v1h-1zM41 11h1v1h-1zM42 11h1v1h-1zM43 11h1v1h-1zM44 11h1v1h-1zM45 11h1v1h-1zM46 11h1v1h-1zM47 11h1v1h-1zM48 11h1v1h-1zM49 11h1v1h-1zM50 11h1v1h-1zM51 11h1v1h-1zM52 11h1v1h-1zM53 11h1v1h-1zM54 11h1v1h-1zM32 12h1v1h-1zM33 12h1v1h-1zM34 12h1v1h-1zM35 12h1v1h-1zM36 12h1v1h-1zM37 12h1v1h-1zM38 12h1v1h-1zM39 12h1v1h-1zM40 12h1v1h-1zM41 12h1v1h-1zM42 12h1v1h-1zM43 12h1v1h-1zM44 12h1v1h-1zM45 12h1v1h-1zM46 12h1v1h-1zM47 12h1v1h-1zM48 12h1v1h-1zM49 12h1v1h-1zM50 12h1v1h-1zM51 12h1v1h-1zM52 12h1v1h-1zM53 12h1v1h-1zM32 13h1v1h-1zM33 13h1v1h-1zM34 13h1v1h-1zM35 13h1v1h-1zM36 13h1v1h-1zM37 13h1v1h-1zM38 13h1v1h-1zM39 13h1v1h-1zM40 13h1v1h-1zM41 13h1v1h-1zM42 13h1v1h-1zM43 13h1v1h-1zM44 13h1v1h-1zM45 13h1v1h-1zM46 13h1v1h-1zM47 13h1v1h-1zM48 13h1v1h-1zM49 13h1v1h-1zM50 13h1v1h-1zM51 13h1v1h-1zM52 13h1v1h-1zM53 13h1v1h-1zM32 14h1v1h-1zM33 14h1v1h-1zM34 14h1v1h-1zM35 14h1v1h-1zM36 14h1v1h-1zM37 14h1v1h-1zM38 14h1v1h-1zM39 14h1v1h-1zM40 14h1v1h-1zM41 14h1v1h-1zM42 14h1v1h-1zM43 14h1v1h-1zM44 14h1v1h-1zM45 14h1v1h-1zM46 14h1v1h-1zM47 14h1v1h-1zM48 14h1v1h-1zM49 14h1v1h-1zM50 14h1v1h-1zM51 14h1v1h-1zM52 14h1v1h-1zM53 14h1v1h-1zM33 15h1v1h-1zM34 15h1v1h-1zM35 15h1v1h-1zM36 15h1v1h-1zM37 15h1v1h-1zM38 15h1v1h-1zM39 15h1v1h-1zM40 15h1v1h-1zM41 15h1v1h-1zM42 15h1v1h-1zM43 15h1v1h-1zM44 15h1v1h-1zM45 15h1v1h-1zM46 15h1v1h-1zM47 15h1v1h-1zM48 15h1v1h-1zM49 15h1v1h-1zM50 15h1v1h-1zM51 15h1v1h-1zM52 15h1v1h-1zM33 16h1v1h-1zM34 16h1v1h-1zM35 16h1v1h-1zM36 16h1v1h-1zM37 16h1v1h-1zM38 16h1v1h-1zM39 16h1v1h-1zM40 16h1v1h-1zM41 16h1v1h-1zM42 16h1v1h-1zM43 16h1v1h-1zM44 16h1v1h-1zM45 16h1v1h-1zM46 16h1v1h-1zM47 16h1v1h-1zM48 16h1v1h-1zM49 16h1v1h-1zM50 16h1v1h-1zM51 16h1v1h-1zM52 16h1v1h-1zM34 17h1v1h-1zM35 17h1v1h-1zM36 17h1v1h-1zM37 17h1v1h-1zM48 17h1v1h-1zM49 17h1v1h-1zM50 17h1v1h-1zM51 17h1v1h-1zM34 18h1v1h-1zM51 18h1v1h-1z"/><path fill="#ff6680" d="M26 10h1v1h-1zM27 10h1v1h-1zM25 11h1v1h-1zM26 11h1v1h-1zM27 11h1v1h-1zM28 11h1v1h-1zM23 12h1v1h-1zM24 12h1v1h-1zM25 12h1v1h-1zM26 12h1v1h-1zM27 12h1v1h-1zM28 12h1v1h-1zM22 13h1v1h-1zM23 13h1v1h-1zM24 13h1v1h-1zM25 13h1v1h-1zM26 13h1v1h-1zM27 13h1v1h-1zM28 13h1v1h-1zM29 13h1v1h-1zM21 14h1v1h-1zM22 14h1v1h-1zM23 14h1v1h-1zM24 14h1v1h-1zM25 14h1v1h-1zM26 14h1v1h-1zM27 14h1v1h-1zM28 14h1v1h-1zM29 14h1v1h-1zM30 14h1v1h-1zM20 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM23 15h1v1h-1zM24 15h1v1h-1zM25 15h1v1h-1zM26 15h1v1h-1zM27 15h1v1h-1zM28 15h1v1h-1zM29 15h1v1h-1zM30 15h1v1h-1zM19 16h1v1h-1zM20 16h1v1h-1zM21 16h1v1h-1zM22 16h1v1h-1zM23 16h1v1h-1zM24 16h1v1h-1zM25 16h1v1h-1zM26 16h1v1h-1zM27 16h1v1h-1zM28 16h1v1h-1zM29 16h1v1h-1zM30 16h1v1h-1zM31 16h1v1h-1zM18 17h1v1h-1zM19 17h1v1h-1zM20 17h1v1h-1zM21 17h1v1h-1zM22 17h1v1h-1zM23 17h1v1h-1zM24 17h1v1h-1zM25 17h1v1h-1zM26 17h1v1h-1zM27 17h1v1h-1zM28 17h1v1h-1zM29 17h1v1h-1zM30 17h1v1h-1zM31 17h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM20 18h1v1h-1zM21 18h1v1h-1zM22 18h1v1h-1zM23 18h1v1h-1zM24 18h1v1h-1zM25 18h1v1h-1zM26 18h1v1h-1zM27 18h1v1h-1zM28 18h1v1h-1zM29 18h1v1h-1zM30 18h1v1h-1zM31 18h1v1h-1zM32 18h1v1h-1zM16 19h1v1h-1zM17 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM20 19h1v1h-1zM21 19h1v1h-1zM22 19h1v1h-1zM23 19h1v1h-1zM24 19h1v1h-1zM25 19h1v1h-1zM26 19h1v1h-1zM27 19h1v1h-1zM28 19h1v1h-1zM29 19h1v1h-1zM30 19h1v1h-1zM31 19h1v1h-1zM32 19h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM18 20h1v1h-1zM19 20h1v1h-1zM20 20h1v1h-1zM21 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM25 20h1v1h-1zM26 20h1v1h-1zM27 20h1v1h-1zM28 20h1v1h-1zM29 20h1v1h-1zM30 20h1v1h-1zM15 21h1v1h-1zM16 21h1v1h-1zM17 21h1v1h-1zM18 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM21 21h1v1h-1zM22 21h1v1h-1zM23 21h1v1h-1zM24 21h1v1h-1zM25 21h1v1h-1zM26 21h1v1h-1zM27 21h1v1h-1zM28 21h1v1h-1zM29 21h1v1h-1zM14 22h1v1h-1zM15 22h1v1h-1zM16 22h1v1h-1zM17 22h1v1h-1zM18 22h1v1h-1zM19 22h1v1h-1zM20 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM23 22h1v1h-1zM24 22h1v1h-1zM25 22h1v1h-1zM26 22h1v1h-1zM27 22h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM16 23h1v1h-1zM17 23h1v1h-1zM18 23h1v1h-1zM19 23h1v1h-1zM20 23h1v1h-1zM21 23h1v1h-1zM22 23h1v1h-1zM23 23h1v1h-1zM24 23h1v1h-1zM25 23h1v1h-1zM26 23h1v1h-1zM13 24h1v1h-1zM14 24h1v1h-1zM15 24h1v1h-1zM16 24h1v1h-1zM17 24h1v1h-1zM18 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM21 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1zM25 24h1v1h-1zM13 25h1v1h-1zM14 25h1v1h-1zM15 25h1v1h-1zM16 25h1v1h-1zM17 25h1v1h-1zM18 25h1v1h-1zM19 25h1v1h-1zM20 25h1v1h-1zM21 25h1v1h-1zM22 25h1v1h-1zM23 25h1v1h-1zM24 25h1v1h-1zM25 25h1v1h-1zM12 26h1v1h-1zM13 26h1v1h-1zM14 26h1v1h-1zM15 26h1v1h-1zM16 26h1v1h-1zM17 26h1v1h-1zM18 26h1v1h-1zM19 26h1v1h-1zM20 26h1v1h-1zM21 26h1v1h-1zM22 26h1v1h-1zM23 26h1v1h-1zM24 26h1v1h-1zM12 27h1v1h-1zM13 27h1v1h-1zM14 27h1v1h-1zM15 27h1v1h-1zM16 27h1v1h-1zM17 27h1v1h-1zM18 27h1v1h-1zM19 27h1v1h-1zM20 27h1v1h-1zM21 27h1v1h-1zM22 27h1v1h-1zM23 27h1v1h-1zM12 28h1v1h-1zM13 28h1v1h-1zM14 28h1v1h-1zM15 28h1v1h-1zM16 28h1v1h-1zM17 28h1v1h-1zM18 28h1v1h-1zM19 28h1v1h-1zM20 28h1v1h-1zM21 28h1v1h-1zM22 28h1v1h-1zM23 28h1v1h-1zM11 29h1v1h-1zM12 29h1v1h-1zM13 29h1v1h-1zM14 29h1v1h-1zM15 29h1v1h-1zM16 29h1v1h-1zM17 29h1v1h-1zM18 29h1v1h-1zM19 29h1v1h-1zM20 29h1v1h-1zM21 29h1v1h-1zM22 29h1v1h-1zM11 30h1v1h-1zM12 30h1v1h-1zM13 30h1v1h-1zM14 30h1v1h-1zM15 30h1v1h-1zM16 30h1v1h-1zM17 30h1v1h-1zM18 30h1v1h-1zM19 30h1v1h-1zM20 30h1v1h-1zM21 30h1v1h-1zM22 30h1v1h-1zM11 31h1v1h-1zM12 31h1v1h-1zM13 31h1v1h-1zM14 31h1v1h-1zM15 31h1v1h-1zM16 31h1v1h-1zM17 31h1v1h-1zM18 31h1v1h-1zM19 31h1v1h-1zM20 31h1v1h-1zM21 31h1v1h-1zM11 32h1v1h-1zM12 32h1v1h-1zM13 32h1v1h-1zM14 32h1v1h-1zM15 32h1v1h-1zM16 32h1v1h-1zM17 32h1v1h-1zM18 32h1v1h-1zM19 32h1v1h-1zM20 32h1v1h-1zM21 32h1v1h-1zM10 33h1v1h-1zM11 33h1v1h-1zM12 33h1v1h-1zM13 33h1v1h-1zM14 33h1v1h-1zM15 33h1v1h-1zM16 33h1v1h-1zM17 33h1v1h-1zM18 33h1v1h-1zM19 33h1v1h-1zM20 33h1v1h-1zM21 33h1v1h-1zM10 34h1v1h-1zM11 34h1v1h-1zM12 34h1v1h-1zM13 34h1v1h-1zM14 34h1v1h-1zM15 34h1v1h-1zM16 34h1v1h-1zM17 34h1v1h-1zM18 34h1v1h-1zM19 34h1v1h-1zM20 34h1v1h-1zM10 35h1v1h-1zM11 35h1v1h-1zM12 35h1v1h-1zM13 35h1v1h-1zM14 35h1v1h-1zM15 35h1v1h-1zM16 35h1v1h-1zM17 35h1v1h-1zM18 35h1v1h-1zM19 35h1v1h-1zM20 35h1v1h-1zM10 36h1v1h-1zM11 36h1v1h-1zM12 36h1v1h-1zM13 36h1v1h-1zM14 36h1v1h-1zM15 36h1v1h-1zM16 36h1v1h-1zM17 36h1v1h-1zM18 36h1v1h-1zM19 36h1v1h-1zM20 36h1v1h-1zM10 37h1v1h-1zM11 37h1v1h-1zM12 37h1v1h-1zM13 37h1v1h-1zM14 37h1v1h-1zM15 37h1v1h-1zM16 37h1v1h-1zM17 37h1v1h-1zM18 37h1v1h-1zM19 37h1v1h-1zM20 37h1v1h-1zM10 38h1v1h-1zM11 38h1v1h-1zM12 38h1v1h-1zM13 38h1v1h-1zM14 38h1v1h-1zM15 38h1v1h-1zM16 38h1v1h-1zM17 38h1v1h-1zM18 38h1v1h-1zM19 38h1v1h-1zM20 38h1v1h-1z"/><path fill="#ffcf4d" d="M58 10h1v1h-1zM59 10h1v1h-1zM57 11h1v1h-1zM58 11h1v1h-1zM59 11h1v1h-1zM60 11h1v1h-1zM57 12h1v1h-1zM58 12h1v1h-1zM59 12h1v1h-1zM60 12h1v1h-1zM61 12h1v1h-1zM62 12h1v1h-1zM56 13h1v1h-1zM57 13h1v1h-1zM58 13h1v1h-1zM59 13h1v1h-1zM60 13h1v1h-1zM61 13h1v1h-1zM62 13h1v1h-1zM63 13h1v1h-1zM55 14h1v1h-1zM56 14h1v1h-1zM57 14h1v1h-1zM58 14h1v1h-1zM59 14h1v1h-1zM60 14h1v1h-1zM61 14h1v1h-1zM62 14h1v1h-1zM63 14h1v1h-1zM64 14h1v1h-1zM55 15h1v1h-1zM56 15h1v1h-1zM57 15h1v1h-1zM58 15h1v1h-1zM59 15h1v1h-1zM60 15h1v1h-1zM61 15h1v1h-1zM62 15h1v1h-1zM63 15h1v1h-1zM64 15h1v1h-1zM65 15h1v1h-1zM54 16h1v1h-1zM55 16h1v1h-1zM56 16h1v1h-1zM57 16h1v1h-1zM58 16h1v1h-1zM59 16h1v1h-1zM60 16h1v1h-1zM61 16h1v1h-1zM62 16h1v1h-1zM63 16h1v1h-1zM64 16h1v1h-1zM65 16h1v1h-1zM66 16h1v1h-1zM54 17h1v1h-1zM55 17h1v1h-1zM56 17h1v1h-1zM57 17h1v1h-1zM58 17h1v1h-1zM59 17h1v1h-1zM60 17h1v1h-1zM61 17h1v1h-1zM62 17h1v1h-1zM63 17h1v1h-1zM64 17h1v1h-1zM65 17h1v1h-1zM66 17h1v1h-1zM67 17h1v1h-1zM53 18h1v1h-1zM54 18h1v1h-1zM55 18h1v1h-1zM56 18h1v1h-1zM57 18h1v1h-1zM58 18h1v1h-1zM59 18h1v1h-1zM60 18h1v1h-1zM61 18h1v1h-1zM62 18h1v1h-1zM63 18h1v1h-1zM66 18h1v1h-1zM67 18h1v1h-1zM68 18h1v1h-1zM53 19h1v1h-1zM54 19h1v1h-1zM55 19h1v1h-1zM56 19h1v1h-1zM57 19h1v1h-1zM58 19h1v1h-1zM59 19h1v1h-1zM60 19h1v1h-1zM61 19h1v1h-1zM62 19h1v1h-1zM65 19h1v1h-1zM66 19h1v1h-1zM67 19h1v1h-1zM68 19h1v1h-1zM69 19h1v1h-1zM55 20h1v1h-1zM56 20h1v1h-1zM57 20h1v1h-1zM58 20h1v1h-1zM59 20h1v1h-1zM60 20h1v1h-1zM61 20h1v1h-1zM64 20h1v1h-1zM65 20h1v1h-1zM66 20h1v1h-1zM67 20h1v1h-1zM68 20h1v1h-1zM69 20h1v1h-1zM56 21h1v1h-1zM57 21h1v1h-1zM58 21h1v1h-1zM59 21h1v1h-1zM63 21h1v1h-1zM64 21h1v1h-1zM65 21h1v1h-1zM66 21h1v1h-1zM67 21h1v1h-1zM68 21h1v1h-1zM69 21h1v1h-1zM70 21h1v1h-1zM58 22h1v1h-1zM62 22h1v1h-1zM63 22h1v1h-1zM64 22h1v1h-1zM65 22h1v1h-1zM66 22h1v1h-1zM67 22h1v1h-1zM68 22h1v1h-1zM69 22h1v1h-1zM70 22h1v1h-1zM71 22h1v1h-1zM61 23h1v1h-1zM62 23h1v1h-1zM63 23h1v1h-1zM64 23h1v1h-1zM65 23h1v1h-1zM66 23h1v1h-1zM67 23h1v1h-1zM68 23h1v1h-1zM69 23h1v1h-1zM70 23h1v1h-1zM71 23h1v1h-1zM60 24h1v1h-1zM61 24h1v1h-1zM62 24h1v1h-1zM63 24h1v1h-1zM64 24h1v1h-1zM65 24h1v1h-1zM66 24h1v1h-1zM67 24h1v1h-1zM68 24h1v1h-1zM69 24h1v1h-1zM70 24h1v1h-1zM71 24h1v1h-1zM72 24h1v1h-1zM60 25h1v1h-1zM61 25h1v1h-1zM62 25h1v1h-1zM63 25h1v1h-1zM64 25h1v1h-1zM65 25h1v1h-1zM66 25h1v1h-1zM67 25h1v1h-1zM68 25h1v1h-1zM69 25h1v1h-1zM70 25h1v1h-1zM71 25h1v1h-1zM72 25h1v1h-1zM61 26h1v1h-1zM62 26h1v1h-1zM63 26h1v1h-1zM64 26h1v1h-1zM65 26h1v1h-1zM66 26h1v1h-1zM67 26h1v1h-1zM68 26h1v1h-1zM69 26h1v1h-1zM70 26h1v1h-1zM71 26h1v1h-1zM72 26h1v1h-1zM73 26h1v1h-1zM62 27h1v1h-1zM63 27h1v1h-1zM64 27h1v1h-1zM65 27h1v1h-1zM66 27h1v1h-1zM67 27h1v1h-1zM68 27h1v1h-1zM69 27h1v1h-1zM70 27h1v1h-1zM71 27h1v1h-1zM72 27h1v1h-1zM73 27h1v1h-1zM62 28h1v1h-1zM63 28h1v1h-1zM64 28h1v1h-1zM65 28h1v1h-1zM66 28h1v1h-1zM67 28h1v1h-1zM68 28h1v1h-1zM69 28h1v1h-1zM70 28h1v1h-1zM71 28h1v1h-1zM72 28h1v1h-1zM73 28h1v1h-1zM63 29h1v1h-1zM64 29h1v1h-1zM65 29h1v1h-1zM66 29h1v1h-1zM67 29h1v1h-1zM68 29h1v1h-1zM69 29h1v1h-1zM70 29h1v1h-1zM71 29h1v1h-1zM72 29h1v1h-1zM73 29h1v1h-1zM74 29h1v1h-1zM63 30h1v1h-1zM64 30h1v1h-1zM65 30h1v1h-1zM66 30h1v1h-1zM67 30h1v1h-1zM68 30h1v1h-1zM69 30h1v1h-1zM70 30h1v1h-1zM71 30h1v1h-1zM72 30h1v1h-1zM73 30h1v1h-1zM74 30h1v1h-1zM64 31h1v1h-1zM65 31h1v1h-1zM66 31h1v1h-1zM67 31h1v1h-1zM68 31h1v1h-1zM69 31h1v1h-1zM70 31h1v1h-1zM71 31h1v1h-1zM72 31h1v1h-1zM73 31h1v1h-1zM74 31h1v1h-1zM64 32h1v1h-1zM65 32h1v1h-1zM66 32h1v1h-1zM67 32h1v1h-1zM68 32h1v1h-1zM69 32h1v1h-1zM70 32h1v1h-1zM71 32h1v1h-1zM72 32h1v1h-1zM73 32h1v1h-1zM74 32h1v1h-1zM64 33h1v1h-1zM65 33h1v1h-1zM66 33h1v1h-1zM67 33h1v1h-1zM68 33h1v1h-1zM69 33h1v1h-1zM70 33h1v1h-1zM71 33h1v1h-1zM72 33h1v1h-1zM73 33h1v1h-1zM74 33h1v1h-1zM75 33h1v1h-1zM65 34h1v1h-1zM66 34h1v1h-1zM67 34h1v1h-1zM68 34h1v1h-1zM69 34h1v1h-1zM70 34h1v1h-1zM71 34h1v1h-1zM72 34h1v1h-1zM73 34h1v1h-1zM74 34h1v1h-1zM75 34h1v1h-1zM65 35h1v1h-1zM66 35h1v1h-1zM67 35h1v1h-1zM68 35h1v1h-1zM69 35h1v1h-1zM70 35h1v1h-1zM71 35h1v1h-1zM72 35h1v1h-1zM73 35h1v1h-1zM74 35h1v1h-1zM75 35h1v1h-1zM65 36h1v1h-1zM66 36h1v1h-1zM67 36h1v1h-1zM68 36h1v1h-1zM69 36h1v1h-1zM70 36h1v1h-1zM71 36h1v1h-1zM72 36h1v1h-1zM73 36h1v1h-1zM74 36h1v1h-1zM75 36h1v1h-1zM65 37h1v1h-1zM66 37h1v1h-1zM67 37h1v1h-1zM68 37h1v1h-1zM69 37h1v1h-1zM70 37h1v1h-1zM71 37h1v1h-1zM72 37h1v1h-1zM73 37h1v1h-1zM74 37h1v1h-1zM75 37h1v1h-1zM65 38h1v1h-1zM66 38h1v1h-1zM67 38h1v1h-1zM68 38h1v1h-1zM69 38h1v1h-1zM70 38h1v1h-1zM71 38h1v1h-1zM72 38h1v1h-1zM73 38h1v1h-1zM74 38h1v1h-1zM75 38h1v1h-1z"/><path fill="#eef0ff" d="M64 18h1v1h-1zM65 18h1v1h-1zM63 19h1v1h-1zM64 19h1v1h-1zM62 20h1v1h-1zM63 20h1v1h-1zM60 21h1v1h-1zM61 21h1v1h-1zM62 21h1v1h-1zM59 22h1v1h-1zM60 22h1v1h-1zM61 22h1v1h-1zM58 23h1v1h-1zM59 23h1v1h-1zM60 23h1v1h-1zM57 24h1v1h-1zM58 24h1v1h-1zM59 24h1v1h-1zM56 25h1v1h-1zM57 25h1v1h-1zM58 25h1v1h-1zM55 26h1v1h-1zM56 26h1v1h-1zM54 27h1v1h-1zM55 27h1v1h-1zM53 28h1v1h-1zM54 28h1v1h-1zM52 29h1v1h-1zM53 29h1v1h-1zM51 30h1v1h-1zM52 30h1v1h-1zM50 31h1v1h-1zM51 31h1v1h-1zM49 32h1v1h-1zM50 32h1v1h-1zM48 33h1v1h-1zM49 33h1v1h-1zM47 34h1v1h-1zM48 34h1v1h-1zM46 35h1v1h-1zM47 35h1v1h-1zM41 36h1v1h-1zM42 36h1v1h-1zM43 36h1v1h-1zM44 36h1v1h-1zM45 36h1v1h-1zM46 36h1v1h-1zM40 37h1v1h-1zM41 37h1v1h-1zM42 37h1v1h-1zM43 37h1v1h-1zM44 37h1v1h-1zM45 37h1v1h-1zM40 38h1v1h-1zM41 38h1v1h-1zM42 38h1v1h-1zM43 38h1v1h-1zM44 38h1v1h-1zM45 38h1v1h-1z"/><rect x="68.6" y="8.0" width="15" height="8" fill="#eef0ff"/><text x="76.1" y="14.2" text-anchor="middle" font-family="Tiny5, monospace" font-size="6" fill="#1e1a44">You</text></svg>
+        <div class="dial-l"><span>Too little checking</span><span>About right</span><span>Too much checking</span></div>
+        <p class="verdict">Mistakes were rare and cheap this year, so checking every parcel cost more than it caught.</p>
+      </div>
+      <div class="panel px">
+        <h2>Where the money went</h2>
+        <dl class="ledger">
+          <div><dt>Elves' time</dt><dd>&pound;1,240</dd><span class="lb"><i style="width:100%"></i></span></div>
+          <div><dt>AI</dt><dd>&pound;380</dd><span class="lb"><i style="width:31%"></i></span></div>
+          <div><dt>Checking</dt><dd>&pound;720</dd><span class="lb"><i style="width:58%"></i></span></div>
+          <div><dt>Fixing mistakes</dt><dd>&pound;260</dd><span class="lb"><i style="width:21%"></i></span></div>
+          <hr>
+          <div class="neg"><dt>Cost of wrong gifts delivered</dt><dd>&pound;540</dd><span class="lb"><i style="width:44%"></i></span></div>
+          <div class="pos"><dt>Value of mistakes caught</dt><dd>+&pound;1,100</dd><span class="lb"><i style="width:89%"></i></span></div>
+        </dl>
+      </div>
+      <div class="panel px">
+        <h2>Wrong gifts found: 4 of 6</h2>
+        <div class="found">
+          <div class="card"><div class="art"><svg class="spr" width="51" height="24" viewBox="0 0 34 16" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-loco"/></svg></div><b>A locomotive</b><span>wished: a little train</span></div>
+          <div class="card"><div class="art"><svg class="spr" width="48" height="42" viewBox="0 0 16 14" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-bear"/></svg></div><b>A live bear cub</b><span>wished: a teddy bear</span></div>
+          <div class="card"><div class="art"><svg class="spr" width="56" height="38.5" viewBox="0 0 16 11" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-duck"/></svg></div><b>A shed-sized duck</b><span>wished: a bath duck</span></div>
+          <div class="card"><div class="art"><svg class="spr" width="30" height="42" viewBox="0 0 10 14" shape-rendering="crispEdges" aria-hidden="true"><use href="#s-rocket"/></svg></div><b>A real rocket</b><span>wished: a toy rocket</span></div>
+          <div class="card locked"><div class="art">?</div><span>Not found yet</span></div>
+          <div class="card locked"><div class="art">?</div><span>Not found yet</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endact">
+      <button class="go">Play again</button>
+      <a href="#end">Read the article on AI assurance</a>
+      <span class="brand2">Frontier Economics</span>
+    </div>
+  </div>
+</section>
+
+<nav class="mocktabs" aria-label="Mock screens">
+  <span>Mock screens</span>
+  <button data-go="play">Play</button>
+  <button data-go="decision">Decision</button>
+  <button data-go="break">Break</button>
+  <button data-go="end">End</button>
+</nav>
+
+<script>
+(function () {
+  var tabs = document.querySelectorAll(".mocktabs button");
+  function show(name) {
+    if (!/^(play|decision|break|end)$/.test(name)) name = "play";
+    document.body.dataset.screen = name;
+    tabs.forEach(function (b) { b.setAttribute("aria-current", b.dataset.go === name ? "true" : "false"); });
+    if (name === "decision" && window.innerWidth <= 760) {
+      var r = document.querySelector(".room.r3");
+      window.scrollTo(0, r.getBoundingClientRect().top + window.scrollY - 150);
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }
+  tabs.forEach(function (b) { b.addEventListener("click", function () { location.hash = b.dataset.go; }); });
+  window.addEventListener("hashchange", function () { show(location.hash.slice(1)); });
+  if (/clean/.test(location.search)) document.body.classList.add("clean");
+  show(location.hash.slice(1));
+
+  // Falling snow: square flakes snapped to a 2px grid so they read as pixels.
+  var c = document.getElementById("snow"), x = c.getContext("2d"), flakes = [], w, h;
+  var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function size() { w = c.width = Math.ceil(innerWidth / 2); h = c.height = Math.ceil(innerHeight / 2); }
+  size(); addEventListener("resize", size);
+  for (var i = 0; i < 90; i++) flakes.push({ x: Math.random() * w, y: Math.random() * h, s: Math.random() < .25 ? 2 : 1, v: .15 + Math.random() * .35, p: Math.random() * 6 });
+  function draw(t) {
+    x.clearRect(0, 0, w, h);
+    flakes.forEach(function (f) {
+      if (!still) { f.y += f.v; f.x += Math.sin(t / 1400 + f.p) * .12; if (f.y > h) { f.y = -2; f.x = Math.random() * w; } }
+      x.fillStyle = f.s === 2 ? "rgba(238,240,255,.85)" : "rgba(220,216,255,.6)";
+      x.fillRect(Math.round(f.x), Math.round(f.y), f.s, f.s);
+    });
+    if (!still) requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

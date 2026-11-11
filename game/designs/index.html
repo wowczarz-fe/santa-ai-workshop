@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Design directions</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 32px 16px;
+        background: #f4f4f0;
+        color: #1c2b2a;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 24px;
+        margin: 0 0 4px;
+      }
+      p {
+        margin: 0 0 24px;
+        color: #4a5856;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+      }
+      a.card {
+        display: block;
+        background: #fff;
+        border: 1px solid #d6ddd5;
+        border-radius: 10px;
+        overflow: hidden;
+        text-decoration: none;
+        color: inherit;
+      }
+      a.card img {
+        display: block;
+        width: 100%;
+      }
+      a.card div {
+        padding: 12px 14px 14px;
+      }
+      a.card strong {
+        display: block;
+        font-size: 17px;
+      }
+      a.card span {
+        font-size: 14px;
+        color: #4a5856;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Santa's AI Workshop: three design directions</h1>
+      <p>Which look should the game have? These are pictures of the design, not playable. Open each one and use the small strip at the bottom to see its four screens: play, a decision, the break between sleigh runs, and the end. Then tell whoever sent you this link which number you prefer and why.</p>
+      <div class="grid">
+        <a class="card" href="1-polish/">
+          <img src="1-polish/shot-play-desktop.png" alt="Direction 1 play screen" />
+          <div><strong>1. Current design, polished</strong><span>Same layout and colours, grown up.</span></div>
+        </a>
+        <a class="card" href="2-pixel/">
+          <img src="2-pixel/shot-play-desktop.png" alt="Direction 2 play screen" />
+          <div><strong>2. Indie pixel art</strong><span>Night-time workshop cutaway, original sprites.</span></div>
+        </a>
+        <a class="card" href="3-papercut/">
+          <img src="3-papercut/shot-play-desktop.png" alt="Direction 3 play screen" />
+          <div><strong>3. Paper-cut storybook</strong><span>A cut-paper diorama with one conveyor.</span></div>
+        </a>
+      </div>
+    </main>
+  </body>
+</html>

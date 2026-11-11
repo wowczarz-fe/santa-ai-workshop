@@ -103,14 +103,55 @@
     node.append(make("span", "", value));
   };
   // Free: nothing to do, or watching an automated machine (the rules may call it plain idle).
-  const isFree = (elf) =>
+  const isIdle = (elf) =>
     elf.station < 3 &&
     !elf.resting &&
     (/watch/.test(elf.doing) || /^(nothing to do|idle|free)/.test(elf.doing));
+  // Free to move: idle at a reading or toy station the AI runs alone. Anywhere else an idle elf
+  // is waiting for work, so the player is not invited to pull checkers away.
+  const isFree = (elf) =>
+    isIdle(elf) && elf.station < 2 && view.ai[elf.station] === 2;
   const trendArrow =
     '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.5V2M2.5 5.5 6 2l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const starRow = (stars, of = 3) =>
     icon("star", "on").repeat(stars) + icon("star-empty").repeat(of - stars);
+  // A small "i" button that shows or hides longer words in place: works with touch and keyboard.
+  // buttonHost gets the button, textHost the words (hidden until asked for).
+  function addMore(buttonHost, words, label, textHost = buttonHost) {
+    if (!words) return;
+    const more = make("p", "more-text", words);
+    more.hidden = true;
+    const button = make("button", "info-button more-toggle", "i");
+    button.type = "button";
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-expanded", "false");
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      more.hidden = !more.hidden;
+      button.setAttribute("aria-expanded", String(!more.hidden));
+    });
+    buttonHost.classList.add("more-host");
+    buttonHost.append(button);
+    textHost.append(more);
+  }
+  // A paragraph showing its first sentence, with a button that shows the whole of it.
+  function addExpand(paragraph, short, full, label) {
+    paragraph.moreButton?.remove();
+    paragraph.textContent = short;
+    if (!full || full === short) return;
+    const button = make("button", "info-button more-toggle", "i");
+    button.type = "button";
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-expanded", "false");
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = button.getAttribute("aria-expanded") !== "true";
+      paragraph.textContent = open ? full : short;
+      button.setAttribute("aria-expanded", String(open));
+    });
+    paragraph.after(button);
+    paragraph.moreButton = button;
+  }
   const revealedToy = (toy, cls) => {
     const node = make("span", cls);
     node.innerHTML = toyArt(toy.name);
@@ -744,23 +785,25 @@
       b.disabled = !started || !!view.end || elf.resting;
       b.setAttribute(
         "aria-label",
-        `${elf.name}, ${isFree(elf) ? "free to move" : elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
+        `${elf.name}, ${isFree(elf) ? "free to move" : isIdle(elf) ? "waiting for work" : elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
       );
       const role = elf.doing.includes("asking")
         ? ["role-asking", "asking"]
         : isFree(elf)
           ? ["role-idle", "free to move", "free"]
-          : elf.doing.includes("confirm")
-            ? ["role-confirming", "confirm"]
-            : elf.station === 3 || elf.resting
-              ? ["role-resting", "resting"]
-              : elf.doing.includes("reading")
-                ? ["role-reading", "reading"]
-                : elf.doing.includes("making")
-                  ? ["role-making", "making"]
-                  : elf.doing.includes("checking")
-                    ? ["role-checking", "checking"]
-                    : ["role-making", "working"];
+          : isIdle(elf)
+            ? ["role-idle", "waiting", "waiting"]
+            : elf.doing.includes("confirm")
+              ? ["role-confirming", "confirm"]
+              : elf.station === 3 || elf.resting
+                ? ["role-resting", "resting"]
+                : elf.doing.includes("reading")
+                  ? ["role-reading", "reading"]
+                  : elf.doing.includes("making")
+                    ? ["role-making", "making"]
+                    : elf.doing.includes("checking")
+                      ? ["role-checking", "checking"]
+                      : ["role-making", "working"];
       const doing = b.querySelector(".elf-doing");
       if (doing.dataset.icon !== role[0]) {
         doing.dataset.icon = role[0];
@@ -1190,7 +1233,10 @@
           : []),
       ].join(" ");
       const budgetSlot = $("breakGoals").querySelector('[data-goal="cost"]');
-      if (budgetSlot && spendText) budgetSlot.title = spendText;
+      if (budgetSlot && spendText) {
+        budgetSlot.title = spendText;
+        addMore(budgetSlot, spendText, "What this run spent");
+      }
       $("breakLast").hidden = !report.slips.length;
       $("breakSlips").replaceChildren();
       const slip = report.slips[0];
@@ -1214,6 +1260,11 @@
         card.append(
           make("span", "eyebrow", `Costliest wrong gift · ${money(slip.cost)}`),
           toys,
+        );
+        addMore(
+          card,
+          `"${slip.wish}" ${slip.cause.charAt(0).toUpperCase()}${slip.cause.slice(1)}.`,
+          "The wish and what let it through",
         );
         $("breakSlips").append(card);
       }
@@ -1265,7 +1316,10 @@
           );
         }
         card.append(chips);
-        $("breakOptions").append(card);
+        const wrap = make("div", "upgrade-wrap");
+        wrap.append(card);
+        addMore(wrap, card.title, `More about ${option.label}`);
+        $("breakOptions").append(wrap);
       }
     }
     closeInfo();
@@ -2406,7 +2460,12 @@
       );
       text("underCost", money(a.underCost));
       text("overCost", money(a.overCost));
-      text("assuranceText", firstSentence(a.text));
+      addExpand(
+        $("assuranceText"),
+        firstSentence(a.text),
+        a.text,
+        "The whole verdict",
+      );
       $("assuranceText").title = a.text;
       $("assuranceGroups").replaceChildren();
       // One shared scale, so a long bar means the same money on every card.
@@ -2438,6 +2497,7 @@
           ),
         );
         row.append(head);
+        addMore(head, group.text, `More about ${group.name}`, row);
         if (!none) {
           const bars = make("div", "group-bars");
           for (const [cls, label, value] of [
@@ -2602,7 +2662,10 @@
         make("p", "", `${run.right}/${run.target} right · ${run.wrong} wrong`),
       );
       card.append(head, row);
-      if (run.missedBy) card.title = run.missedBy;
+      if (run.missedBy) {
+        card.title = run.missedBy;
+        addMore(card, run.missedBy, `What run ${run.run} missed`);
+      }
       // Goals within their limit that never counted, because the sleigh stayed under two thirds full.
       const waiting = (run.goals || []).find((g) => g.waiting && g.note);
       if (waiting) card.append(make("small", "goal-wait", waiting.note));
@@ -2665,7 +2728,12 @@
       }),
     );
     text("lessonTitle", e.lesson.title);
-    text("lessonText", firstSentence(e.lesson.text));
+    addExpand(
+      $("lessonText"),
+      firstSentence(e.lesson.text),
+      e.lesson.text,
+      "The whole lesson",
+    );
     $("lessonText").title = e.lesson.text;
     paintCauses(
       $("endCauses"),

@@ -1069,6 +1069,74 @@ body[data-look] #vigilance {
 #vigilance.mistake-hint {
   position: relative;
 }
+/* Longer words behind a small info control, for touch and keyboard */
+.more-host {
+  position: relative;
+}
+.more-toggle.info-button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  font:
+    bold 12px/1 Georgia,
+    serif;
+  vertical-align: middle;
+}
+.more-toggle[aria-expanded="true"] {
+  background: var(--teal, #286e73);
+  border-color: var(--teal, #286e73);
+  color: #fff;
+}
+.delivery-slip > .more-toggle.info-button {
+  top: 5px;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+}
+.goal-slot > .more-toggle,
+.delivery-slip > .more-toggle,
+.upgrade-wrap > .more-toggle,
+.run-report > .more-toggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+}
+.group-head > .more-toggle {
+  margin-left: 6px;
+}
+.more-text {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: normal;
+  line-height: 1.4;
+  text-align: left;
+}
+.more-text[hidden] {
+  display: none;
+}
+.upgrade-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.upgrade-wrap > .upgrade-card {
+  flex: 1;
+  width: 100%;
+  padding-right: 30px;
+}
+.upgrade-wrap > .more-text {
+  margin: 6px 2px 0;
+}
+.elf[data-role="waiting"] .elf-task {
+  color: inherit;
+}
 /* Free elves: neutral, not a job */
 .elf[data-role="free"] .elf-task {
   color: #6b776d;

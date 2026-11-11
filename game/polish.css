@@ -1059,3 +1059,14 @@ body[data-look="polish"] .arrival {
     grid-template-rows: 51px 123px minmax(130px, 1fr) 0 145px;
   }
 }
+
+body[data-look="polish"] #sleigh .column-heading {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  row-gap: 0;
+}
+body[data-look="polish"] .cargo-badge {
+  color: var(--teal);
+  font-size: 10px;
+  line-height: 15px;
+}

@@ -225,6 +225,11 @@
     );
     station.append(heading, scene, belt, floor, $(`controls${s}`));
   }
+  const cargoBadge = make("button", "cargo-badge");
+  cargoBadge.id = "cargoBadge";
+  cargoBadge.dataset.help = "cargo";
+  cargoBadge.dataset.info = "cargo";
+  $("sleigh").querySelector(".column-heading").append(cargoBadge);
   const sleigh = $("sleigh"),
     sleighScene = make("div", "paper-scene paper-sleigh-scene");
   sleigh.querySelector(".sleigh-art").innerHTML = Art.scene(3);
@@ -381,6 +386,11 @@
       view.score ? `${view.score.stars} ★ / ${view.score.best}` : "",
     );
     text("runLabel", view.run ? `${view.run.number}/${view.run.of}` : "");
+    text("cargoBadge", `${view.run.cargo.icon} ${view.run.cargo.name}`);
+    $("cargoBadge").setAttribute(
+      "aria-label",
+      `${view.run.cargo.name}. About this cargo.`,
+    );
     text(
       "runStars",
       (view.run?.stars || [])
@@ -778,6 +788,12 @@
     if (lastChoice !== choice.id) {
       lastChoice = choice.id;
       const report = choice.report;
+      text(
+        "nextCargoTitle",
+        `Next sleigh · ${choice.next.cargo.icon} ${choice.next.cargo.name}`,
+      );
+      text("nextCargoText", choice.next.cargo.text);
+      text("nextCargoTarget", `${choice.next.target} correct gifts needed`);
       text("breakRun", `Sleigh ${report.run} has left`);
       text("breakTitle", choice.title);
       text("breakText", choice.text);
@@ -853,7 +869,7 @@
     closeInfo();
     if (!$("breakDialog").open) {
       $("breakDialog").showModal();
-      $("breakDialog").focus({ preventScroll: true });
+      $("nextCargoTitle").focus({ preventScroll: true });
       $("breakDialog").scrollTop = 0;
       $("breakDeparture").classList.remove("break-arrival");
       void $("breakDeparture").offsetWidth;
@@ -1374,6 +1390,14 @@
     return $("queue-check");
   }
   function getInfo(key) {
+    if (key === "cargo")
+      return [
+        view.run.cargo.name,
+        [
+          view.run.cargo.text,
+          `${view.run.target} correct gifts needed on this sleigh.`,
+        ],
+      ];
     if (key === "caughtToy" && caughtSnapshot)
       return [
         "A checker caught this",
@@ -2142,6 +2166,7 @@
       const card = make("article", "run-report");
       card.append(
         make("b", "", `Sleigh ${run.run} · ${"★".repeat(run.stars)}`),
+        make("span", "run-cargo", `${run.cargo.icon} ${run.cargo.name}`),
         make(
           "p",
           "",

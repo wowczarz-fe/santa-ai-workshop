@@ -16,7 +16,7 @@ Four sleigh departures give players time to see what their choices delivered and
 
 ## Decision
 
-Show each departure report and its upgrade choices together in a wide card while the rules are paused. Keep the final Christmas account expanded, before the blunder collection, so all cost rows remain available without opening a toggle. Keep the rules' explanation of missed stars, mistakes and costs. Show only facts marked primary on case cards and make the full evidence available through information controls.
+Show the next cargo and its rules-provided target first in each paused break card, followed by the departure report and upgrade choices. Focus the next-cargo heading when the card opens so phone users see the announcement before scrolling. Keep a current-cargo badge beside the sleigh counter and carry cargo labels into the final run tiles. Keep the final Christmas account expanded, before the blunder collection, so all cost rows remain available without opening a toggle. Keep the rules' explanation of missed stars, mistakes and costs. Show only facts marked primary on case cards and make the full evidence available through information controls.
 
 Protect every elf crew and movement destination when placing guidance, including alternative actions mentioned by the card. Keep native drag state separate from touch pointer cancellation.
 

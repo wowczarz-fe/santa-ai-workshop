@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=5b3f363-paper1" />
-    <link rel="stylesheet" href="paper.css?v=5b3f363-paper1" />
+    <link rel="stylesheet" href="style.css?v=5b3f363-looks1" />
+    <link rel="stylesheet" href="paper.css?v=5b3f363-looks1" />
+    <link rel="stylesheet" href="polish.css?v=5b3f363-looks1" />
   </head>
   <body>
     <header>
@@ -32,6 +33,7 @@
         </svg>
       </div>
       <h1>Santa’s AI Workshop <span aria-hidden="true">✧ ❄</span></h1>
+      <div id="adventRuns" aria-label="Sleigh departures"></div>
       <div class="header-actions">
         <button id="guidanceToggle">Walkthrough</button
         ><button id="restart">Restart</button
@@ -59,12 +61,22 @@
           ><strong id="right"></strong
           ><progress id="goal" max="1" value="0"></progress>
         </div>
-        <button class="metric" data-help="wrong">
+        <button id="wrongBadge" class="metric" data-help="wrong">
           <span>Wrong gifts</span><strong id="wrong"></strong></button
         ><button class="metric" data-help="budget">
           <span>Budget left</span><strong id="budget"></strong>
         </button>
         <div class="clock-box" data-info="clock" tabindex="0">
+          <svg id="countdownRing" viewBox="0 0 40 40" aria-hidden="true">
+            <circle cx="20" cy="20" r="16" />
+            <circle
+              class="countdown-hand"
+              cx="20"
+              cy="20"
+              r="16"
+              pathLength="1"
+            />
+          </svg>
           <span>Until departure</span><strong id="clock"></strong
           ><small id="pauseState"></small
           ><button
@@ -82,6 +94,7 @@
         <p id="status" role="status" aria-live="polite">
           Drag an elf, or tap one then its destination.
         </p>
+        <progress id="paceFill" max="1" value="0"></progress>
         <button id="paceLabel" class="pace-label" data-help="pace"></button>
         <button id="guidanceContinue" hidden>Continue playing →</button
         ><button
@@ -172,6 +185,16 @@
         helps.
       </p>
 
+      <fieldset class="look-choice">
+        <legend>Choose a look</legend>
+        <label
+          ><input type="radio" name="look" value="paper" checked /> Paper
+          workshop</label
+        ><label
+          ><input type="radio" name="look" value="polish" /> Polished
+          workshop</label
+        >
+      </fieldset>
       <label class="guidance-choice"
         ><input type="checkbox" id="walkthrough" checked /> Show the
         walkthrough</label
@@ -356,8 +379,9 @@
     <div id="celebration" class="celebration" aria-hidden="true"></div>
     <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
-    <script src="workshop.js?v=5b3f363-paper1"></script>
-    <script src="paper-art.js?v=5b3f363-paper1"></script>
-    <script src="game.js?v=5b3f363-paper1"></script>
+    <script src="workshop.js?v=5b3f363-looks1"></script>
+    <script src="paper-art.js?v=5b3f363-looks1"></script>
+    <script src="polish-art.js?v=5b3f363-looks1"></script>
+    <script src="game.js?v=5b3f363-looks1"></script>
   </body>
 </html>

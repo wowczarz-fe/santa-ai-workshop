@@ -1,7 +1,20 @@
 (() => {
   "use strict";
-  document.body.insertAdjacentHTML("afterbegin", PaperArt.defs);
-  const elfSVG = PaperArt.elf;
+  const look =
+    new URLSearchParams(location.search).get("look") === "polish"
+      ? "polish"
+      : "paper";
+  document.body.dataset.look = look;
+  const Art =
+    look === "polish" && typeof PolishArt !== "undefined"
+      ? PolishArt
+      : PaperArt;
+  document.body.insertAdjacentHTML(
+    "afterbegin",
+    PaperArt.defs + (Art === PaperArt ? "" : Art.defs),
+  );
+  const elfSVG = Art.elf;
+  const artSymbol = (id) => Art.symbol?.(id) || id;
 
   const $ = (id) => document.getElementById(id);
   const text = (id, value) => {
@@ -95,12 +108,22 @@
     b.setAttribute("aria-label", label);
     return b;
   };
+  document.querySelectorAll("[name=look]").forEach((radio) => {
+    radio.checked = radio.value === look;
+    radio.disabled =
+      radio.value === "polish" && typeof PolishArt === "undefined";
+    radio.addEventListener("change", () => {
+      const url = new URL(location.href);
+      url.searchParams.set("look", radio.value);
+      location.replace(url);
+    });
+  });
   const actionGroups = new Map();
   for (let s = 0; s < 3; s++) {
     const station = make("section", "station");
     station.id = `station${s}`;
     station.dataset.destination = s;
-    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine">${PaperArt.scene(s)}<strong class="station-rate" id="rate${s}"></strong><span class="station-bottleneck" id="bottleneck${s}"></span><span class="capacity-label">${["Reading", "Toy making", "Dispatch at current checking"][s]}</span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine">${Art.scene(s)}<strong class="station-rate" id="rate${s}"></strong><span class="station-bottleneck" id="bottleneck${s}"></span><span class="capacity-label">${["Reading", "Toy making", "Dispatch at current checking"][s]}</span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
     station
       .querySelector(".column-heading")
       .append(
@@ -113,7 +136,7 @@
       q.dataset.info = `queue:${id}`;
       q.dataset.help = `queue:${id}`;
       q.innerHTML =
-        '<span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span><span class="queue-trend" role="img"></span></strong><span class="queue-picture"><span class="stack"></span></span><span class="queue-rate"></span><progress max="1" value="0"></progress>';
+        '<span class="queue-tag"><span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span><span class="queue-trend" role="img"></span></strong></span><span class="queue-picture"><span class="stack"></span></span><span class="queue-rate"></span><progress max="1" value="0"></progress>';
       $(`piles${s}`).append(q);
     }
     const addGroup = (key, node) => {
@@ -131,7 +154,7 @@
         const b = make("button", "switch-button");
         b.dataset.ai = `${s},${level}`;
         b.dataset.info = `ai:${s}:${level}`;
-        b.innerHTML = `<span class="switch-art" aria-hidden="true">${PaperArt.icon(["ic-hand", "ic-assist", "ic-cog"][level])}</span><span class="switch-label">${["By hand", "Assist", "Automate"][level]}</span>`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${Art.icon(["ic-hand", "ic-assist", "ic-cog"][level])}</span><span class="switch-label">${["By hand", "Assist", "Automate"][level]}</span>`;
         position.append(
           b,
           infoButton(
@@ -141,6 +164,7 @@
         );
         sw.append(position);
       }
+      sw.dataset.kind = "ai";
       addGroup(`ai${s}`, sw);
       const caption = make("span", "mode-caption");
       caption.id = `mode${s}`;
@@ -159,10 +183,11 @@
         const b = make("button", "switch-button");
         b.dataset.checking = level;
         b.dataset.info = `checking:${level}`;
-        b.innerHTML = `<span class="switch-art" aria-hidden="true">${PaperArt.icon(["ic-few", "ic-risky", "ic-all"][level])}</span><span class="switch-label">${["A few", "Risky", "All"][level]}</span>`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${Art.icon(["ic-few", "ic-risky", "ic-all"][level])}</span><span class="switch-label">${["A few", "Risky", "All"][level]}</span>`;
         position.append(b, infoButton(`checking:${level}`));
         sw.append(position);
       }
+      sw.dataset.kind = "checking";
       addGroup("checking", sw);
       for (const [key, label] of [["bypass", "↗ Let through"]]) {
         const b = make("button", "small-action", label);
@@ -202,7 +227,7 @@
   }
   const sleigh = $("sleigh"),
     sleighScene = make("div", "paper-scene paper-sleigh-scene");
-  sleigh.querySelector(".sleigh-art").innerHTML = PaperArt.scene(3);
+  sleigh.querySelector(".sleigh-art").innerHTML = Art.scene(3);
   sleighScene.append(
     sleigh.querySelector(".sleigh-art"),
     sleigh.querySelector(".sleigh-total"),
@@ -362,6 +387,45 @@
         .map((stars, i) => `${i + 1}: ${"★".repeat(stars)}`)
         .join("   "),
     );
+    const doors = $("adventRuns");
+    if (doors.children.length !== view.run.of) {
+      doors.replaceChildren(
+        ...Array.from({ length: view.run.of }, (_, i) => {
+          const door = make("div", "run-door");
+          door.append(
+            make("span", "door-number", i + 1),
+            make("span", "door-stars"),
+          );
+          return door;
+        }),
+      );
+    }
+    [...doors.children].forEach((door, i) => {
+      const stars = view.run.stars[i];
+      door.dataset.state =
+        stars !== undefined
+          ? "done"
+          : i + 1 === view.run.number
+            ? "current"
+            : "later";
+      door.querySelector(".door-stars").textContent =
+        stars === undefined ? "" : "★".repeat(stars) || "☆";
+      door.setAttribute(
+        "aria-label",
+        `Sleigh ${i + 1}${stars === undefined ? (i + 1 === view.run.number ? ", current" : ", upcoming") : `, ${stars} stars`}`,
+      );
+    });
+    $("paceFill").max = view.target;
+    $("paceFill").value = view.pace.projected;
+    $("paceFill").setAttribute(
+      "aria-label",
+      `Projected ${Math.round(view.pace.projected)} of ${view.target} correct gifts`,
+    );
+    $("countdownRing").style.setProperty(
+      "--remaining",
+      Math.max(0, view.run.leavesIn / (view.duration / view.run.of)),
+    );
+    $("wrongBadge").classList.toggle("has-wrong", view.sleigh.wrong > 0);
     const left = Math.ceil(view.run?.leavesIn ?? view.duration - view.t);
     text(
       "clock",
@@ -447,7 +511,15 @@
               `${p.big ? "big " : ""}${p.suspect ? "suspect " : ""}${p.suspect === "batch" ? "batch" : ""}`,
               id === "letters" || id === "clarify" ? "✉" : "🎁",
             );
-            item.innerHTML = `<svg viewBox="0 0 30 26"><use href="#${id === "letters" || id === "clarify" ? "env" : p.big ? "parcel-k" : "parcel-r"}"/></svg>`;
+            item.innerHTML =
+              Art.pile?.(id, index) ||
+              Art.icon(
+                id === "letters" || id === "clarify"
+                  ? "env"
+                  : p.big
+                    ? "parcel-k"
+                    : "parcel-r",
+              );
             item.setAttribute("aria-hidden", "true");
             const count = Math.min(q.parcels.length, 18);
             item.style.setProperty(
@@ -501,22 +573,35 @@
       b.dataset.role = role[1];
       b.querySelector(".elf-eyes").setAttribute(
         "href",
-        elf.tired >= 55 ? "#eyes-tired" : "#eyes",
+        "#" + artSymbol(elf.tired >= 55 ? "eyes-tired" : "eyes"),
       );
       b.querySelector(".elf-prop").setAttribute(
         "href",
         "#" +
-          ({
-            reading: "p-letter",
-            making: "p-hammer",
-            checking: "p-glass",
-            confirm: "p-confirming",
-            watching: "p-watching",
-            asking: "p-asking",
-            resting: "p-resting",
-          }[role[1]] || ""),
+          artSymbol(
+            {
+              reading: "p-letter",
+              making: "p-hammer",
+              checking: "p-glass",
+              confirm: "p-confirming",
+              watching: "p-watching",
+              asking: "p-asking",
+              resting: "p-resting",
+            }[role[1]] || "",
+          ),
       );
     });
+    for (let station = 0; station < 4; station++)
+      $(`elves${station}`).style.setProperty(
+        "--crew-count",
+        Math.max(
+          1,
+          Math.min(
+            4,
+            view.elves.filter((elf) => elf.station === station).length,
+          ),
+        ),
+      );
     for (let station = 0; station < 2; station++) {
       text(
         `mode${station}`,
@@ -565,6 +650,15 @@
       const [s, l] = b.dataset.ai.split(",").map(Number);
       b.setAttribute("aria-pressed", String(view.ai[s] === l));
     });
+    for (let station = 0; station < 2; station++)
+      actionGroups
+        .get(`ai${station}`)
+        .querySelector(".switch")
+        .style.setProperty("--selected", view.ai[station]);
+    actionGroups
+      .get("checking")
+      .querySelector(".switch")
+      .style.setProperty("--selected", view.checking);
     document
       .querySelectorAll("[data-checking]")
       .forEach((b) =>
@@ -1415,7 +1509,32 @@
           s === 2
             ? "The checkers are people. AI does not check its own work."
             : "AI settings change who does the work.",
-        ],
+          ...(s < 2
+            ? view.levers[`ai${s}`].map(
+                (option) =>
+                  `${option.name}: ${option.who}; ${option.speed}; ${option.risk}. ${option.perMinute} a minute; ${money(option.costPerMinute)} a minute.`,
+              )
+            : view.levers.checking.map(
+                (option) =>
+                  `${option.name}: ${option.sends}; ${option.per100} in 100 parcels.`,
+              )),
+          ...(s === 2
+            ? [
+                `${view.vigilance.secondsPerCheck} seconds per human check.`,
+                view.actions.checking.cost,
+                view.actions.bypass.cost,
+                view.actions.bypass.why,
+              ]
+            : s === 0
+              ? [view.actions.ask.cost, view.actions.ask.why]
+              : []),
+          ...view.elves
+            .filter((elf) => elf.station === s)
+            .map(
+              (elf) =>
+                `${elf.name}: ${elf.doing}, tiredness ${Math.round(elf.tired)} out of 100.`,
+            ),
+        ].filter(Boolean),
       ];
     }
     if (type === "option") {
@@ -1489,6 +1608,13 @@
         "The sleigh",
         [
           "Correct gifts meet the goal. Wrong gifts bring a cost. The last wrong arrival stays visible so you can inspect it.",
+          "The cocoa mug is a destination: move tired elves here to rest. All elves can fit; a break must finish before they return.",
+          ...view.elves
+            .filter((elf) => elf.station === 3)
+            .map(
+              (elf) =>
+                `${elf.name}: ${elf.doing}, tiredness ${Math.round(elf.tired)} out of 100.`,
+            ),
         ],
       ],
       vigilance: [
@@ -1540,12 +1666,14 @@
     $("infoPopover").hidden = true;
     hidePopupPointer("infoPopover");
   }
+  let hoverArmed = false;
   let pointerFocus = false,
     recentTouchUntil = 0;
   document.addEventListener(
     "pointerdown",
     (e) => {
       pointerFocus = true;
+      hoverArmed = false;
       if (
         infoPinned &&
         !$("infoPopover").contains(e.target) &&
@@ -1568,11 +1696,25 @@
     const target = e.target.closest("[data-info]");
     if (
       target &&
-      e.pointerType !== "touch" &&
+      hoverArmed &&
+      e.pointerType === "mouse" &&
+      matchMedia("(hover: hover)").matches &&
       performance.now() > recentTouchUntil &&
       !infoPinned &&
       !drag
     )
+      openInfo(target, target.dataset.info);
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (
+      e.pointerType !== "mouse" ||
+      !(e.movementX || e.movementY) ||
+      !matchMedia("(hover: hover) and (pointer: fine)").matches
+    )
+      return;
+    hoverArmed = true;
+    const target = e.target.closest("[data-info]");
+    if (target && target !== infoAnchor && !infoPinned && !drag)
       openInfo(target, target.dataset.info);
   });
   document.addEventListener("pointerout", (e) => {

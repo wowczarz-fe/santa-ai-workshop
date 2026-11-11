@@ -945,3 +945,193 @@ dialog {
     min-width: 0;
   }
 }
+.look-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  margin: 15px 0;
+}
+.look-choice label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+#countdownRing {
+  width: 35px;
+  height: 35px;
+  flex: none;
+  transform: rotate(-90deg);
+}
+#countdownRing circle {
+  fill: none;
+  stroke: #e5d3aa;
+  stroke-width: 4;
+}
+#countdownRing .countdown-hand {
+  stroke: #a3263a;
+  stroke-dasharray: var(--remaining, 1) 1;
+}
+.clock-box {
+  position: relative;
+}
+#countdownRing {
+  position: absolute;
+  left: -44px;
+  top: 9px;
+}
+#paceFill {
+  width: 90px;
+  height: 7px;
+  accent-color: var(--gold);
+}
+#wrongBadge.has-wrong {
+  background: #a3263a;
+  color: var(--paper);
+  border-radius: 7px;
+  padding: 6px 10px;
+}
+#wrongBadge.has-wrong span {
+  color: var(--paper);
+}
+#adventRuns {
+  display: flex;
+  gap: 7px;
+  flex: none;
+}
+.run-door {
+  position: relative;
+  width: 36px;
+  height: 42px;
+  background: #a3263a;
+  border: 3px solid #f4ead3;
+  box-shadow: 0 2px 3px #0004;
+  border-radius: 3px;
+  color: #f4ead3;
+  display: grid;
+  place-items: center;
+}
+.door-number {
+  font:
+    21px Georgia,
+    serif;
+}
+.door-stars {
+  font-size: 10px;
+  color: #d2a447;
+  position: absolute;
+  bottom: 1px;
+}
+.run-door[data-state="current"] {
+  background: #2f6a4e;
+  outline: 2px solid #d2a447;
+}
+.run-door[data-state="done"] {
+  background: #f4ead3;
+  color: #2b1c14;
+}
+.run-door[data-state="done"]::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  background: #7a1a2a;
+  transform: skewY(-10deg);
+}
+.run-door[data-state="done"] .door-number {
+  font-size: 13px;
+  align-self: start;
+}
+body[data-look="paper"] .dashboard strong {
+  font-size: 29px;
+}
+body[data-look="paper"] .paper-floor .crew:not(:has(.elf-card:nth-child(5))) {
+  grid-template-columns: repeat(var(--crew-count, 4), minmax(0, 1fr));
+  grid-auto-rows: 130px;
+}
+body[data-look="paper"]
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(5)))
+  .elf {
+  height: 128px;
+}
+body[data-look="paper"]
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(5)))
+  .elf
+  svg {
+  height: 98px;
+  width: 74px;
+  max-width: 100%;
+}
+body[data-look="paper"] .queue {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  grid-template-rows: auto 52px auto 3px;
+}
+.queue-tag {
+  display: block;
+  background: #f4ead3f5;
+  padding: 5px 7px;
+  border: 1px solid #bea47b;
+  box-shadow: 1px 2px 3px #2b1c1433;
+  text-align: left;
+}
+.queue-tag .queue-name {
+  display: block;
+}
+body[data-look="paper"] .queue-tag {
+  max-width: 118px;
+}
+body[data-look="paper"] .queue-picture {
+  padding-left: 7px;
+}
+body[data-look="paper"] .queue-rate {
+  background: #f4ead3dc;
+  width: max-content;
+  padding: 0 3px;
+}
+#board .info-button {
+  display: none;
+}
+#board .column-heading > .info-button {
+  display: inline-grid;
+  place-items: center;
+}
+body[data-look="paper"] #cocoa .cocoa-label > span {
+  height: 58px;
+  width: 58px;
+}
+body[data-look="paper"] #cocoa .cocoa-label {
+  height: 58px;
+}
+body[data-look="paper"] #cocoa:has(.elf-card) .cocoa-label {
+  height: 20px;
+}
+body[data-look="paper"] #cocoa:has(.elf-card) .cocoa-label > span {
+  height: 25px;
+  width: 25px;
+}
+@media (max-width: 999px) {
+  #adventRuns {
+    display: none;
+  }
+  #countdownRing {
+    position: static;
+    width: 26px;
+    height: 26px;
+  }
+  #paceFill {
+    width: 55px;
+  }
+  body[data-look="paper"] .dashboard strong {
+    font-size: 23px;
+  }
+}

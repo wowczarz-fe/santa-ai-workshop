@@ -40,31 +40,31 @@ Each action returns `true` when it took effect and `false` when it is locked or 
 
 The page reads only `view()`. Whether an unrevealed parcel is wrong is left out of it.
 
-| Field                     | Meaning                                                                                                            |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `t`, `duration`, `target` | Seconds played, run length, right gifts needed                                                                     |
-| `moment`                  | `null` or a tutorial moment; the page stops its clock while one is open                                            |
-| `elves`                   | `[{ name, station, tired, resting, doing }]`                                                                       |
-| `ai`, `ask`, `checking`   | Current lever positions                                                                                            |
-| `levers`                  | `{ ai0, ai1, checking }`: what each position does now                                                              |
-| `stations`                | Three of `{ staff, working, idle, queues, blocked, rate }`                                                         |
-| `queues`                  | `{ letters, clarify, orders, check, pass, rework }`, each a queue                                                  |
-| `bypassed`                | How many parcels the player has let through unchecked                                                              |
-| `vigilance`               | `{ state, cleanRun, secondsPerCheck, skipped, trained }`: how the checkers are checking                            |
-| `case`                    | `null` or the case a checker has brought to the player                                                             |
-| `choice`                  | `null` or the break between two sleigh runs; the rules do not advance while one is open                            |
-| `score`                   | `{ points, stars, best }`: points so far, stars earned so far, and the most stars a run of the game can earn       |
-| `casesWaiting`            | How many more cases are waiting, 0 or 1                                                                            |
-| `sleigh`                  | `{ right, wrong, parcels }`: live counts and the parcels aboard the sleigh run under way, each with `result`       |
-| `run`                     | `{ number, of, target, cargo, leavesIn, stars }`: the sleigh run under way, and the stars each finished run earned |
-| `focus`                   | `null` or `{ station, control, text }`: the one thing that most needs the player now                               |
-| `lost`                    | Letters lost to a full pile                                                                                        |
-| `budget`                  | `{ left, spent: { people, ai, checking, fixing } }`                                                                |
-| `pace`                    | `{ projected, behind, slowest }`                                                                                   |
-| `incident`                | `null` or `{ known, rollingBack, suspectWaiting }`                                                                 |
-| `actions`                 | For each control: `{ unlocked, available, why, cost }`                                                             |
-| `news`                    | `[{ id, t, kind, text, ... }]`, newest first                                                                       |
-| `end`                     | `null` or `{ right, wrong, lost, rating, costs, lesson: { title, text }, assurance, used }`                        |
+| Field                     | Meaning                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `t`, `duration`, `target` | Seconds played, run length, right gifts needed                                                                            |
+| `moment`                  | `null` or a tutorial moment; the page stops its clock while one is open                                                   |
+| `elves`                   | `[{ name, station, tired, resting, doing }]`                                                                              |
+| `ai`, `ask`, `checking`   | Current lever positions                                                                                                   |
+| `levers`                  | `{ ai0, ai1, checking }`: what each position does now                                                                     |
+| `stations`                | Three of `{ staff, working, idle, queues, blocked, rate }`                                                                |
+| `queues`                  | `{ letters, clarify, orders, check, pass, rework }`, each a queue                                                         |
+| `bypassed`                | How many parcels the player has let through unchecked                                                                     |
+| `vigilance`               | `{ state, cleanRun, secondsPerCheck, skipped, trained }`: how the checkers are checking                                   |
+| `case`                    | `null` or the case a checker has brought to the player                                                                    |
+| `choice`                  | `null` or the break between two sleigh runs; the rules do not advance while one is open                                   |
+| `score`                   | `{ points, stars, best }`: points so far, stars earned so far, and the most stars a run of the game can earn              |
+| `casesWaiting`            | How many more cases are waiting, 0 or 1                                                                                   |
+| `sleigh`                  | `{ right, wrong, parcels }`: live counts and the parcels aboard the sleigh run under way, each with `result`              |
+| `run`                     | `{ number, of, target, cargo, goals, leavesIn, stars }`: the sleigh run under way, and the stars each finished run earned |
+| `focus`                   | `null` or `{ station, control, text }`: the one thing that most needs the player now                                      |
+| `lost`                    | Letters lost to a full pile                                                                                               |
+| `budget`                  | `{ left, spent: { people, ai, checking, fixing } }`                                                                       |
+| `pace`                    | `{ projected, behind, slowest }`                                                                                          |
+| `incident`                | `null` or `{ known, rollingBack, suspectWaiting }`                                                                        |
+| `actions`                 | For each control: `{ unlocked, available, why, cost }`                                                                    |
+| `news`                    | `[{ id, t, kind, text, ... }]`, newest first                                                                              |
+| `end`                     | `null` or `{ right, wrong, lost, rating, costs, lesson: { title, text }, assurance, used, causes }`                       |
 
 - An elf's `station` is 0 to 3, `tired` is 0 to 100, and `resting` is `true` while a break cannot be
   cut short. `doing` is a short phrase for what the elf is doing now, such as "reading letters",
@@ -130,17 +130,20 @@ beforehand: a risky batch can happen to come out clean.
 | `noChecks`               | `{ wrong, cost }`: every wrong toy made, and about what they would have cost had none been checked |
 | `text`                   | Two short sentences: the verdict for this game with the two costs                                  |
 
-- `underCost` is what wrong gifts cost that reached children without a check (never sent for one,
-  waved through by relaxed checkers, or let through), plus the recalls and remakes of such gifts
-  brought back off the sleigh. A mistake that slipped past a checker who did look counts in
-  `shipped` but not here: it is the price of checks being imperfect, not of checking too little.
+- `underCost` is the avoidable part of the wrong gifts that reached children without a check
+  (never sent for one, waved through by relaxed checkers, or let through), plus the recalls and
+  remakes of such gifts brought back off the sleigh. For each kind of gift, the avoidable part is
+  what its unchecked wrong gifts cost beyond what checking every unchecked parcel of that kind
+  would have cost; leaving cheap mistakes unchecked when checking them all would cost more is not
+  under-checking. A mistake that slipped past a checker who did look counts in `shipped` but not
+  here: it is the price of checks being imperfect, not of checking too little.
 - `overCost` is the checking money spent on kinds of parcel where checks cost more than the
   mistakes they stopped, plus £6 (half a wrong everyday gift, `LATE_PRICE`) for each gift that
   missed a sleigh because checking held it up. A held gift is one in the checking pile when a sleigh
   leaves, or a toy order stuck behind a full checking pile; one that misses two sleighs counts twice.
 - `position` is `overCost / (underCost + overCost)`, pulled toward 0.5 when the two together are
   small against all the money spent: `0.5 + (share - 0.5) * lost / (lost + 0.1 * spent)`. Below
-  0.35 the verdict is `"too little"`, above 0.65 `"too much"`.
+  0.2 the verdict is `"too little"`, above 0.8 `"too much"`, and `"about right"` between.
 - A group is `{ id, name, icon, parcels, wrongMade, checked, caught, shipped, checkCost, prevented,
 shippedCost, shippedUnchecked, shippedUncheckedCost, verdict, text }` for `id` `"everyday"`,
   `"big"` or `"unclear"`. A gift that is both big and unclear counts as big, because its mistake
@@ -239,7 +242,7 @@ Every item has `id`, `t`, `kind` and `text`. Some carry more:
 | ------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `unlock`      | `control`                                                                        | The guided run introduces a control                  |
 | `checked`     | `check: { wish, wanted, made, result, seconds, by }`                             | A checker finished checking a parcel                 |
-| `loaded`      | `check: { wish, wanted, made, result }`, only when wrong                         | A wrong gift landed on the sleigh                    |
+| `loaded`      | `check: { wish, wanted, made, result }`, `cause`, `control`; only when wrong     | A wrong gift landed on the sleigh                    |
 | `consequence` | `about`, `facts: { seconds, checked, caught, estimatedAvoided, waiting, money }` | An assurance decision reports what it did            |
 | `case`        | `caseId`                                                                         | A checker brought a case to the player               |
 | `resolved`    | `caseId`, `option`, `outcome`, `check` when one parcel was judged                | The player answered a case                           |
@@ -278,9 +281,23 @@ up to `target`.
 
 - When a run leaves, its gifts are delivered: right ones count, wrong ones cost, and neither can be
   brought back. Parcels still in the workshop carry over. `sleigh` holds only the run under way.
-- A run earns one to three stars: three for meeting its target with at most one gift in ten wrong,
-  two for four fifths of the target with at most two in ten wrong, one otherwise. A run with its
-  target met and no wrong gift at all also earns a clean-run bonus in points.
+- A run has three goals and earns one star for each it meets, 0 to 3, 12 in a game:
+  - `full`: the right gifts aboard reach the run's target.
+  - `right`: the wrong gifts aboard, a big one counting double, are at most one for every 12 gifts
+    of target, and at least one is always allowed.
+  - `cost`: the money spent during the run, the break before it included, is at most £300 plus £4
+    for each gift of target.
+  - `right` and `cost` count only once the sleigh holds two thirds of its target, so a near-empty
+    sleigh earns nothing.
+
+  A run with its target met and no wrong gift at all also earns a clean-run bonus in points.
+
+- `run.goals` is the three goals for the run under way, as they stand now:
+  `[{ id, name, now, need, met, text }]` with `id` `"full"`, `"right"` or `"cost"`. `now` and
+  `need` are the figures (right gifts against the target, weighted wrong gifts against the most
+  allowed, money spent against the allowance), `met` is whether the star would be earned if the
+  sleigh left now, and `text` is a short phrase such as "at most 3 wrong gifts, big ones count
+  double".
 - Letters arrive slowly in the first run and faster in each later one.
 - `score.points` rises with every right gift delivered, falls with every wrong one by what it
   cost, and gains the clean-run bonuses, the stars and a share of the budget left at the end. It is
@@ -295,15 +312,35 @@ After each of the first three runs leaves, `choice` is set and the rules stop un
 
 A choice is `{ id, run, report, next, title, text, options }`.
 
-- `report` is `{ run, right, wrong, target, stars, missedBy, bonus, slips, spent, assurance, cargo }`: how the run that just
-  left went. `missedBy` says how far it was from the next star, in the player's words, or is `null`.
+- `report` is `{ run, right, wrong, target, stars, missedBy, bonus, slips, spent, assurance, cargo, goals, causes }`:
+  how the run that just left went. `missedBy` names the first goal it missed, in the player's words,
+  or is `null`. `goals` is the run's three goals with their final figures.
   `slips` is `[{ wish, wanted, made, cause, cost }]` for the wrong gifts delivered, dearest first, at
   most three, with `more` on the report counting the rest. `cause` names what let it through: "the
   AI guessed an unclear wish", "made by the faulty update", "the AI on a big gift", "a tired elf",
   "waved through by relaxed checkers", "let through unchecked".
   `spent` is `{ people, ai, checking, fixing }`: the money spent during that run, the break before
   it included. `assurance` is `{ caught, prevented, shipped, shippedCost, held, checkCost }` for that
-  run, on the same terms as `end.assurance`. `cargo` is what that run carried.
+  run, on the same terms as `end.assurance`. `cargo` is what that run carried. `causes` says
+  where that run's wrong gifts came from (below).
+- A cause is `{ id, name, wrong, cost, control, fix }`: up to three, dearest first. `wrong` and
+  `cost` count the wrong gifts it accounts for, `control` is the control that would have stopped
+  them, and `fix` one short sentence saying how. `end.causes` covers the whole game, and a
+  `loaded` news item carries the `cause` id and `control` of the wrong gift it reports.
+
+  | `id`      | Wrong gifts from                              | `control`  |
+  | --------- | --------------------------------------------- | ---------- |
+  | `guessed` | unclear wishes the AI guessed                 | `ask`      |
+  | `big`     | AI slips on big gifts that went out unchecked | `checking` |
+  | `misread` | AI misreadings of everyday letters            | `ai0`      |
+  | `misMade` | AI slips making everyday toys                 | `ai1`      |
+  | `waved`   | checkers who skipped or missed them           | `train`    |
+  | `faulty`  | a faulty update                               | `update`   |
+  | `tired`   | tired elves working by hand                   | `cocoa`    |
+
+  A gift that went past a checker counts under `waved` whatever made it wrong, and one from a
+  faulty update under `faulty`.
+
 - `next` is `{ cargo, target }`: what the run about to start carries and the right gifts it needs
   for three stars, so the player can set up for it during the break.
 - `options` is up to four of `{ id, kind, label, text, facts }`, and the player picks exactly one.

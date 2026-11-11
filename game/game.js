@@ -94,11 +94,21 @@
     if (content !== undefined) node.textContent = content;
     return node;
   };
+  // Interface icons and toys are drawings; the rules' emoji icon fields are never printed.
+  const icon = (name, cls) => SharedArt.icon(name, cls) || "";
+  const toyArt = (name) =>
+    SharedArt.toy(name) || PaperArt.toy(name) || icon("gift");
+  const iconText = (node, name, value) => {
+    node.innerHTML = icon(name);
+    node.append(make("span", "", value));
+  };
+  const trendArrow =
+    '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.5V2M2.5 5.5 6 2l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const starRow = (stars, of = 3) =>
+    icon("star", "on").repeat(stars) + icon("star-empty").repeat(of - stars);
   const revealedToy = (toy, cls) => {
     const node = make("span", cls);
-    const art = PaperArt.toy(toy.name);
-    if (art) node.innerHTML = art;
-    else node.append(make("span", "", toy.icon || "🎁"));
+    node.innerHTML = toyArt(toy.name);
     node.append(make("span", "", toy.name));
     return node;
   };
@@ -171,7 +181,8 @@
       $(`controls${s}`).append(caption);
     }
     if (s === 0) {
-      const b = make("button", "small-action", "💬 Ask the child");
+      const b = make("button", "small-action ask-toggle");
+      b.innerHTML = `${icon("ask")}<span class="toggle-label">Ask the child</span><span class="toggle-track" aria-hidden="true"><span class="toggle-knob"></span></span><span class="toggle-state" aria-hidden="true"></span>`;
       b.dataset.action = "ask";
       b.dataset.info = "action:ask";
       addGroup("ask", b);
@@ -189,8 +200,9 @@
       }
       sw.dataset.kind = "checking";
       addGroup("checking", sw);
-      for (const [key, label] of [["bypass", "↗ Let through"]]) {
-        const b = make("button", "small-action", label);
+      for (const key of ["bypass"]) {
+        const b = make("button", "small-action");
+        b.innerHTML = `${icon("let-through")}<span class="bypass-label">Let through</span>`;
         b.dataset.action = key;
         b.dataset.info = `action:${key}`;
         addGroup(key, b);
@@ -246,7 +258,10 @@
   sleigh.append(sleighScene, sleighBelt, $("cocoa"), sleighControls);
   $("cocoa").classList.add("paper-floor");
   $("cocoa").querySelector(".cocoa-label > span").innerHTML =
-    '<svg viewBox="0 0 80 80" aria-hidden="true"><use href="#mug"/></svg>';
+    Art !== PaperArt
+      ? Art.icon("mug")
+      : '<svg viewBox="0 0 80 80" aria-hidden="true"><use href="#mug"/></svg>';
+  $("arrivalIcon").innerHTML = icon("gift");
   $("stationPicker").addEventListener("click", (event) => {
     const button = event.target.closest("[data-station-page]");
     if (!button) return;
@@ -381,22 +396,37 @@
     text("wrong", view.sleigh.wrong);
     text("budget", money(view.budget.left));
     text("scoreValue", view.score?.points ?? 0);
-    text(
-      "scoreStars",
-      view.score ? `${view.score.stars} ★ / ${view.score.best}` : "",
-    );
+    const scoreStars = view.score
+      ? `${view.score.stars}/${view.score.best}`
+      : "";
+    if ($("scoreStars").dataset.value !== scoreStars) {
+      $("scoreStars").dataset.value = scoreStars;
+      $("scoreStars").innerHTML = scoreStars && icon("star");
+      $("scoreStars").append(scoreStars);
+    }
     text("runLabel", view.run ? `${view.run.number}/${view.run.of}` : "");
-    text("cargoBadge", `${view.run.cargo.icon} ${view.run.cargo.name}`);
+    if ($("cargoBadge").dataset.cargo !== view.run.cargo.id) {
+      $("cargoBadge").dataset.cargo = view.run.cargo.id;
+      iconText(
+        $("cargoBadge"),
+        `cargo-${view.run.cargo.id}`,
+        view.run.cargo.name,
+      );
+    }
     $("cargoBadge").setAttribute(
       "aria-label",
       `${view.run.cargo.name}. About this cargo.`,
     );
-    text(
-      "runStars",
-      (view.run?.stars || [])
-        .map((stars, i) => `${i + 1}: ${"★".repeat(stars)}`)
-        .join("   "),
-    );
+    const runStars = (view.run?.stars || []).join();
+    if ($("runStars").dataset.value !== runStars) {
+      $("runStars").dataset.value = runStars;
+      $("runStars").innerHTML = (view.run?.stars || [])
+        .map(
+          (stars, i) =>
+            `<span class="run-star-set" aria-label="Sleigh ${i + 1}: ${stars} stars"><b>${i + 1}</b>${starRow(stars)}</span>`,
+        )
+        .join("");
+    }
     const doors = $("adventRuns");
     if (doors.children.length !== view.run.of) {
       doors.replaceChildren(
@@ -418,8 +448,11 @@
           : i + 1 === view.run.number
             ? "current"
             : "later";
-      door.querySelector(".door-stars").textContent =
-        stars === undefined ? "" : "★".repeat(stars) || "☆";
+      const doorStars = door.querySelector(".door-stars");
+      if (doorStars.dataset.value !== String(stars)) {
+        doorStars.dataset.value = String(stars);
+        doorStars.innerHTML = stars === undefined ? "" : starRow(stars);
+      }
       door.setAttribute(
         "aria-label",
         `Sleigh ${i + 1}${stars === undefined ? (i + 1 === view.run.number ? ", current" : ", upcoming") : `, ${stars} stars`}`,
@@ -472,7 +505,12 @@
       text(`staff${s}`, `${station.working} working · ${station.idle} idle`);
       const capacity = station.rate;
       text(`rate${s}`, `${Math.round(capacity)} a minute`);
-      text(`bottleneck${s}`, view.pace.slowest === s ? "Bottleneck" : "");
+      const bottleneck = $(`bottleneck${s}`),
+        isSlowest = view.pace.slowest === s;
+      if (bottleneck.childNodes.length !== (isSlowest ? 2 : 0)) {
+        if (isSlowest) iconText(bottleneck, "bottleneck", "Bottleneck");
+        else bottleneck.replaceChildren();
+      }
       $(`station${s}`).classList.toggle(
         "faulty",
         s === 1 && !!view.incident?.known,
@@ -488,8 +526,8 @@
         node.querySelector(".queue-amount").textContent =
           `${q.parcels.length}/${q.limit}`;
         const trend = node.querySelector(".queue-trend");
-        trend.textContent =
-          { growing: "↑", shrinking: "↓", steady: "→" }[q.trend] || "";
+        if (!trend.firstChild) trend.innerHTML = trendArrow;
+        trend.hidden = !q.trend;
         trend.dataset.trend = q.trend || "";
         trend.setAttribute("aria-label", q.trend ? `Pile ${q.trend}` : "");
         node.classList.toggle("blocked", !!q.blocked);
@@ -519,7 +557,6 @@
             const item = make(
               "i",
               `${p.big ? "big " : ""}${p.suspect ? "suspect " : ""}${p.suspect === "batch" ? "batch" : ""}`,
-              id === "letters" || id === "clarify" ? "✉" : "🎁",
             );
             item.innerHTML =
               Art.pile?.(id, index) ||
@@ -562,23 +599,27 @@
         `${elf.name}, ${elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
       );
       const role = elf.doing.includes("asking")
-        ? ["💬", "asking"]
+        ? ["role-asking", "asking"]
         : elf.doing.includes("watch")
-          ? ["👁", "watching"]
+          ? ["role-watching", "watching"]
           : elf.doing.includes("confirm")
-            ? ["✓", "confirm"]
+            ? ["role-confirming", "confirm"]
             : elf.doing === "nothing to do"
-              ? ["◌", "idle"]
+              ? ["role-idle", "idle"]
               : elf.station === 3 || elf.resting
-                ? ["☕", "resting"]
+                ? ["role-resting", "resting"]
                 : elf.doing.includes("reading")
-                  ? ["✉", "reading"]
+                  ? ["role-reading", "reading"]
                   : elf.doing.includes("making")
-                    ? ["🛠", "making"]
+                    ? ["role-making", "making"]
                     : elf.doing.includes("checking")
-                      ? ["🔎", "checking"]
-                      : ["⚙", "working"];
-      b.querySelector(".elf-doing").textContent = role[0];
+                      ? ["role-checking", "checking"]
+                      : ["role-making", "working"];
+      const doing = b.querySelector(".elf-doing");
+      if (doing.dataset.icon !== role[0]) {
+        doing.dataset.icon = role[0];
+        doing.innerHTML = icon(role[0]);
+      }
       b.querySelector(".elf-task").textContent = role[1];
       b.dataset.role = role[1];
       b.querySelector(".elf-eyes").setAttribute(
@@ -677,12 +718,12 @@
           String(view.checking === Number(b.dataset.checking)),
         ),
       );
-    document
-      .querySelector('[data-action="ask"]')
-      .setAttribute("aria-pressed", String(view.ask));
-    document.querySelector('[data-action="bypass"]').textContent =
-      `↗ Let through ${view.queues.check.parcels.length}`;
-    text("vigilance", `● ${view.vigilance.state}`);
+    const ask = document.querySelector('[data-action="ask"]');
+    ask.setAttribute("aria-pressed", String(view.ask));
+    ask.querySelector(".toggle-state").textContent = view.ask ? "On" : "Off";
+    document.querySelector('[data-action="bypass"] .bypass-label').textContent =
+      `Let through ${view.queues.check.parcels.length}`;
+    text("vigilance", view.vigilance.state);
     $("vigilance").hidden = !started || !view.actions.checking.unlocked;
     $("vigilance").dataset.state = view.vigilance.state;
     const focus = started && !view.end ? view.focus : null;
@@ -708,9 +749,9 @@
     const newest = arrivals.at(-1);
     if (newest && newest.id !== lastArrival) {
       lastArrival = newest.id;
-      text("arrivalIcon", newest.made?.icon || "🎁");
-      if (newest.made && PaperArt.toy(newest.made.name))
-        $("arrivalIcon").innerHTML = PaperArt.toy(newest.made.name);
+      $("arrivalIcon").innerHTML = newest.made
+        ? toyArt(newest.made.name)
+        : icon("gift");
       text(
         "arrivalLabel",
         newest.result === "wrong" ? "Wrong gift aboard" : "Gift loaded",
@@ -721,9 +762,10 @@
     if (wrong) lastWrong = wrong;
     $("wrongDelivery").hidden = !lastWrong;
     if (lastWrong) {
-      text("wrongToy", lastWrong.made.icon);
-      if (PaperArt.toy(lastWrong.made.name))
-        $("wrongToy").innerHTML = PaperArt.toy(lastWrong.made.name);
+      if ($("wrongToy").dataset.toy !== lastWrong.made.name) {
+        $("wrongToy").dataset.toy = lastWrong.made.name;
+        $("wrongToy").innerHTML = toyArt(lastWrong.made.name);
+      }
       text("wrongName", lastWrong.made.name);
       $("wrongDelivery").dataset.help = "lastWrong";
       $("wrongDelivery").dataset.info = "lastWrong";
@@ -879,7 +921,7 @@
   function handleNews(news) {
     if (!started) return;
     if (news.kind === "milestone") {
-      text("milestoneToast", `🎁 ${news.text}`);
+      iconText($("milestoneToast"), "gift", news.text);
       toastUntil = performance.now() + 3500;
       $("milestoneToast").hidden = false;
     }
@@ -914,7 +956,8 @@
     const gained = view.sleigh.right - observedRight;
     observedRight = view.sleigh.right;
     if (started && gained > 0 && !view.end) {
-      const effect = make("span", "gift-flight", `🎁 +${gained}`);
+      const effect = make("span", "gift-flight");
+      iconText(effect, "gift", `+${gained}`);
       const from = $("queue-pass").getBoundingClientRect(),
         to = $("sleighRight").getBoundingClientRect();
       const visible = to.left >= 0 && to.right <= innerWidth;
@@ -944,8 +987,12 @@
       $("feedback2").append(caught);
     }
     caught.hidden = !caughtSnapshot || performance.now() > caughtUntil;
-    if (caughtSnapshot)
-      caught.textContent = `Caught! ${caughtSnapshot.made.icon} ${caughtSnapshot.made.name}`;
+    if (caughtSnapshot && caught.dataset.toy !== caughtSnapshot.made.name) {
+      caught.dataset.toy = caughtSnapshot.made.name;
+      caught.replaceChildren(make("b", "", "Caught!"));
+      caught.insertAdjacentHTML("beforeend", toyArt(caughtSnapshot.made.name));
+      caught.append(make("span", "", caughtSnapshot.made.name));
+    }
   }
   function positionPanel(panel, anchor, protectedNodes = []) {
     const anchorBounds = anchor.getBoundingClientRect();
@@ -1122,12 +1169,6 @@
     );
     text("tutorialTitle", moment.title);
     text("tutorialText", moment.text);
-    text(
-      "tutorialPause",
-      manualPaused
-        ? "Your pause stays on after guidance."
-        : "The clock resumes when you continue.",
-    );
     text("caseGuidanceText", moment.text);
     if (moment.control === "case") {
       hidePopupPointer("tutorial");
@@ -1197,12 +1238,10 @@
       delete $("casePanel").dataset.anchorVisit;
       return;
     }
-    text(
-      "caseCue",
-      c.resolving
-        ? `⏱ ${Math.ceil(c.resolving.remaining)}s · decision in progress`
-        : "💬 Decision waiting",
-    );
+    const cue = c.resolving
+      ? ["clock", `${Math.ceil(c.resolving.remaining)}s · decision in progress`]
+      : ["ask", "Decision waiting"];
+    if ($("caseCue").textContent !== cue[1]) iconText($("caseCue"), ...cue);
     if (lastCase !== c.id) {
       lastCase = c.id;
       caseOpen = false;
@@ -1263,7 +1302,8 @@
         facts.append(b);
       }
       if (c.facts.length > shown.length) {
-        const more = make("button", "more-evidence", "i · All evidence");
+        const more = make("button", "more-evidence");
+        iconText(more, "info", "All evidence");
         more.dataset.help = "caseFacts";
         more.dataset.info = "caseFacts";
         facts.append(more);
@@ -1273,15 +1313,17 @@
       const f = c.facts[index],
         button = facts.children[position];
       const symbol = /cost|price|worth|loss/i.test(f.label)
-        ? "£"
+        ? "budget"
         : /wrong|fault|chance/i.test(f.label)
-          ? "⚠"
+          ? "wrong-gift"
           : /time|test|second/i.test(f.label)
-            ? "⏱"
+            ? "clock"
             : /parcel|gift|made|aboard/i.test(f.label)
-              ? "📦"
-              : "◈";
-      button.querySelector("b").textContent = `${symbol} ${f.value}`;
+              ? "gift"
+              : "info";
+      const value = button.querySelector("b");
+      if (value.textContent !== String(f.value))
+        iconText(value, symbol, f.value);
       button.querySelector("small").textContent = f.label;
     });
     const evidence = $("caseEvidence");
@@ -1324,38 +1366,44 @@
       }
       const b = row.querySelector(".case-choice");
       const icons = {
-        ship: "🛷",
-        remake: "🛠",
-        ask: "💬",
-        accept: "✓",
-        investigate: "🔎",
-        hold: "✋",
-        carryOn: "→",
-        install: "🤖",
-        test: "🧪",
-        skip: "↪",
-        rollback: "↶",
-        keep: "⚙",
-        remakeAll: "🛠",
-        checkEach: "🔎",
-        letGo: "→",
-        bringBack: "↩",
-        leave: "🛷",
+        ship: "sleigh",
+        remake: "fixing",
+        ask: "ask",
+        accept: "check",
+        investigate: "role-checking",
+        hold: "hand",
+        carryOn: "play",
+        install: "update",
+        test: "test",
+        skip: "play",
+        rollback: "rollback",
+        keep: "automate",
+        remakeAll: "fixing",
+        checkEach: "role-checking",
+        letGo: "let-through",
+        bringBack: "rollback",
+        leave: "sleigh",
       };
-      b.querySelector(".option-icon").textContent = icons[o.id] || "◇";
+      const optionIcon = b.querySelector(".option-icon");
+      if (optionIcon.dataset.icon !== o.id) {
+        optionIcon.dataset.icon = o.id;
+        optionIcon.innerHTML = icon(icons[o.id] || "info");
+      }
       b.querySelector(".option-label").textContent = o.label;
-      const scope = [
+      const line = [
         "install",
         "test",
         "skip",
         "rollback",
         "keep",
         "investigate",
-      ].includes(o.id)
-        ? "⚙ line"
-        : `📦 ${c.affected.count}`;
-      b.querySelector(".option-cost").textContent =
-        `⏱ ${o.seconds}s · ${money(o.money)} · ${scope}`;
+      ].includes(o.id);
+      const cost = `${o.seconds}|${o.money}|${line ? "line" : c.affected.count}`;
+      const optionCost = b.querySelector(".option-cost");
+      if (optionCost.dataset.value !== cost) {
+        optionCost.dataset.value = cost;
+        optionCost.innerHTML = `<span>${icon("clock")}${o.seconds}s</span><span>${icon("budget")}${money(o.money)}</span><span>${line ? `${icon("automate")}line` : `${icon("gift")}${c.affected.count}`}</span>`;
+      }
       b.disabled = !o.available || !!c.resolving;
       b.classList.toggle("chosen", c.resolving?.optionId === o.id);
     }
@@ -1389,96 +1437,62 @@
     }
     return $("queue-check");
   }
+  // Info pop-ups: a title and one short plain sentence, two at most.
   function getInfo(key) {
+    const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : "");
     if (key === "cargo")
       return [
         view.run.cargo.name,
         [
           view.run.cargo.text,
-          `${view.run.target} correct gifts needed on this sleigh.`,
+          `This sleigh needs ${view.run.target} right gifts.`,
         ],
       ];
     if (key === "caughtToy" && caughtSnapshot)
       return [
         "A checker caught this",
         [
-          `Wish: ${caughtSnapshot.wish}`,
-          `Wanted: ${caughtSnapshot.wanted.icon} ${caughtSnapshot.wanted.name}`,
-          `Made: ${caughtSnapshot.made.icon} ${caughtSnapshot.made.name}`,
+          `"${caughtSnapshot.wish}" Wanted ${caughtSnapshot.wanted.name}, made ${caughtSnapshot.made.name}.`,
         ],
       ];
     if (key === "pace")
       return [
-        "Projected correct gifts",
+        "On pace for",
         [
-          `At the current pace, about ${Math.round(view.pace.projected)} correct gifts across all sleigh runs, against the overall target of ${view.target}.`,
-          "This estimate changes when staffing, AI or checking changes.",
+          `About ${Math.round(view.pace.projected)} right gifts by the last sleigh, against ${view.target}.`,
         ],
       ];
     if (key === "score")
       return [
-        "Christmas points",
-        [
-          "Right gifts earn points. Wrong gifts cost points. Clean runs, stars and remaining budget also count.",
-          view.score
-            ? `${view.score.stars} of ${view.score.best} stars so far.`
-            : "",
-        ],
+        "Points",
+        ["Right gifts add points, wrong gifts take them away."],
       ];
     if (key === "caseFacts")
       return [
-        "Decision evidence",
+        "All evidence",
         (view.case?.facts || []).map((f) => `${f.label}: ${f.value}`),
       ];
     const parts = key.split(":"),
       type = parts[0];
     if (type === "ai") {
       const l = view.levers[`ai${parts[1]}`][Number(parts[2])];
-      return [
-        l.name,
-        [
-          l.who,
-          l.speed,
-          l.risk,
-          `${Math.round(l.perMinute)} parcels a minute · ${money(l.costPerMinute)} a minute`,
-          Number(parts[2]) === 2
-            ? Number(parts[1]) === 0
-              ? "The machine reads letters. Elves can ask children about unclear wishes; idle elves can move."
-              : "The machine makes toys. Elves watch for faults; watching elves can move to checking."
-            : Number(parts[2]) === 1
-              ? "An elf confirms each result before it moves on."
-              : "",
-        ],
-      ];
+      return [l.name, [`${cap(l.who)}, ${l.speed}.`, `Watch for: ${l.risk}.`]];
     }
     if (type === "checking") {
       const l = view.levers.checking[Number(parts[1])];
-      return [
-        l.name,
-        [
-          l.sends || `${l.checkedPer100} of 100 checked`,
-          `${l.per100 ?? l.checkedPer100} of every 100 parcels. Human elves do the checking.`,
-        ],
-      ];
+      return [l.name, [`${cap(l.sends)}: ${l.per100} in 100 parcels.`]];
     }
     if (type === "action") {
       const a = view.actions[parts[1]];
       return [
         {
           ask: "Ask the child",
-          bypass: "Let waiting parcels through",
-          train: "Train checkers",
-          ai0: "Read letters",
-          ai1: "Make toys",
-          checking: "Human checking",
+          bypass: "Let through",
+          ai0: "AI at reading",
+          ai1: "AI at toy-making",
+          checking: "How much to check",
         }[parts[1]],
-        [
-          a.cost,
-          a.why,
-          parts[1] === "bypass"
-            ? `${view.queues.check.parcels.length} waiting parcels would leave checking. ${view.bypassed} already let through.`
-            : "",
-        ].filter(Boolean),
+        [a.why ? `${cap(a.why)}.` : "", `${cap(a.cost)}.`].filter(Boolean),
       ];
     }
     if (type === "queue") {
@@ -1486,20 +1500,11 @@
       return [
         q.name,
         [
-          `${q.parcels.length} waiting, room for ${q.limit}.`,
           parts[1] === "pass"
-            ? `Straight-through conveyor capacity: ${Math.round(q.rate)} parcels a minute. The dispatch station shows capacity at the current checking policy.`
-            : `${Math.round(q.rate)} parcels a minute with the current staffing and AI setting.`,
-          q.inflow !== undefined
-            ? `${Math.round(q.inflow)} parcels arriving per minute.`
-            : "",
-          q.trend ? `This pile is ${q.trend}.` : "",
-          rateChanges.has(parts[1])
-            ? `Last move: ${Math.round(rateChanges.get(parts[1]).before)} → ${Math.round(rateChanges.get(parts[1]).after)} parcels per minute.`
-            : "",
-          q.blocked || "Work can move through this pile.",
-          "Larger gifts cost more when wrong. ? means unsure; ! marks a known faulty batch.",
-        ],
+            ? "Parcels going to the sleigh without a check."
+            : `${q.parcels.length} of ${q.limit} waiting, ${Math.round(q.rate)} a minute going out.`,
+          q.blocked ? `${cap(q.blocked)}.` : "",
+        ].filter(Boolean),
       ];
     }
     if (type === "elf") {
@@ -1507,11 +1512,8 @@
       return [
         e.name,
         [
-          e.doing,
-          `Tiredness ${Math.round(e.tired)} out of 100.`,
-          e.resting
-            ? "Finishing a cocoa break."
-            : "Drag this elf, or select then tap a destination.",
+          `${cap(e.doing)}, tiredness ${Math.round(e.tired)} of 100.`,
+          e.resting ? "Back after this cocoa break." : "Drag to move.",
         ],
       ];
     }
@@ -1521,43 +1523,16 @@
       return [
         stationNames[s],
         [
-          `${v.staff} elves: ${v.working} working, ${v.idle} idle.`,
-          v.rate !== undefined
-            ? `${v.rate} gifts a minute: ${["reading capacity", "toy-making capacity", "human checking and passing at the current checking policy"][s]}.`
-            : "",
-          v.blocked ||
-            "Move elves here to change the available human capacity.",
-          view.pace.behind && view.pace.slowest === s
-            ? "This station is holding up the target pace."
-            : "",
-          s === 2
-            ? "The checkers are people. AI does not check its own work."
-            : "AI settings change who does the work.",
-          ...(s < 2
-            ? view.levers[`ai${s}`].map(
-                (option) =>
-                  `${option.name}: ${option.who}; ${option.speed}; ${option.risk}. ${option.perMinute} a minute; ${money(option.costPerMinute)} a minute.`,
-              )
-            : view.levers.checking.map(
-                (option) =>
-                  `${option.name}: ${option.sends}; ${option.per100} in 100 parcels.`,
-              )),
-          ...(s === 2
-            ? [
-                `${view.vigilance.secondsPerCheck} seconds per human check.`,
-                view.actions.checking.cost,
-                view.actions.bypass.cost,
-                view.actions.bypass.why,
-              ]
-            : s === 0
-              ? [view.actions.ask.cost, view.actions.ask.why]
-              : []),
-          ...view.elves
-            .filter((elf) => elf.station === s)
-            .map(
-              (elf) =>
-                `${elf.name}: ${elf.doing}, tiredness ${Math.round(elf.tired)} out of 100.`,
-            ),
+          [
+            "Elves read the letters, with or without AI.",
+            "Elves or the toy machine make the toys.",
+            "Elves check parcels before the sleigh; AI never checks its own work.",
+          ][s],
+          v.blocked
+            ? `${cap(v.blocked)}.`
+            : view.pace.slowest === s
+              ? "This station's pile is filling: it holds the line up."
+              : "",
         ].filter(Boolean),
       ];
     }
@@ -1566,9 +1541,8 @@
       return [
         o?.label || "Decision",
         [
-          o?.scope,
-          `${o?.seconds || 0} seconds · ${money(o?.money || 0)}`,
-          o?.why,
+          o?.scope ? `${cap(o.scope)}.` : "",
+          o?.why ? `${cap(o.why)}.` : "",
         ].filter(Boolean),
       ];
     }
@@ -1578,86 +1552,58 @@
     }
     if (type === "lastWrong") {
       return [
-        "Last wrong delivery",
+        "Last wrong gift",
         [
-          `Wish: ${lastWrong.wish}`,
-          `Wanted: ${lastWrong.wanted.icon} ${lastWrong.wanted.name}`,
-          `Made: ${lastWrong.made.icon} ${lastWrong.made.name}`,
-          lastWrong.big
-            ? "A costly mistake: this is a big gift."
-            : "The child received the wrong toy.",
-        ],
+          `"${lastWrong.wish}" Wanted ${lastWrong.wanted.name}, got ${lastWrong.made.name}.`,
+          lastWrong.big ? "A big gift, so a costly mistake." : "",
+        ].filter(Boolean),
       ];
     }
     const fixed = {
       goal: [
-        "Correct gifts",
+        "Right gifts",
         [
-          `This sleigh needs ${view.run?.target ?? view.target} correct gifts. The overall goal is ${view.target} across all sleigh runs. Wrong gifts do not count.`,
+          `This sleigh needs ${view.run?.target ?? view.target}. Wrong gifts do not count.`,
         ],
       ],
       clock: [
         "Until departure",
         [
-          "The sleigh leaves when this clock reaches zero.",
-          "Guidance and your Pause button stop the clock. Reading information and answering cases use workshop time.",
+          "The sleigh leaves at zero. Pause and walkthrough cards stop the clock.",
         ],
       ],
       wrong: [
         "Wrong gifts",
         [
-          `${view.sleigh.wrong} wrong gifts currently aboard. Tap the red gift in the sleigh to compare wish and toy.`,
+          "Each one costs money. Tap the last wrong gift to see what went wrong.",
         ],
       ],
-      budget: [
-        "Budget",
-        [
-          `${money(view.budget.left)} left. People, AI, checks and repairs all cost money. Overspending continues to count in the final account.`,
-        ],
-      ],
+      budget: ["Budget", ["Elves, AI, checks and fixes all cost money."]],
       movement: [
         "Moving elves",
         [
-          "Drag an elf to a station or cocoa. Or tap an elf, then tap a highlighted destination.",
-          "The pile shows its actual before and after capacity for five seconds. An automated machine may keep the same rate.",
+          "Drag an elf to a station or to cocoa, or tap the elf, then the place.",
         ],
       ],
       cocoa: [
-        "Cocoa breaks",
-        [
-          "Tired elves work less well. Move an elf here to rest; a break takes time before they can return.",
-        ],
+        "Cocoa break",
+        ["Tired elves miss mistakes. A short break here makes them fresh."],
       ],
       sleigh: [
         "The sleigh",
-        [
-          "Correct gifts meet the goal. Wrong gifts bring a cost. The last wrong arrival stays visible so you can inspect it.",
-          "The cocoa mug is a destination: move tired elves here to rest. All elves can fit; a break must finish before they return.",
-          ...view.elves
-            .filter((elf) => elf.station === 3)
-            .map(
-              (elf) =>
-                `${elf.name}: ${elf.doing}, tiredness ${Math.round(elf.tired)} out of 100.`,
-            ),
-        ],
+        ["Right gifts count towards the target; wrong ones cost money."],
       ],
       vigilance: [
-        "Checker attention",
+        "Checkers",
         [
-          `${view.vigilance.state}. ${view.vigilance.skipped} checks skipped.`,
-          `${view.vigilance.secondsPerCheck} seconds per check now.`,
+          `${cap(view.vigilance.state)}: ${view.vigilance.skipped} checks skipped.`,
           view.vigilance.trained
-            ? "Checkers have been trained."
-            : "A long run of clean parcels can make checkers relax.",
+            ? "They have been trained."
+            : "Long clean runs make checkers relax.",
         ],
       ],
     };
-    return (
-      fixed[key] || [
-        "Workshop",
-        ["Tap an elf or a control to make a decision."],
-      ]
-    );
+    return fixed[key] || ["Workshop", ["Tap an elf or a control."]];
   }
   function infoPositionAnchor() {
     return infoKey?.startsWith("elf:")
@@ -1942,7 +1888,6 @@
   $("continue").onclick = acknowledge;
   $("guidanceContinue").onclick = acknowledge;
   $("caseContinue").onclick = acknowledge;
-  $("dismissTutorial").onclick = acknowledge;
   $("skipGuidance").onclick = skip;
   $("caseCue").onclick = () => {
     caseOpen = !caseOpen;

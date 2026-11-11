@@ -461,6 +461,81 @@ main {
   font-size: 10px;
   min-height: 22px;
 }
+body[data-look="paper"] .ask-toggle {
+  min-height: 30px;
+  border: 1px solid #b59b72;
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 1px 2px 0 #2b1c1422;
+}
+body[data-look="paper"] .ask-toggle .ui-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--red);
+}
+body[data-look="paper"] .ask-toggle .toggle-track {
+  border-radius: 3px;
+  background: #cbb68f;
+  box-shadow: inset 0 1px 2px #2b1c1440;
+}
+body[data-look="paper"] .ask-toggle .toggle-knob {
+  border-radius: 2px;
+  background: var(--paper);
+}
+body[data-look="paper"] .ask-toggle[aria-pressed="true"] {
+  background: #e5d3aa;
+  border-color: var(--teal);
+}
+body[data-look="paper"] .ask-toggle[aria-pressed="true"] .toggle-track {
+  background: var(--teal);
+}
+body[data-look="paper"] .ask-toggle[aria-pressed="true"] .toggle-state {
+  color: var(--teal);
+}
+body[data-look="paper"] .station-bottleneck .ui-icon {
+  width: 11px;
+  height: 11px;
+}
+body[data-look="paper"] #tutorial {
+  width: 320px;
+  padding: 14px 16px 12px;
+  background: var(--paper);
+  border: 2px solid var(--gold);
+  border-radius: 4px;
+  box-shadow:
+    3px 4px 0 #2b1c1430,
+    0 10px 24px #14251a55;
+}
+body[data-look="paper"] #tutorial h3 {
+  margin: 4px 0;
+  color: var(--teal);
+  font:
+    bold 18px/1.25 Georgia,
+    serif;
+}
+body[data-look="paper"] #tutorial p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+body[data-look="paper"] #tutorial .panel-actions {
+  margin-top: 12px;
+}
+body[data-look="paper"] #tutorial #continue {
+  min-height: 32px;
+  padding: 7px 14px;
+  border: 0;
+  background: var(--teal);
+  color: var(--paper);
+  font-size: 12px;
+  font-weight: bold;
+}
+body[data-look="paper"] #tutorial .link-button {
+  background: none;
+  color: #705132;
+  font-size: 11px;
+}
 .sleigh-column {
   text-align: left;
 }

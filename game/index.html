@@ -32,13 +32,23 @@
           />
         </svg>
       </div>
-      <h1>Santa’s AI Workshop <span aria-hidden="true">✧ ❄</span></h1>
+      <h1>Santa’s AI Workshop</h1>
       <div id="adventRuns" aria-label="Sleigh departures"></div>
       <div class="header-actions">
         <button id="guidanceToggle">Walkthrough</button
         ><button id="restart">Restart</button
         ><button id="motion" aria-label="Reduce motion" aria-pressed="false">
-          ❄
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <g
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+            >
+              <path d="M12 2.5v19M3.8 7.25l16.4 9.5M3.8 16.75l16.4-9.5" />
+              <path d="M9.5 4 12 6.5 14.5 4M9.5 20l2.5-2.5 2.5 2.5" />
+            </g>
+          </svg>
         </button>
       </div>
     </header>
@@ -96,7 +106,7 @@
         </p>
         <progress id="paceFill" max="1" value="0"></progress>
         <button id="paceLabel" class="pace-label" data-help="pace"></button>
-        <button id="guidanceContinue" hidden>Continue playing →</button
+        <button id="guidanceContinue" hidden>Continue playing</button
         ><button
           id="helpMove"
           data-help="movement"
@@ -126,7 +136,7 @@
               i
             </button>
           </div>
-          <div class="sleigh-art" aria-hidden="true">🛷 <span>✧</span></div>
+          <div class="sleigh-art" aria-hidden="true"></div>
           <div
             id="runStars"
             class="run-stars"
@@ -137,13 +147,13 @@
             ><span>right gifts aboard</span>
           </div>
           <div class="arrival" id="arrival">
-            <span class="arrival-icon" id="arrivalIcon">🎁</span
+            <span class="arrival-icon" id="arrivalIcon"></span
             ><b id="arrivalLabel">Waiting for gifts</b>
           </div>
           <button id="wrongDelivery" class="wrong-delivery" hidden>
             <span class="eyebrow">Last wrong gift</span
             ><span id="wrongToy" class="wrong-toy"></span><b id="wrongName"></b
-            ><span>See wish & gift ↗</span>
+            ><span>See wish & gift</span>
           </button>
           <div id="recentGifts" class="recent-gifts"></div>
           <p id="sleighNote" class="sleigh-note"></p>
@@ -157,7 +167,7 @@
         aria-label="Cocoa break destination"
       >
         <div class="cocoa-label">
-          <span aria-hidden="true">☕</span><b>Cocoa break</b
+          <span aria-hidden="true"></span><b>Cocoa break</b
           ><button
             class="info-button"
             data-help="cocoa"
@@ -198,7 +208,7 @@
       <label class="guidance-choice"
         ><input type="checkbox" id="walkthrough" checked /> Show the
         walkthrough</label
-      ><button id="start" class="primary">Open the workshop →</button>
+      ><button id="start" class="primary">Open the workshop</button>
     </dialog>
     <aside
       id="tutorial"
@@ -208,20 +218,13 @@
       hidden
     >
       <div class="panel-head">
-        <span class="eyebrow">Clock paused · walkthrough</span
-        ><button
-          id="dismissTutorial"
-          aria-label="Continue without this guidance"
-        >
-          ×
-        </button>
+        <span class="eyebrow">Walkthrough · clock paused</span>
       </div>
       <h3 id="tutorialTitle"></h3>
       <p id="tutorialText"></p>
-      <small id="tutorialPause"></small>
       <div class="panel-actions">
-        <button id="continue" class="primary">Continue playing →</button
-        ><button id="skipGuidance">Skip walkthrough</button>
+        <button id="continue" class="primary">Continue playing</button
+        ><button id="skipGuidance" class="link-button">Skip walkthrough</button>
       </div>
     </aside>
     <aside
@@ -233,7 +236,17 @@
     >
       <div class="panel-head">
         <span class="eyebrow" id="caseKind"></span
-        ><button id="closeCase" aria-label="Return to the workshop">×</button>
+        ><button id="closeCase" aria-label="Return to the workshop">
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M6 6l12 12M18 6 6 18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
       </div>
       <h3 id="caseTitle"></h3>
       <div id="caseFacts" class="case-facts"></div>
@@ -245,7 +258,7 @@
       </div>
       <div id="caseGuidance" hidden>
         <small id="caseGuidanceText"></small
-        ><button id="caseContinue">Continue playing →</button>
+        ><button id="caseContinue">Continue playing</button>
       </div>
     </aside>
     <aside id="infoPopover" class="info-popover" role="tooltip" hidden>

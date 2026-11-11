@@ -798,6 +798,247 @@ body[data-look="polish"] #cocoa.destination {
   background: #e4efdc;
   box-shadow: inset 0 0 0 3px #bf9b45;
 }
+/* Play screen pass: icons, bottleneck tag, ask switch, walkthrough card, cocoa, snow */
+body[data-look="polish"] .station-bottleneck {
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 7px 2px 5px;
+  border-radius: 6px;
+}
+body[data-look="polish"] .station-bottleneck .ui-icon {
+  width: 11px;
+  height: 11px;
+}
+body[data-look="polish"] .elf-doing {
+  color: var(--teal);
+}
+body[data-look="polish"] #adventRuns .run-door {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+body[data-look="polish"] #adventRuns .door-stars {
+  position: static;
+  display: inline-flex;
+}
+body[data-look="polish"] #adventRuns .run-door[data-state="done"] .door-number {
+  align-self: auto;
+  font-size: 11px;
+}
+body[data-look="polish"] #adventRuns .run-door[data-state="done"]::before {
+  display: none;
+}
+body[data-look="polish"] .elf[data-role="resting"] .elf-doing,
+body[data-look="polish"] .elf.exhausted .elf-doing {
+  color: #8a5a1c;
+}
+body[data-look="polish"] .ask-toggle {
+  min-height: 32px;
+  border: 1px solid #c9d8ce;
+  border-radius: 9px;
+  background: #f4f7f3;
+  color: var(--ink);
+  font-size: 11px;
+}
+body[data-look="polish"] .ask-toggle .ui-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--teal);
+}
+body[data-look="polish"] .ask-toggle[aria-pressed="true"] {
+  background: #e3f1ea;
+  border-color: var(--teal);
+}
+body[data-look="polish"] .ask-toggle[aria-pressed="true"] .toggle-track {
+  background: var(--teal);
+}
+body[data-look="polish"] .ask-toggle[aria-pressed="true"] .toggle-state {
+  color: var(--teal);
+}
+body[data-look="polish"] #tutorial {
+  width: 320px;
+  padding: 14px 16px 12px;
+  background: #fff;
+  border: 2px solid var(--gold);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px #173f4333;
+}
+body[data-look="polish"] #tutorial .eyebrow {
+  color: #8a6d22;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+body[data-look="polish"] #tutorial h3 {
+  margin: 4px 0 4px;
+  color: var(--pine);
+  font:
+    700 17px/1.25 Arial,
+    sans-serif;
+}
+body[data-look="polish"] #tutorial p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+body[data-look="polish"] #tutorial .panel-actions {
+  margin-top: 12px;
+}
+body[data-look="polish"] #tutorial #continue {
+  min-height: 34px;
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: bold;
+}
+body[data-look="polish"] #tutorial .link-button {
+  background: none;
+  color: #5d7164;
+  font-size: 11px;
+}
+body[data-look="polish"] .board > .sleigh-column {
+  display: flex;
+  flex-direction: column;
+}
+body[data-look="polish"] .sleigh-column > .column-heading {
+  flex: 0 0 52px;
+}
+body[data-look="polish"] .sleigh-column .paper-scene {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 8px 9px 6px;
+}
+body[data-look="polish"] .sleigh-column > .paper-belt {
+  display: none;
+}
+body[data-look="polish"] .sleigh-column > .controls,
+body[data-look="polish"] .sleigh-column:has(#cocoa .elf-card) > .controls {
+  order: 1;
+  flex: none;
+  padding: 0 9px 6px;
+  align-self: stretch;
+}
+body[data-look="polish"] #cocoa,
+body[data-look="polish"] #cocoa:has(.elf-card) {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  order: 2;
+  flex: 0 0 151px;
+  height: 151px;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 22px minmax(0, 1fr);
+  padding: 4px 6px 3px;
+  overflow: hidden;
+  border-bottom: 0;
+  background: #f4eddd;
+}
+body[data-look="polish"] #cocoa.destination,
+body[data-look="polish"] #cocoa.destination:has(.elf-card) {
+  background: #e4efdc;
+}
+@media (max-width: 999px) {
+  body[data-look="polish"] .sleigh-column > .column-heading {
+    flex-basis: 51px;
+  }
+  body[data-look="polish"] #cocoa,
+  body[data-look="polish"] #cocoa:has(.elf-card) {
+    flex-basis: 148px;
+    height: 148px;
+  }
+}
+body[data-look="polish"] #cocoa .cocoa-label {
+  height: 22px;
+}
+body[data-look="polish"] #cocoa .cocoa-label > span {
+  width: 22px;
+  height: 22px;
+}
+body[data-look="polish"] #cocoa .cocoa-focus {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  left: 120px;
+  text-align: right;
+}
+body[data-look="polish"] #cocoa .crew {
+  min-height: 0;
+  height: 100%;
+  grid-auto-rows: 60px;
+  align-items: start;
+}
+body[data-look="polish"] #cocoa .crew:not(:has(.elf-card:nth-child(5))) {
+  grid-auto-rows: 118px;
+  align-items: end;
+}
+body[data-look="polish"] #cocoa .crew:not(:has(.elf-card)) {
+  border: 1.5px dashed #cdb98f;
+  border-radius: 10px;
+  margin: 4px 2px 3px;
+  display: grid;
+  place-items: center;
+}
+body[data-look="polish"] #cocoa .crew:not(:has(.elf-card))::before {
+  content: "Drop a tired elf here";
+  align-self: center;
+  color: #8a7350;
+  font-size: 11px;
+}
+body[data-look="polish"] #cocoa .move-target {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  width: auto;
+  z-index: 2;
+  background: #fff;
+}
+body[data-look="polish"] .dashboard {
+  isolation: isolate;
+}
+body[data-look="polish"] .dashboard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 22px 30px, #fff 1.5px, transparent 2.2px),
+    radial-gradient(circle at 78px 84px, #fff 1px, transparent 1.7px),
+    radial-gradient(circle at 132px 18px, #fff 2px, transparent 2.6px),
+    radial-gradient(circle at 44px 58px, #fff 1.2px, transparent 1.9px);
+  background-size:
+    160px 120px,
+    110px 110px,
+    190px 150px,
+    90px 90px;
+  opacity: 0.5;
+  animation: polish-snow 14s linear infinite;
+}
+@keyframes polish-snow {
+  to {
+    background-position:
+      0 120px,
+      0 220px,
+      0 150px,
+      0 270px;
+  }
+}
+body[data-look="polish"] .dashboard::after {
+  height: 18px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='22' viewBox='0 0 96 22'%3E%3Cpath d='M0 3Q24 19 48 3T96 3' fill='none' stroke='%232c6a43' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M0 3Q24 19 48 3T96 3' fill='none' stroke='%233f8a57' stroke-width='2' stroke-dasharray='2 4'/%3E%3Ccircle cx='24' cy='15' r='3.6' fill='%23c64235'/%3E%3Ccircle cx='72' cy='15' r='3.6' fill='%23e9c869'/%3E%3Ccircle cx='10' cy='9' r='2.6' fill='%238ed0d2'/%3E%3Ccircle cx='58' cy='9' r='2.6' fill='%23f4f0e7'/%3E%3Ccircle cx='38' cy='9' r='2.6' fill='%23e9c869'/%3E%3Ccircle cx='86' cy='9' r='2.6' fill='%23c64235'/%3E%3C/svg%3E")
+    repeat-x left top / 79px 18px;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-look="polish"] .dashboard::before {
+    animation: none;
+  }
+}
+body.reduce-motion[data-look="polish"] .dashboard::before {
+  animation: none;
+}
 @media (max-width: 999px) {
   body[data-look="polish"] > header {
     height: 54px;

@@ -272,12 +272,19 @@ main {
   background: #f9d6c5;
 }
 .faulty .machine::after {
-  content: "⚠";
+  content: "!";
   position: absolute;
   left: 65px;
   top: 6px;
-  color: #a82420;
-  font-size: 23px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #a82420;
+  color: #fff;
+  font:
+    bold 15px/22px Arial,
+    sans-serif;
+  text-align: center;
 }
 @keyframes belt {
   to {
@@ -352,6 +359,184 @@ main {
 .empty-pile {
   font-size: 10px;
   color: #839082;
+}
+/* Interface icons drawn by SharedArt, in the current text colour */
+.ui-icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+  vertical-align: -0.2em;
+}
+.ui-icon.on {
+  color: #e2b33f;
+}
+.station-bottleneck:empty,
+.queue-trend[hidden] {
+  display: none;
+}
+.station-bottleneck {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.queue-trend svg {
+  width: 11px;
+  height: 11px;
+  vertical-align: 0;
+}
+.queue-trend[data-trend="shrinking"] svg {
+  transform: rotate(180deg);
+}
+.queue-trend[data-trend="steady"] svg {
+  transform: rotate(90deg);
+}
+.elf .elf-doing > svg.ui-icon {
+  width: 13px !important;
+  height: 13px !important;
+  display: block;
+}
+.small-action,
+.case-cue,
+.more-evidence,
+.milestone-toast,
+.gift-flight,
+.cargo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.vigilance::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.case-facts .fact-chip b {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.option-cost {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+}
+.option-cost > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.option-icon .ui-icon {
+  width: 20px;
+  height: 20px;
+}
+.caught-toy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.caught-toy .paper-toy {
+  width: 34px;
+  height: 27px;
+}
+.run-star-set {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  margin-right: 8px;
+}
+.run-star-set b {
+  margin-right: 3px;
+}
+.door-stars .ui-icon {
+  width: 9px;
+  height: 9px;
+}
+/* Ask the child: an on/off switch */
+.ask-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 8px;
+  text-align: left;
+}
+.ask-toggle .toggle-label {
+  flex: 1;
+  font-weight: bold;
+}
+.toggle-track {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 17px;
+  border-radius: 9px;
+  background: #b9c5bc;
+  transition: background 0.15s;
+}
+.toggle-knob {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px #0003;
+  transition: transform 0.15s;
+}
+.ask-toggle[aria-pressed="true"] .toggle-track {
+  background: #2f8a5b;
+}
+.ask-toggle[aria-pressed="true"] .toggle-knob {
+  transform: translateX(13px);
+}
+.toggle-state {
+  flex: none;
+  min-width: 22px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b776d;
+}
+.ask-toggle[aria-pressed="true"] .toggle-state {
+  color: #237743;
+}
+/* Walkthrough card: title, text, one action button */
+.link-button {
+  border: 0;
+  background: none;
+  padding: 4px 2px;
+  min-height: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: inherit;
+  opacity: 0.75;
+}
+.tutorial .panel-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+.tutorial.floating-panel[data-compact="true"] .panel-actions,
+.tutorial.floating-panel[data-control="ai0"] .panel-actions,
+.tutorial.floating-panel[data-control="ai1"] .panel-actions {
+  display: flex;
+  margin-top: 8px;
+}
+.tutorial[data-compact="true"] #skipGuidance,
+.tutorial[data-control="ai0"] #skipGuidance,
+.tutorial[data-control="ai1"] #skipGuidance {
+  display: none;
+}
+.tutorial[data-compact="true"] .panel-head,
+.tutorial[data-control="ai0"] .panel-head,
+.tutorial[data-control="ai1"] .panel-head {
+  display: none;
 }
 .queue-rate {
   align-self: end;

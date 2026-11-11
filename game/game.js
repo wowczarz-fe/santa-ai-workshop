@@ -726,7 +726,7 @@
     );
     text(
       "mission",
-      `Deliver ${view.target} correct gifts${view.run ? ` across ${view.run.of} sleighs` : ""} in ${Math.round(view.duration / 60)} minutes.`,
+      `Elves and AI must deliver ${view.target} right gifts${view.run ? ` on ${view.run.of} sleighs` : ""} in ${Math.round(view.duration / 60)} minutes.`,
     );
     $("pause").disabled = !started || !!view.end;
     document.querySelector("main > footer").hidden = started && !view.end;
@@ -2518,16 +2518,41 @@
     restartGuided = null;
     $("restartDialog").close();
   };
-  $("restartDialog").addEventListener("cancel", () => (restartOpen = false));
+  $("restartDialog").addEventListener("cancel", () => {
+    restartOpen = false;
+    restartGuided = null;
+  });
+  // The opening card is the only way in, so Escape cannot close it before the run starts.
+  $("intro").addEventListener("cancel", (event) => event.preventDefault());
+  $("intro").addEventListener("close", () => {
+    if (!started) $("intro").showModal();
+  });
   $("replay").onclick = () => {
     guided = false;
     reset(false);
     $("start").click();
   };
   $("closeReport").onclick = () => $("report").close();
-  $("motion").onclick = () => {
-    const reduced = document.body.classList.toggle("reduce-motion");
+  // Reduced motion starts from the player's saved choice, else from the system setting.
+  function setMotion(reduced) {
+    document.body.classList.toggle("reduce-motion", reduced);
     $("motion").setAttribute("aria-pressed", String(reduced));
+  }
+  let savedMotion = null;
+  try {
+    savedMotion = localStorage.getItem("workshop-reduce-motion");
+  } catch {}
+  setMotion(
+    savedMotion
+      ? savedMotion === "yes"
+      : matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  $("motion").onclick = () => {
+    const reduced = !document.body.classList.contains("reduce-motion");
+    setMotion(reduced);
+    try {
+      localStorage.setItem("workshop-reduce-motion", reduced ? "yes" : "no");
+    } catch {}
   };
   let lastTime = performance.now(),
     accumulated = 0;

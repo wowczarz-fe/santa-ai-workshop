@@ -11,575 +11,1202 @@
   }
 
   const $ = (id) => document.getElementById(id);
-  const names = ["Read letters", "Make toys", "Check & dispatch"];
-  const caseStations = new Map();
-  let resolvedCaseStation = 2;
+  const text = (id, value) => {
+    $(id).textContent = value;
+  };
+  const money = (n) => `£${Math.round(n).toLocaleString()}`;
   const params = new URLSearchParams(location.search);
-  const rawSeed = params.get("seed");
+  const requestedSeed = params.get("seed");
   const seed =
-    rawSeed !== null && Number.isFinite(Number(rawSeed))
-      ? Number(rawSeed) >>> 0
+    requestedSeed !== null && Number.isFinite(Number(requestedSeed))
+      ? Number(requestedSeed)
       : 2026;
-  const versions = ["piles", "cases", "calm"].map(
-    (version) => new Workshop({ seed, version }).view().version,
-  );
-  let version = versions.some((v) => v.id === params.get("version"))
+  let version = ["piles", "cases", "calm"].includes(params.get("version"))
     ? params.get("version")
     : "cases";
+  const versionNames = {
+    piles: "A · Workshop decisions",
+    cases: "B · Extra checker questions",
+    calm: "C · Slower with questions",
+  };
+  const queueIds = [
+    ["letters", "clarify"],
+    ["orders"],
+    ["check", "pass", "rework"],
+  ];
+  const stationNames = ["LETTERS", "TOYS", "ELVES CHECK"];
   let game,
     view,
     started = false,
     manualPaused = false,
-    hiddenPaused = document.hidden,
     restartOpen = false,
+    restartGuided = null,
     selected = null,
-    last = 0,
-    accumulator = 0,
-    paint = 0,
-    seenNews = 0,
-    momentId = null,
-    caseId = null,
-    reportShown = false,
-    guidedRun = true,
-    reworkSeen = false;
-  const money = (n) => "£" + Math.round(n).toLocaleString("en-GB");
-  const number = (n) =>
-    Number(n).toLocaleString("en-GB", { maximumFractionDigits: 1 });
-  const time = (n) =>
-    `${Math.floor(Math.max(0, Math.ceil(n)) / 60)
-      .toString()
-      .padStart(
-        2,
-        "0",
-      )}:${(Math.max(0, Math.ceil(n)) % 60).toString().padStart(2, "0")}`;
-  function text(id, value) {
-    const node = $(id);
-    if (node.textContent !== String(value)) node.textContent = value;
+    caseOpen = false,
+    lastMoment = null,
+    lastCase = null,
+    ended = false;
+  let remembered = false;
+  try {
+    remembered =
+      localStorage.getItem("workshop-walkthrough-finished") === "yes";
+  } catch {}
+  let guided = !remembered,
+    lastWrong = null,
+    lastArrival = null,
+    notice = null,
+    newsSeen = new Set(),
+    rateChanges = new Map();
+  let infoAnchor = null,
+    infoKey = null,
+    infoPinned = false,
+    drag = null,
+    suppressClick = 0;
+  const make = (tag, cls, content) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (content !== undefined) node.textContent = content;
+    return node;
+  };
+  const infoButton = (key, label = "More information") => {
+    const b = make("button", "info-button", "i");
+    b.dataset.help = key;
+    b.setAttribute("aria-label", label);
+    return b;
+  };
+  const actionGroups = new Map();
+  for (let s = 0; s < 3; s++) {
+    const station = make("section", "station");
+    station.id = `station${s}`;
+    station.dataset.destination = s;
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine" aria-hidden="true"><svg viewBox="0 0 100 80">${machineArt[s]}</svg></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station
+      .querySelector(".column-heading")
+      .append(
+        infoButton(`station:${s}`, `About ${stationNames[s].toLowerCase()}`),
+      );
+    $("board").insertBefore(station, $("sleigh"));
+    for (const id of queueIds[s]) {
+      const q = make("button", "queue");
+      q.id = `queue-${id}`;
+      q.dataset.info = `queue:${id}`;
+      q.dataset.help = `queue:${id}`;
+      q.innerHTML =
+        '<span class="queue-name"></span><strong class="queue-count"></strong><span class="queue-picture"><span class="stack"></span></span><span class="queue-rate"></span><progress max="1" value="0"></progress>';
+      $(`piles${s}`).append(q);
+    }
+    const addGroup = (key, node) => {
+      const wrap = make("div", "control-row");
+      wrap.dataset.control = key;
+      wrap.append(node, infoButton(`action:${key}`));
+      $(`controls${s}`).append(wrap);
+      actionGroups.set(key, wrap);
+      return wrap;
+    };
+    if (s < 2) {
+      const sw = make("div", "switch");
+      for (let level = 0; level < 3; level++) {
+        const position = make("div", "switch-choice");
+        const b = make("button", "switch-button");
+        b.dataset.ai = `${s},${level}`;
+        b.dataset.info = `ai:${s}:${level}`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${[elfSVG(s), `${elfSVG(s)}<span>🤖</span>`, "🤖"][level]}</span><span class="switch-label">${["By hand", "Assist", "Automate"][level]}</span>`;
+        position.append(
+          b,
+          infoButton(
+            `ai:${s}:${level}`,
+            `Explain ${["by hand", "assist", "automate"][level]}`,
+          ),
+        );
+        sw.append(position);
+      }
+      addGroup(`ai${s}`, sw);
+    }
+    if (s === 0) {
+      const b = make("button", "small-action", "💬 Ask the child");
+      b.dataset.action = "ask";
+      b.dataset.info = "action:ask";
+      addGroup("ask", b);
+    }
+    if (s === 2) {
+      const sw = make("div", "switch");
+      for (let level = 0; level < 3; level++) {
+        const position = make("div", "switch-choice");
+        const b = make("button", "switch-button");
+        b.dataset.checking = level;
+        b.dataset.info = `checking:${level}`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${["🔎 ·", "🔎 ◆", "🔎 ▦"][level]}</span><span class="switch-label">${["A few", "Risky", "All"][level]}</span>`;
+        position.append(b, infoButton(`checking:${level}`));
+        sw.append(position);
+      }
+      addGroup("checking", sw);
+      for (const [key, label] of [
+        ["bypass", "↗ Let through"],
+        ["train", "🎓 Train checkers"],
+      ]) {
+        const b = make("button", "small-action", label);
+        b.dataset.action = key;
+        b.dataset.info = `action:${key}`;
+        addGroup(key, b);
+      }
+      const vigilance = make("button", "vigilance");
+      vigilance.id = "vigilance";
+      vigilance.dataset.help = "vigilance";
+      vigilance.dataset.info = "vigilance";
+      $(`controls${s}`).append(vigilance);
+    }
   }
-  function canRun() {
-    return (
-      started &&
-      !manualPaused &&
-      !hiddenPaused &&
-      !restartOpen &&
-      !view.moment &&
-      !view.end
-    );
-  }
-  function actionBlock(key, label) {
-    return `<div id="control-${key}" class="action-block" data-control="${key}" hidden><button data-action="${key}">${label}</button><small id="cost-${key}"></small><small id="why-${key}" class="why"></small></div>`;
-  }
-  $("stations").innerHTML = names
-    .map(
-      (name, s) =>
-        `<section id="station${s}" class="station ${s === 0 ? "expanded" : ""}"><div class="station-summary"><button class="station-heading" data-station="${s}" aria-expanded="${s === 0}"><span class="station-number">0${s + 1}</span><h2>${name}</h2><span class="expand-label">Controls ⌄</span></button><div class="machine" id="machine${s}"><svg viewBox="0 0 100 90" aria-hidden="true">${machineArt[s]}</svg><span class="machine-state" id="state${s}"></span><div class="belt" aria-hidden="true"></div></div><div id="queues${s}" class="queue-piles"></div><p class="staffing" id="staff${s}"></p><p class="pace" id="pace${s}" hidden></p><div id="elves${s}" class="elves"></div><button data-move="${s}" class="move" hidden>Move selected elf here</button><div class="case-anchor" id="caseAnchor${s}"></div><div id="feedback${s}"></div></div><div class="station-controls">${s < 2 ? `<div id="control-ai${s}" class="lever" data-control="ai${s}" hidden><h3>Who does the work?</h3><div role="group" aria-label="${name}: AI level">${[0, 1, 2].map((level) => `<button class="option" data-ai="${s},${level}" aria-pressed="false"><b id="ai${s}-${level}-name"></b><span id="ai${s}-${level}-who" class="option-who"></span><span id="ai${s}-${level}-effect"></span><small id="ai${s}-${level}-cost"></small><span id="ai${s}-${level}-risk" class="option-risk"></span></button>`).join("")}</div><small class="lever-note">Capacity at this staffing; full piles can stop the line.</small><small id="why-ai${s}" class="why"></small></div>` : `<div id="control-checking" class="lever" data-control="checking" hidden><h3>Send to the checking pile</h3><div role="group" aria-label="Checking policy">${[0, 1, 2].map((level) => `<button class="option" data-checking="${level}" aria-pressed="false"><b id="checking${level}-name"></b><span id="checking${level}-sends"></span><span id="checking${level}-effect"></span></button>`).join("")}</div><small id="cost-checking"></small><small id="why-checking" class="why"></small></div>${actionBlock("bypass", "Let waiting checks through")}<p id="bypassCount" class="muted" hidden></p><section id="vigilance" class="vigilance" hidden><h3>How the checkers are behaving</h3><p id="vigilanceState"></p><small id="vigilanceDetail"></small></section>${actionBlock("train", "Train the checkers")}`}${s === 0 ? `<div id="control-ask" class="action-block" data-control="ask" hidden><button id="ask" aria-pressed="false">Ask the child about unclear wishes</button><small id="cost-ask"></small><small id="why-ask" class="why"></small></div>` : ""}</div></section>`,
-    )
-    .join("");
-  const incident = document.createElement("section");
-  incident.id = "incidentActions";
-  incident.className = "incident-actions";
-  incident.setAttribute("aria-label", "Respond to the faulty update");
-  incident.innerHTML =
-    actionBlock("rollback", "Roll back the faulty AI") +
-    actionBlock("quarantine", "Quarantine the suspect batch") +
-    actionBlock("recall", "Recall wrong gifts from the sleigh");
-  $("stations").after(incident);
-  const tutorial = document.createElement("section");
-  tutorial.id = "tutorial";
-  tutorial.className = "tutorial";
-  tutorial.hidden = true;
-  tutorial.setAttribute("aria-label", "Workshop guidance");
-  tutorial.innerHTML =
-    '<span class="eyebrow">Clock paused · try this decision</span><h3 id="tutorialTitle"></h3><p id="tutorialText"></p><small id="tutorialPause"></small><button id="continue">Continue →</button>';
-  document.querySelector(".workshop").append(tutorial);
-  const casePanel = document.createElement("section");
-  casePanel.id = "casePanel";
-  casePanel.className = "case-panel";
-  casePanel.hidden = true;
-  casePanel.innerHTML =
-    '<span class="eyebrow">Pinned on the line</span><h3 id="caseTitle"></h3><div id="caseEvidence"></div><p id="caseAffected"></p><div id="caseOptions" class="case-options"></div><div id="caseResolving" hidden><p id="caseProgressText"></p><progress id="caseProgress" max="1" value="0" aria-label="Case work progress"></progress></div><small id="caseWaiting"></small>';
-  $("caseAnchor2").append(casePanel);
-  const consequence = document.createElement("section");
-  consequence.id = "consequence";
-  consequence.className = "evidence";
-  consequence.hidden = true;
-  consequence.innerHTML =
-    '<h3>What that decision did</h3><p id="consequenceText"></p><small id="consequenceFacts"></small>';
-  $("feedback2").append(consequence);
-  for (const v of versions) {
-    const b = document.createElement("button");
-    b.dataset.version = v.id;
-    b.innerHTML = "<b></b><span></span>";
-    b.querySelector("b").textContent = v.name;
-    b.querySelector("span").textContent = v.text;
+  for (const [id, label] of Object.entries(versionNames)) {
+    const b = make("button", "version-option", label);
+    b.dataset.version = id;
     $("versions").append(b);
   }
-  function selectStation(s) {
-    for (let i = 0; i < 3; i++) {
-      $("station" + i).classList.toggle("expanded", i === s);
-      document
-        .querySelector(`[data-station="${i}"]`)
-        .setAttribute("aria-expanded", i === s);
-    }
-  }
-  function setupQueues() {
-    for (let s = 0; s < 3; s++) {
-      $("queues" + s).replaceChildren();
-      for (const id of [
-        ...view.stations[s].queues,
-        ...(s === 2 ? ["dispatch"] : []),
-      ]) {
-        const q =
-            id === "dispatch" ? { name: "Waiting parcels" } : view.queues[id],
-          node = document.createElement("section");
-        node.className = "queue-pile";
-        node.id = "pile-" + id;
-        node.innerHTML = `<div class="pile-heading"><h3></h3><b id="count-${id}"></b></div><div class="pile-parcels" id="parcels-${id}" aria-label="${q.name} waiting parcels"></div><div class="pile-detail"><span id="rate-${id}"></span><span id="more-${id}"></span></div><progress id="progress-${id}" max="1" value="0" aria-label="${q.name} next parcel progress"></progress><p id="blocked-${id}" class="pile-blocked" hidden></p>`;
-        node.querySelector("h3").textContent = q.name;
-        $("queues" + s).append(node);
-      }
-    }
-  }
-  function setupElves() {
-    document.querySelectorAll(".elf").forEach((n) => n.remove());
-    view.elves.forEach((e, i) => {
-      const b = document.createElement("button");
-      b.className = "elf";
+  const elfNodes = [];
+  function buildElves() {
+    for (const node of elfNodes) node.remove();
+    elfNodes.length = 0;
+    view.elves.forEach((elf, i) => {
+      const wrap = make("div", "elf-card");
+      const b = make("button", "elf");
+      b.draggable = true;
       b.dataset.elf = i;
-      b.innerHTML =
-        elfSVG(i) +
-        '<span class="elf-name"></span><span class="elf-doing"></span><span class="elf-state"></span><progress max="100" value="0"></progress>';
-      b.querySelector(".elf-name").textContent = e.name;
-      b.querySelector("progress").setAttribute(
-        "aria-label",
-        e.name + " tiredness",
-      );
-      $("elves" + e.station).append(b);
+      b.dataset.info = `elf:${i}`;
+      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><progress class="fatigue" max="100" value="0"></progress><span class="elf-doing" aria-hidden="true"></span>`;
+      const more = infoButton(`elf:${i}`, `About ${elf.name}`);
+      more.classList.add("elf-info");
+      wrap.append(b, more);
+      elfNodes.push(wrap);
     });
   }
-  function paintElves() {
-    view.elves.forEach((e, i) => {
-      const b = document.querySelector(`[data-elf="${i}"]`),
-        parent = $("elves" + e.station);
-      if (b.parentElement !== parent) parent.append(b);
-      b.classList.toggle("selected", selected === i);
-      b.classList.toggle("tired", e.tired >= 60);
-      b.classList.toggle(
-        "guided",
-        started &&
-          view.moment?.control === "cocoa" &&
-          e.station < 3 &&
-          e.tired >= 60,
+  function reset(showIntro = true) {
+    game = new Workshop({ seed, version, guided });
+    view = game.view();
+    started = false;
+    manualPaused = false;
+    restartOpen = false;
+    selected = null;
+    caseOpen = false;
+    lastMoment = null;
+    lastCase = null;
+    ended = false;
+    lastWrong = null;
+    lastArrival = null;
+    newsSeen = new Set();
+    notice = null;
+    rateChanges.clear();
+    closeInfo();
+    buildElves();
+    $("walkthrough").checked = guided;
+    $("report").close();
+    $("restartDialog").close();
+    const url = new URL(location.href);
+    url.searchParams.set("seed", seed);
+    url.searchParams.set("version", version);
+    history.replaceState(null, "", url);
+    paint();
+    if (showIntro && !$("intro").open) $("intro").showModal();
+  }
+  function perform(action) {
+    action();
+    view = game.view();
+    paint();
+  }
+  function moveElf(destination) {
+    if (selected === null || !started || view.end) return;
+    const before = game.view();
+    if (game.move(selected, destination)) {
+      view = game.view();
+      for (const id of Object.keys(view.queues)) {
+        if (
+          queueIds[before.elves[selected].station]?.includes(id) ||
+          queueIds[destination]?.includes(id)
+        )
+          rateChanges.set(id, {
+            before: before.queues[id].rate,
+            after: view.queues[id].rate,
+            until: performance.now() + 5000,
+          });
+      }
+      selected = null;
+      paint();
+    }
+  }
+  function acknowledge() {
+    if (view.moment) perform(() => game.acknowledge(view.moment.id));
+  }
+  function skip() {
+    perform(() => game.skipGuidance());
+    guided = false;
+  }
+  function paint() {
+    view = game.view();
+    text("right", `${view.sleigh.right} / ${view.target}`);
+    $("goal").max = view.target;
+    $("goal").value = view.sleigh.right;
+    text("wrong", view.sleigh.wrong);
+    text("budget", money(view.budget.left));
+    const left = Math.ceil(view.duration - view.t);
+    text(
+      "clock",
+      `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`,
+    );
+    text(
+      "mission",
+      `Deliver ${view.target} correct gifts in ${Math.round(view.duration / 60)} minutes.`,
+    );
+    text("versionLabel", versionNames[version]);
+    for (const b of $("versions").children)
+      b.setAttribute("aria-pressed", String(b.dataset.version === version));
+    $("pause").disabled = !started || !!view.end;
+    text("pause", manualPaused ? "Resume" : "Pause");
+    text(
+      "pauseState",
+      !started
+        ? "Ready to start"
+        : view.end
+          ? "Departure"
+          : manualPaused
+            ? "Paused by you"
+            : view.moment
+              ? "Paused for guidance"
+              : document.hidden
+                ? "Paused while away"
+                : "",
+    );
+    for (let s = 0; s < 3; s++) {
+      const station = view.stations[s];
+      text(`staff${s}`, `${station.working} working · ${station.idle} idle`);
+      $(`station${s}`).classList.toggle(
+        "faulty",
+        s === 1 && !!view.incident?.known,
       );
-      b.setAttribute("aria-pressed", selected === i);
-      b.disabled = !started || !!view.end || e.resting;
-      b.querySelector("progress").value = e.tired;
-      b.querySelector(".elf-doing").textContent = e.doing;
-      const label = e.resting
-        ? "Resting"
-        : e.station === 3
-          ? "Ready to return"
-          : `${e.tired}% tired`;
-      b.querySelector(".elf-state").textContent = label;
+      $(`station${s}`).classList.toggle(
+        "behind",
+        started && view.pace.behind && view.pace.slowest === s,
+      );
+      for (const id of queueIds[s]) {
+        const q = view.queues[id],
+          node = $(`queue-${id}`);
+        node.querySelector(".queue-name").textContent = q.name;
+        node.querySelector(".queue-count").textContent =
+          `${q.parcels.length}/${q.limit}`;
+        node.classList.toggle("blocked", !!q.blocked);
+        node.classList.toggle("full", q.parcels.length >= q.limit);
+        node.querySelector("progress").value = q.progress;
+        const change = rateChanges.get(id);
+        node.querySelector(".queue-rate").textContent =
+          change && change.until > performance.now()
+            ? `${Math.round(change.after - change.before) > 0 ? "+" : ""}${Math.round(change.after - change.before)}/min${Math.round(change.after - change.before) === 0 ? " unchanged" : ""}`
+            : `${Math.round(q.rate)}/min`;
+        node.dataset.delta =
+          change && change.after < change.before ? "down" : "up";
+        node.classList.toggle(
+          "rate-changed",
+          !!change && change.until > performance.now(),
+        );
+        const stack = node.querySelector(".stack");
+        const signature = q.parcels
+          .slice(-18)
+          .map((p) => `${p.id}:${p.big}:${p.suspect}`)
+          .join();
+        if (stack.dataset.signature !== signature) {
+          stack.dataset.signature = signature;
+          stack.replaceChildren();
+          for (const [index, p] of q.parcels.slice(-18).entries()) {
+            const item = make(
+              "i",
+              `${p.big ? "big " : ""}${p.suspect ? "suspect " : ""}${p.suspect === "batch" ? "batch" : ""}`,
+              id === "letters" || id === "clarify" ? "✉" : "🎁",
+            );
+            item.setAttribute("aria-hidden", "true");
+            const count = Math.min(q.parcels.length, 18);
+            item.style.setProperty(
+              "--layer",
+              count > 1 ? index / (count - 1) : 0,
+            );
+            item.style.left = `${(index % 3) * 11}px`;
+            stack.append(item);
+          }
+        }
+        stack.style.setProperty(
+          "--fill",
+          Math.min(1, q.parcels.length / q.limit),
+        );
+      }
+    }
+    view.elves.forEach((elf, i) => {
+      const wrap = elfNodes[i],
+        b = wrap.querySelector(".elf");
+      if (wrap.parentNode !== $(`elves${elf.station}`))
+        $(`elves${elf.station}`).append(wrap);
+      b.querySelector(".elf-name").textContent = elf.name;
+      b.querySelector("progress").value = elf.tired;
+      b.classList.toggle("selected", selected === i);
+      b.classList.toggle("tired", elf.tired >= 60);
+      b.classList.toggle("exhausted", elf.resting);
+      b.disabled = !started || !!view.end || elf.resting;
       b.setAttribute(
         "aria-label",
-        `${e.name}, ${e.doing}, ${label}. Select to move.`,
+        `${elf.name}, ${elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
       );
+      b.querySelector(".elf-doing").textContent =
+        elf.station === 3 ? "☕" : elf.doing === "nothing to do" ? "◌" : "⚙";
     });
+    document
+      .querySelectorAll("[data-destination]")
+      .forEach((node) =>
+        node.classList.toggle(
+          "destination",
+          selected !== null &&
+            view.elves[selected].station !== Number(node.dataset.destination),
+        ),
+      );
     document.querySelectorAll("[data-move]").forEach((b) => {
-      const e = selected === null ? null : view.elves[selected],
-        s = Number(b.dataset.move);
-      b.hidden = !e;
-      b.disabled = !e || e.resting || e.station === s || !!view.end;
-      b.textContent = e
-        ? `Move ${e.name} ${s === 3 ? "for cocoa" : "here"} →`
-        : "Move selected elf here";
+      b.hidden =
+        selected === null ||
+        view.elves[selected].station === Number(b.dataset.move);
     });
-  }
-  function paintQueues() {
-    const dispatchParcels = ["check", "pass", "rework"].flatMap(
-      (id) => view.queues[id].parcels,
-    );
-    const queues = {
-      ...view.queues,
-      dispatch: {
-        parcels: dispatchParcels,
-        limit: Infinity,
-        rate: 0,
-        progress: 0,
-        blocked: view.stations[2].blocked,
-      },
-    };
-    for (const [id, q] of Object.entries(queues)) {
-      text(
-        "count-" + id,
-        id === "dispatch"
-          ? `${q.parcels.length} waiting`
-          : `${q.parcels.length} / ${q.limit}`,
-      );
-      text("rate-" + id, `${number(q.rate)} / min`);
-      $("rate-" + id).hidden = !started || id === "dispatch";
-      $("progress-" + id).hidden = id === "dispatch";
-      text(
-        "more-" + id,
-        q.parcels.length > 8 ? `+ ${q.parcels.length - 8} more` : "",
-      );
-      $("progress-" + id).value = q.progress;
-      text("blocked-" + id, q.blocked || "");
-      $("blocked-" + id).hidden = !q.blocked;
-      $("pile-" + id).classList.toggle("blocked", !!q.blocked);
-      $("pile-" + id).classList.toggle("full", q.parcels.length >= q.limit);
-      const holder = $("parcels-" + id),
-        shown = q.parcels.slice(0, 8),
-        ids = new Set(shown.map((p) => String(p.id)));
-      for (const node of [...holder.children])
-        if (!ids.has(node.dataset.parcel)) node.remove();
-      for (const p of shown) {
-        let node = holder.querySelector(`[data-parcel="${p.id}"]`);
-        if (!node) {
-          node = document.createElement("span");
-          node.dataset.parcel = p.id;
-          node.className = "pile-parcel";
-          holder.append(node);
-        }
-        node.textContent =
-          p.made?.icon || (id === "letters" || id === "clarify" ? "✉" : "🎁");
-        node.classList.toggle("big", p.big);
-        node.classList.toggle("suspect", !!p.suspect);
-        node.classList.toggle("batch", p.suspect === "batch");
-        node.dataset.mark =
-          p.suspect === "batch" ? "!" : p.suspect ? "?" : p.big ? "★" : "";
-        node.title = `#${p.id}: ${p.wish}${p.big ? " · Big gift" : ""}${p.suspect === "batch" ? " · Faulty update" : p.suspect ? " · Uncertain" : ""}`;
-        node.setAttribute("role", "img");
-        node.setAttribute("aria-label", node.title);
-      }
-      holder.classList.toggle("empty", shown.length === 0);
+    for (const [key, group] of actionGroups) {
+      const action = view.actions[key];
+      group.hidden = !started || !action.unlocked;
+      group
+        .querySelectorAll("button:not(.info-button)")
+        .forEach((b) => (b.disabled = !action.available || !!view.end));
     }
-    const showClarify = started && (!guidedRun || view.actions.ask.unlocked);
-    const showChecks =
-      started && (!guidedRun || view.actions.checking.unlocked);
-    reworkSeen ||= view.queues.rework.parcels.length > 0;
-    $("pile-clarify").hidden = !showClarify;
-    $("pile-check").hidden = $("pile-pass").hidden = !showChecks;
-    $("pile-rework").hidden = !showChecks || (guidedRun && !reworkSeen);
-    $("pile-dispatch").hidden = showChecks;
-    for (let s = 0; s < 3; s++)
-      $("queues" + s).classList.toggle(
-        "single-pile",
-        [...$("queues" + s).children].filter((node) => !node.hidden).length ===
-          1,
-      );
-    view.stations.forEach((st, s) => {
-      text("staff" + s, `${st.working} working · ${st.idle} idle`);
-      text(
-        "state" + s,
-        !started
-          ? "Ready"
-          : view.end
-            ? "Shift finished"
-            : !canRun()
-              ? "Paused"
-              : st.blocked || "Working",
-      );
-      const active =
-        canRun() &&
-        !st.blocked &&
-        st.queues.some(
-          (id) =>
-            view.queues[id].parcels.length &&
-            view.queues[id].rate > 0 &&
-            !view.queues[id].blocked,
-        );
-      if (started && canRun() && !st.blocked)
-        text(
-          "state" + s,
-          active || st.working ? "Working" : "Waiting for work",
-        );
-      $("machine" + s).classList.toggle("working", active);
-      $("station" + s).classList.toggle("blocked", !!st.blocked);
-      const behind =
-        started && !view.end && view.pace.behind && view.pace.slowest === s;
-      $("pace" + s).hidden = !behind;
-      text(
-        "pace" + s,
-        `At this pace: about ${Math.round(view.pace.projected)} / ${view.target} gifts. This station is holding up the line.`,
-      );
+    document.querySelectorAll("[data-ai]").forEach((b) => {
+      const [s, l] = b.dataset.ai.split(",").map(Number);
+      b.setAttribute("aria-pressed", String(view.ai[s] === l));
     });
-  }
-  function updateActions() {
-    $("incidentActions").hidden =
-      !started ||
-      !["rollback", "quarantine", "recall"].some(
-        (key) => view.actions[key].unlocked,
+    document
+      .querySelectorAll("[data-checking]")
+      .forEach((b) =>
+        b.setAttribute(
+          "aria-pressed",
+          String(view.checking === Number(b.dataset.checking)),
+        ),
       );
-    for (const [key, a] of Object.entries(view.actions)) {
-      const container = $("control-" + key);
-      container.hidden = !started || !a.unlocked;
-      container.classList.toggle(
-        "guided",
-        started && view.moment?.control === key,
-      );
-      text("why-" + key, a.why || "");
-      if ($("cost-" + key)) text("cost-" + key, a.cost || "");
-      container.querySelectorAll("button").forEach((b) => {
-        if (b.id !== "continue")
-          b.disabled = !started || !a.available || !!view.end;
-      });
-    }
-    for (const s of [0, 1])
-      view.levers["ai" + s].forEach((o, i) => {
-        text(`ai${s}-${i}-name`, o.name);
-        text(`ai${s}-${i}-who`, o.who);
-        text(`ai${s}-${i}-effect`, `${number(o.perMinute)} / min`);
-        text(`ai${s}-${i}-cost`, `${money(o.costPerMinute)} / min`);
-        text(`ai${s}-${i}-risk`, o.mistakesFrom);
-        document
-          .querySelector(`[data-ai="${s},${i}"]`)
-          .setAttribute("aria-pressed", view.ai[s] === i);
-      });
-    view.levers.checking.forEach((o, i) => {
-      text(`checking${i}-name`, o.name);
-      text(`checking${i}-sends`, o.sends);
-      text(
-        `checking${i}-effect`,
-        `${number(o.per100)} of every 100 parcels sent to check`,
-      );
-      document
-        .querySelector(`[data-checking="${i}"]`)
-        .setAttribute("aria-pressed", view.checking === i);
-    });
-    $("ask").setAttribute("aria-pressed", view.ask);
-    text(
-      "ask",
-      `${view.ask ? "✓ Asking" : "Ask the child"} about unclear wishes`,
-    );
+    document
+      .querySelector('[data-action="ask"]')
+      .setAttribute("aria-pressed", String(view.ask));
     document.querySelector('[data-action="bypass"]').textContent =
-      `Let ${view.queues.check.parcels.length} waiting parcels through unchecked`;
-    text("bypassCount", `${view.bypassed} parcels let through by you`);
-    $("bypassCount").hidden = !started || !view.actions.bypass.unlocked;
+      `↗ Let through ${view.queues.check.parcels.length}`;
+    text("vigilance", `● ${view.vigilance.state}`);
     $("vigilance").hidden = !started || !view.actions.checking.unlocked;
+    $("vigilance").dataset.state = view.vigilance.state;
+    text("sleighRight", view.sleigh.right);
+    const arrivals = view.sleigh.parcels;
+    const newest = arrivals.at(-1);
+    if (newest && newest.id !== lastArrival) {
+      lastArrival = newest.id;
+      text("arrivalIcon", newest.made?.icon || "🎁");
+      text(
+        "arrivalLabel",
+        newest.result === "wrong" ? "Wrong gift aboard" : "Gift loaded",
+      );
+      $("arrival").classList.toggle("wrong", newest.result === "wrong");
+    }
+    const wrong = arrivals.filter((p) => p.result === "wrong").at(-1);
+    if (wrong) lastWrong = wrong;
+    $("wrongDelivery").hidden = !lastWrong;
+    if (lastWrong) {
+      text("wrongToy", lastWrong.made.icon);
+      text("wrongName", lastWrong.made.name);
+      $("wrongDelivery").dataset.help = "lastWrong";
+      $("wrongDelivery").dataset.info = "lastWrong";
+    }
     text(
-      "vigilanceState",
-      `${view.vigilance.state} · ${number(view.vigilance.secondsPerCheck)} seconds per check`,
+      "sleighNote",
+      view.lost
+        ? `${view.lost} letters lost from full piles`
+        : "Departure waits for nobody.",
     );
+    for (const n of [...view.news].reverse()) {
+      if (newsSeen.has(n.id)) continue;
+      newsSeen.add(n.id);
+      const priority =
+        n.kind === "loaded" && n.check?.result === "wrong"
+          ? 4
+          : n.kind === "resolved"
+            ? 3
+            : /wrong|fault|incident/.test(n.kind)
+              ? 4
+              : 1;
+      if (
+        !notice ||
+        performance.now() > notice.until ||
+        priority >= notice.priority
+      )
+        notice = { text: n.text, priority, until: performance.now() + 9000 };
+    }
     text(
-      "vigilanceDetail",
-      `${view.vigilance.cleanRun} clean AI parcels in a row · ${view.vigilance.skipped} checks skipped${view.vigilance.trained ? " · Trained" : ""}`,
+      "status",
+      selected !== null
+        ? `${view.elves[selected].name} selected. Tap a glowing destination.`
+        : started && view.moment
+          ? "Workshop started · clock paused for guidance"
+          : notice && notice.until > performance.now()
+            ? notice.text
+            : "Drag an elf, or tap one then its destination.",
     );
-    document.querySelectorAll(".station-controls").forEach((node) => {
-      node.hidden =
-        !started || ![...node.children].some((child) => !child.hidden);
-    });
-    const remaining = view.incident?.rollingBack;
-    document.querySelector('[data-action="rollback"]').textContent = remaining
-      ? `Rolling back · ${Math.ceil(remaining)}s`
-      : "Roll back the faulty AI";
+    paintCase();
+    paintGuidance();
+    if (infoKey && infoAnchor?.isConnected) renderInfo();
+    if (view.end && !ended) {
+      ended = true;
+      remembered = true;
+      guided = false;
+      try {
+        localStorage.setItem("workshop-walkthrough-finished", "yes");
+      } catch {}
+      showReport();
+    }
+  }
+  function positionPanel(panel, anchor) {
+    const anchorBounds = anchor.getBoundingClientRect();
+    if (panel === $("infoPopover")) {
+      const roomBeside = Math.max(
+        anchorBounds.left - 24,
+        innerWidth - anchorBounds.right - 24,
+      );
+      panel.style.maxHeight = `${roomBeside >= panel.offsetWidth ? innerHeight - 24 : Math.max(80, anchorBounds.top - 24, innerHeight - anchorBounds.bottom - 24)}px`;
+    }
+    const r = anchorBounds,
+      p = panel.getBoundingClientRect(),
+      gap = 12,
+      w = innerWidth,
+      h = innerHeight;
+    const horizontal = Math.max(12, Math.min(r.left, w - p.width - 12));
+    const vertical = Math.max(12, Math.min(r.top, h - p.height - 12));
+    const places = [
+      { x: r.right + gap, y: vertical },
+      { x: r.left - p.width - gap, y: vertical },
+      { x: horizontal, y: r.bottom + gap },
+      { x: horizontal, y: r.top - p.height - gap },
+    ];
+    const fit = places.find(
+      (a) =>
+        a.x >= 12 &&
+        a.y >= 12 &&
+        a.x + p.width <= w - 12 &&
+        a.y + p.height <= h - 12,
+    ) || {
+      x: w - p.width - 12,
+      y: Math.max(12, Math.min(r.bottom + gap, h - p.height - 12)),
+    };
+    panel.style.left = `${Math.max(12, Math.min(fit.x, w - p.width - 12))}px`;
+    panel.style.top = `${Math.max(12, Math.min(fit.y, h - p.height - 12))}px`;
+  }
+  function paintGuidance() {
+    const moment = started && !view.end ? view.moment : null;
+    $("guidanceContinue").hidden = !moment;
+    $("tutorial").hidden = !moment || moment.control === "case";
+    $("caseGuidance").hidden = !moment || moment.control !== "case";
+    if (!moment) {
+      lastMoment = null;
+      return;
+    }
+    text("tutorialTitle", moment.title);
+    text("tutorialText", moment.text);
+    text(
+      "tutorialPause",
+      manualPaused
+        ? "Your pause stays on after guidance."
+        : "The clock resumes when you continue.",
+    );
+    text("caseGuidanceText", moment.text);
+    if (moment.control === "case") {
+      caseOpen = true;
+      paintCase();
+    } else {
+      const anchor =
+        actionGroups.get(moment.control) ||
+        $(
+          moment.control === "cocoa"
+            ? "cocoa"
+            : moment.control === "sleigh"
+              ? "sleigh"
+              : "elves0",
+        );
+      positionPanel($("tutorial"), anchor);
+    }
+    lastMoment = moment.id;
   }
   function paintCase() {
     const c = view.case;
-    casePanel.hidden = !started || !c;
     $("caseCue").hidden = !started || !c || !!view.end;
-    if (c)
-      text(
-        "caseCue",
-        c.resolving
-          ? `Case in progress · ${Math.ceil(c.resolving.remaining)}s`
-          : c.kind === "unclear"
-            ? "Clarification needs a decision"
-            : "Checker needs a decision",
-      );
     if (!c) {
-      caseId = null;
+      caseOpen = false;
+      lastCase = null;
+      $("casePanel").hidden = true;
       return;
     }
-    const station = c.kind === "unclear" ? 0 : 2;
-    caseStations.set(c.id, station);
-    const parent = $("caseAnchor" + station);
-    if (casePanel.parentElement !== parent) parent.append(casePanel);
-    text("caseTitle", c.text);
-    text("caseAffected", `${c.affected.count} parcels affected`);
     text(
-      "caseWaiting",
-      view.casesWaiting ? `${view.casesWaiting} more case waiting` : "",
+      "caseCue",
+      c.resolving
+        ? `⏱ ${Math.ceil(c.resolving.remaining)}s · decision in progress`
+        : "💬 Decision waiting",
     );
-    if (caseId !== c.id) {
-      caseId = c.id;
-      $("caseEvidence").replaceChildren();
-      for (const e of c.evidence) {
-        const row = document.createElement("article");
-        row.className = "case-evidence";
-        const wish = document.createElement("blockquote"),
-          made = document.createElement("p");
-        wish.textContent = `“${e.wish}”`;
-        made.textContent = e.made
-          ? `${e.made.icon} ${e.made.name}`
-          : "No toy shown yet.";
-        row.append(wish, made);
-        $("caseEvidence").append(row);
+    if (lastCase !== c.id) {
+      lastCase = c.id;
+      caseOpen = false;
+    }
+    $("casePanel").hidden = !started || !caseOpen || !!view.end;
+    if ($("casePanel").hidden) return;
+    const headings = {
+      update: { offered: "AI update offer", tested: "Update test result" },
+      incident: {
+        source: "Stop new mistakes",
+        made: "Gifts in the workshop",
+        aboard: "Wrong gifts on sleigh",
+      },
+      judge: "Checker question",
+      unclear: "Clarify this wish",
+      pattern: "Repeated mistake",
+    };
+    text(
+      "caseKind",
+      typeof headings[c.kind] === "string"
+        ? headings[c.kind]
+        : headings[c.kind]?.[c.step] || "Workshop decision",
+    );
+    text("caseTitle", c.text);
+    const facts = $("caseFacts");
+    const preferred =
+      c.kind === "update"
+        ? c.step === "tested"
+          ? ["Promises", "Test", "After the test"]
+          : ["Promises", "Updates like this go wrong", "A test now"]
+        : null;
+    const shown = preferred
+      ? preferred
+          .map((label) => c.facts.findIndex((f) => f.label === label))
+          .filter((i) => i >= 0)
+      : c.facts.slice(0, 3).map((_, i) => i);
+    if (!shown.length) shown.push(...c.facts.slice(0, 3).map((_, i) => i));
+    const signature = shown.map((i) => c.facts[i].label).join("|");
+    if (facts.dataset.signature !== signature) {
+      facts.dataset.signature = signature;
+      facts.replaceChildren();
+      for (const i of shown) {
+        const b = make("button", "fact-chip");
+        b.append(make("b"), make("small"));
+        b.dataset.help = `fact:${i}`;
+        b.dataset.info = `fact:${i}`;
+        facts.append(b);
       }
-      $("caseOptions").replaceChildren();
-      for (const o of c.options) {
-        const b = document.createElement("button");
-        b.dataset.option = o.id;
-        b.innerHTML = "<b></b><span></span><small></small><em></em>";
-        $("caseOptions").append(b);
+      if (c.facts.length > shown.length) {
+        const more = make("button", "more-evidence", "i · All evidence");
+        more.dataset.help = "caseFacts";
+        more.dataset.info = "caseFacts";
+        facts.append(more);
       }
     }
+    shown.forEach((index, position) => {
+      const f = c.facts[index],
+        button = facts.children[position];
+      const symbol = /cost|price|worth|loss/i.test(f.label)
+        ? "£"
+        : /wrong|fault|chance/i.test(f.label)
+          ? "⚠"
+          : /time|test|second/i.test(f.label)
+            ? "⏱"
+            : /parcel|gift|made|aboard/i.test(f.label)
+              ? "📦"
+              : "◈";
+      button.querySelector("b").textContent = `${symbol} ${f.value}`;
+      button.querySelector("small").textContent = f.label;
+    });
+    const evidence = $("caseEvidence");
+    const evidenceSignature = JSON.stringify(c.evidence);
+    if (evidence.dataset.signature !== evidenceSignature) {
+      evidence.dataset.signature = evidenceSignature;
+      evidence.replaceChildren();
+      for (const e of c.evidence) {
+        const row = make("div", "evidence-item");
+        const wish = make("p", "wish", `“${e.wish}”`);
+        row.append(wish);
+        if (e.made)
+          row.append(
+            make("p", "toy-evidence", `${e.made.icon} ${e.made.name}`),
+          );
+        if (e.reading)
+          row.append(
+            make(
+              "p",
+              "reading",
+              `AI reads: ${typeof e.reading === "string" ? e.reading : e.reading.name}`,
+            ),
+          );
+        evidence.append(row);
+      }
+    }
+    const options = $("caseOptions");
+    const ids = new Set(c.options.map((o) => o.id));
+    for (const child of [...options.children])
+      if (!ids.has(child.dataset.option)) child.remove();
     for (const o of c.options) {
-      const b = $("caseOptions").querySelector(`[data-option="${o.id}"]`);
-      b.querySelector("b").textContent = o.label;
-      b.querySelector("span").textContent = o.scope;
-      b.querySelector("small").textContent =
-        `${number(o.seconds)} seconds · ${money(o.money)}`;
-      b.querySelector("em").textContent = o.why || "";
-      b.disabled = !o.available || !!c.resolving || !!view.end;
+      let row = [...options.children].find((n) => n.dataset.option === o.id);
+      if (!row) {
+        row = make("div", "case-option");
+        row.dataset.option = o.id;
+        const b = make("button", "case-choice");
+        b.dataset.resolve = o.id;
+        b.dataset.info = `option:${o.id}`;
+        b.innerHTML =
+          '<span class="option-icon" aria-hidden="true"></span><span class="option-label"></span><span class="option-cost"></span>';
+        row.append(b, infoButton(`option:${o.id}`, `Explain ${o.label}`));
+        options.append(row);
+      }
+      const b = row.querySelector(".case-choice");
+      const icons = {
+        ship: "🛷",
+        remake: "🛠",
+        ask: "💬",
+        accept: "✓",
+        investigate: "🔎",
+        hold: "✋",
+        carryOn: "→",
+        install: "🤖",
+        test: "🧪",
+        skip: "↪",
+        rollback: "↶",
+        keep: "⚙",
+        remakeAll: "🛠",
+        checkEach: "🔎",
+        letGo: "→",
+        bringBack: "↩",
+        leave: "🛷",
+      };
+      b.querySelector(".option-icon").textContent = icons[o.id] || "◇";
+      b.querySelector(".option-label").textContent = o.label;
+      const scope = [
+        "install",
+        "test",
+        "skip",
+        "rollback",
+        "keep",
+        "investigate",
+      ].includes(o.id)
+        ? "⚙ line"
+        : `📦 ${c.affected.count}`;
+      b.querySelector(".option-cost").textContent =
+        `⏱ ${o.seconds}s · ${money(o.money)} · ${scope}`;
+      b.disabled = !o.available || !!c.resolving;
       b.classList.toggle("chosen", c.resolving?.optionId === o.id);
     }
     $("caseResolving").hidden = !c.resolving;
     if (c.resolving) {
       text(
         "caseProgressText",
-        `An elf is working on this · ${Math.ceil(c.resolving.remaining)} seconds left`,
+        `${Math.ceil(c.resolving.remaining)} seconds remaining`,
       );
-      $("caseProgress").value = c.resolving.duration
-        ? 1 - c.resolving.remaining / c.resolving.duration
-        : 1;
+      $("caseProgress").value =
+        1 - c.resolving.remaining / c.resolving.duration;
     }
-  }
-  function controlStation(key) {
-    return key === "ai0" || key === "ask"
-      ? 0
-      : key === "ai1" || key === "rollback"
-        ? 1
-        : 2;
-  }
-  function paintNews() {
-    for (const n of view.news.filter((n) => n.id > seenNews).reverse()) {
-      if (n.kind === "resolved")
-        resolvedCaseStation = caseStations.get(n.caseId) ?? 2;
-      if (n.kind === "consequence") {
-        const s =
-          n.about === "case" ? resolvedCaseStation : controlStation(n.about);
-        $("feedback" + s).append(consequence);
-        consequence.hidden = false;
-        text("consequenceText", n.text);
-        $("consequenceFacts").hidden = true;
-      }
-    }
-    seenNews = view.news[0]?.id || seenNews;
-    const e = selected === null ? null : view.elves[selected];
-    text(
-      "status",
-      e
-        ? `${e.name} selected. Choose a station or cocoa corner.`
-        : view.moment && started
-          ? `${manualPaused ? "Paused by you · guidance open" : "Workshop started · clock paused for guidance"}: ${view.moment.title}`
-          : view.news[0]?.text ||
-            "Move elves between piles to keep the presents flowing.",
+    const station =
+      c.kind === "unclear"
+        ? 0
+        : c.kind === "update" || c.step === "source"
+          ? 1
+          : c.step === "aboard"
+            ? 3
+            : 2;
+    positionPanel(
+      $("casePanel"),
+      $(station === 3 ? "sleigh" : `station${station}`),
     );
   }
-  function paintMoment() {
-    const m = started ? view.moment : null;
-    tutorial.hidden = !m;
-    $("guidanceContinue").hidden = !m;
-    text(
-      "guidanceContinue",
-      manualPaused ? "Close guidance" : "Continue playing →",
+  function getInfo(key) {
+    if (key === "caseFacts")
+      return [
+        "Decision evidence",
+        (view.case?.facts || []).map((f) => `${f.label}: ${f.value}`),
+      ];
+    const parts = key.split(":"),
+      type = parts[0];
+    if (type === "ai") {
+      const l = view.levers[`ai${parts[1]}`][Number(parts[2])];
+      return [
+        l.name,
+        [
+          l.who,
+          l.speed,
+          l.risk,
+          `${Math.round(l.perMinute)} parcels/min · ${money(l.costPerMinute)}/min`,
+        ],
+      ];
+    }
+    if (type === "checking") {
+      const l = view.levers.checking[Number(parts[1])];
+      return [
+        l.name,
+        [
+          l.sends || `${l.checkedPer100} of 100 checked`,
+          `${l.per100 ?? l.checkedPer100} of every 100 parcels. Human elves do the checking.`,
+        ],
+      ];
+    }
+    if (type === "action") {
+      const a = view.actions[parts[1]];
+      return [
+        {
+          ask: "Ask the child",
+          bypass: "Let waiting parcels through",
+          train: "Train checkers",
+          ai0: "Read letters",
+          ai1: "Make toys",
+          checking: "Human checking",
+        }[parts[1]],
+        [
+          a.cost,
+          a.why,
+          parts[1] === "bypass"
+            ? `${view.queues.check.parcels.length} waiting parcels would leave checking. ${view.bypassed} already let through.`
+            : "",
+        ].filter(Boolean),
+      ];
+    }
+    if (type === "queue") {
+      const q = view.queues[parts[1]];
+      return [
+        q.name,
+        [
+          `${q.parcels.length} waiting, room for ${q.limit}.`,
+          `${Math.round(q.rate)} parcels a minute with the current staffing and AI setting.`,
+          rateChanges.has(parts[1])
+            ? `Last move: ${Math.round(rateChanges.get(parts[1]).before)} → ${Math.round(rateChanges.get(parts[1]).after)} parcels per minute.`
+            : "",
+          q.blocked || "Work can move through this pile.",
+          "Larger gifts cost more when wrong. ? means unsure; ! marks a known faulty batch.",
+        ],
+      ];
+    }
+    if (type === "elf") {
+      const e = view.elves[Number(parts[1])];
+      return [
+        e.name,
+        [
+          e.doing,
+          `Tiredness ${Math.round(e.tired)} out of 100.`,
+          e.resting
+            ? "Finishing a cocoa break."
+            : "Drag this elf, or select then tap a destination.",
+        ],
+      ];
+    }
+    if (type === "staff" || type === "station") {
+      const s = Number(parts[1]),
+        v = view.stations[s];
+      return [
+        stationNames[s],
+        [
+          `${v.staff} elves: ${v.working} working, ${v.idle} idle.`,
+          v.blocked ||
+            "Move elves here to change the available human capacity.",
+          view.pace.behind && view.pace.slowest === s
+            ? "This station is holding up the target pace."
+            : "",
+          s === 2
+            ? "The checkers are people. AI does not check its own work."
+            : "AI settings change who does the work.",
+        ],
+      ];
+    }
+    if (type === "option") {
+      const o = view.case?.options.find((o) => o.id === parts[1]);
+      return [
+        o?.label || "Decision",
+        [
+          o?.scope,
+          `${o?.seconds || 0} seconds · ${money(o?.money || 0)}`,
+          o?.why,
+        ].filter(Boolean),
+      ];
+    }
+    if (type === "fact") {
+      const f = view.case?.facts[Number(parts[1])];
+      return [f?.label || "Evidence", [f?.value || ""]];
+    }
+    if (type === "lastWrong") {
+      return [
+        "Last wrong delivery",
+        [
+          `Wish: ${lastWrong.wish}`,
+          `Wanted: ${lastWrong.wanted.icon} ${lastWrong.wanted.name}`,
+          `Made: ${lastWrong.made.icon} ${lastWrong.made.name}`,
+          lastWrong.big
+            ? "A costly mistake: this is a big gift."
+            : "The child received the wrong toy.",
+        ],
+      ];
+    }
+    const fixed = {
+      goal: [
+        "Correct gifts",
+        [
+          `Deliver ${view.target} correct gifts before departure. Wrong gifts do not count.`,
+        ],
+      ],
+      clock: [
+        "Until departure",
+        [
+          "The sleigh leaves when this clock reaches zero.",
+          "Guidance and your Pause button stop the clock. Reading information and answering cases use workshop time.",
+        ],
+      ],
+      wrong: [
+        "Wrong gifts",
+        [
+          `${view.sleigh.wrong} wrong gifts currently aboard. Tap the red gift in the sleigh to compare wish and toy.`,
+        ],
+      ],
+      budget: [
+        "Budget",
+        [
+          `${money(view.budget.left)} left. People, AI, checks and repairs all cost money. Overspending continues to count in the final account.`,
+        ],
+      ],
+      movement: [
+        "Moving elves",
+        [
+          "Drag an elf to a station or cocoa. Or tap an elf, then tap a highlighted destination.",
+          "The pile shows its actual before and after capacity for five seconds. An automated machine may keep the same rate.",
+        ],
+      ],
+      cocoa: [
+        "Cocoa breaks",
+        [
+          "Tired elves work less well. Move an elf here to rest; a break takes time before they can return.",
+        ],
+      ],
+      sleigh: [
+        "The sleigh",
+        [
+          "Correct gifts meet the goal. Wrong gifts bring a cost. The last wrong arrival stays visible so you can inspect it.",
+        ],
+      ],
+      vigilance: [
+        "Checker attention",
+        [
+          `${view.vigilance.state}. ${view.vigilance.skipped} checks skipped.`,
+          `${view.vigilance.secondsPerCheck} seconds per check now.`,
+          view.vigilance.trained
+            ? "Checkers have been trained."
+            : "A long run of clean parcels can make checkers relax.",
+        ],
+      ],
+    };
+    return (
+      fixed[key] || [
+        "Workshop",
+        ["Tap an elf or a control to make a decision."],
+      ]
     );
-    text("continue", manualPaused ? "Close guidance" : "Continue playing →");
+  }
+  function renderInfo() {
+    const [title, lines] = getInfo(infoKey);
+    text("infoTitle", title);
+    $("infoContent").replaceChildren(
+      ...lines.filter(Boolean).map((line) => make("p", "", line)),
+    );
+    positionPanel($("infoPopover"), infoAnchor);
+  }
+  function openInfo(anchor, key, pinned = false) {
+    closeInfo();
+    infoAnchor = anchor;
+    infoKey = key;
+    infoPinned = pinned;
+    anchor.setAttribute("aria-describedby", "infoPopover");
+    $("infoPopover").hidden = false;
+    renderInfo();
+  }
+  function closeInfo() {
+    infoAnchor?.removeAttribute("aria-describedby");
+    infoAnchor = null;
+    infoKey = null;
+    infoPinned = false;
+    $("infoPopover").hidden = true;
+  }
+  let pointerFocus = false,
+    recentTouchUntil = 0;
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      pointerFocus = true;
+      if (
+        infoPinned &&
+        !$("infoPopover").contains(e.target) &&
+        !e.target.closest("[data-help]")
+      )
+        closeInfo();
+      if (e.pointerType === "touch")
+        recentTouchUntil = performance.now() + 1000;
+    },
+    true,
+  );
+  document.addEventListener(
+    "keydown",
+    () => {
+      pointerFocus = false;
+    },
+    true,
+  );
+  document.addEventListener("pointerover", (e) => {
+    const target = e.target.closest("[data-info]");
+    if (
+      target &&
+      e.pointerType !== "touch" &&
+      performance.now() > recentTouchUntil &&
+      !infoPinned &&
+      !drag
+    )
+      openInfo(target, target.dataset.info);
+  });
+  document.addEventListener("pointerout", (e) => {
+    if (!infoPinned && infoAnchor && !infoAnchor.contains(e.relatedTarget))
+      closeInfo();
+  });
+  document.addEventListener("focusin", (e) => {
+    const target = e.target.closest("[data-info]");
+    if (target && !pointerFocus) openInfo(target, target.dataset.info);
+  });
+  document.addEventListener("focusout", (e) => {
+    if (!infoPinned && infoAnchor && !infoAnchor.contains(e.relatedTarget))
+      closeInfo();
+  });
+  document.addEventListener("pointercancel", () => {
+    drag = null;
+    selected = null;
+    paint();
+    $("dragGhost").hidden = true;
     document
-      .querySelector(".cocoa")
-      .classList.toggle("guided", m?.control === "cocoa");
-    document
-      .querySelector(".sleigh")
-      .classList.toggle("guided", m?.control === "sleigh");
-    if (!m) {
-      momentId = null;
+      .querySelectorAll(".drop")
+      .forEach((node) => node.classList.remove("drop"));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeInfo();
+      caseOpen = false;
+      $("casePanel").hidden = true;
+    }
+  });
+  document.addEventListener("click", (e) => {
+    const target = e.target.closest("button");
+    if (performance.now() < suppressClick && target?.dataset.elf !== undefined)
+      return;
+    if (!e.target.closest("#infoPopover") && !target?.dataset.help) closeInfo();
+    if (!target) return;
+    if (target.dataset.help) {
+      openInfo(target, target.dataset.help, true);
       return;
     }
-    text("tutorialTitle", m.title);
-    text("tutorialText", m.text);
-    text(
-      "tutorialPause",
-      manualPaused
-        ? "Your manual pause stays on when this guidance closes."
-        : "Act on the guidance or continue to resume the clock.",
-    );
-    if (momentId !== m.id) {
-      momentId = m.id;
-      let anchor = $("control-" + m.control);
-      if (m.control === "elves")
-        anchor = $("station0").querySelector(".station-summary");
-      if (m.control === "cocoa") anchor = document.querySelector(".cocoa");
-      if (m.control === "sleigh") anchor = document.querySelector(".sleigh");
-      if (m.control === "case") anchor = casePanel;
-      anchor ??= $("station2").querySelector(".station-summary");
-      if (anchor.closest("[hidden]"))
-        anchor = $("station" + controlStation(m.control)).querySelector(
-          ".station-summary",
-        );
-      anchor.prepend(tutorial);
-      if (
-        ["ai0", "ai1", "ask", "checking", "bypass", "train"].includes(m.control)
-      )
-        selectStation(controlStation(m.control));
-      tutorial.scrollIntoView({ block: "nearest", behavior: "instant" });
+    if (target.dataset.elf !== undefined) {
+      selected = Number(target.dataset.elf);
+      paint();
+      return;
     }
-  }
-  function paintSleigh() {
-    const holder = $("aboard"),
-      parcels = view.sleigh.parcels.slice(-3).reverse(),
-      signature = parcels.map((p) => p.id + ":" + p.result).join();
-    if (holder.dataset.signature !== signature) {
-      holder.dataset.signature = signature;
-      holder.replaceChildren();
-      for (const p of parcels) {
-        const item = document.createElement("span");
-        item.className = "aboard-gift " + p.result;
-        item.textContent = `${p.made?.icon || "🎁"} ${p.result === "wrong" ? "Wrong" : "Right"}`;
-        item.title = `${p.wish} → ${p.made?.name || ""}`;
-        holder.append(item);
-      }
-      if (!parcels.length) holder.textContent = "Ready for the first delivery.";
+    if (target.dataset.move !== undefined) {
+      moveElf(Number(target.dataset.move));
+      return;
     }
-    text("lost", `${view.lost} letters lost when the pile was full`);
-  }
-  function render() {
-    view = game.view();
-    document.body.classList.toggle("playing", started);
-    document.body.classList.toggle("stopped", !canRun());
-    text("right", `${view.sleigh.right} / ${view.target}`);
-    text("wrong", view.sleigh.wrong);
-    text("budget", money(view.budget.left));
-    $("budget").classList.toggle("warning", view.budget.left < 0);
-    text("clock", time(view.duration - view.t));
-    $("goal").value = Math.min(1, view.sleigh.right / view.target);
-    text("pause", manualPaused ? "Resume" : "Pause");
-    $("pause").disabled = !started || !!view.end;
-    text(
-      "pauseState",
-      !started
-        ? ""
-        : manualPaused
-          ? "Paused by you"
-          : hiddenPaused
-            ? "Paused while away"
-            : view.moment
-              ? "Paused for guidance"
-              : "",
-    );
-    paintElves();
-    paintQueues();
-    updateActions();
+    if (target.dataset.ai) {
+      const [s, l] = target.dataset.ai.split(",").map(Number);
+      perform(() => game.setAi(s, l));
+      return;
+    }
+    if (target.dataset.checking !== undefined) {
+      perform(() => game.setChecking(Number(target.dataset.checking)));
+      return;
+    }
+    if (target.dataset.action) {
+      const a = target.dataset.action;
+      perform(() => (a === "ask" ? game.setAsk(!view.ask) : game[a]()));
+      return;
+    }
+    if (target.dataset.resolve) {
+      perform(() => game.resolve(view.case.id, target.dataset.resolve));
+      return;
+    }
+    if (target.dataset.version) {
+      guided = $("walkthrough").checked;
+      version = target.dataset.version;
+      reset();
+      return;
+    }
+  });
+  document.querySelectorAll("[data-destination]").forEach((node) => {
+    node.addEventListener("click", (e) => {
+      if (selected !== null && !e.target.closest("button"))
+        moveElf(Number(node.dataset.destination));
+    });
+    node.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      node.classList.add("drop");
+    });
+    node.addEventListener("dragleave", () => node.classList.remove("drop"));
+    node.addEventListener("drop", (e) => {
+      e.preventDefault();
+      node.classList.remove("drop");
+      moveElf(Number(node.dataset.destination));
+    });
+  });
+  document.addEventListener("dragstart", (e) => {
+    const elf = e.target.closest("[data-elf]");
+    if (!elf) return;
+    closeInfo();
+    selected = Number(elf.dataset.elf);
+    e.dataTransfer.setData("text/plain", String(selected));
+    e.dataTransfer.effectAllowed = "move";
+    paint();
+  });
+  document.addEventListener("pointerdown", (e) => {
+    const elf = e.target.closest("[data-elf]");
+    if (!elf || elf.disabled || e.pointerType === "mouse") return;
+    drag = {
+      id: Number(elf.dataset.elf),
+      x: e.clientX,
+      y: e.clientY,
+      active: false,
+    };
+    elf.setPointerCapture(e.pointerId);
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    if (
+      !drag.active &&
+      Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8
+    ) {
+      drag.active = true;
+      closeInfo();
+      selected = drag.id;
+      $("dragGhost").innerHTML = elfSVG(drag.id);
+      $("dragGhost").hidden = false;
+      paint();
+    }
+    if (drag.active) {
+      e.preventDefault();
+      $("dragGhost").style.left = `${e.clientX - 20}px`;
+      $("dragGhost").style.top = `${e.clientY - 24}px`;
+    }
+  });
+  document.addEventListener("pointerup", (e) => {
+    if (!drag) return;
+    if (drag.active) {
+      const destination = document
+        .elementFromPoint(e.clientX, e.clientY)
+        ?.closest("[data-destination]");
+      if (destination) moveElf(Number(destination.dataset.destination));
+      suppressClick = performance.now() + 500;
+    }
+    $("dragGhost").hidden = true;
+    drag = null;
+  });
+  document.addEventListener("pointerup", (e) => {
+    const help = e.target.closest("[data-help]");
+    if (e.pointerType === "touch" && help)
+      openInfo(help, help.dataset.help, true);
+  });
+  $("start").onclick = () => {
+    if (guided !== $("walkthrough").checked) {
+      guided = $("walkthrough").checked;
+      reset(false);
+    }
+    if (!guided) game.skipGuidance();
+    started = true;
+    $("intro").close();
+    paint();
+  };
+  $("pause").onclick = () => {
+    manualPaused = !manualPaused;
+    paint();
+  };
+  $("continue").onclick = acknowledge;
+  $("guidanceContinue").onclick = acknowledge;
+  $("caseContinue").onclick = acknowledge;
+  $("dismissTutorial").onclick = acknowledge;
+  $("skipGuidance").onclick = skip;
+  $("caseCue").onclick = () => {
+    caseOpen = !caseOpen;
     paintCase();
-    paintNews();
-    paintMoment();
-    paintSleigh();
-    if (view.end && !reportShown) {
-      reportShown = true;
-      showReport();
+  };
+  $("closeCase").onclick = () => {
+    caseOpen = false;
+    if (view.moment?.control === "case") acknowledge();
+    paintCase();
+  };
+  $("guidanceToggle").onclick = () => {
+    if (!started) {
+      $("walkthrough").checked = !$("walkthrough").checked;
+      return;
     }
+    if (guided) skip();
+    else {
+      restartGuided = true;
+      restartOpen = true;
+      text("restartTitle", "Restart with the walkthrough?");
+      $("restartDialog").showModal();
+    }
+  };
+  $("restart").onclick = () => {
+    if (!started || view.end) {
+      reset();
+      return;
+    }
+    restartOpen = true;
+    text("restartTitle", "Start this Christmas again?");
+    $("restartDialog").showModal();
+  };
+  $("confirmRestart").onclick = () => {
+    if (restartGuided !== null) guided = restartGuided;
+    restartGuided = null;
+    reset();
+  };
+  $("cancelRestart").onclick = () => {
+    restartOpen = false;
+    restartGuided = null;
+    $("restartDialog").close();
+  };
+  $("restartDialog").addEventListener("cancel", () => (restartOpen = false));
+  $("replay").onclick = () => {
+    guided = false;
+    reset();
+  };
+  $("closeReport").onclick = () => $("report").close();
+  $("motion").onclick = () => {
+    const reduced = document.body.classList.toggle("reduce-motion");
+    $("motion").setAttribute("aria-pressed", String(reduced));
+  };
+  let lastTime = performance.now(),
+    accumulated = 0;
+  function frame(now) {
+    const dt = Math.min(0.25, (now - lastTime) / 1000);
+    lastTime = now;
+    if (
+      started &&
+      !manualPaused &&
+      !restartOpen &&
+      !document.hidden &&
+      !view.moment &&
+      !view.end
+    ) {
+      game.step(dt);
+      accumulated += dt;
+      if (accumulated > 0.12) {
+        accumulated = 0;
+        paint();
+      }
+    }
+    requestAnimationFrame(frame);
   }
+  document.addEventListener("visibilitychange", () => {
+    lastTime = performance.now();
+    paint();
+  });
+  window.addEventListener("resize", () => {
+    paintGuidance();
+    paintCase();
+    if (infoAnchor) renderInfo();
+  });
   function showReport() {
     const e = view.end;
     text(
@@ -618,180 +1245,6 @@
     );
     $("report").showModal();
   }
-  function reset(guided) {
-    game = new Workshop({ seed, guided, version });
-    view = game.view();
-    guidedRun = guided;
-    reworkSeen = false;
-    started = false;
-    manualPaused = false;
-    hiddenPaused = document.hidden;
-    restartOpen = false;
-    selected = null;
-    seenNews = 0;
-    momentId = null;
-    caseId = null;
-    caseStations.clear();
-    resolvedCaseStation = 2;
-    reportShown = false;
-    accumulator = 0;
-    paint = 0;
-    last = performance.now();
-    $("welcome").hidden = false;
-    $("report").close();
-    $("restartDialog").close();
-    consequence.hidden = true;
-    tutorial.hidden = true;
-    casePanel.hidden = true;
-    $("aboard").dataset.signature = "reset";
-    text(
-      "mission",
-      `Deliver ${view.target} correct presents before the sleigh leaves in ${number(view.duration / 60)} minutes.`,
-    );
-    text(
-      "seedLabel",
-      `${view.version.name} · Christmas seed ${seed} · Same seed on replay`,
-    );
-    document
-      .querySelectorAll("[data-version]")
-      .forEach((b) =>
-        b.setAttribute("aria-pressed", b.dataset.version === version),
-      );
-    setupElves();
-    setupQueues();
-    selectStation(0);
-    render();
-  }
-  function apply(name, args = []) {
-    const ok = game[name](...args);
-    render();
-    return ok;
-  }
-  document.addEventListener("click", (event) => {
-    const b = event.target.closest("button");
-    if (!b || b.disabled) return;
-    if (b.dataset.version) {
-      const changed = version !== b.dataset.version;
-      version = b.dataset.version;
-      const url = new URL(location.href);
-      url.searchParams.set("version", version);
-      try {
-        history.replaceState(null, "", url);
-      } catch {}
-      reset(changed ? true : guidedRun);
-      return;
-    }
-    if (b.dataset.station !== undefined) {
-      selectStation(Number(b.dataset.station));
-      return;
-    }
-    if (b.dataset.elf !== undefined) {
-      selected =
-        selected === Number(b.dataset.elf) ? null : Number(b.dataset.elf);
-      render();
-      return;
-    }
-    if (b.dataset.move !== undefined && selected !== null) {
-      if (apply("move", [selected, Number(b.dataset.move)])) selected = null;
-      render();
-      return;
-    }
-    if (b.dataset.ai) {
-      apply("setAi", b.dataset.ai.split(",").map(Number));
-      return;
-    }
-    if (b.dataset.checking !== undefined) {
-      apply("setChecking", [Number(b.dataset.checking)]);
-      return;
-    }
-    if (b.dataset.action) {
-      apply(b.dataset.action);
-      return;
-    }
-    if (b.dataset.option && view.case) {
-      apply("resolve", [view.case.id, b.dataset.option]);
-      return;
-    }
-  });
-  $("start").onclick = () => {
-    started = true;
-    $("welcome").hidden = true;
-    last = performance.now();
-    render();
-  };
-  $("pause").onclick = () => {
-    manualPaused = !manualPaused;
-    accumulator = 0;
-    render();
-  };
-  $("guidanceContinue").onclick = () => {
-    if (view.moment) apply("acknowledge", [view.moment.id]);
-  };
-  $("continue").onclick = () => {
-    if (view.moment) apply("acknowledge", [view.moment.id]);
-  };
-  $("ask").onclick = () => apply("setAsk", [!view.ask]);
-  $("caseCue").onclick = () => {
-    if (!view.case) return;
-    selectStation(view.case.kind === "unclear" ? 0 : 2);
-    casePanel.scrollIntoView({ block: "start", behavior: "instant" });
-    $("caseTitle").tabIndex = -1;
-    $("caseTitle").focus({ preventScroll: true });
-  };
-  $("motion").onclick = () => {
-    const on = document.body.classList.toggle("reduced");
-    $("motion").setAttribute("aria-pressed", on);
-    text("motion", on ? "Motion reduced" : "Reduce motion");
-  };
-  $("replay").onclick = () => reset(false);
-  $("closeReport").onclick = () => {
-    $("report").close();
-    render();
-  };
-  $("restart").onclick = () => {
-    if (!started || view.end) {
-      reset(false);
-      return;
-    }
-    restartOpen = true;
-    $("restartDialog").showModal();
-    render();
-  };
-  $("confirmRestart").onclick = () => reset(false);
-  function cancelRestart() {
-    restartOpen = false;
-    $("restartDialog").close();
-    render();
-  }
-  $("cancelRestart").onclick = cancelRestart;
-  $("restartDialog").addEventListener("cancel", (event) => {
-    event.preventDefault();
-    cancelRestart();
-  });
-  document.addEventListener("visibilitychange", () => {
-    hiddenPaused = document.hidden;
-    accumulator = 0;
-    last = performance.now();
-    render();
-  });
-  function frame(now) {
-    const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
-    last = now;
-    if (canRun()) {
-      accumulator += dt;
-      while (accumulator >= 0.1 && canRun()) {
-        game.step(0.1);
-        accumulator -= 0.1;
-        view = game.view();
-      }
-      paint += dt;
-      if (paint >= 0.15 || view.moment || view.end) {
-        paint = 0;
-        render();
-      }
-    } else accumulator = 0;
-    requestAnimationFrame(frame);
-  }
-  reset(true);
+  reset();
   requestAnimationFrame(frame);
 })();

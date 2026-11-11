@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=assurance-545ffc8-page5" />
+    <link rel="stylesheet" href="style.css?v=0a881cf-compact1" />
   </head>
-  <body class="stopped">
+  <body>
     <header>
       <div class="wordmark">
         <svg
@@ -30,94 +30,192 @@
           />
         </svg>
       </div>
-      <div class="edition">The Christmas experiment</div>
+      <h1>Santa’s AI Workshop <span aria-hidden="true">✧ ❄</span></h1>
+      <div class="header-actions">
+        <button id="guidanceToggle">Walkthrough</button
+        ><button id="restart">Restart</button
+        ><button id="motion" aria-label="Reduce motion" aria-pressed="false">
+          ❄
+        </button>
+      </div>
     </header>
     <main>
-      <section class="banner">
-        <div class="snow" aria-hidden="true">✦ · ❄ · ✧ · ❄ · ✦ · ❄ · ✧</div>
-        <span class="eyebrow">Live from the North Pole</span>
-        <h1>Santa’s AI Workshop</h1>
-        <p>More presents. Better decisions.</p>
-      </section>
-      <section id="welcome" class="welcome">
-        <div>
-          <p>
-            Santa has turned to AI to help the elves keep up with Christmas.
-          </p>
-          <p id="mission"></p>
-          <p>
-            AI can free elves for questions and checks; those choices cost time
-            and money.
-          </p>
+      <section class="dashboard" aria-label="Christmas progress">
+        <div class="goal" data-info="goal" tabindex="0">
+          <span
+            >Correct gifts
+            <button
+              class="info-button"
+              data-help="goal"
+              aria-label="About the goal"
+            >
+              i
+            </button></span
+          ><strong id="right"></strong
+          ><progress id="goal" max="1" value="0"></progress>
         </div>
-        <div
-          id="versions"
-          class="versions"
-          role="group"
-          aria-label="Workshop version"
-        ></div>
-        <button class="primary" id="start">Open the workshop →</button>
-      </section>
-      <div class="dashboard">
-        <div class="goal">
-          <span>Correct gifts aboard</span><strong id="right"></strong
-          ><progress
-            id="goal"
-            max="1"
-            value="0"
-            aria-label="Correct gifts aboard"
-          ></progress>
-        </div>
-        <div><span>Wrong gifts aboard</span><strong id="wrong">0</strong></div>
-        <div><span>Budget left</span><strong id="budget"></strong></div>
-        <div>
+        <button class="metric" data-help="wrong">
+          <span>Wrong gifts</span><strong id="wrong"></strong></button
+        ><button class="metric" data-help="budget">
+          <span>Budget left</span><strong id="budget"></strong>
+        </button>
+        <div class="clock-box" data-info="clock" tabindex="0">
           <span>Until departure</span><strong id="clock"></strong
-          ><small id="pauseState"></small>
+          ><small id="pauseState"></small
+          ><button
+            class="info-button"
+            data-help="clock"
+            aria-label="About the clock"
+          >
+            i
+          </button>
         </div>
         <button id="pause" disabled>Pause</button
-        ><button id="restart">Restart</button>
+        ><button id="caseCue" class="case-cue" hidden>Decision waiting</button>
+      </section>
+      <div class="status-row">
+        <p id="status" role="status" aria-live="polite">
+          Drag an elf, or tap one then its destination.
+        </p>
+        <button id="guidanceContinue" hidden>Continue playing →</button
+        ><button
+          id="helpMove"
+          data-help="movement"
+          aria-label="How to move elves"
+        >
+          i
+        </button>
       </div>
-      <div class="guidance">
-        <p id="status" role="status" aria-live="polite"></p>
-        <button id="guidanceContinue" hidden>Continue playing →</button>
-        <button id="caseCue" hidden>Checker needs a decision</button>
-        <button id="motion" aria-pressed="false">Reduce motion</button>
-      </div>
-      <section class="workshop" aria-label="The workshop production line">
-        <div class="pipeline" aria-hidden="true">
-          LETTERS <span>→</span> TOYS <span>→</span> CHECK & DISPATCH
-          <span>→</span> SLEIGH
-        </div>
-        <div id="stations" class="stations"></div>
-        <div class="workshop-bottom">
-          <section class="cocoa">
-            <div>
-              <h2>☕ Cocoa corner</h2>
-              <p>
-                Rest a tired elf before they burn out. Bring them back when
-                ready.
-              </p>
-            </div>
-            <div id="elves3" class="elves"></div>
-            <button data-move="3" class="move" hidden>
-              Move selected elf here
+      <div id="board" class="board" aria-label="Workshop production line">
+        <section id="sleigh" class="station sleigh-column">
+          <div class="column-heading">
+            <span class="station-number">04</span>
+            <h2>SLEIGH</h2>
+            <button
+              class="info-button"
+              data-help="sleigh"
+              aria-label="About the sleigh"
+            >
+              i
             </button>
-          </section>
-          <section class="sleigh">
-            <h2>🛷 On Santa’s sleigh</h2>
-            <p>Gifts open on loading. A wrong gift is a wish still waiting.</p>
-            <div id="aboard" class="aboard"></div>
-            <small id="lost"></small>
-          </section>
+          </div>
+          <div class="sleigh-art" aria-hidden="true">🛷 <span>✧</span></div>
+          <div class="sleigh-total">
+            <strong id="sleighRight">0</strong><span>right gifts aboard</span>
+          </div>
+          <div class="arrival" id="arrival">
+            <span class="arrival-icon" id="arrivalIcon">🎁</span
+            ><b id="arrivalLabel">Waiting for gifts</b>
+          </div>
+          <button id="wrongDelivery" class="wrong-delivery" hidden>
+            <span class="eyebrow">Last wrong delivery</span
+            ><span id="wrongToy" class="wrong-toy"></span><b id="wrongName"></b
+            ><span>See wish & gift ↗</span>
+          </button>
+          <div id="recentGifts" class="recent-gifts"></div>
+          <p id="sleighNote" class="sleigh-note"></p>
+          <div id="sleighFeedback" class="feedback-slot"></div>
+        </section>
+      </div>
+      <section
+        id="cocoa"
+        class="cocoa-strip"
+        data-destination="3"
+        aria-label="Cocoa break destination"
+      >
+        <div class="cocoa-label">
+          <span aria-hidden="true">☕</span><b>Cocoa break</b
+          ><button
+            class="info-button"
+            data-help="cocoa"
+            aria-label="About cocoa breaks"
+          >
+            i
+          </button>
         </div>
+        <div id="elves3" class="crew"></div>
+        <button class="move-target" data-move="3" hidden>Move here</button>
       </section>
       <footer>
-        <span>Frontier Economics · All costs and risks are illustrative.</span
-        ><span id="seedLabel"></span>
+        <span id="versionLabel"></span
+        ><span>Frontier Economics · Illustrative costs and risks</span>
       </footer>
     </main>
+    <dialog id="intro">
+      <span class="eyebrow">The Christmas experiment</span>
+      <h2>Make Christmas work.</h2>
+      <p>Santa uses AI to help the elves keep up.</p>
+      <p id="mission"></p>
+      <p>
+        Move elves between the piles. Spend time and money checking where it
+        helps.
+      </p>
+      <fieldset class="version-picker">
+        <legend>Compare three test builds</legend>
+        <p>
+          Same workshop decisions, with extra questions or more breathing room.
+        </p>
+        <div id="versions"></div>
+      </fieldset>
+      <label class="guidance-choice"
+        ><input type="checkbox" id="walkthrough" checked /> Show the
+        walkthrough</label
+      ><button id="start" class="primary">Open the workshop →</button>
+    </dialog>
+    <aside
+      id="tutorial"
+      class="floating-panel tutorial"
+      role="dialog"
+      aria-label="Workshop guidance"
+      hidden
+    >
+      <div class="panel-head">
+        <span class="eyebrow">Clock paused · walkthrough</span
+        ><button
+          id="dismissTutorial"
+          aria-label="Continue without this guidance"
+        >
+          ×
+        </button>
+      </div>
+      <h3 id="tutorialTitle"></h3>
+      <p id="tutorialText"></p>
+      <small id="tutorialPause"></small>
+      <div class="panel-actions">
+        <button id="continue" class="primary">Continue playing →</button
+        ><button id="skipGuidance">Skip walkthrough</button>
+      </div>
+    </aside>
+    <aside
+      id="casePanel"
+      class="floating-panel case-panel"
+      role="dialog"
+      aria-label="Workshop decision"
+      hidden
+    >
+      <div class="panel-head">
+        <span class="eyebrow" id="caseKind"></span
+        ><button id="closeCase" aria-label="Return to the workshop">×</button>
+      </div>
+      <h3 id="caseTitle"></h3>
+      <div id="caseFacts" class="case-facts"></div>
+      <div id="caseEvidence" class="case-evidence"></div>
+      <div id="caseOptions" class="case-options"></div>
+      <div id="caseResolving" hidden>
+        <p id="caseProgressText"></p>
+        <progress id="caseProgress" max="1" value="0"></progress>
+      </div>
+      <div id="caseGuidance" hidden>
+        <small id="caseGuidanceText"></small
+        ><button id="caseContinue">Continue playing →</button>
+      </div>
+    </aside>
+    <aside id="infoPopover" class="info-popover" role="tooltip" hidden>
+      <b id="infoTitle"></b>
+      <div id="infoContent"></div>
+    </aside>
     <dialog id="report">
-      <div class="report-head">
+      <div class="panel-head">
         <span class="eyebrow">Christmas morning</span
         ><button id="closeReport">View workshop</button>
       </div>
@@ -129,31 +227,28 @@
       </section>
       <h3>The Christmas account</h3>
       <dl id="account"></dl>
-      <p id="prevented" class="prevented"></p>
+      <p id="prevented"></p>
       <p class="muted">
-        Prevented losses estimate what the caught mistakes would have cost. They
-        are shown separately from spending.
+        Prevented losses estimate what caught mistakes would have cost.
       </p>
-      <div class="report-actions">
-        <button id="replay" class="primary">
-          Try the same Christmas again →</button
-        ><a
-          href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Explore Data Science &amp; AI at Frontier →</a
-        >
-      </div>
+      <button id="replay" class="primary">Try the same Christmas again →</button
+      ><a
+        href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Explore Data Science & AI at Frontier →</a
+      >
     </dialog>
     <dialog id="restartDialog">
-      <h2>Start this Christmas again?</h2>
-      <p>Your current workshop will reset to the same seed.</p>
-      <div class="report-actions">
+      <h2 id="restartTitle">Start this Christmas again?</h2>
+      <p>Your current run will reset.</p>
+      <div class="panel-actions">
         <button id="confirmRestart" class="primary">Start again</button
         ><button id="cancelRestart">Keep playing</button>
       </div>
     </dialog>
-    <script src="workshop.js?v=assurance-545ffc8-page5"></script>
-    <script src="game.js?v=assurance-545ffc8-page5"></script>
+    <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
+    <script src="workshop.js?v=0a881cf-compact1"></script>
+    <script src="game.js?v=0a881cf-compact1"></script>
   </body>
 </html>

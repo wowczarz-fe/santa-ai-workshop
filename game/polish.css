@@ -508,8 +508,9 @@ body[data-look="polish"] .paper-floor {
   border-top: 1px solid #e2e8df;
   padding: 5px 6px;
 }
+/* The elf cards say who works and who is free, so the crew counts are not repeated above them */
 body[data-look="polish"] .crew-heading {
-  height: 15px;
+  display: none;
 }
 body[data-look="polish"] .crew-heading span {
   color: #68766b;
@@ -532,7 +533,7 @@ body[data-look="polish"] .elf {
   background: transparent;
   height: 60px;
   min-height: 60px;
-  padding: 0 2px 5px;
+  padding: 0 2px 9px;
 }
 body[data-look="polish"] .elf:hover:not(:disabled) {
   background: #e7f0e780;
@@ -610,17 +611,112 @@ body[data-look="polish"]
   top: 0;
 }
 body[data-look="polish"] .elf progress {
-  bottom: 1px;
+  bottom: 2px;
   height: 4px;
   left: 25%;
   width: 50%;
   accent-color: #3b9d67;
 }
 body[data-look="polish"] .crew-hint {
+  top: 3px !important;
+  bottom: auto;
+  left: auto;
+  padding: 0 6px;
   background: #eaf3ed;
   color: #286e73;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 16px;
+}
+body[data-look="polish"] .crew-hint:empty {
+  display: none;
+}
+/* What the rules want looked at: an outline that pulses three times, with its reason as a tag */
+body[data-look="polish"] .needs-attention {
+  position: relative;
+  animation-iteration-count: 3;
+}
+body[data-look="polish"] .focus-tag {
+  position: absolute;
+  top: -9px;
+  right: 10px;
+  z-index: 5;
+  padding: 0 6px;
+  border: 1px solid #c99d39;
+  border-radius: 8px;
+  background: #fcf4dc;
+  color: #704a12;
+  font:
+    700 12px/16px Arial,
+    sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+body[data-look="polish"] .focus-tag:empty {
+  display: none;
+}
+/* A tired elf: its own card outlined with a cup, no extra words */
+body[data-look="polish"] .elf-card .rest-cue {
+  display: none;
+}
+body[data-look="polish"] .elf-card.needs-rest .rest-cue {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #8a5a1c;
+  color: #fff;
+}
+body[data-look="polish"] .elf-card .rest-cue .ui-icon {
+  width: 15px;
+  height: 15px;
+}
+body[data-look="polish"] .elf-card.needs-attention {
+  border-radius: 9px;
+}
+/* The control a walkthrough card names: outlined and pulsing until used or put off */
+body[data-look="polish"] .walk-target {
+  position: relative;
+  outline: 3px solid #d9a636;
+  outline-offset: 2px;
+  border-radius: 9px;
+  animation: focus-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-look="polish"] .walk-target {
+    animation: none;
+  }
+}
+body.reduce-motion[data-look="polish"] .walk-target,
+body.reduce-motion[data-look="polish"] .needs-attention {
+  animation: none;
+}
+/* On a phone a selected elf goes for cocoa from its own card */
+body[data-look="polish"] .rest-button {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid #c79a5a;
+  border-radius: 9px;
+  background: #fff7e8;
+  color: #6f4a14;
+  font-size: 13px;
+  font-weight: 700;
+}
+body[data-look="polish"] .rest-button .ui-icon {
+  width: 18px;
+  height: 18px;
 }
 body[data-look="polish"] .controls {
   grid-row: 2;
@@ -751,8 +847,12 @@ body[data-look="polish"] [data-control="checking"] .switch-art {
   display: none;
 }
 body[data-look="polish"] .mode-caption {
-  font-size: 10px;
-  color: #5d7164;
+  font-size: 11px;
+  color: #56625a;
+}
+body[data-look="polish"] .mode-caption.spare {
+  color: var(--teal);
+  font-weight: 700;
 }
 body[data-look="polish"] .small-action {
   border-radius: 6px;
@@ -1005,9 +1105,11 @@ body[data-look="polish"] #tutorial .panel-actions {
   margin-top: 12px;
 }
 body[data-look="polish"] #tutorial #continue {
+  color: var(--teal);
+  background: #fff;
   min-height: 34px;
   padding: 7px 16px;
-  border: 0;
+  border: 1px solid #c3d2c8;
   border-radius: 9px;
   font-size: 12px;
   font-weight: bold;
@@ -1077,6 +1179,8 @@ body[data-look="polish"] #cocoa .cocoa-label > span {
   height: 22px;
 }
 body[data-look="polish"] #cocoa .cocoa-focus {
+  font-size: 12px;
+  font-weight: 700;
   position: absolute;
   top: 6px;
   right: 8px;

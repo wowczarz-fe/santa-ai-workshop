@@ -63,13 +63,12 @@
     lastArrival = null,
     notice = null,
     newsSeen = new Set(),
-    rateChanges = new Map(),
-    spareHints = new Map();
+    rateChanges = new Map();
   let infoAnchor = null,
     infoKey = null,
     infoPinned = false,
     drag = null,
-    suppressClick = 0,
+    suppressClick = { elf: null, until: 0 },
     nativeDragElf = null;
   let openedCases = new Set(),
     resolvedAt = -Infinity,
@@ -527,7 +526,15 @@
       b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><span class="elf-task"></span><progress class="fatigue" max="100" value="0"></progress><span class="elf-doing" aria-hidden="true"></span>`;
       const more = infoButton(`elf:${i}`, `About ${elf.name}`);
       more.classList.add("elf-info");
-      wrap.append(b, more);
+      // On a phone the cocoa strip is a page away, so a selected elf can be sent from its card.
+      const rest = make("button", "rest-button");
+      rest.dataset.rest = i;
+      rest.hidden = true;
+      rest.innerHTML = `${icon("cocoa")}<span>Rest</span>`;
+      const cue = make("span", "rest-cue");
+      cue.innerHTML = icon("cocoa");
+      cue.setAttribute("aria-hidden", "true");
+      wrap.append(b, more, rest, cue);
       elfNodes.push(wrap);
     });
   }
@@ -553,7 +560,6 @@
     rateChanges.clear();
     mistakeHint = null;
     pendingCause = null;
-    spareHints.clear();
     closeInfo();
     buildElves();
     $("walkthrough").checked = guided;
@@ -596,8 +602,17 @@
             until: performance.now() + 5000,
           });
       }
+      const moved = selected,
+        elf = view.elves[moved];
       selected = null;
-      paint();
+      sayResult(
+        destination === 3
+          ? `${elf.name} is having cocoa.`
+          : `${elf.name} moved. ${perMinute(destination)}.`,
+      );
+      // The keyboard stays with the elf rather than with the Move here button that just hid.
+      if (!document.activeElement?.offsetParent)
+        elfNodes[moved].querySelector(".elf").focus({ preventScroll: true });
     }
   }
   function acknowledge() {
@@ -607,6 +622,39 @@
     perform(() => game.skipGuidance());
     guided = false;
   }
+  const focusTag = make("span", "focus-tag");
+  // The exact control a walkthrough card asks the player to use.
+  function momentTarget(moment) {
+    const c = moment.control;
+    if (c === "ai0" || c === "ai1")
+      return document.querySelector(`[data-ai="${c[2]},1"]`);
+    if (c === "ask" || c === "bypass")
+      return document.querySelector(`[data-action="${c}"]`);
+    if (c === "cocoa")
+      return Number.isInteger(moment.elf) ? elfNodes[moment.elf] : $("cocoa");
+    if (c === "elves") return $("elves1");
+    return actionGroups.get(c) || null;
+  }
+  // A line stays up at least 4 seconds unless something more important comes; 9 at most.
+  function say(words, priority) {
+    const now = performance.now();
+    if (
+      priority > 0 &&
+      (!notice ||
+        now > notice.until ||
+        priority > notice.priority ||
+        now - notice.since >= 4000)
+    )
+      notice = { text: words, priority, since: now, until: now + 9000 };
+  }
+  // What the player's last move did, from the view's own figures.
+  function sayResult(words) {
+    const now = performance.now();
+    notice = { text: words, priority: 5, since: now, until: now + 4000 };
+    paint();
+  }
+  const perMinute = (s) =>
+    `${["Reading", "Toy making", "Checking"][s]} ${Math.round(view.stations[s].rate)} a minute`;
   function paint() {
     view = game.view();
     paintGoals();
@@ -680,6 +728,7 @@
       `Deliver ${view.target} correct gifts${view.run ? ` across ${view.run.of} sleighs` : ""} in ${Math.round(view.duration / 60)} minutes.`,
     );
     $("pause").disabled = !started || !!view.end;
+    document.querySelector("main > footer").hidden = started && !view.end;
     text("pause", manualPaused ? "Resume" : "Pause");
     text(
       "pauseState",
@@ -784,6 +833,8 @@
       b.querySelector(".elf-name").textContent = elf.name;
       b.querySelector("progress").value = elf.tired;
       b.classList.toggle("selected", selected === i);
+      wrap.querySelector(".rest-button").hidden =
+        selected !== i || elf.station === 3 || innerWidth >= 1000;
       b.classList.toggle("tired", elf.tired >= 60);
       b.classList.toggle("exhausted", elf.resting);
       b.disabled = !started || !!view.end || elf.resting;
@@ -847,27 +898,22 @@
         ),
       );
     for (let station = 0; station < 2; station++) {
-      text(
-        `mode${station}`,
-        ["Elves do the work", "Elves confirm each", "Machine works alone"][
-          view.ai[station]
-        ],
-      );
-      $(`mode${station}`).hidden =
-        !started || !view.actions[`ai${station}`].unlocked;
+      // Under the AI switch: what the setting means, or, once the machine works alone and
+      // elves stand free, the move that helps.
       const spare = view.elves.filter(
         (elf) => elf.station === station && isFree(elf),
-      );
+      ).length;
       text(
-        `spare${station}`,
-        spare.length &&
-          (view.ai[station] === 2 ||
-            (spareHints.get(station) || 0) > performance.now())
-          ? `${spare.length} free to move · help with checks`
-          : "",
+        `mode${station}`,
+        spare
+          ? `${spare} ${spare === 1 ? "elf" : "elves"} free: move one to checks`
+          : ["Elves do the work", "Elves confirm each", "Machine works alone"][
+              view.ai[station]
+            ],
       );
-      $(`spare${station}`).style.top =
-        `${$(`elves${station}`).offsetTop + $(`elves${station}`).offsetHeight + 3}px`;
+      $(`mode${station}`).classList.toggle("spare", spare > 0);
+      $(`mode${station}`).hidden =
+        !started || !view.actions[`ai${station}`].unlocked;
     }
     document
       .querySelectorAll("[data-destination]")
@@ -876,6 +922,15 @@
           "destination",
           selected !== null &&
             view.elves[selected].station !== Number(node.dataset.destination),
+        ),
+      );
+    $("stationPicker")
+      .querySelectorAll("[data-station-page]")
+      .forEach((tab) =>
+        tab.classList.toggle(
+          "destination-tab",
+          selected !== null &&
+            view.elves[selected].station !== Number(tab.dataset.stationPage),
         ),
       );
     document.querySelectorAll("[data-move]").forEach((b) => {
@@ -937,26 +992,44 @@
       );
     }
     lastAttention = attention;
-    $("vigilance").hidden = !started || !view.actions.checking.unlocked;
+    // The checkers' eye shows only once they stop looking properly.
+    $("vigilance").hidden =
+      !started || !view.actions.checking.unlocked || attention === "sharp";
     $("vigilance").dataset.state = view.vigilance.state;
-    const focus = started && !view.end ? view.focus : null;
-    for (let station = 0; station < 3; station++)
-      text(`focus${station}`, focus?.station === station ? focus.text : "");
-    text("cocoaFocus", focus?.station === 3 ? focus.text : "");
-    const focusTarget =
+    // One outlined thing at a time: the control a walkthrough card names, else the rules' focus,
+    // with its reason as a tag on the outlined box. A tired elf gets its own card outlined.
+    const moment =
+      started && !view.end && view.moment?.control !== "case"
+        ? view.moment
+        : null;
+    const focus = started && !view.end && !moment ? view.focus : null;
+    const tiredElf =
       focus?.control === "cocoa"
-        ? $("cocoa")
+        ? view.elves.findIndex((elf) => focus.text.includes(elf.name))
+        : -1;
+    text("cocoaFocus", focus?.station === 3 ? focus.text : "");
+    const walkTarget = moment ? momentTarget(moment) : null;
+    const focusTarget =
+      tiredElf >= 0
+        ? elfNodes[tiredElf]
         : focus?.control === "elves"
           ? $(`elves${focus.station}`)
-          : actionGroups.get(focus?.control);
-    for (const node of [
-      ...actionGroups.values(),
-      $("elves0"),
-      $("elves1"),
-      $("elves2"),
-      $("cocoa"),
-    ])
-      node.classList.toggle("needs-attention", node === focusTarget);
+          : actionGroups.get(focus?.control) || null;
+    document
+      .querySelectorAll(".needs-attention, .walk-target")
+      .forEach((node) => {
+        if (node !== focusTarget) node.classList.remove("needs-attention");
+        if (node !== walkTarget) node.classList.remove("walk-target");
+      });
+    focusTarget?.classList.add("needs-attention");
+    walkTarget?.classList.add("walk-target");
+    focusTag.textContent = focus && tiredElf < 0 ? focus.text : "";
+    if (focusTarget && tiredElf < 0) {
+      if (focusTag.parentNode !== focusTarget) focusTarget.append(focusTag);
+    } else focusTag.remove();
+    elfNodes.forEach((wrap, i) =>
+      wrap.classList.toggle("needs-rest", i === tiredElf),
+    );
     text("sleighRight", view.sleigh.right);
     const arrivals = view.sleigh.parcels;
     const newest = arrivals.at(-1);
@@ -987,38 +1060,38 @@
     }
     text(
       "sleighNote",
-      view.lost
-        ? `${view.lost} letters lost from full piles`
-        : "Departure waits for nobody.",
+      view.lost ? `${view.lost} letters lost from full piles` : "",
     );
     for (const n of [...view.news].reverse()) {
       if (newsSeen.has(n.id)) continue;
       newsSeen.add(n.id);
       handleNews(n);
+      // Routine lines never show: a card title repeated, or a check that found nothing wrong.
       const priority =
-        n.kind === "loaded" && n.check?.result === "wrong"
-          ? 4
-          : n.kind === "resolved"
-            ? 3
-            : /wrong|fault|incident/.test(n.kind)
-              ? 4
-              : 1;
-      if (
-        !notice ||
-        performance.now() > notice.until ||
-        priority >= notice.priority
-      )
-        notice = { text: n.text, priority, until: performance.now() + 9000 };
+        n.kind === "unlock" ||
+        (n.kind === "checked" && n.check?.result !== "wrong")
+          ? 0
+          : n.kind === "loaded" && n.check?.result === "wrong"
+            ? 4
+            : n.kind === "resolved"
+              ? 3
+              : /wrong|fault|incident/.test(n.kind)
+                ? 4
+                : 1;
+      say(n.text, priority);
     }
+    const narrow = innerWidth < 1000;
     text(
       "status",
       selected !== null
-        ? `${view.elves[selected].name} selected. Tap a glowing destination.`
+        ? `${view.elves[selected].name}: ${narrow ? "tap a lit station tab, then Move here" : "drag or tap to a lit station"}.`
         : started && view.moment
-          ? "Workshop started · clock paused for guidance"
+          ? ""
           : notice && notice.until > performance.now()
             ? notice.text
-            : "Drag an elf, or tap one then its destination.",
+            : narrow
+              ? "Tap an elf, then its new station."
+              : "Drag an elf to a new station.",
     );
     paintCase();
     paintGuidance();
@@ -1593,7 +1666,14 @@
       ),
     );
     text("tutorialTitle", moment.title);
-    text("tutorialText", moment.text);
+    // On a phone the cocoa strip is on another page, so the card names the Rest button instead.
+    const elfName = view.elves[moment.elf]?.name;
+    text(
+      "tutorialText",
+      innerWidth < 1000 && moment.control === "cocoa" && elfName
+        ? moment.text.replace(/Drag them to cocoa/, `Tap ${elfName}, then Rest`)
+        : moment.text,
+    );
     text("caseGuidanceText", moment.text);
     if (moment.control === "case") {
       hidePopupPointer("tutorial");
@@ -1626,7 +1706,7 @@
             ? "cocoa"
             : moment.control === "sleigh"
               ? "sleigh"
-              : "elves0",
+              : "elves1",
         );
       const protectedNodes = [
         document.querySelector(".dashboard"),
@@ -2172,7 +2252,10 @@
   });
   document.addEventListener("click", (e) => {
     const target = e.target.closest("button");
-    if (performance.now() < suppressClick && target?.dataset.elf !== undefined)
+    if (
+      performance.now() < suppressClick.until &&
+      target?.dataset.elf === String(suppressClick.elf)
+    )
       return;
     if (!e.target.closest("#infoPopover") && !target?.dataset.help) closeInfo();
     if (!target) return;
@@ -2189,18 +2272,23 @@
       moveElf(Number(target.dataset.move));
       return;
     }
+    if (target.dataset.rest !== undefined) {
+      moveElf(3);
+      return;
+    }
     if (target.dataset.ai) {
       const [s, l] = target.dataset.ai.split(",").map(Number);
-      const wasAutomated = view.ai[s] === 2;
       perform(() => game.setAi(s, l));
-      if (l === 2 && !wasAutomated) {
-        spareHints.set(s, performance.now() + 5000);
-        paint();
-      }
+      if (view.ai[s] === l)
+        sayResult(
+          `${["Reading", "Toy making"][s]} on ${["By hand", "Assist", "Automate"][l]}: ${Math.round(view.stations[s].rate)} a minute.`,
+        );
       return;
     }
     if (target.dataset.checking !== undefined) {
       perform(() => game.setChecking(Number(target.dataset.checking)));
+      const lever = view.levers.checking[view.checking];
+      sayResult(`Checking ${lever.per100} in 100 parcels.`);
       return;
     }
     if (target.dataset.action) {
@@ -2308,7 +2396,11 @@
         .elementFromPoint(e.clientX, e.clientY)
         ?.closest("[data-destination]");
       if (destination) moveElf(Number(destination.dataset.destination));
-      suppressClick = performance.now() + 500;
+      else {
+        selected = null;
+        paint();
+      }
+      suppressClick = { elf: drag.id, until: performance.now() + 500 };
     }
     $("dragGhost").hidden = true;
     drag = null;

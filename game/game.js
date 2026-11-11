@@ -311,23 +311,30 @@
     slot.dataset.goal = id;
     slot.dataset.help = `goal:${id}`;
     slot.dataset.info = `goal:${id}`;
-    slot.innerHTML = `<span class="goal-star">${icon("star")}</span><span class="goal-name">${icon(art)}<span></span></span><span class="goal-figures"><b></b><small></small></span><span class="goal-bar" aria-hidden="true"><i></i></span><span class="goal-note"></span>`;
+    slot.innerHTML = `<span class="goal-star">${icon("star")}</span><span class="goal-name">${icon(art)}<span></span></span><span class="goal-figures"><b></b><small><span class="goal-need"></span><span class="goal-unit"></span></small></span><span class="goal-bar" aria-hidden="true"><i></i></span><span class="goal-note"></span>`;
     $("goals").append(slot);
     goalSlots[id] = slot;
   }
+  const goalsNote = make("span", "goals-note");
+  $("goals").append(goalsNote);
   function paintGoals() {
     text(
       "goalsTitle",
       `Sleigh ${view.run.number} of ${view.run.of}: a star for each goal`,
     );
+    const waiting = (view.run.goals || []).filter((g) => g.waiting && g.note);
+    goalsNote.textContent = waiting.length
+      ? `${waiting.map((g) => g.name).join(", ")}: ${waiting[0].note}`
+      : "";
     for (const goal of view.run.goals || []) {
       const slot = goalSlots[goal.id];
       if (!slot) continue;
       const figure = (n) => (goal.id === "cost" ? money(n) : String(n));
       slot.querySelector(".goal-name > span").textContent = goal.name;
       slot.querySelector(".goal-figures b").textContent = figure(goal.now);
-      slot.querySelector(".goal-figures small").textContent =
-        ` / ${figure(goal.need)}${goal.id === "right" ? " wrong" : ""}`;
+      slot.querySelector(".goal-need").textContent = ` / ${figure(goal.need)}`;
+      slot.querySelector(".goal-unit").textContent =
+        goal.id === "right" ? " wrong" : "";
       // met: lit star; waiting: inside the limit but the sleigh is not full enough yet;
       // failed: a limit goal not met; open: the full-sleigh goal still filling.
       const state = goal.met
@@ -1247,8 +1254,9 @@
         to = $("sleighRight").getBoundingClientRect();
       const visible = to.left >= 0 && to.right <= innerWidth;
       const target = visible ? to : goalSlots.full.getBoundingClientRect();
-      effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? from.right - 40 : target.left))}px`;
-      effect.style.top = `${Math.max(12, Math.min(innerHeight - 40, visible ? from.top : target.bottom))}px`;
+      effect.classList.toggle("in-slot", !visible);
+      effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? from.right - 40 : target.right - 52))}px`;
+      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? from.top : target.top + 4))}px`;
       effect.style.setProperty(
         "--fly-x",
         `${visible ? target.left - from.right + 40 : 0}px`,
@@ -1489,7 +1497,9 @@
               : "elves0",
         );
       const protectedNodes = [
+        document.querySelector(".dashboard"),
         ...(innerWidth >= 1000 &&
+        look !== "paper" &&
         ["elves", "cocoa", "bypass"].includes(moment.control)
           ? document.querySelectorAll(".machine")
           : []),

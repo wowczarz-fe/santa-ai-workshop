@@ -463,7 +463,13 @@
   }
   function paintMistakeHint() {
     let target = null;
-    if (mistakeHint && mistakeHint.until > performance.now() && !view.end) {
+    // A walkthrough card's outline is the only one while the card is up.
+    if (
+      mistakeHint &&
+      mistakeHint.until > performance.now() &&
+      !view.end &&
+      !(view.moment && view.moment.control !== "case")
+    ) {
       const control = mistakeHint.control;
       target =
         control === "cocoa"
@@ -733,17 +739,12 @@
     text("pause", manualPaused ? "Resume" : "Pause");
     text(
       "pauseState",
-      !started
-        ? "Ready to start"
-        : view.end
-          ? "Departure"
-          : manualPaused
-            ? "Paused by you"
-            : view.choice || view.moment
-              ? "Paused"
-              : document.hidden
-                ? "Paused while away"
-                : "",
+      // One word: the Pause button, the card or the break already says why.
+      started &&
+        !view.end &&
+        (manualPaused || view.choice || view.moment || document.hidden)
+        ? "Paused"
+        : "",
     );
     for (let s = 0; s < 3; s++) {
       const station = view.stations[s];
@@ -1692,6 +1693,11 @@
       caseOpen = true;
       paintCase();
     } else {
+      // Another card takes over from an open decision; the cue still waits.
+      if (caseOpen) {
+        caseOpen = false;
+        paintCase();
+      }
       const ai = moment.control === "ai0" || moment.control === "ai1";
       const tiredElf = Number.isInteger(moment.elf)
         ? moment.elf

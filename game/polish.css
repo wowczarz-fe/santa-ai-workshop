@@ -1605,6 +1605,9 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"] .dashboard .hud-slot .hud-preview:empty {
     display: none;
   }
+  body[data-look="polish"] .milestone-toast {
+    top: 188px;
+  }
   body[data-look="polish"] .status-row {
     height: 24px;
     min-height: 24px;
@@ -1648,14 +1651,15 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"] .move-target {
     min-height: 44px;
   }
-  body[data-look="polish"] .info-button::after {
+  body[data-look="polish"] .column-heading .info-button,
+  body[data-look="polish"] .cocoa-label .info-button {
+    position: relative;
+  }
+  body[data-look="polish"] .column-heading .info-button::after,
+  body[data-look="polish"] .cocoa-label .info-button::after {
     content: "";
     position: absolute;
     inset: -11px;
-  }
-  body[data-look="polish"] .column-heading .info-button,
-  body[data-look="polish"] .control-row .info-button {
-    position: relative;
   }
   body[data-look="polish"] .queue.asking-off {
     display: none;

@@ -557,6 +557,16 @@ body[data-look="paper"] .dashboard .hud-slot[data-state="met"] .hud-star {
 body[data-look="paper"] .dashboard .goals-title {
   color: #d4c6a7;
 }
+body[data-look="paper"] .elf[data-role="free"] .elf-task {
+  color: #3b2a1e;
+}
+body[data-look="paper"] .elf[data-role="free"] .elf-doing {
+  color: #5a4632;
+}
+body[data-look="paper"] .dashboard .hud-preview {
+  background: #d2a447;
+  color: #2b1c14;
+}
 body[data-look="paper"] .dashboard .hud-name {
   color: #d4c6a7;
 }

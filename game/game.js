@@ -102,6 +102,11 @@
     node.innerHTML = icon(name);
     node.append(make("span", "", value));
   };
+  // Free: nothing to do, or watching an automated machine (the rules may call it plain idle).
+  const isFree = (elf) =>
+    elf.station < 3 &&
+    !elf.resting &&
+    (/watch/.test(elf.doing) || /^(nothing to do|idle|free)/.test(elf.doing));
   const trendArrow =
     '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.5V2M2.5 5.5 6 2l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const starRow = (stars, of = 3) =>
@@ -311,7 +316,7 @@
     slot.dataset.goal = id;
     slot.dataset.help = `goal:${id}`;
     slot.dataset.info = `goal:${id}`;
-    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small></span><span class="hud-bar" aria-hidden="true"><i></i></span><span class="hud-note"></span>`;
+    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i></span><span class="hud-note"></span>`;
     $("goals").append(slot);
     goalSlots[id] = slot;
   }
@@ -323,9 +328,27 @@
       `Sleigh ${view.run.number} of ${view.run.of}: a star for each goal`,
     );
     const waiting = (view.run.goals || []).filter((g) => g.waiting && g.note);
-    goalsNote.textContent = waiting.length
-      ? `${waiting.map((g) => g.name).join(", ")}: ${waiting[0].note}`
-      : "";
+    // While a recall card is open, the wrong-gift goal previews the count after the recall.
+    const c = view.case;
+    const recall =
+      c && caseOpen && !c.resolving
+        ? recallCount(
+            c,
+            c.options.find((o) => o.id === "bringBack" && o.available),
+          )
+        : null;
+    const wrongGoal = (view.run.goals || []).find((g) => g.id === "right");
+    const after =
+      recall !== null && wrongGoal ? Math.max(0, wrongGoal.now - recall) : null;
+    goalSlots.right.classList.toggle("hud-previewing", after !== null);
+    goalSlots.right.querySelector(".hud-preview").textContent =
+      after !== null ? `${after} after recall` : "";
+    goalsNote.textContent =
+      after !== null
+        ? `Right gifts: ${after} wrong after recall`
+        : waiting.length
+          ? `${waiting.map((g) => g.name).join(", ")}: ${waiting[0].note}`
+          : "";
     for (const goal of view.run.goals || []) {
       const slot = goalSlots[goal.id];
       if (!slot) continue;
@@ -372,8 +395,9 @@
     ai0: "Try Assist",
     ai1: "Try Assist",
     cocoa: "Cocoa break",
-    train: "Train the checkers",
+    train: "Train or rest them",
     update: "Test updates first",
+    vigilance: "Train or rest them",
   };
   let mistakeHint = null,
     pendingCause = null;
@@ -388,7 +412,12 @@
     let target = null;
     if (mistakeHint && mistakeHint.until > performance.now() && !view.end) {
       const control = mistakeHint.control;
-      target = control === "cocoa" ? $("cocoa") : actionGroups.get(control);
+      target =
+        control === "cocoa"
+          ? $("cocoa")
+          : control === "vigilance"
+            ? $("vigilance")
+            : actionGroups.get(control);
       if (!target?.getClientRects().length) target = $("wrongDelivery");
       if (!target.getClientRects().length) target = $("sleigh");
     }
@@ -416,6 +445,22 @@
     hintLabel.textContent = hintWords[mistakeHint.control];
     if (hintLabel.parentNode !== target) target.append(hintLabel);
   }
+  // How sharp the checkers are, from the rules' vigilance state value.
+  const attentionOf = (state) =>
+    /wav|not look|asleep/.test(state)
+      ? "closed"
+      : /relax|drift/.test(state)
+        ? "drifting"
+        : "sharp";
+  let lastAttention = "sharp";
+  const eyes = {
+    sharp:
+      '<svg class="ui-icon attention-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/></svg>',
+    drifting:
+      '<svg class="ui-icon attention-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 18.5 12 18.5 21.5 12 21.5 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2.5 12Q12 7.5 21.5 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M8.4 11.2a3.6 3.6 0 0 0 7.2 0z" fill="currentColor"/></svg>',
+    closed:
+      '<svg class="ui-icon attention-eye" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 10Q12 17.5 21 10"/><path d="M6.2 13.2 4.6 15.6M10 14.9l-.6 2.7M14 14.9l.6 2.7M17.8 13.2l1.6 2.4"/></g></svg>',
+  };
   const elfNodes = [];
   function buildElves() {
     for (const node of elfNodes) node.remove();
@@ -663,15 +708,13 @@
               "i",
               `${p.big ? "big " : ""}${p.suspect ? "suspect " : ""}${p.suspect === "batch" ? "batch" : ""}`,
             );
-            item.innerHTML =
-              Art.pile?.(id, index) ||
-              Art.icon(
-                id === "letters" || id === "clarify"
-                  ? "env"
-                  : p.big
-                    ? "parcel-k"
-                    : "parcel-r",
-              );
+            // Parcels: a big gift is the gold parcel with a "big" tag; others red or green.
+            item.innerHTML = ["letters", "clarify", "orders"].includes(id)
+              ? Art.pile?.(id, index) ||
+                Art.icon(id === "orders" ? "parcel-r" : "env")
+              : Art.icon(
+                  p.big ? "parcel-k" : index % 2 ? "parcel-g" : "parcel-r",
+                );
             item.setAttribute("aria-hidden", "true");
             const count = Math.min(q.parcels.length, 18);
             item.style.setProperty(
@@ -701,32 +744,30 @@
       b.disabled = !started || !!view.end || elf.resting;
       b.setAttribute(
         "aria-label",
-        `${elf.name}, ${elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
+        `${elf.name}, ${isFree(elf) ? "free to move" : elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
       );
       const role = elf.doing.includes("asking")
         ? ["role-asking", "asking"]
-        : elf.doing.includes("watch")
-          ? ["role-watching", "watching"]
+        : isFree(elf)
+          ? ["role-idle", "free to move", "free"]
           : elf.doing.includes("confirm")
             ? ["role-confirming", "confirm"]
-            : elf.doing === "nothing to do"
-              ? ["role-idle", "idle"]
-              : elf.station === 3 || elf.resting
-                ? ["role-resting", "resting"]
-                : elf.doing.includes("reading")
-                  ? ["role-reading", "reading"]
-                  : elf.doing.includes("making")
-                    ? ["role-making", "making"]
-                    : elf.doing.includes("checking")
-                      ? ["role-checking", "checking"]
-                      : ["role-making", "working"];
+            : elf.station === 3 || elf.resting
+              ? ["role-resting", "resting"]
+              : elf.doing.includes("reading")
+                ? ["role-reading", "reading"]
+                : elf.doing.includes("making")
+                  ? ["role-making", "making"]
+                  : elf.doing.includes("checking")
+                    ? ["role-checking", "checking"]
+                    : ["role-making", "working"];
       const doing = b.querySelector(".elf-doing");
       if (doing.dataset.icon !== role[0]) {
         doing.dataset.icon = role[0];
         doing.innerHTML = icon(role[0]);
       }
       b.querySelector(".elf-task").textContent = role[1];
-      b.dataset.role = role[1];
+      b.dataset.role = role[2] || role[1];
       b.querySelector(".elf-eyes").setAttribute(
         "href",
         "#" + artSymbol(elf.tired >= 55 ? "eyes-tired" : "eyes"),
@@ -768,13 +809,13 @@
       $(`mode${station}`).hidden =
         !started || !view.actions[`ai${station}`].unlocked;
       const spare = view.elves.filter(
-        (elf) =>
-          elf.station === station &&
-          (elf.doing === "nothing to do" || elf.doing.includes("watch")),
+        (elf) => elf.station === station && isFree(elf),
       );
       text(
         `spare${station}`,
-        spare.length && (spareHints.get(station) || 0) > performance.now()
+        spare.length &&
+          (view.ai[station] === 2 ||
+            (spareHints.get(station) || 0) > performance.now())
           ? `${spare.length} free to move · help with checks`
           : "",
       );
@@ -828,7 +869,27 @@
     ask.querySelector(".toggle-state").textContent = view.ask ? "On" : "Off";
     document.querySelector('[data-action="bypass"] .bypass-label').textContent =
       `Let through ${view.queues.check.parcels.length}`;
-    text("vigilance", view.vigilance.state);
+    const attention = attentionOf(view.vigilance.state);
+    if ($("vigilance").dataset.attention !== attention) {
+      if (lastAttention === "sharp" && attention !== "sharp" && started)
+        showMistakeHint("vigilance");
+      $("vigilance").dataset.attention = attention;
+      $("vigilance").innerHTML = eyes[attention];
+      $("vigilance").append(
+        make(
+          "span",
+          "attention-label",
+          view.vigilance.name
+            ? `Checkers ${view.vigilance.name}`
+            : {
+                sharp: "Checkers sharp",
+                drifting: "Checkers drifting",
+                closed: "Checkers not looking",
+              }[attention],
+        ),
+      );
+    }
+    lastAttention = attention;
     $("vigilance").hidden = !started || !view.actions.checking.unlocked;
     $("vigilance").dataset.state = view.vigilance.state;
     const focus = started && !view.end ? view.focus : null;
@@ -862,6 +923,7 @@
         newest.result === "wrong" ? "Wrong gift aboard" : "Gift loaded",
       );
       $("arrival").classList.toggle("wrong", newest.result === "wrong");
+      $("arrivalBig").hidden = !newest.big;
     }
     const wrong = arrivals.filter((p) => p.result === "wrong").at(-1);
     if (wrong) lastWrong = wrong;
@@ -871,6 +933,7 @@
         $("wrongToy").dataset.toy = lastWrong.made.name;
         $("wrongToy").innerHTML = toyArt(lastWrong.made.name);
       }
+      $("wrongBig").hidden = !lastWrong.big;
       text("wrongName", lastWrong.made.name);
       $("wrongDelivery").dataset.help = "lastWrong";
       $("wrongDelivery").dataset.info = "lastWrong";
@@ -1522,6 +1585,27 @@
     }
     lastMoment = moment.id;
   }
+  // How many wrong gifts an option brings off the sleigh, from its scope words.
+  function recallCount(c, o) {
+    if (!o || o.id !== "bringBack") return null;
+    const said = /(\d+) wrong gift/.exec(o.scope || "");
+    return said ? Number(said[1]) : c.affected.count;
+  }
+  // Chips for an option: what it does (the first part of its scope), money, time, or why it is shut.
+  function optionChips(c, o) {
+    const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+    const recall = recallCount(c, o);
+    const does =
+      recall !== null
+        ? `${plural(recall, "wrong gift")} off the sleigh`
+        : (o.scope || "").split(/;\s*/)[0];
+    const chips = [];
+    if (!o.available && o.why) chips.push(["chip-why", "", o.why]);
+    if (does) chips.push(["chip-does", "", does]);
+    chips.push(["chip-money", "budget", o.money ? money(o.money) : "free"]);
+    if (o.seconds) chips.push(["chip-time", "clock", `${o.seconds} s`]);
+    return chips;
+  }
   function paintCase() {
     const c = view.case;
     $("caseCue").hidden = !started || !c || !!view.end;
@@ -1559,107 +1643,60 @@
       pattern: "Repeated mistake",
     };
     text(
-      "caseKind",
+      "caseTitle",
       typeof headings[c.kind] === "string"
         ? headings[c.kind]
         : headings[c.kind]?.[c.step] || "Workshop decision",
     );
-    text("caseTitle", c.text);
-    const facts = $("caseFacts");
+    text("caseText", c.text);
     $("casePanel").dataset.kind = c.kind;
-    const preferred =
-      c.kind === "update"
-        ? c.step === "tested"
-          ? ["Promises", "Test", "After the test"]
-          : ["Promises", "Updates like this go wrong", "A test now"]
-        : null;
-    const hasPrimary = c.facts.some((f) => typeof f.primary === "boolean");
-    const shown = hasPrimary
-      ? c.facts
-          .map((f, i) => (f.primary ? i : -1))
-          .filter((i) => i >= 0)
-          .slice(0, 3)
-      : preferred
-        ? preferred
-            .map((label) => c.facts.findIndex((f) => f.label === label))
-            .filter((i) => i >= 0)
-        : c.facts.slice(0, 3).map((_, i) => i);
-    if (!shown.length) shown.push(...c.facts.slice(0, 3).map((_, i) => i));
-    const signature = shown.map((i) => c.facts[i].label).join("|");
-    if (facts.dataset.signature !== signature) {
-      facts.dataset.signature = signature;
-      facts.replaceChildren();
-      for (const i of shown) {
-        const b = make("button", "fact-chip");
-        b.append(make("b"), make("small"));
-        b.dataset.help = `fact:${i}`;
-        b.dataset.info = `fact:${i}`;
-        facts.append(b);
-      }
-      if (c.facts.length > shown.length) {
-        const more = make("button", "more-evidence");
-        iconText(more, "info", "All evidence");
-        more.dataset.help = "caseFacts";
-        more.dataset.info = "caseFacts";
-        facts.append(more);
-      }
-    }
-    shown.forEach((index, position) => {
-      const f = c.facts[index],
-        button = facts.children[position];
-      const symbol = /cost|price|worth|loss/i.test(f.label)
-        ? "budget"
-        : /wrong|fault|chance/i.test(f.label)
-          ? "wrong-gift"
-          : /time|test|second/i.test(f.label)
-            ? "clock"
-            : /parcel|gift|made|aboard/i.test(f.label)
-              ? "gift"
-              : "info";
-      const value = button.querySelector("b");
-      if (value.textContent !== String(f.value))
-        iconText(value, symbol, f.value);
-      button.querySelector("small").textContent = f.label;
-    });
+    // Evidence as drawings: the child's words beside the toy the workshop made.
     const evidence = $("caseEvidence");
     const evidenceSignature = JSON.stringify(c.evidence);
     if (evidence.dataset.signature !== evidenceSignature) {
       evidence.dataset.signature = evidenceSignature;
       evidence.replaceChildren();
+      const figure = (cls, label, art, name) => {
+        const node = make("figure", `evidence-figure ${cls}`);
+        node.append(make("span", "evidence-label", label));
+        if (art) node.insertAdjacentHTML("beforeend", art);
+        node.append(make("figcaption", "", name));
+        return node;
+      };
       for (const e of c.evidence) {
         const row = make("div", "evidence-item");
-        const wish = make("p", "wish", `“${e.wish}”`);
-        row.append(wish);
-        if (e.made) row.append(revealedToy(e.made, "toy-evidence"));
-        if (e.reading)
+        row.append(figure("evidence-wish", "Wish", "", `"${e.wish}"`));
+        if (e.wanted)
           row.append(
-            make(
-              "p",
-              "reading",
-              `AI reads: ${typeof e.reading === "string" ? e.reading : e.reading.name}`,
-            ),
+            figure("", "Wanted", toyArt(e.wanted.name), e.wanted.name),
+          );
+        const reading =
+          e.reading &&
+          (typeof e.reading === "string" ? e.reading : e.reading.name);
+        if (reading)
+          row.append(figure("", "AI reads", toyArt(reading), reading));
+        if (e.made)
+          row.append(
+            figure("evidence-made", "Made", toyArt(e.made.name), e.made.name),
           );
         evidence.append(row);
       }
     }
+    // Options: large buttons with an icon, the label and chips for what each costs and does.
     const options = $("caseOptions");
     const ids = new Set(c.options.map((o) => o.id));
     for (const child of [...options.children])
       if (!ids.has(child.dataset.option)) child.remove();
     for (const o of c.options) {
-      let row = [...options.children].find((n) => n.dataset.option === o.id);
-      if (!row) {
-        row = make("div", "case-option");
-        row.dataset.option = o.id;
-        const b = make("button", "case-choice");
+      let b = [...options.children].find((n) => n.dataset.option === o.id);
+      if (!b) {
+        b = make("button", "case-choice");
+        b.dataset.option = o.id;
         b.dataset.resolve = o.id;
-        b.dataset.info = `option:${o.id}`;
         b.innerHTML =
-          '<span class="option-icon" aria-hidden="true"></span><span class="option-label"></span><span class="option-cost"></span>';
-        row.append(b, infoButton(`option:${o.id}`, `Explain ${o.label}`));
-        options.append(row);
+          '<span class="option-icon" aria-hidden="true"></span><span class="option-label"></span><span class="option-chips"></span>';
+        options.append(b);
       }
-      const b = row.querySelector(".case-choice");
       const icons = {
         ship: "sleigh",
         remake: "fixing",
@@ -1685,21 +1722,22 @@
         optionIcon.innerHTML = icon(icons[o.id] || "info");
       }
       b.querySelector(".option-label").textContent = o.label;
-      const line = [
-        "install",
-        "test",
-        "skip",
-        "rollback",
-        "keep",
-        "investigate",
-      ].includes(o.id);
-      const cost = `${o.seconds}|${o.money}|${line ? "line" : c.affected.count}`;
-      const optionCost = b.querySelector(".option-cost");
-      if (optionCost.dataset.value !== cost) {
-        optionCost.dataset.value = cost;
-        optionCost.innerHTML = `<span>${icon("clock")}${o.seconds}s</span><span>${icon("budget")}${money(o.money)}</span><span>${line ? `${icon("automate")}line` : `${icon("gift")}${c.affected.count}`}</span>`;
+      const chips = optionChips(c, o);
+      const chipsNode = b.querySelector(".option-chips");
+      const chipsSignature = JSON.stringify(chips);
+      if (chipsNode.dataset.value !== chipsSignature) {
+        chipsNode.dataset.value = chipsSignature;
+        chipsNode.replaceChildren(
+          ...chips.map(([cls, art, words]) => {
+            const chip = make("span", `opt-chip ${cls}`);
+            if (art) chip.innerHTML = icon(art);
+            chip.append(words);
+            return chip;
+          }),
+        );
       }
       b.disabled = !o.available || !!c.resolving;
+      b.classList.toggle("unavailable", !o.available);
       b.classList.toggle("chosen", c.resolving?.optionId === o.id);
     }
     $("caseResolving").hidden = !c.resolving;
@@ -1732,6 +1770,13 @@
     }
     return $("queue-check");
   }
+  // What a wrong big gift costs against a wrong everyday one, from the rules' prices.
+  function bigGiftSentence() {
+    const prices = view.prices;
+    return prices
+      ? `A wrong big gift (gold) costs ${money(prices.wrongBig)}, an everyday one ${money(prices.wrongEveryday)}.`
+      : "A wrong big gift (gold) costs far more than an everyday one.";
+  }
   // Info pop-ups: a title and one short plain sentence, two at most.
   function getInfo(key) {
     const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : "");
@@ -1760,7 +1805,12 @@
     if (key === "caseFacts")
       return [
         "All evidence",
-        (view.case?.facts || []).map((f) => `${f.label}: ${f.value}`),
+        [
+          ...(view.case?.facts || []).map((f) => `${f.label}: ${f.value}.`),
+          ...(view.case?.options || []).map(
+            (o) => `${o.label}: ${o.scope}${o.why ? ` (${o.why})` : ""}.`,
+          ),
+        ],
       ];
     const parts = key.split(":"),
       type = parts[0];
@@ -1803,7 +1853,11 @@
           parts[1] === "pass"
             ? "Parcels going to the sleigh without a check."
             : `${q.parcels.length} of ${q.limit} waiting, ${Math.round(q.rate)} a minute going out.`,
-          q.blocked ? `${cap(q.blocked)}.` : "",
+          q.blocked
+            ? `${cap(q.blocked)}.`
+            : ["letters", "clarify"].includes(parts[1])
+              ? ""
+              : bigGiftSentence(),
         ].filter(Boolean),
       ];
     }
@@ -1882,12 +1936,12 @@
         ["Right gifts count towards the target; wrong ones cost money."],
       ],
       vigilance: [
-        "Checkers",
+        "Checker attention",
         [
-          `${cap(view.vigilance.state)}: ${view.vigilance.skipped} checks skipped.`,
-          view.vigilance.trained
-            ? "They have been trained."
-            : "Long clean runs make checkers relax.",
+          "After a long run of clean parcels, checkers start waving parcels through unchecked.",
+          view.vigilance.skipped
+            ? `${view.vigilance.skipped} checks skipped so far; train them at a break or rest them.`
+            : "Train them at a break, or rest them with cocoa.",
         ],
       ],
     };
@@ -2190,12 +2244,12 @@
       )
         anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
-    paintCase();
+    paint();
   };
   $("closeCase").onclick = () => {
     caseOpen = false;
     if (view.moment?.control === "case") acknowledge();
-    paintCase();
+    paint();
   };
   $("guidanceToggle").onclick = () => {
     if (!started) {

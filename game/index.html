@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=dc044e9-polish4" />
-    <link rel="stylesheet" href="paper.css?v=dc044e9-polish4" />
-    <link rel="stylesheet" href="polish.css?v=dc044e9-polish4" />
+    <link rel="stylesheet" href="style.css?v=dc044e9-polish5" />
+    <link rel="stylesheet" href="paper.css?v=dc044e9-polish5" />
+    <link rel="stylesheet" href="polish.css?v=dc044e9-polish5" />
   </head>
   <body>
     <header>
@@ -137,11 +137,13 @@
           </div>
           <div class="arrival" id="arrival">
             <span class="arrival-icon" id="arrivalIcon"></span
-            ><b id="arrivalLabel">Waiting for gifts</b>
+            ><b id="arrivalLabel">Waiting for gifts</b
+            ><span class="big-tag" id="arrivalBig" hidden>big</span>
           </div>
           <button id="wrongDelivery" class="wrong-delivery" hidden>
             <span class="eyebrow">Last wrong gift</span
             ><span id="wrongToy" class="wrong-toy"></span><b id="wrongName"></b
+            ><span class="big-tag" id="wrongBig" hidden>big</span
             ><span>See wish & gift</span>
           </button>
           <div id="recentGifts" class="recent-gifts"></div>
@@ -224,7 +226,14 @@
       hidden
     >
       <div class="panel-head">
-        <span class="eyebrow" id="caseKind"></span
+        <h3 id="caseTitle"></h3>
+        <button
+          id="caseInfo"
+          class="info-button"
+          data-help="caseFacts"
+          aria-label="All evidence and figures"
+        >
+          i</button
         ><button id="closeCase" aria-label="Return to the workshop">
           <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -237,8 +246,7 @@
           </svg>
         </button>
       </div>
-      <h3 id="caseTitle"></h3>
-      <div id="caseFacts" class="case-facts"></div>
+      <p id="caseText" class="case-text"></p>
       <div id="caseEvidence" class="case-evidence"></div>
       <div id="caseOptions" class="case-options"></div>
       <div id="caseResolving" hidden>
@@ -459,10 +467,10 @@
     <div id="celebration" class="celebration" aria-hidden="true"></div>
     <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
-    <script src="workshop.js?v=dc044e9-polish4"></script>
-    <script src="paper-art.js?v=dc044e9-polish4"></script>
-    <script src="polish-art.js?v=dc044e9-polish4"></script>
-    <script src="shared-art.js?v=dc044e9-polish4"></script>
-    <script src="game.js?v=dc044e9-polish4"></script>
+    <script src="workshop.js?v=dc044e9-polish5"></script>
+    <script src="paper-art.js?v=dc044e9-polish5"></script>
+    <script src="polish-art.js?v=dc044e9-polish5"></script>
+    <script src="shared-art.js?v=dc044e9-polish5"></script>
+    <script src="game.js?v=dc044e9-polish5"></script>
   </body>
 </html>

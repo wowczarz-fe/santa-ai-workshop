@@ -1072,6 +1072,10 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="met"] .hud-star {
   color: #f0cf6c;
   box-shadow: 0 0 0 1.5px #f0cf6cb3;
 }
+body[data-look="polish"] .dashboard .hud-preview {
+  background: #f0cf6c;
+  color: #163f43;
+}
 body[data-look="polish"] .dashboard .hud-name {
   color: #cfe3de;
 }

@@ -1,635 +1,1188 @@
+// The rules of one run. It never touches the page, so it also runs in Node for balance checks.
+
+const ELF_NAMES = "Pip Holly Jingle Noel Ivy Fig Tinsel Coco".split(" ");
+const CONTROLS =
+  "ai0 ai1 checking ask inspect train rollback quarantine recall".split(" ");
+const PAID = "inspect train rollback quarantine recall".split(" ");
+const STATION_NAMES = [
+  "Reading letters",
+  "Making toys",
+  "Checking and dispatch",
+];
+const BREAK = 3;
+
+// Work is counted in units; one fresh elf at dispatch does CHECKER_SPEED units a second.
+const CHECKER_SPEED = 0.75;
+const PASS = 0.12;
+const CHECK = 2.2; // about eighteen times a pass
+const REMAKE = 4;
+const RECALL = 8; // fetching it back off the sleigh, then remaking it
+const ASKING = 1.6; // an unclear letter while the child answers
+const INSPECT_SECONDS = 3;
+const ROLLBACK_SECONDS = 8;
+const TRAINING_SECONDS = 10;
+const BURNOUT_SECONDS = 30;
+const SAMPLE = 0.08; // share of parcels a spot-check opens
+
+// Indexed by AI level: by hand, assist, automate.
+const LEVELS = ["By hand", "Assist", "Automate"];
+const READ_RISK = [0.02, 0.05, 0.12];
+const UNCLEAR_RISK = [0.05, 0.15, 0.4];
+const MAKE_RISK = [0.02, 0.05, 0.1];
+const FAULT_RISK = [0, 0.35, 0.65]; // the faulty update hurts more the more the AI does
+const UNSURE_IF_WRONG = 0.7;
+const UNSURE_IF_RIGHT = 0.06;
+
+const BUDGET = 1300;
+const WAGE = 0.15; // a working elf, per second
+const COCOA_WAGE = 0.08;
+const AI_PRICE = [0, 0.22, 0.72]; // per station, per second
+const PRICE = {
+  check: 3,
+  inspect: 8,
+  train: 70,
+  remake: 3,
+  rollback: 65,
+  quarantine: 15,
+  recall: 40,
+};
+const WRONG_PRICE = { everyday: 12, big: 60 };
+
+const AT = {
+  ai0: 15,
+  ai1: 25,
+  timmy: 32,
+  checking: 48,
+  update: 75,
+  train: 100,
+  rush: 110,
+  overtrust: 130,
+  calm: 150,
+  close: 211,
+};
+const INFLOW = 0.88;
+const RUSH_INFLOW = 1.65;
+
+// child | words | wanted toy | wrong toy the AI might make | flags
+const WISHES = [
+  "Timmy | A little train, please. | 🚃 model train | 🚂 full-sized locomotive | unclear",
+  "Mia | A red bike for the park. | 🚲 red bike | 🚲 blue bike | big",
+  "Noah | A teddy bear to cuddle. | 🧸 teddy bear | 🐻 live bear cub",
+  "Ava | Something to paint with. I already have brushes. | 🎨 box of watercolours | 🪣 tin of wall paint | unclear",
+  "Leo | A mouse for my desk. | 🖱️ computer mouse | 🐭 pet mouse | unclear",
+  "Isla | A blue football. | ⚽ blue football | 🏈 rugby ball",
+  "Oliver | A rocket for my space toys. | 🚀 toy rocket | 🎆 box of fireworks | unclear",
+  "Grace | A small drum to play music. | 🥁 toy drum | 🛢️ oil drum",
+  "Amir | A bat, please! I love caves. | 🦇 cuddly bat | 🏏 cricket bat | unclear",
+  "Ella | Building bricks, no screens. | 🧱 box of building bricks | 📱 tablet game",
+  "Finn | A book about dinosaurs. | 📕 dinosaur book | 🦖 live T. rex",
+  "Sofia | A star for my bedroom. | ⭐ star night light | 🍪 star-shaped biscuit",
+  "Zara | A doll in a pink dress. | 🪆 doll in a pink dress | 🪆 doll in a green dress",
+  "Max | A kite that flies really high. | 🪁 kite | 🦅 real eagle",
+  "Ruby | A puppy toy that barks. | 🐶 toy puppy | 🪵 sack of tree bark",
+  "Jack | A pirate ship for the bath. | 🏴‍☠️ toy pirate ship | ⛵ full-sized galleon | big",
+  "Lily | A yellow rubber duck. | 🐤 yellow rubber duck | 🦆 live duck",
+  "Sam | Some cool shades, please. | 🕶️ pair of sunglasses | 💡 lampshade | unclear",
+  "Maya | A crown like a real queen. | 👑 toy crown | 💎 set of crown jewels",
+  "Ben | A dragon that breathes fire! | 🐉 toy dragon | 🔥 garden bonfire",
+  "Chloe | A green dinosaur. | 🦕 green dinosaur | 🦕 purple dinosaur",
+  "Ethan | Something for the snow. | 🛷 sledge | 🧂 bag of road salt | unclear big",
+  "Hannah | A horse with a horn! | 🦄 toy unicorn | 🐴 horse in a party hat",
+  "Lucas | A robot that helps me tidy up. | 🤖 toy robot | 🧹 broom",
+  "Poppy | Something sweet, please. | 🍬 bag of sweets | 🍠 sweet potato | unclear",
+  "Theo | A big red fire engine. | 🚒 red fire engine | 🚒 blue fire engine | big",
+  "Nina | A guitar so I can rock. | 🎸 toy guitar | 🪨 big rock | unclear big",
+  "Omar | A space helmet. | 👩‍🚀 space helmet | 🐠 fishbowl",
+  "Rosa | A chess set, please. | ♟️ chess set | 🗄️ chest of drawers | unclear",
+  "Freya | Pink roller skates. | 🛼 pair of pink roller skates | ⛸️ pair of ice skates | big",
+  "Kai | A yo-yo. | 🪀 yo-yo | 🥣 bowl of yoghurt",
+  "Elsie | A magic wand. | 🪄 magic wand | 🥖 baguette",
+].map((line) => {
+  const [child, wish, wanted, wrong, flags = ""] = line.split(" | ");
+  const toy = (text) => ({
+    name: text.slice(text.indexOf(" ") + 1),
+    icon: text.slice(0, text.indexOf(" ")),
+  });
+  return {
+    child,
+    wish,
+    wanted: toy(wanted),
+    wrong: toy(wrong),
+    unclear: flags.includes("unclear"),
+    big: flags.includes("big"),
+  };
+});
+const TIMMY = WISHES[0];
+const EVERYDAY_WISHES = WISHES.slice(1);
+const LOCOMOTIVE = { name: "full-sized locomotive", icon: "🚂" };
+
+const a = (name) => (/^[aeio]/.test(name) ? "an " : "a ") + name;
+const money = (n) => "£" + Math.round(n);
+const share = (test) =>
+  EVERYDAY_WISHES.filter(test).length / EVERYDAY_WISHES.length;
+const sum = (list) => list.reduce((total, n) => total + n, 0);
+const countDown = (n, dt) => (n - dt < 1e-9 ? 0 : n - dt);
+
 class Workshop {
-  constructor() {
+  constructor({ seed = 1, guided = false } = {}) {
+    this.seed = seed >>> 0;
+    this.guided = guided;
     this.duration = 240;
     this.target = 155;
     this.t = 0;
-    this.seed = 251226;
-    this.q = [[], [], []];
-    this.work = [0, 0, 0];
-    this.elves = [
-      "Pip",
-      "Holly",
-      "Jingle",
-      "Noel",
-      "Ivy",
-      "Fig",
-      "Tinsel",
-      "Coco",
-    ].map((name, i) => ({
+    this.elves = ELF_NAMES.map((name, i) => ({
       name,
-      s: i < 3 ? 0 : i < 6 ? 1 : 2,
-      f: 8,
-      idle: 0,
+      station: i < 3 ? 0 : i < 6 ? 1 : 2,
+      home: 0,
+      tired: 8,
       rest: 0,
-      reason: "",
-      ready: false,
     }));
-    this.mode = [1, 1];
-    this.policy = 1;
-    this.ask = true;
-    this.budget = 1050;
-    this.morale = 85;
-    this.loaded = [];
-    this.rework = [];
-    this.id = 0;
-    this.inflow = 0;
-    this.caught = 0;
-    this.checked = 0;
-    this.fault = false;
-    this.patched = false;
-    this.patch = 0;
-    this.trained = false;
-    this.stop = false;
-    this.hold = false;
-    this.metered = false;
-    this.jam = [0, 0, 0];
+    this.queues = [[], [], []];
     this.limits = [24, 20, 18];
-    this.overflow = [0, 0, 0];
-    this.strike = 0;
-    this.notice = 0;
-    this.deal = 0;
-    this.dealCooldown = 0;
-    this.batchClock = 0;
-    this.unionWarned = false;
-    this.events = [];
-    this.log = [];
+    this.work = [0, 0, 0];
+    this.rework = [];
+    this.aboard = [];
+    this.ai = [0, 0];
+    this.checking = 0;
+    this.ask = false;
+    this.inspection = null;
+    this.incident = null;
+    this.training = 0;
+    this.trained = false;
+    this.unlocked = new Set(guided ? [] : CONTROLS);
+    this.happened = new Set();
+    this.hint = null;
+    this.news = [];
+    this.lastNews = 0;
+    this.lost = 0;
+    this.unreportedLost = 0;
+    this.newsAt = {};
+    this.behindNoted = false;
+    this.reworkTurn = false;
+    this.lastId = 0;
+    this.inflow = 0;
+    this.spent = { people: 0, ai: 0, checking: 0, fixing: 0 };
+    this.stats = {
+      ai: [0, 0, 0],
+      checking: [0, 0, 0],
+      passed: 0,
+      checked: 0,
+      prevented: 0,
+      waved: 0,
+      burnouts: 0,
+      checkerBurnouts: 0,
+      jammed: 0,
+      faulty: 0,
+      rolledBack: false,
+      brokeAt: null,
+    };
     this.end = null;
-    this.avgFatigue = 0;
-    this.burnouts = 0;
-    this.idleBreaks = 0;
-    this.inspections = 0;
-    this.practice = false;
-    this.timmy = null;
-    this.activeJob = null;
-    this.emit("Santa has handed you the keys. Keep the workshop moving.");
+    if (guided)
+      this.unlock(
+        "elves",
+        "Letters are piling up. Move elves to the station with the biggest pile.",
+      );
     for (let i = 0; i < 6; i++) this.arrive();
+    ({ projected: this.projected, slowest: this.slowest } = this.estimate());
   }
+
   rng() {
     this.seed = (Math.imul(1664525, this.seed) + 1013904223) >>> 0;
     return this.seed / 4294967296;
   }
-  emit(text) {
-    this.log.unshift({ t: this.t, text });
-    this.log = this.log.slice(0, 6);
+
+  say(kind, text, extra = {}) {
+    this.news.unshift(
+      Object.freeze({
+        id: ++this.lastNews,
+        t: Math.round(this.t * 10) / 10,
+        kind,
+        text,
+        ...extra,
+      }),
+    );
+    this.news.length = Math.min(this.news.length, 30);
   }
+
+  // Says it unless the same kind of news for the same key went out in the last few seconds.
+  sayEvery(seconds, key, kind, text, extra) {
+    if (this.t - (this.newsAt[key] ?? -99) < seconds) return false;
+    this.newsAt[key] = this.t;
+    this.say(kind, text, extra);
+    return true;
+  }
+
+  unlock(control, text) {
+    if (this.unlocked.has(control)) return;
+    this.unlocked.add(control);
+    this.hint = { text, control };
+    this.say("unlock", text, { control });
+  }
+
+  used(control) {
+    if (this.hint?.control === control) this.hint = null;
+  }
+
   arrive(timmy = false) {
-    this.q[0].push({
-      id: ++this.id,
-      amb: timmy || this.rng() < 0.27,
-      timmy,
-      wrong: false,
-      batch: false,
-      clue: false,
+    const w = timmy
+      ? TIMMY
+      : EVERYDAY_WISHES[Math.floor(this.rng() * EVERYDAY_WISHES.length)];
+    const roll = {
       read: this.rng(),
       make: this.rng(),
-      check: this.rng(),
+      unsure: this.rng(),
       sample: this.rng(),
-      type: Math.floor(this.rng() * 3),
+      catch: this.rng(),
+    };
+    if (timmy) roll.make = 1;
+    if (!timmy && this.queues[0].length >= this.limits[0]) {
+      this.lost++;
+      this.unreportedLost++;
+      return;
+    }
+    this.queues[0].push({
+      id: ++this.lastId,
+      w,
+      roll,
+      made: null,
+      wrong: false,
+      asked: false,
+      unsure: false,
+      batch: false,
+      byAi: false,
+      result: null,
+      remake: 0,
+      held: false,
     });
   }
+
+  // Elves working at a station; station 3 is the cocoa break.
   staff(s) {
-    return this.elves.filter((e) => e.s === s);
+    return this.elves.filter((e) => e.station === s);
   }
+
   power(s) {
-    return (
-      this.staff(s).reduce((v, e) => v + 1 - e.f * 0.005, 0) *
-      (this.strike > 0 || this.deal > 0 ? 0 : this.morale < 45 ? 0.65 : 1)
-    );
+    return sum(this.staff(s).map((e) => 1 - e.tired * 0.005));
   }
-  cap(s) {
+
+  cap(s, level = this.ai[s]) {
     const p = this.power(s);
-    if (this.strike > 0 || this.deal > 0) return 0;
-    if (s === 2) return p * 0.75;
-    const m = this.mode[s];
-    return m === 0
-      ? p * 0.31
-      : m === 1
-        ? p
-          ? p * 0.4 + 0.12
-          : 0
-        : 1.8 + p * 0.16;
-  }
-  fatigue() {
-    return this.elves.reduce((a, e) => a + e.f, 0) / 8;
-  }
-  suspect() {
-    return this.loaded.filter((x) => x.batch).length;
-  }
-  spend(n) {
-    if (this.budget < n) return false;
-    this.budget -= n;
-    return true;
-  }
-  move(i, s) {
-    const e = this.elves[i];
-    if (this.end || !e || s < 0 || s > 3) return false;
-    if (e.s === s) return false;
-    if (s !== 3 && e.reason === "burnout" && (e.rest > 0 || e.f > 35))
-      return false;
-    if (s !== 3 && e.rest > 0) {
-      this.morale = Math.max(0, this.morale - 5);
-      this.emit(`${e.name}'s break was cut short. Morale −5.`);
-    }
-    e.s = s;
-    e.idle = 0;
-    e.ready = false;
-    e.reason = s === 3 ? "break" : "";
-    e.rest = s === 3 ? 8 : 0;
-    return true;
-  }
-  action(name) {
-    if (this.end) return false;
-    switch (name) {
-      case "stop":
-        this.stop = !this.stop;
-        this.emit(
-          this.stop
-            ? "Emergency stop. Toys stop moving; letters still arrive."
-            : "Production restarted.",
-        );
-        return true;
-      case "hold":
-        this.hold = !this.hold;
-        this.emit(
-          this.hold
-            ? "Dispatch held. Checking continues, but parcels cannot leave."
-            : "Dispatch released.",
-        );
-        return true;
-      case "intake":
-        this.metered = !this.metered;
-        this.emit(
-          this.metered
-            ? "Letter intake throttled. Fewer wishes arrive; fewer gifts can be delivered."
-            : "Letter intake back to full speed.",
-        );
-        return true;
-      case "patch":
-        if (this.patch || this.patched || !this.fault || !this.spend(65))
-          return false;
-        this.patch = 8;
-        this.emit(
-          "Rolling back the AI update. Eight-second production stop. Existing batches still need checking.",
-        );
-        return true;
-      case "training":
-        if (this.trained || !this.spend(70)) return false;
-        this.trained = true;
-        this.emit(
-          "Reviewers trained. “The robot said so” is no longer a defence.",
-        );
-        return true;
-      case "quarantine": {
-        const batch = this.q[2].filter((x) => x.batch && !x.clean);
-        if (!batch.length || !this.spend(15)) return false;
-        this.q[2] = this.q[2].filter((x) => !batch.includes(x));
-        batch.forEach((x) => {
-          x.review = true;
-          delete x.done;
-        });
-        this.rework.push(...batch);
-        this.emit(
-          `${batch.length} suspect gifts quarantined. Checkers will rework them before new parcels.`,
-        );
-        return true;
-      }
-      case "recall": {
-        const batch = this.loaded.filter((x) => x.batch);
-        if (!batch.length || !this.spend(40)) return false;
-        this.loaded = this.loaded.filter((x) => !x.batch);
-        batch.forEach((x) => {
-          x.review = true;
-          delete x.done;
-        });
-        this.rework.push(...batch);
-        this.emit(
-          `${batch.length} suspect gifts recalled from the sleigh. The loading score falls while they are repaired.`,
-        );
-        return true;
-      }
-      case "deal":
-        if (this.dealCooldown > 0 || !this.spend(90)) return false;
-        this.deal = 7;
-        this.dealCooldown = 40;
-        this.strike = 0;
-        this.notice = 0;
-        this.morale = Math.min(100, this.morale + 30);
-        this.elves.forEach((e) => (e.f = Math.max(0, e.f - 20)));
-        this.emit(
-          "Agreement reached. Seven seconds for paid cocoa, then back to work. Morale +30.",
-        );
-        return true;
-      case "storage": {
-        const s = this.q
-          .map((q, i) => q.length / this.limits[i])
-          .indexOf(
-            Math.max(...this.q.map((q, i) => q.length / this.limits[i])),
-          );
-        if (this.limits[s] >= 36 || !this.spend(85)) return false;
-        this.limits[s] += 8;
-        this.jam[s] = 0;
-        this.overflow[s] = 0;
-        this.emit(
-          `Temporary storage added at ${["wish lists", "toy-making", "dispatch"][s]}. Eight extra spaces.`,
-        );
-        return true;
-      }
-      default:
-        return false;
-    }
-  }
-  resolveTimmy(choice) {
-    if (!this.timmy || this.timmy.done || this.end) return false;
-    this.timmy.done = true;
-    const x = this.q.flat().find((x) => x.timmy);
-    if (x) {
-      x.read = choice === "little" ? 1 : 0;
-      x.wrong = choice !== "little";
-      x.amb = false;
-      x.resolved = true;
-    }
-    this.emit(
-      choice === "little"
-        ? "Timmy wants a model train. A careful question saves a very large mistake."
-        : "A full-sized locomotive? Bold interpretation. Timmy’s parents may disagree.",
+    if (s < 2) return [p * 0.18, p ? p * 0.38 + 0.1 : 0, 1.5 + p * 0.15][level];
+    const inspecting = this.inspection?.remaining > 0 ? CHECKER_SPEED : 0;
+    return (
+      Math.max(0, p * CHECKER_SPEED - inspecting) * (this.training ? 0.5 : 1)
     );
-    return true;
   }
-  inspect(id, choice) {
-    const x = this.q[2].find((x) => x.id === id);
-    if (!x || this.end) return false;
-    if (choice === "release") {
-      x.review = false;
-      x.done = true;
-      x.clue = false;
-      this.emit("Parcel released without another check.");
-      return true;
-    }
-    if (choice === "quarantine") {
-      this.q[2] = this.q[2].filter((y) => y.id !== id);
-      delete x.done;
-      x.review = true;
-      this.rework.push(x);
-      this.emit("Parcel sent to the rework bench.");
-      return true;
-    }
-    if (choice === "inspect") {
-      if (this.activeJob || !this.staff(2).length || !this.spend(8))
-        return false;
-      this.activeJob = { id, remaining: 3 };
-      this.q[2] = this.q[2].filter((y) => y.id !== id);
-      this.activeJob.item = x;
-      this.emit(
-        "Checker assigned for three seconds. Other dispatch work slows.",
+
+  cost(s, x) {
+    if (s === 0) return this.ask && x.w.unclear ? ASKING : 1;
+    if (s === 1) return 1;
+    return x.remake || (this.needsCheck(x) ? CHECK : PASS);
+  }
+
+  suspect(x) {
+    return x.unsure || (x.batch && Boolean(this.incident?.known));
+  }
+
+  // An unclear wish stops being risky once the child has been asked.
+  risky(x) {
+    return x.w.big || (x.w.unclear && !x.asked) || this.suspect(x);
+  }
+
+  needsCheck(x, level = this.checking) {
+    const sample = x.roll.sample < SAMPLE;
+    return [sample, sample || this.risky(x), true][level];
+  }
+
+  // Parcels waiting at dispatch that the faulty update made, once it is known: what quarantine takes.
+  marked() {
+    return this.incident?.known ? this.queues[2].filter((x) => x.batch) : [];
+  }
+
+  blocked(s) {
+    return s < 2 && this.queues[s + 1].length >= this.limits[s + 1];
+  }
+
+  busy(s) {
+    if (s === 2)
+      return (
+        this.queues[2].length > 0 ||
+        this.rework.length > 0 ||
+        this.inspection?.remaining > 0
       );
-      return true;
+    return (
+      this.queues[s].length > 0 &&
+      !this.blocked(s) &&
+      !(s === 1 && this.incident?.rollingBack)
+    );
+  }
+
+  left() {
+    return BUDGET - sum(Object.values(this.spent));
+  }
+
+  pay(kind, amount) {
+    this.spent[kind] += amount;
+    if (this.left() <= 0 && this.stats.brokeAt === null) {
+      this.stats.brokeAt = this.t;
+      this.say("broke", "The money has run out. Paid actions have stopped.");
     }
-    return false;
   }
-  fail(kind, title, why, tip) {
-    this.end = { kind, title, why, tip };
-    this.emit(title);
+
+  overtrusting() {
+    return this.t >= AT.overtrust && !this.trained;
   }
+
+  catchChance(byAi) {
+    const team = this.staff(2);
+    const tired = sum(team.map((e) => e.tired)) / Math.max(1, team.length);
+    return Math.max(
+      0.35,
+      0.87 - tired * 0.004 - (byAi && this.overtrusting() ? 0.3 : 0),
+    );
+  }
+
+  price(x) {
+    return x.w.big ? WRONG_PRICE.big : WRONG_PRICE.everyday;
+  }
+
+  // The same odds the simulation rolls against, averaged over the wishes, for the levers and the pace.
+  odds(levels = this.ai, checking = this.checking) {
+    const unclear = share((w) => w.unclear);
+    const readWrong =
+      READ_RISK[levels[0]] +
+      unclear * UNCLEAR_RISK[levels[0]] * (this.ask ? 0.15 : 1);
+    const inc = this.incident;
+    const fault = inc?.fault && inc.known && !inc.rollingBack && levels[1] > 0;
+    const makeWrong = fault ? FAULT_RISK[levels[1]] : MAKE_RISK[levels[1]];
+    const wrong = 1 - (1 - readWrong) * (1 - makeWrong);
+    const flagged = fault ? 1 : share((w) => w.big || (w.unclear && !this.ask));
+    const unsure = wrong * UNSURE_IF_WRONG + (1 - wrong) * UNSURE_IF_RIGHT;
+    const notRisky = (1 - flagged) * (1 - SAMPLE);
+    const checked = [SAMPLE, 1 - notRisky * (1 - unsure), 1][checking];
+    const wrongChecked = [SAMPLE, 1 - notRisky * (1 - UNSURE_IF_WRONG), 1][
+      checking
+    ];
+    const caught =
+      wrong * wrongChecked * this.catchChance(levels.some((l) => l > 0));
+    const dispatchCost = PASS + checked * (CHECK - PASS) + caught * REMAKE;
+    return { readWrong, makeWrong, wrong, checked, caught, dispatchCost };
+  }
+
   step(dt) {
-    if (this.end) return;
-    this.t = Math.min(this.duration, this.t + dt);
-    this.dealCooldown = Math.max(0, this.dealCooldown - dt);
-    if (this.deal > 0) this.deal = Math.max(0, this.deal - dt);
-    if (this.patch > 0) {
-      this.patch = Math.max(0, Math.round((this.patch - dt) * 1000) / 1000);
-      if (!this.patch) {
-        this.fault = false;
-        this.patched = true;
-        this.emit(
-          "AI rollback complete. New toys are safer; suspect gifts already made still need rework.",
-        );
-      }
+    while (dt > 1e-9 && !this.end) {
+      const d = Math.min(dt, 0.1);
+      this.tick(d);
+      dt -= d;
     }
-    const event = (time, id, fn) => {
-      if (this.t >= time && !this.events.includes(id)) {
-        this.events.push(id);
+  }
+
+  tick(dt) {
+    this.t = Math.min(this.duration, this.t + dt);
+    this.events();
+    if (this.t < AT.close) {
+      this.inflow +=
+        dt * (this.t >= AT.rush && this.t < AT.calm ? RUSH_INFLOW : INFLOW);
+      for (; this.inflow >= 1; this.inflow--) this.arrive();
+    }
+    this.elvesTick(dt);
+    this.timersTick(dt);
+    for (let s = 0; s < 3; s++) this.run(s, dt);
+    this.track(dt);
+    if (this.t >= this.duration) this.finish();
+  }
+
+  events() {
+    const at = (time, key, fn) => {
+      if (this.t >= time && !this.happened.has(key)) {
+        this.happened.add(key);
         fn();
       }
     };
-    event(28, "timmy", () => {
+    at(AT.ai0, "ai0", () =>
+      this.unlock(
+        "ai0",
+        "Reading by hand is slow. Let the AI help read the letters.",
+      ),
+    );
+    at(AT.ai1, "ai1", () =>
+      this.unlock("ai1", "Now toys pile up. Let the AI help make them too."),
+    );
+    at(AT.timmy, "timmy", () => {
       this.arrive(true);
-      this.timmy = { done: false, until: this.t + 18 };
-      this.emit(
-        "Timmy’s urgent letter! “A little train”. Clarify it before the AI guesses.",
+      this.say(
+        "timmy",
+        "Timmy writes: 'A little train, please.' How little is little?",
+      );
+      this.unlock(
+        "ask",
+        "Timmy's wish is unclear. Turn on asking so the AI checks with him first.",
       );
     });
-    event(62, "update", () => {
-      this.fault = true;
-      this.patched = false;
-      this.emit(
-        "Bad AI update! Automated toy lines may now produce full-sized trains. Roll back and contain the batch.",
-      );
-    });
-    event(104, "rush", () =>
-      this.emit(
-        "Last-minute letter rush. Intake doubles for 40 seconds. Watch the queues.",
+    at(AT.checking, "checking", () => this.unlockChecking());
+    at((this.checkingAt ?? Infinity) + 8, "inspect", () =>
+      this.unlock(
+        "inspect",
+        "Open a waiting parcel yourself and judge the toy against the wish.",
       ),
     );
-    event(154, "union", () => {
-      this.morale = Math.max(0, this.morale - 14);
-      this.emit(
-        "The elves want predictable breaks. Morale falls as the Christmas shift drags on.",
+    at(AT.update, "update", () => {
+      this.incident = { fault: true, known: false, rollingBack: 0 };
+      this.say("update", "A shiny new AI update just reached the toy line.");
+      this.unlock(
+        "rollback",
+        "If the new update makes odd toys, roll it back.",
       );
     });
-    event(211, "close", () =>
-      this.emit("The post is closed. Clear the benches before Santa leaves."),
+    at(AT.train, "train", () =>
+      this.unlock(
+        "train",
+        "Long shifts make checkers trust the AI too much. Training keeps them sharp.",
+      ),
     );
-    if (this.timmy && !this.timmy.done && this.t >= this.timmy.until) {
-      this.timmy.done = true;
-      this.emit(
-        "Timmy’s letter goes back into the queue. Your wish-list settings now decide its fate.",
-      );
-    }
-    if (this.t < 211) {
-      this.inflow +=
-        dt *
-        (this.t >= 104 && this.t < 144 ? 1.65 : 0.88) *
-        (this.metered ? 0.42 : 1);
-      while (this.inflow >= 1) {
-        this.arrive();
-        this.inflow--;
-      }
-    }
-    // Continuous fatigue plus pressure. Idle breaks are staggered so a whole team cannot vanish together.
-    const busy = this.q.map(
-      (q, s) =>
-        q.length > 0 || (s === 2 && (this.rework.length > 0 || this.activeJob)),
+    at(AT.rush, "rush", () =>
+      this.say("rush", "Last-minute rush! Letters now arrive twice as fast."),
     );
-    for (const e of this.elves) {
-      if (e.s === 3) {
-        e.f = Math.max(0, e.f - dt * 1.9);
-        e.rest = Math.max(0, e.rest - dt);
-        if (!e.ready && e.rest === 0 && e.f <= 35) {
-          e.ready = true;
-          this.emit(`${e.name} is refreshed and ready to recall.`);
-        }
-        continue;
-      }
-      if (this.deal > 0 || this.strike > 0) {
-        e.f = Math.max(0, e.f - dt * 0.6);
-        continue;
-      }
-      const s = e.s,
-        pressure = this.q[s].length / this.limits[s],
-        working = busy[s] && !(s === 1 && (this.stop || this.patch));
-      e.f = Math.max(
-        0,
-        Math.min(
-          100,
-          e.f +
-            dt *
-              (working
-                ? 0.24 +
-                  Math.max(0, pressure - 0.25) * 0.75 +
-                  (s === 2 && this.rework.length ? 0.18 : 0)
-                : -0.12),
-        ),
-      );
-      e.idle = working ? Math.max(0, e.idle - dt * 0.6) : e.idle + dt;
-      if (e.f >= 88) {
-        e.s = 3;
-        e.reason = "burnout";
-        e.rest = 20;
-        e.idle = 0;
-        e.ready = false;
-        this.burnouts++;
-        this.morale = Math.max(0, this.morale - 13);
-        this.emit(
-          `${e.name} has burnt out and walked off for cocoa. Recovery is compulsory. Morale −13.`,
+    at(AT.overtrust, "overtrust", () => {
+      if (!this.trained)
+        this.say(
+          "overtrust",
+          "Long shift: the checkers have started waving AI gifts through.",
         );
-      } else if (e.idle > 20 && this.staff(s).length > 1) {
-        e.s = 3;
-        e.reason = "idle";
-        e.rest = 0;
-        e.ready = true;
-        e.idle = 0;
-        this.idleBreaks++;
-        this.staff(s).forEach((other) => (other.idle = 0));
-        this.emit(
-          `${e.name} is underused and has wandered off for cocoa. Recall when needed.`,
-        );
+    });
+  }
+
+  unlockChecking() {
+    this.checkingAt ??= this.t;
+    this.unlock(
+      "checking",
+      "Some gifts come out wrong. Choose how much the elves check before parcels leave.",
+    );
+  }
+
+  elvesTick(dt) {
+    this.elves.forEach((e, i) => {
+      this.pay("people", dt * (e.station === BREAK ? COCOA_WAGE : WAGE));
+      if (e.station === BREAK) {
+        e.tired = Math.max(0, e.tired - dt * 3);
+        if (e.rest > 0 && (e.rest = countDown(e.rest, dt)) === 0)
+          e.station = e.home;
+        return;
       }
-    }
-    const over = this.elves.filter((e) => e.s !== 3 && e.f > 65).length,
-      rest = this.staff(3).length,
-      peak = Math.max(...this.q.map((q, i) => q.length / this.limits[i]));
-    this.morale = Math.max(
-      0,
-      Math.min(
+      const s = e.station;
+      const pressure = this.queues[s].length / this.limits[s];
+      const effort =
+        0.3 +
+        Math.max(0, pressure - 0.25) * 0.75 +
+        (s === 2 ? 0.1 * this.checking : 0);
+      e.tired = Math.min(
         100,
-        this.morale +
-          dt * (rest * 0.055 + 0.015 - over * 0.15 - (peak > 0.8 ? 0.13 : 0)),
-      ),
+        Math.max(0, e.tired + dt * (this.busy(s) ? effort : -0.12)),
+      );
+      if (this.guided && e.tired >= 60 && !this.happened.has("cocoaHint")) {
+        this.happened.add("cocoaHint");
+        this.hint = {
+          text: `${e.name} is getting tired. Send tired elves for cocoa before they burn out.`,
+          control: "elves",
+        };
+      }
+      if (e.tired < 88) return;
+      Object.assign(e, { home: s, station: BREAK, rest: BURNOUT_SECONDS });
+      this.stats.burnouts++;
+      if (s === 2) this.stats.checkerBurnouts++;
+      this.say(
+        "tired",
+        `${e.name} burnt out and walked off for a long cocoa break.`,
+        { elf: i },
+      );
+    });
+  }
+
+  timersTick(dt) {
+    const ins = this.inspection;
+    if (ins?.remaining > 0 && this.staff(2).length)
+      ins.remaining = countDown(ins.remaining, dt);
+    const inc = this.incident;
+    if (
+      inc?.rollingBack > 0 &&
+      (inc.rollingBack = countDown(inc.rollingBack, dt)) === 0
+    ) {
+      inc.fault = false;
+      this.say(
+        "rolledBack",
+        "Rollback done. The toy line makes proper toys again.",
+      );
+    }
+    if (
+      this.training > 0 &&
+      (this.training = countDown(this.training, dt)) === 0
+    ) {
+      this.trained = true;
+      this.say(
+        "trained",
+        "Training done. The checkers look at every gift properly again.",
+      );
+    }
+  }
+
+  run(s, dt) {
+    if (s === 1 && this.incident?.rollingBack) return;
+    if (!this.next(s)) return void (this.work[s] = 0);
+    if (this.blocked(s)) return;
+    this.work[s] += this.cap(s) * dt;
+    for (
+      let line = this.next(s);
+      line && !this.blocked(s) && this.work[s] >= this.cost(s, line[0]);
+      line = this.next(s)
+    ) {
+      this.work[s] -= this.cost(s, line[0]);
+      if (s === 2) this.reworkTurn = line !== this.rework;
+      this.finishWork(s, line.shift());
+    }
+  }
+
+  // The line a station takes its next parcel from, or null. Dispatch alternates remakes with new
+  // parcels, and does only remakes while quarantined parcels hold it.
+  next(s) {
+    const q = this.queues[s];
+    if (s < 2 || !this.rework.length) return q.length ? q : null;
+    return this.reworkTurn || !q.length || this.rework.some((x) => x.held)
+      ? this.rework
+      : q;
+  }
+
+  finishWork(s, x) {
+    if (s === 0) {
+      const level = this.ai[0];
+      x.asked = this.ask && x.w.unclear;
+      x.byAi = level > 0;
+      const risk =
+        READ_RISK[level] +
+        (x.w.unclear ? UNCLEAR_RISK[level] * (x.asked ? 0.15 : 1) : 0);
+      x.wrong = x.w === TIMMY ? !x.asked : x.roll.read < risk;
+      this.queues[1].push(x);
+    } else if (s === 1) {
+      x.batch = Boolean(this.incident?.fault) && this.ai[1] > 0;
+      x.byAi ||= this.ai[1] > 0;
+      const faulty = x.batch && x.roll.make < FAULT_RISK[this.ai[1]];
+      x.wrong = faulty || x.wrong || x.roll.make < MAKE_RISK[this.ai[1]];
+      x.made = faulty ? LOCOMOTIVE : x.wrong ? x.w.wrong : x.w.wanted;
+      x.unsure =
+        x.roll.unsure <
+        (x.wrong && !faulty ? UNSURE_IF_WRONG : UNSURE_IF_RIGHT);
+      this.queues[2].push(x);
+    } else if (x.remake) {
+      Object.assign(x, {
+        remake: 0,
+        held: false,
+        wrong: false,
+        batch: false,
+        unsure: false,
+        made: x.w.wanted,
+        result: "right",
+      });
+      this.pay("fixing", PRICE.remake);
+      this.load(x);
+    } else {
+      this.stats.passed++;
+      if (this.needsCheck(x)) this.elfCheck(x);
+      else this.load(x);
+    }
+  }
+
+  elfCheck(x) {
+    this.stats.checked++;
+    this.pay("checking", PRICE.check);
+    if (x.wrong && x.roll.catch >= this.catchChance(x.byAi)) {
+      x.slipped = true;
+      if (x.byAi && this.overtrusting()) this.stats.waved++;
+      return this.load(x);
+    }
+    this.reveal(x);
+    const text = x.wrong
+      ? `An elf caught a mistake: ${x.w.child} wished for ${a(x.w.wanted.name)} and got ${a(x.made.name)}.`
+      : `An elf checked ${x.w.child}'s ${x.w.wanted.name}: just right.`;
+    this.say("checked", text, {
+      check: this.copy(x, Math.round((CHECK / CHECKER_SPEED) * 10) / 10, "elf"),
+    });
+    if (x.wrong) this.caught(x);
+    else this.load(x);
+  }
+
+  caught(x) {
+    this.stats.prevented += this.price(x);
+    this.toRework(x, REMAKE);
+  }
+
+  load(x) {
+    this.reveal(x);
+    this.aboard.push(x);
+    if (!x.wrong) return;
+    const slipped = x.slipped ? " It slipped past a checker." : "";
+    const text = `Wrong gift aboard! ${x.w.child} wished for ${a(x.w.wanted.name)} and got ${a(x.made.name)}.${slipped}`;
+    this.say("loaded", text, { check: this.copy(x) });
+    if (this.t >= AT.timmy) this.unlockChecking();
+    if (this.incident)
+      this.unlock(
+        "recall",
+        "A wrong gift is on the sleigh. Recall brings wrong gifts back to be remade.",
+      );
+  }
+
+  reveal(x) {
+    if (x.result) return;
+    x.result = x.wrong ? "wrong" : "right";
+    if (x.made === LOCOMOTIVE && !this.incident.known) {
+      this.incident.known = true;
+      this.unlock(
+        "quarantine",
+        "Full-sized trains! Roll back the update and quarantine the marked parcels.",
+      );
+    }
+  }
+
+  // A copy taken now, so news keeps showing the toy as the AI made it.
+  copy(x, seconds, by) {
+    const check = {
+      wish: x.w.wish,
+      wanted: { ...x.w.wanted },
+      made: { ...x.made },
+      result: x.wrong ? "wrong" : "right",
+    };
+    return by ? { ...check, seconds, by } : check;
+  }
+
+  toRework(x, cost) {
+    x.remake = cost;
+    this.rework.push(x);
+  }
+
+  track(dt) {
+    this.pay("ai", dt * (AI_PRICE[this.ai[0]] + AI_PRICE[this.ai[1]]));
+    this.stats.ai[this.ai[0]] += dt;
+    this.stats.ai[this.ai[1]] += dt;
+    this.stats.checking[this.checking] += dt;
+    if (
+      this.queues[2].length >= this.limits[2] ||
+      this.rework.some((x) => x.held)
+    )
+      this.stats.jammed += dt;
+    const inc = this.incident;
+    if (inc?.fault && inc.known && !inc.rollingBack && this.ai[1] > 0)
+      this.stats.faulty += dt;
+    if (this.blocked(0))
+      this.sayEvery(
+        10,
+        "blocked0",
+        "blocked",
+        "Reading stopped: the toy pile is full.",
+        { station: 0 },
+      );
+    if (this.blocked(1))
+      this.sayEvery(
+        10,
+        "blocked1",
+        "blocked",
+        "The toy line stopped: dispatch is full.",
+        { station: 1 },
+      );
+    const count = this.unreportedLost;
+    if (
+      count &&
+      this.sayEvery(
+        5,
+        "lost",
+        "lost",
+        `${count} ${count === 1 ? "letter was" : "letters were"} lost: the letter pile is full.`,
+        { count },
+      )
+    )
+      this.unreportedLost = 0;
+    // Averaged over about 15 seconds, so an inspection or a break does not set off the warning.
+    const now = this.estimate();
+    this.projected += (now.projected - this.projected) * Math.min(1, dt / 15);
+    this.slowest = now.slowest;
+    const pace = this.pace();
+    // Too early to judge a pace in the first seconds; re-arm only once the pace is comfortably back.
+    if (this.t >= 20 && pace.behind && !this.behindNoted) {
+      this.behindNoted = true;
+      const text = `At this pace Santa leaves with about ${pace.projected} right gifts. ${STATION_NAMES[pace.slowest]} is holding things up.`;
+      this.say("behind", text, { station: pace.slowest });
+    }
+    if (pace.projected >= this.target + 5) this.behindNoted = false;
+  }
+
+  pace() {
+    return {
+      projected: Math.round(this.projected),
+      behind: this.projected < this.target,
+      slowest: this.slowest,
+    };
+  }
+
+  readCost() {
+    return 1 + (this.ask ? share((w) => w.unclear) * (ASKING - 1) : 0);
+  }
+
+  // Parcels a second at the current settings, from the same odds the levers show. Steady leaves out
+  // what passes in seconds: training, an open parcel and a rollback.
+  rates(steady = false) {
+    const dispatch = steady ? this.power(2) * CHECKER_SPEED : this.cap(2);
+    const stopped = !steady && this.incident?.rollingBack;
+    return [
+      this.cap(0) / this.readCost(),
+      stopped ? 0 : this.cap(1),
+      dispatch / this.odds().dispatchCost,
+    ];
+  }
+
+  // Right gifts expected at departure if every station keeps its current speed.
+  estimate() {
+    const o = this.odds();
+    const rates = this.rates(true);
+    const slowest = rates.indexOf(Math.min(...rates));
+    const later = (from, to) =>
+      Math.max(0, Math.min(to, AT.close) - Math.max(from, this.t));
+    const letters =
+      INFLOW * (later(0, AT.rush) + later(AT.calm, AT.close)) +
+      RUSH_INFLOW * later(AT.rush, AT.calm);
+    const supply =
+      sum(this.queues.map((q) => q.length)) +
+      this.rework.length +
+      (this.inspection ? 1 : 0) +
+      letters;
+    const right = this.aboard.filter((x) => !x.wrong).length;
+    const projected =
+      right +
+      Math.min(rates[slowest] * (this.duration - this.t), supply) *
+        (1 - o.wrong + o.caught);
+    return { projected, slowest };
+  }
+
+  levers() {
+    const ai = (s) =>
+      LEVELS.map((name, level) => {
+        const levels = s === 0 ? [level, this.ai[1]] : [this.ai[0], level];
+        const o = this.odds(levels);
+        return {
+          name,
+          perMinute: Math.round(
+            (this.cap(s, level) * 60) / (s === 0 ? this.readCost() : 1),
+          ),
+          wrongPer100: Math.round((s === 0 ? o.readWrong : o.makeWrong) * 100),
+          costPerMinute: Math.round(AI_PRICE[level] * 60),
+        };
+      });
+    const checking = [
+      "Spot-check",
+      "Check the risky ones",
+      "Check everything",
+    ].map((name, level) => {
+      const o = this.odds(this.ai, level);
+      return {
+        name,
+        checkedPer100: Math.round(o.checked * 100),
+        perMinute: Math.round((this.cap(2) * 60) / o.dispatchCost),
+      };
+    });
+    return { ai0: ai(0), ai1: ai(1), checking };
+  }
+
+  finish() {
+    const right = this.aboard.filter((x) => !x.wrong).length;
+    const wrongGifts = this.aboard.filter((x) => x.wrong);
+    const mistakes = sum(wrongGifts.map((x) => this.price(x)));
+    const total = sum(Object.values(this.spent)) + mistakes;
+    const costs = {
+      ...this.spent,
+      mistakes,
+      prevented: this.stats.prevented,
+      total,
+      budget: BUDGET,
+    };
+    for (const k in costs) costs[k] = Math.round(costs[k]);
+    const wrongShare = wrongGifts.length / Math.max(1, this.aboard.length);
+    const top = right >= this.target && wrongShare <= 0.1 && total <= BUDGET;
+    const rating = top
+      ? 3
+      : right >= this.target * 0.8 && wrongShare <= 0.2
+        ? 2
+        : 1;
+    const lesson = this.lesson(rating, right, costs);
+    this.end = {
+      right,
+      wrong: wrongGifts.length,
+      lost: this.lost,
+      rating,
+      costs,
+      lesson,
+    };
+  }
+
+  // One lesson from what the player did, biggest cause first, in the terms of the end account.
+  lesson(rating, right, costs) {
+    const st = this.stats;
+    const d = this.duration;
+    const missed = rating < 3;
+    const checkedShare = st.checked / Math.max(1, st.passed);
+    const bigWrong = sum(
+      this.aboard.filter((x) => x.wrong && x.w.big).map((x) => this.price(x)),
     );
-    if (this.morale < 45 && !this.unionWarned) {
-      this.unionWarned = true;
-      this.emit(
-        "Work to rule. Morale below 45: elves slow to 65% capacity. A strike is brewing.",
-      );
-    }
-    if (this.morale >= 50) this.unionWarned = false;
-    if (!this.strike && !this.deal) {
-      this.notice =
-        this.morale < 35 ? this.notice + dt : Math.max(0, this.notice - dt * 2);
-      if (this.notice >= 12) {
-        this.strike = 22;
-        this.emit(
-          "STRIKE! “More cocoa, less chaos!” Agree a deal within 22 seconds or Christmas is cancelled.",
-        );
-      }
-    } else if (this.strike) {
-      this.strike = Math.max(0, this.strike - dt);
-      if (this.strike === 0) {
-        this.fail(
-          "strike",
-          "No elves, no Christmas",
-          "The workforce walked out and the dispute was not resolved.",
-          "Rotate tired elves before burnout. A paid cocoa agreement can stop an active strike.",
-        );
-        return;
-      }
-    }
-    this.avgFatigue += this.fatigue() * dt;
-    this.budget -=
-      dt *
-      (this.elves.filter((e) => e.s !== 3).length * 0.15 +
-        rest * 0.08 +
-        this.mode.reduce((a, m) => a + [0, 0.22, 0.72][m], 0));
-    // An inspection occupies one checker and uses simulation time, even if the player clicks while paused.
-    if (this.activeJob && this.staff(2).length && this.power(2) > 0) {
-      this.activeJob.remaining -= dt;
-      if (this.activeJob.remaining <= 0) {
-        const x = this.activeJob.item;
-        this.checked++;
-        this.inspections++;
-        if (x.wrong) {
-          this.caught++;
-          this.budget -= 2;
-          this.emit(
-            `Inspection caught a wrong present in parcel ${x.id}. Repaired.`,
-          );
-        } else
-          this.emit(
-            `Parcel ${x.id} checked. It was fine; inspection still cost time.`,
-          );
-        x.wrong = false;
-        x.batch = false;
-        x.clue = false;
-        x.clean = true;
-        x.done = true;
-        this.q[2].unshift(x);
-        this.activeJob = null;
-      }
-    }
-    for (let s = 0; s < 3; s++) {
-      if (this.jam[s] > 0) {
-        this.jam[s] = Math.max(0, this.jam[s] - dt);
-        continue;
-      }
-      if (s === 1 && (this.stop || this.patch > 0)) continue;
-      let cap = this.cap(s);
-      if (s === 2 && this.activeJob) cap = Math.max(0, cap - 0.75);
-      const repairing = s === 2 && this.rework.length > 0;
-      const q = repairing ? this.rework : this.q[s];
-      if (!q.length) {
-        this.work[s] = 0;
-        continue;
-      }
-      this.work[s] += cap * dt;
-      let guard = 0;
-      while (q.length && guard++ < 20) {
-        const x = q[0];
-        if (s === 0 && x.timmy && this.timmy && !this.timmy.done) break;
-        if (s === 2 && x.review === undefined)
-          x.review =
-            repairing ||
-            this.policy === 2 ||
-            (this.policy === 1
-              ? x.amb || x.clue || x.sample < 0.18
-              : x.sample < 0.07);
-        const cost =
-          s === 2
-            ? x.done
-              ? 0.1
-              : repairing
-                ? 2
-                : x.review
-                  ? 2.2
-                  : 0.12
-            : s === 0 && x.amb && this.ask
-              ? 1.6
-              : 1;
-        if (s === 0 && x.amb && this.ask && !this.staff(0).length) break;
-        if (s === 2 && x.review && !this.staff(2).length) break;
-        if (this.work[s] < cost) break;
-        if (s === 2 && this.hold && x.done && !repairing) break;
-        this.work[s] -= cost;
-        if (s === 2 && !x.done) {
-          if (x.review) {
-            this.checked++;
-            const mean =
-              this.staff(2).reduce((a, e) => a + e.f, 0) /
-              Math.max(1, this.staff(2).length);
-            const chance = repairing
-              ? 1
-              : Math.max(
-                  0.35,
-                  (this.trained ? 0.98 : 0.87) -
-                    mean * 0.004 -
-                    (this.t > 130 && !this.trained ? 0.12 : 0),
-                );
-            if (x.check < chance) {
-              if (x.wrong) {
-                this.caught++;
-                this.budget -= 2;
-              }
-              x.wrong = false;
-              x.batch = false;
-              x.clean = true;
-            }
-          }
-          x.done = true;
-          if (this.hold && !repairing) break;
-        }
-        q.shift();
-        if (s === 0) {
-          if (!x.resolved) {
-            let risk =
-              [0.025, 0.065, 0.16][this.mode[0]] +
-              (x.amb ? [0.04, 0.13, 0.35][this.mode[0]] : 0);
-            if (x.amb && this.ask) risk *= 0.18;
-            x.wrong = x.read < risk;
-          }
-          this.q[1].push(x);
-        } else if (s === 1) {
-          x.batch = this.fault && this.mode[1] > 0;
-          x.wrong =
-            x.wrong ||
-            x.make < [0.025, 0.06, 0.12][this.mode[1]] + (x.batch ? 0.65 : 0);
-          x.clue = x.batch || x.make < 0.15;
-          this.q[2].push(x);
-        } else if (repairing) {
-          x.batch = false;
-          x.wrong = false;
-          x.clean = true;
-          this.q[2].push(x);
-        } else this.loaded.push(x);
-      }
-      this.work[s] = Math.min(3, this.work[s]);
-    }
-    // Full queues first jam, then accumulate a visible 16-second collapse countdown. Drain to 80% to reset.
-    for (let s = 0; s < 3; s++) {
-      const q = this.q[s].length,
-        lim = this.limits[s];
-      if (q >= lim) {
-        if (this.overflow[s] === 0) {
-          this.jam[s] = 3;
-          this.emit(
-            `${["Letter mountain", "Toy backlog", "Dispatch pile-up"][s]}! A jam stops this station for 3s. Drain below ${Math.floor(lim * 0.8)} to reset the collapse countdown.`,
-          );
-        }
-        this.overflow[s] += dt;
-      } else if (q < lim * 0.8) this.overflow[s] = 0;
-      else if (this.overflow[s] > 0) this.overflow[s] += dt;
-      if (this.overflow[s] >= 16) {
-        this.fail(
-          "queue",
-          "The Great Parcel Avalanche",
-          `${["Wish lists", "Toy orders", "Dispatch parcels"][s]} filled the available space and the backlog was not cleared in time.`,
-          `Keep ${["wish lists", "production", "dispatch"][s]} moving. Throttle letters, rebalance elves or buy emergency storage before the countdown expires.`,
-        );
-        return;
-      }
-    }
-    if (this.suspect() >= 12) {
-      if (this.batchClock === 0)
-        this.emit(
-          "Sleigh overload! At least 12 suspect train parcels aboard. Recall the batch within 18s.",
-        );
-      this.batchClock += dt;
-    } else this.batchClock = 0;
-    if (this.batchClock >= 18) {
-      this.fail(
-        "batch",
-        "The Locomotive Incident",
-        "A suspect batch overloaded the sleigh. Santa has filed an unusually long expenses claim.",
-        "Roll back the AI update, quarantine suspect parcels, and recall anything already loaded.",
-      );
-      return;
-    }
-    if (this.t >= this.duration) this.end = { kind: "complete" };
+    const letters = this.lastId + this.lost;
+    if (missed && st.ai[0] / (2 * d) >= 0.6 && right < this.target)
+      return {
+        title: "By hand is careful but slow",
+        text: `Your elves made few mistakes but delivered only ${right} right gifts from ${letters} letters. With AI help and some checking, the same elves could have delivered far more.`,
+      };
+    if (missed && st.brokeAt !== null)
+      return {
+        title: "The money ran out",
+        text: `The money ran out after ${Math.round(st.brokeAt)} seconds: checking cost ${money(costs.checking)} and fixing ${money(costs.fixing)}. Spend on the checks that stop the dearest mistakes.`,
+      };
+    if (missed && st.checking[2] / d >= 0.3 && costs.checking > costs.prevented)
+      return {
+        title: "Too much checking",
+        text: `Checking cost ${money(costs.checking)} but stopped mistakes worth only ${money(costs.prevented)}, and parcels sat stuck at dispatch for ${Math.round(st.jammed)} seconds. Check where a mistake is likely or dear, and let the rest through.`,
+      };
+    if (missed && checkedShare < 0.2 && costs.mistakes > costs.checking)
+      return {
+        title: "Too little checking",
+        text: `Wrong gifts cost ${money(costs.mistakes)}, far more than the ${money(costs.checking)} spent on checking. The more the AI does, the more its work needs checking.`,
+      };
+    if (st.faulty >= 15)
+      return {
+        title: "The faulty update ran too long",
+        text: `The broken update kept making full-sized trains for ${Math.round(st.faulty)} seconds after they were spotted. When the AI suddenly goes wrong, roll back first, then quarantine and recall what it made.`,
+      };
+    if (missed && st.checkerBurnouts >= 2)
+      return {
+        title: "Tired checkers miss mistakes",
+        text: `${st.checkerBurnouts} checkers burnt out, and tired ones let mistakes slip. Send elves for cocoa before they are worn out.`,
+      };
+    if (missed && st.waved >= 3)
+      return {
+        title: "The checkers trusted the AI too much",
+        text: `Late in the shift, untrained checkers waved ${st.waved} wrong AI gifts through. Training them early keeps them sharp.`,
+      };
+    if (missed && st.checking[1] / d < 0.4)
+      return {
+        title: "Every parcel checked the same",
+        text: `Big gifts and parcels the AI was unsure about were where mistakes were likeliest and dearest; wrong big gifts alone cost ${money(bigWrong)}. Checking the risky ones puts the effort where it pays.`,
+      };
+    if (!missed && st.checking[1] / d >= 0.5)
+      return {
+        title: "Checking in the right places",
+        text: `Checking cost ${money(costs.checking)} and stopped mistakes worth ${money(costs.prevented)}. It went where a mistake was likeliest and dearest, which let the AI run faster.`,
+      };
+    if (!missed && st.rolledBack)
+      return {
+        title: "The faulty update, handled",
+        text: `You spotted the broken update, rolled it back and cleared up what it made. Checking cost ${money(costs.checking)} and stopped mistakes worth ${money(costs.prevented)}.`,
+      };
+    if (!missed)
+      return {
+        title: "Santa leaves happy",
+        text: `${right} right gifts on time and within budget. Checking cost ${money(costs.checking)} and stopped mistakes worth ${money(costs.prevented)}.`,
+      };
+    if (costs.total > BUDGET)
+      return {
+        title: "Over budget",
+        text: `The workshop cost ${money(costs.total)} against a budget of ${money(BUDGET)}, wrong gifts included. Look at which line of the bill grew most.`,
+      };
+    if (this.lost >= 15)
+      return {
+        title: "Piles grew where nobody was working",
+        text: `${this.lost} letters were lost when the letter pile overflowed. Move elves and AI help to whichever station has the biggest pile.`,
+      };
+    return {
+      title: "Almost there",
+      text: "The workshop ran well but fell short. Use a little more AI where piles grow, and keep checks on the risky parcels.",
+    };
   }
-  snapshot() {
-    return JSON.parse(JSON.stringify(this));
+
+  // Player actions. Each returns true when it took effect.
+
+  move(elf, station) {
+    const e = this.elves[elf];
+    if (
+      this.end ||
+      !e ||
+      e.rest > 0 ||
+      ![0, 1, 2, BREAK].includes(station) ||
+      e.station === station
+    )
+      return false;
+    e.station = station;
+    this.used("elves");
+    return true;
   }
-  static restore(data) {
-    const g = new Workshop();
-    Object.assign(g, JSON.parse(JSON.stringify(data)));
-    return g;
+
+  setAi(station, level) {
+    if (
+      ![0, 1].includes(station) ||
+      ![0, 1, 2].includes(level) ||
+      this.why(`ai${station}`)
+    )
+      return false;
+    this.ai[station] = level;
+    this.used(`ai${station}`);
+    return true;
+  }
+
+  setChecking(level) {
+    if (![0, 1, 2].includes(level) || this.why("checking")) return false;
+    this.checking = level;
+    this.used("checking");
+    return true;
+  }
+
+  setAsk(on) {
+    if (this.why("ask")) return false;
+    this.ask = Boolean(on);
+    this.used("ask");
+    return true;
+  }
+
+  inspect(parcelId) {
+    const i = this.queues[2].findIndex((x) => x.id === parcelId);
+    if (this.why("inspect") || i < 0) return false;
+    this.inspection = {
+      parcel: this.queues[2].splice(i, 1)[0],
+      remaining: INSPECT_SECONDS,
+    };
+    this.pay("checking", PRICE.inspect);
+    this.used("inspect");
+    return true;
+  }
+
+  decide(parcelId, choice) {
+    const ins = this.inspection;
+    if (
+      this.end ||
+      !ins ||
+      ins.remaining > 0 ||
+      ins.parcel.id !== parcelId ||
+      !["ship", "remake"].includes(choice)
+    )
+      return false;
+    const x = ins.parcel;
+    this.inspection = null;
+    this.reveal(x);
+    // Sent only now, because the check copy carries the answer the player was judging.
+    const verdicts = {
+      shipright: `${x.w.child}'s ${x.w.wanted.name} was just right. Shipped.`,
+      shipwrong: `Oops: ${x.w.child} wanted ${a(x.w.wanted.name)}, not ${a(x.made.name)}.`,
+      remakewrong: `Good catch: ${x.w.child} wanted ${a(x.w.wanted.name)}, not ${a(x.made.name)}.`,
+      remakeright: `${x.w.child}'s ${x.w.wanted.name} was fine, but it goes back to be remade.`,
+    };
+    this.say("checked", verdicts[choice + x.result], {
+      check: this.copy(x, INSPECT_SECONDS, "player"),
+    });
+    if (choice === "ship") this.load(x);
+    else if (x.wrong) this.caught(x);
+    else this.toRework(x, REMAKE);
+    return true;
+  }
+
+  train() {
+    if (this.why("train")) return false;
+    this.training = TRAINING_SECONDS;
+    this.pay("people", PRICE.train);
+    this.used("train");
+    return true;
+  }
+
+  rollback() {
+    if (this.why("rollback")) return false;
+    this.incident.rollingBack = ROLLBACK_SECONDS;
+    this.stats.rolledBack = true;
+    this.pay("fixing", PRICE.rollback);
+    this.used("rollback");
+    return true;
+  }
+
+  quarantine() {
+    if (this.why("quarantine")) return false;
+    const marked = this.marked();
+    this.queues[2] = this.queues[2].filter((x) => !marked.includes(x));
+    marked.forEach((x) => {
+      x.held = true;
+      this.toRework(x, REMAKE);
+    });
+    this.pay("fixing", PRICE.quarantine);
+    this.say(
+      "quarantined",
+      `${marked.length} marked parcels went back to be remade. Dispatch waits for them.`,
+      { count: marked.length },
+    );
+    this.used("quarantine");
+    return true;
+  }
+
+  recall() {
+    if (this.why("recall")) return false;
+    const wrong = this.aboard.filter((x) => x.wrong);
+    this.aboard = this.aboard.filter((x) => !x.wrong);
+    wrong.forEach((x) => this.toRework(x, RECALL));
+    this.pay("fixing", PRICE.recall);
+    this.say(
+      "recalled",
+      `${wrong.length} wrong gifts came back off the sleigh to be remade.`,
+      { count: wrong.length },
+    );
+    this.used("recall");
+    return true;
+  }
+
+  // Why a control cannot be used now, or null when it can.
+  why(name) {
+    if (!this.unlocked.has(name)) return "Unlocks later in this run";
+    if (this.end) return "The sleigh has left";
+    if (PAID.includes(name) && this.left() <= 0) return "Out of money";
+    const inc = this.incident;
+    switch (name) {
+      case "inspect":
+        if (this.inspection) return "Decide on the open parcel first";
+        if (!this.staff(2).length) return "No checker at dispatch";
+        return this.queues[2].length ? null : "No parcels waiting";
+      case "train":
+        return this.trained
+          ? "Already trained"
+          : this.training
+            ? "Training now"
+            : null;
+      case "rollback":
+        if (!inc) return "No update to roll back";
+        return inc.rollingBack
+          ? "Rolling back now"
+          : inc.fault
+            ? null
+            : "Already rolled back";
+      case "quarantine":
+        if (!inc?.known) return "Nothing marked by an update";
+        return this.marked().length
+          ? null
+          : "No parcels from the update waiting";
+      case "recall":
+        return this.aboard.some((x) => x.wrong)
+          ? null
+          : "No wrong gifts aboard";
+      default:
+        return null;
+    }
+  }
+
+  costText(name) {
+    const perMinute = (level) => money(AI_PRICE[level] * 60);
+    const each = (work) =>
+      `about ${Math.round(work / CHECKER_SPEED)} seconds and ${money(PRICE.remake)} each`;
+    const marked = this.marked().length;
+    const wrong = this.aboard.filter((x) => x.wrong).length;
+    return {
+      ai0: `faster reading but more misread wishes; ${perMinute(1)} a minute on assist, ${perMinute(2)} on automate`,
+      ai1: `faster toys but more wrong ones; ${perMinute(1)} a minute on assist, ${perMinute(2)} on automate`,
+      checking: `each check takes an elf about ${Math.round(CHECK / CHECKER_SPEED)} seconds and costs ${money(PRICE.check)}`,
+      ask: "unclear letters take longer to read",
+      inspect: `takes a checker for ${INSPECT_SECONDS} seconds, costs ${money(PRICE.inspect)}`,
+      train: `halves checking speed for ${TRAINING_SECONDS} seconds, costs ${money(PRICE.train)}`,
+      rollback: `stops the toy line for ${ROLLBACK_SECONDS} seconds, costs ${money(PRICE.rollback)}`,
+      quarantine: `remakes ${marked || "the"} marked parcels, ${each(REMAKE)}, plus ${money(PRICE.quarantine)}`,
+      recall: `remakes ${wrong || "the"} wrong gifts, ${each(RECALL)}, plus ${money(PRICE.recall)}`,
+    }[name];
+  }
+
+  // A parcel as the page may see it: the answer stays hidden until a check or loading reveals it.
+  parcel(x) {
+    const opened =
+      this.inspection?.parcel === x && this.inspection.remaining === 0;
+    return {
+      id: x.id,
+      wish: x.w.wish,
+      big: x.w.big,
+      wanted: x.result ? { ...x.w.wanted } : null,
+      made: x.result || opened ? { ...x.made } : null,
+      suspect: this.suspect(x),
+      result: x.result,
+    };
+  }
+
+  station(s) {
+    const line = this.next(s);
+    return {
+      waiting: this.queues[s].map((x) => this.parcel(x)),
+      limit: this.limits[s],
+      staff: this.staff(s).length,
+      rate: Math.round(this.rates()[s] * 100) / 100,
+      progress: line ? Math.min(1, this.work[s] / this.cost(s, line[0])) : 0,
+      blocked: this.blocked(s),
+    };
+  }
+
+  view() {
+    const inc = this.incident;
+    const ins = this.inspection;
+    return {
+      t: this.t,
+      duration: this.duration,
+      target: this.target,
+      hint: this.hint && { ...this.hint },
+      elves: this.elves.map((e) => ({
+        name: e.name,
+        station: e.station,
+        tired: Math.round(e.tired),
+        resting: e.rest > 0,
+      })),
+      ai: [...this.ai],
+      checking: this.checking,
+      ask: this.ask,
+      levers: this.levers(),
+      stations: [0, 1, 2].map((s) => this.station(s)),
+      rework: this.rework.length,
+      dispatchHeld: this.rework.some((x) => x.held),
+      inspection: ins && {
+        parcel: this.parcel(ins.parcel),
+        remaining: ins.remaining,
+        duration: INSPECT_SECONDS,
+        ready: ins.remaining === 0,
+      },
+      sleigh: {
+        right: this.aboard.filter((x) => !x.wrong).length,
+        wrong: this.aboard.filter((x) => x.wrong).length,
+        parcels: this.aboard.map((x) => this.parcel(x)),
+      },
+      lost: this.lost,
+      budget: {
+        left: Math.round(this.left()),
+        spent: Object.fromEntries(
+          Object.entries(this.spent).map(([k, n]) => [k, Math.round(n)]),
+        ),
+      },
+      pace: this.pace(),
+      incident: inc && {
+        known: inc.known,
+        rollingBack: inc.rollingBack,
+        suspectWaiting: this.marked().length,
+      },
+      actions: Object.fromEntries(
+        CONTROLS.map((name) => {
+          const why = this.why(name);
+          return [
+            name,
+            {
+              unlocked: this.unlocked.has(name),
+              available: !why,
+              why,
+              cost: this.costText(name),
+            },
+          ];
+        }),
+      ),
+      news: this.news.slice(),
+      end: this.end && {
+        ...this.end,
+        costs: { ...this.end.costs },
+        lesson: { ...this.end.lesson },
+      },
+    };
   }
 }

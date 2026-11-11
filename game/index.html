@@ -256,122 +256,195 @@
       id="breakDialog"
       class="break-dialog"
       tabindex="-1"
-      aria-labelledby="nextCargoTitle"
+      aria-labelledby="breakTitle"
     >
-      <section class="next-cargo" aria-label="Next sleigh">
-        <h2 id="nextCargoTitle" tabindex="-1"></h2>
-        <p id="nextCargoText"></p>
-        <strong id="nextCargoTarget"></strong>
-      </section>
-      <div class="break-heading">
-        <span id="breakDeparture" aria-hidden="true">🛷</span>
-        <span class="eyebrow" id="breakRun"></span
-        ><span>Clock paused · choose one</span>
-      </div>
-      <h2 id="breakTitle"></h2>
-      <p id="breakText"></p>
-      <div class="break-report">
-        <div>
-          <strong id="breakStars"></strong>
-          <p id="breakCounts"></p>
-          <p id="breakMissed"></p>
-          <p id="breakBonus"></p>
+      <div class="break-hero">
+        <div id="breakScene" class="break-scene" aria-hidden="true"></div>
+        <span
+          id="breakDeparture"
+          class="break-sleigh"
+          aria-hidden="true"
+        ></span>
+        <div class="break-hero-copy">
+          <span id="breakRun"></span>
+          <h2 id="breakTitle"></h2>
         </div>
-        <div id="breakSlips" class="break-slips"></div>
+        <span class="break-paused">Clock paused</span>
       </div>
-      <p id="breakSpend" class="break-spend" hidden></p>
-      <p id="breakMore" class="muted"></p>
-      <div id="breakOptions" class="break-options"></div>
+      <div class="break-body">
+        <section class="next-cargo" aria-labelledby="nextCargoTitle">
+          <span
+            id="nextCargoIcon"
+            class="next-cargo-icon"
+            aria-hidden="true"
+          ></span>
+          <div class="next-cargo-copy">
+            <span class="eyebrow">Next sleigh</span>
+            <h3 id="nextCargoTitle" tabindex="-1"></h3>
+            <p id="nextCargoText"></p>
+          </div>
+          <strong id="nextCargoTarget" class="next-cargo-target"></strong>
+        </section>
+        <section class="break-result" aria-labelledby="breakResultTitle">
+          <div class="card-heading">
+            <h3 id="breakResultTitle"></h3>
+            <span id="breakCounts"></span>
+          </div>
+          <div id="breakGoals" class="goal-slots"></div>
+          <p class="break-note">
+            <span id="breakMissed"></span><span id="breakBonus"></span>
+          </p>
+        </section>
+        <div class="break-detail">
+          <section class="break-causes" aria-labelledby="breakCausesTitle">
+            <h3 id="breakCausesTitle">Where the wrong gifts came from</h3>
+            <ol id="breakCauses" class="cause-list"></ol>
+          </section>
+          <section
+            id="breakLast"
+            class="break-last"
+            aria-label="Last wrong gift"
+          >
+            <div id="breakSlips"></div>
+            <p id="breakMore"></p>
+          </section>
+        </div>
+        <p id="breakSpend" class="break-spend" hidden></p>
+        <h3 id="breakText" class="break-choose"></h3>
+        <div id="breakOptions" class="break-options"></div>
+      </div>
     </dialog>
-    <dialog id="report">
-      <div class="panel-head">
+    <dialog id="report" class="end-screen" aria-labelledby="resultTitle">
+      <div class="end-top">
         <span class="eyebrow">Christmas morning</span
         ><button id="closeReport">View workshop</button>
       </div>
-      <h2 id="resultTitle"></h2>
-      <div class="end-score">
-        <strong id="endPoints"></strong><span id="endStars"></span
-        ><span id="personalBest"></span>
-      </div>
-      <p id="resultSummary"></p>
-      <div id="endRuns" class="end-runs"></div>
-
-      <section id="assurance" hidden aria-labelledby="assuranceTitle">
-        <h3 id="assuranceTitle">Checking in this run</h3>
-        <h4 id="assuranceVerdict"></h4>
-        <div class="assurance-dial" role="img" id="assuranceDial">
-          <span id="assuranceMarker"><b>You</b></span>
-        </div>
-        <div class="assurance-labels">
-          <span>Too little</span><span>Too much</span>
-        </div>
-        <div class="assurance-costs">
-          <div>
-            <span>Unchecked mistakes and late fixes · actual cost</span
-            ><strong id="underCost"></strong>
+      <div class="end-grid">
+        <section class="end-hero" aria-labelledby="resultTitle">
+          <div id="endScene" class="end-scene" aria-hidden="true"></div>
+          <div class="end-score">
+            <strong id="endStars"></strong>
+            <div class="end-score-copy">
+              <h2 id="resultTitle"></h2>
+              <p><b id="endPoints"></b> <span id="personalBest"></span></p>
+            </div>
           </div>
-          <div>
-            <span>Overchecking · estimated cost</span
-            ><strong id="overCost"></strong>
+          <div id="endRuns" class="end-runs"></div>
+        </section>
+        <section
+          id="assurance"
+          class="end-card dial-card"
+          hidden
+          aria-labelledby="assuranceVerdict"
+        >
+          <div class="dial-head">
+            <span class="eyebrow" id="assuranceTitle"
+              >How much you checked</span
+            >
+            <h3 id="assuranceVerdict"></h3>
           </div>
+          <div class="assurance-dial" role="img" id="assuranceDial"></div>
+          <div class="assurance-costs">
+            <div class="cost-under">
+              <span>Unchecked mistakes and late fixes</span
+              ><strong id="underCost"></strong><em>actual</em>
+            </div>
+            <div class="cost-over">
+              <span>Over-checking</span><strong id="overCost"></strong
+              ><em>estimate</em>
+            </div>
+          </div>
+          <p id="assuranceText"></p>
+        </section>
+        <div class="end-stack">
+          <div id="resultSummary" class="end-tiles"></div>
+          <section class="end-card lesson">
+            <h3 id="lessonTitle"></h3>
+            <p id="lessonText"></p>
+          </section>
+          <section
+            id="endCausesBox"
+            class="end-card"
+            aria-labelledby="endCausesTitle"
+          >
+            <h3 id="endCausesTitle">Where the wrong gifts came from</h3>
+            <ol id="endCauses" class="cause-list"></ol>
+          </section>
         </div>
-        <p id="assuranceText"></p>
-        <div id="assuranceGroups"></div>
-        <p id="noChecks"></p>
-        <details class="estimate-help">
-          <summary>ⓘ How these estimates work</summary>
-          <p>
-            Without checks assumes every wrong toy made would have shipped. It
-            is not a simulated alternative policy. Prevented losses estimate the
-            cost of caught mistakes. Estimated overchecking combines checking
-            spend above estimated losses prevented with the estimated value of
-            gifts left waiting for checks. Underchecking counts wrong gifts
-            delivered without a check and their late recall or remake costs.
-            Mistakes missed by a checker who looked are included in wrong gifts
-            shipped, not in this underchecking cost.
+        <section class="end-card end-account" aria-labelledby="accountTitle">
+          <h3 id="accountTitle">The Christmas account</h3>
+          <table id="account"></table>
+          <p class="account-note">
+            Prevented losses estimate what caught mistakes would have cost.
           </p>
-        </details>
-      </section>
-      <section id="practices" hidden>
-        <h3>What you just did, in the real world</h3>
-        <div id="practiceTiles"></div>
-        <p>
-          Deciding how much assurance is worth it is what Frontier Economics
-          does
-        </p>
-        <a href="#article">Read the article</a>
-      </section>
-      <section class="end-account">
-        <h3>The Christmas account</h3>
-        <dl id="account"></dl>
-        <p class="muted">
-          Prevented losses estimate what caught mistakes would have cost.
-        </p>
-      </section>
-      <section class="lesson">
-        <h3 id="lessonTitle"></h3>
-        <p id="lessonText"></p>
-      </section>
-
-      <section class="collection">
-        <h3 id="collectionTitle">Christmas blunders</h3>
-        <div id="blunderCollection"></div>
-      </section>
-      <button id="copyResult">Copy result</button>
-      <p id="copyStatus" role="status"></p>
-      <textarea
-        id="copyFallback"
-        aria-label="Result to copy"
-        readonly
-        hidden
-      ></textarea>
-      <button id="replay" class="primary">Play again →</button
-      ><a
-        href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/"
-        target="_blank"
-        rel="noopener noreferrer"
-        >Explore Data Science & AI at Frontier →</a
-      >
+        </section>
+        <section
+          id="checkingPaid"
+          class="end-card end-wide"
+          hidden
+          aria-labelledby="checkingPaidTitle"
+        >
+          <h3 id="checkingPaidTitle">Where checking paid</h3>
+          <div id="assuranceGroups" class="assurance-groups"></div>
+          <p id="noChecks"></p>
+          <details class="estimate-help">
+            <summary>How these estimates work</summary>
+            <p>
+              Without checks assumes every wrong toy made would have shipped. It
+              is not a simulated alternative policy. Prevented losses estimate
+              the cost of caught mistakes. Estimated overchecking combines
+              checking spend above estimated losses prevented with the estimated
+              value of gifts left waiting for checks. Underchecking counts wrong
+              gifts delivered without a check and their late recall or remake
+              costs. Mistakes missed by a checker who looked are included in
+              wrong gifts shipped, not in this underchecking cost.
+            </p>
+          </details>
+        </section>
+        <section
+          id="practices"
+          class="end-card end-wide"
+          hidden
+          aria-labelledby="practicesTitle"
+        >
+          <h3 id="practicesTitle">What you just did, in the real world</h3>
+          <div id="practiceTiles"></div>
+          <div class="practices-foot">
+            <p>
+              Deciding how much assurance is worth it is what Frontier Economics
+              does
+            </p>
+            <a href="#article" class="article-link">Read the article</a>
+          </div>
+        </section>
+        <section
+          class="end-card end-wide collection"
+          aria-labelledby="collectionTitle"
+        >
+          <h3 id="collectionTitle">Christmas blunders</h3>
+          <div id="blunderCollection"></div>
+        </section>
+      </div>
+      <p class="end-foot">
+        <a
+          class="explore-link"
+          href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Explore Data Science & AI at Frontier</a
+        >
+      </p>
+      <div class="end-actions">
+        <button id="replay" class="primary"></button
+        ><button id="copyResult">Copy result</button>
+        <p id="copyStatus" role="status"></p>
+        <textarea
+          id="copyFallback"
+          aria-label="Result to copy"
+          readonly
+          hidden
+        ></textarea>
+      </div>
     </dialog>
     <dialog id="restartDialog">
       <h2 id="restartTitle">Start this Christmas again?</h2>

@@ -778,6 +778,148 @@
       showReport();
     }
   }
+  // Break card and end screen: drawings and small builders shared by both.
+  const uiIcon = (name) => SharedArt.icon(name) || "";
+  const iconNode = (name, cls) => {
+    const node = make("span", cls);
+    node.innerHTML = uiIcon(name);
+    node.setAttribute("aria-hidden", "true");
+    return node;
+  };
+  const goalIcons = { full: "gift", right: "wrong-gift", cost: "budget" };
+  const goalFigure = (goal) =>
+    goal.id === "cost"
+      ? `${money(goal.now)} / ${money(goal.need)}`
+      : `${goal.now} / ${goal.need}${goal.id === "right" ? " wrong" : ""}`;
+  const causeIcons = {
+    guessed: "gift-unclear",
+    big: "gift-big",
+    misread: "letter",
+    misMade: "toy",
+    waved: "checks",
+    faulty: "update",
+    tired: "role-tired",
+  };
+  const optionIcons = {
+    update: "update",
+    tested: "test",
+    train: "train",
+    rest: "rest",
+  };
+  // A toy drawn: the one a child wanted, or the wrong one the workshop made.
+  const drawnToy = (name, wanted, cls) => {
+    const node = make("span", cls);
+    node.innerHTML =
+      (wanted ? SharedArt.toy(name) : PaperArt.toy(name)) ||
+      uiIcon(wanted ? "gift" : "wrong-gift");
+    node.setAttribute("aria-hidden", "true");
+    return node;
+  };
+  const sleighArt = () =>
+    look === "polish"
+      ? '<svg viewBox="0 0 280 150" aria-hidden="true"><use href="#polish-sleigh"/></svg>'
+      : uiIcon("sleigh");
+  const breakScene =
+    '<svg viewBox="0 0 940 120" preserveAspectRatio="xMidYMax slice" aria-hidden="true">' +
+    '<circle class="scene-moon" cx="760" cy="44" r="20"/><circle class="scene-moon-shade" cx="769" cy="38" r="17"/>' +
+    '<g class="scene-stars"><circle cx="420" cy="24" r="1.4"/><circle cx="520" cy="48" r="1.2"/><circle cx="700" cy="22" r="1.6"/><circle cx="740" cy="70" r="1.2"/><circle cx="890" cy="66" r="1.4"/><circle cx="350" cy="56" r="1.1"/><circle cx="600" cy="74" r="1"/><circle cx="910" cy="28" r="1.2"/><circle cx="300" cy="30" r="1"/></g>' +
+    '<path class="scene-trail" d="M420 84 C500 72 560 66 610 44"/>' +
+    '<path class="scene-roofs" d="M0 104 L40 96 L80 104 V100 L120 92 L160 100 V108 L200 108 V100 L250 90 L300 100 V104 L360 94 L420 104 V105.6 L470 93.6 L520 105.6 V97.2 L580 80.4 L640 97.2 V102 L700 87.6 L760 102 V94.8 L820 79.2 L880 94.8 V104.4 L940 90 V120 H0Z"/>' +
+    '<g class="scene-windows"><rect x="96" y="106" width="8" height="8"/><rect x="220" y="104" width="8" height="8"/><rect x="236" y="104" width="8" height="8"/><rect x="566" y="102" width="8" height="8"/><rect x="806" y="99.6" width="8" height="8"/><rect x="460" y="109.2" width="8" height="8"/><rect x="690" y="104.4" width="8" height="8"/></g>' +
+    '<path class="scene-roof-line" d="M0 104 L40 96 L80 104 V100 L120 92 L160 100 V108 L200 108 V100 L250 90 L300 100 V104 L360 94 L420 104 V105.6 L470 93.6 L520 105.6 V97.2 L580 80.4 L640 97.2 V102 L700 87.6 L760 102 V94.8 L820 79.2 L880 94.8 V104.4 L940 90"/>' +
+    "</svg>";
+  $("breakScene").innerHTML = breakScene;
+  $("breakDeparture").innerHTML = sleighArt();
+  $("endScene").innerHTML =
+    '<svg class="end-snow" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g>' +
+    [
+      [20, 30],
+      [60, 150],
+      [110, 20],
+      [150, 90],
+      [190, 170],
+      [230, 40],
+      [270, 120],
+      [300, 15],
+      [340, 80],
+      [380, 160],
+      [90, 110],
+      [250, 185],
+      [370, 40],
+    ]
+      .map(
+        ([x, y], i) => `<circle cx="${x}" cy="${y}" r="${1 + (i % 3) * 0.6}"/>`,
+      )
+      .join("") +
+    "</g></svg>" +
+    `<span class="end-sleigh">${sleighArt()}</span>`;
+  $("replay").innerHTML = `${uiIcon("restart")}<span>Play again</span>`;
+  function goalSlot(goal) {
+    const slot = make("div", "goal-slot");
+    slot.dataset.goal = goal.id;
+    slot.dataset.met = String(goal.met);
+    const marks = make("span", "goal-marks");
+    marks.append(
+      iconNode(goal.met ? "star" : "star-empty", "goal-star"),
+      iconNode(goalIcons[goal.id] || "star", "goal-icon"),
+    );
+    slot.append(
+      marks,
+      make("b", "goal-name", goal.name),
+      make("strong", "goal-figure", goalFigure(goal)),
+      make("small", "goal-text", goal.text),
+    );
+    slot.setAttribute(
+      "aria-label",
+      `${goal.name}: ${goalFigure(goal)}, ${goal.text}. ${goal.met ? "Star earned" : "No star"}.`,
+    );
+    slot.setAttribute("role", "group");
+    return slot;
+  }
+  // The three goals of a finished run as small lit or unlit stars, for the end screen.
+  function goalMarks(goals) {
+    const row = make("div", "goal-mini");
+    for (const goal of goals) {
+      const mark = make("span", "goal-mini-mark");
+      mark.innerHTML =
+        uiIcon(goal.met ? "star" : "star-empty") +
+        uiIcon(goalIcons[goal.id] || "star");
+      mark.dataset.met = String(goal.met);
+      mark.title = `${goal.name}: ${goalFigure(goal)}${goal.met ? ", star earned" : ""}`;
+      row.append(mark);
+    }
+    row.setAttribute(
+      "aria-label",
+      goals.map((g) => `${g.name} ${g.met ? "earned" : "missed"}`).join(", "),
+    );
+    row.setAttribute("role", "img");
+    return row;
+  }
+  function paintCauses(list, causes, none) {
+    list.replaceChildren(
+      ...causes.map((cause) => {
+        const item = make("li", "cause");
+        item.dataset.cause = cause.id;
+        const body = make("div", "cause-body");
+        const head = make("div", "cause-head");
+        head.append(
+          make("b", "", cause.name),
+          make(
+            "span",
+            "cause-figure",
+            `${cause.wrong} wrong · ${money(cause.cost)}`,
+          ),
+        );
+        body.append(head, make("p", "cause-fix", cause.fix));
+        item.append(
+          iconNode(causeIcons[cause.id] || "mistakes", "cause-icon"),
+          body,
+        );
+        return item;
+      }),
+    );
+    if (!causes.length) list.append(make("li", "cause-none", none));
+  }
   function paintChoice() {
     const choice = started ? view.choice : null;
     if (!choice) {
@@ -788,81 +930,114 @@
     if (lastChoice !== choice.id) {
       lastChoice = choice.id;
       const report = choice.report;
-      text(
-        "nextCargoTitle",
-        `Next sleigh · ${choice.next.cargo.icon} ${choice.next.cargo.name}`,
-      );
+      $("nextCargoIcon").innerHTML = uiIcon(`cargo-${choice.next.cargo.id}`);
+      text("nextCargoTitle", choice.next.cargo.name);
       text("nextCargoText", choice.next.cargo.text);
-      text("nextCargoTarget", `${choice.next.target} correct gifts needed`);
-      text("breakRun", `Sleigh ${report.run} has left`);
+      $("nextCargoTarget").replaceChildren(
+        make("b", "", choice.next.target),
+        make("span", "", "right gifts needed"),
+      );
+      text("breakRun", `Run ${report.run} of ${view.run.of}`);
       text("breakTitle", choice.title);
       text("breakText", choice.text);
-      text("breakStars", "★".repeat(report.stars));
+      text("breakResultTitle", `How run ${report.run} went`);
       text(
         "breakCounts",
-        `${report.right} / ${report.target} correct · ${report.wrong} wrong`,
+        `${report.stars} of 3 stars · ${view.score.stars} of ${view.score.best} so far`,
       );
+      $("breakGoals").replaceChildren(...(report.goals || []).map(goalSlot));
       text("breakMissed", report.missedBy || "");
-      $("breakSpend").hidden = !report.spent && !report.assurance;
-      text(
-        "breakSpend",
-        [
-          ...(report.spent
-            ? [
-                ["🧑 People", report.spent.people],
-                ["🤖 AI", report.spent.ai],
-                ["🔎 Checks", report.spent.checking],
-                ["🔧 Fixing", report.spent.fixing],
-              ].map(([label, value]) => `${label} ${money(value)}`)
-            : []),
-          ...(report.assurance
-            ? [
-                `${report.assurance.caught} caught · ${money(report.assurance.prevented)} estimated losses prevented`,
-              ]
-            : []),
-        ].join(" · "),
-      );
-
       text(
         "breakBonus",
         report.bonus ? `+${report.bonus} clean-run bonus` : "",
       );
-      text(
-        "breakMore",
-        report.more ? `${report.more} more wrong gifts were delivered.` : "",
+      paintCauses(
+        $("breakCauses"),
+        report.causes || [],
+        "No wrong gifts on this sleigh.",
       );
+      $("breakSpend").hidden = !report.spent && !report.assurance;
+      $("breakSpend").replaceChildren();
+      if (report.spent) {
+        $("breakSpend").append(make("b", "", "Spent this run"));
+        for (const [name, label, value] of [
+          ["people", "People", report.spent.people],
+          ["ai", "AI", report.spent.ai],
+          ["checks", "Checks", report.spent.checking],
+          ["fixing", "Fixing", report.spent.fixing],
+        ]) {
+          const part = make("span", "spend-part");
+          part.append(iconNode(name, "spend-icon"), `${label} ${money(value)}`);
+          $("breakSpend").append(part);
+        }
+      }
+      if (report.assurance) {
+        const part = make("span", "spend-part");
+        part.append(
+          iconNode("prevented", "spend-icon"),
+          `${report.assurance.caught} caught · ${money(report.assurance.prevented)} losses prevented (estimate)`,
+        );
+        $("breakSpend").append(part);
+      }
+      $("breakLast").hidden = !report.slips.length;
       $("breakSlips").replaceChildren();
-      for (const slip of report.slips) {
+      const slip = report.slips[0];
+      if (slip) {
         const card = make("article", "delivery-slip");
+        const toys = make("div", "slip-toys");
+        const wanted = make("span", "slip-side");
+        wanted.append(
+          drawnToy(slip.wanted.name, true, "slip-art"),
+          make("small", "", "Wanted"),
+          make("b", "", slip.wanted.name),
+        );
+        const made = make("span", "slip-side slip-made");
+        made.append(
+          drawnToy(slip.made.name, false, "slip-art"),
+          make("small", "", "Got"),
+          make("b", "", slip.made.name),
+        );
+        toys.append(wanted, made);
         card.append(
-          revealedToy(slip.made, "slip-toy"),
-          make("p", "", `Wanted: ${slip.wanted.icon} ${slip.wanted.name}`),
-          make("p", "", `“${slip.wish}”`),
+          make("span", "eyebrow", "Costliest wrong gift"),
+          make("p", "slip-wish", `"${slip.wish}"`),
+          toys,
           make("p", "slip-cause", `${slip.cause} · ${money(slip.cost)}`),
         );
         $("breakSlips").append(card);
       }
+      const others = Math.max(0, report.slips.length - 1) + (report.more || 0);
+      text(
+        "breakMore",
+        others
+          ? `${others} more wrong ${others === 1 ? "gift" : "gifts"} delivered.`
+          : "",
+      );
       $("breakOptions").replaceChildren();
       $("breakOptions").style.setProperty("--choices", choice.options.length);
       for (const option of choice.options) {
         const card = make("button", "upgrade-card");
         card.dataset.choose = option.id;
         card.dataset.choiceId = choice.id;
+        card.dataset.kind = option.kind;
+        card.title = option.text;
+        const gives = option.facts.find((f) => f.label === "Gives");
+        const costs = option.facts.find((f) => f.label === "Costs");
+        const notes = option.facts.filter((f) => f !== gives && f !== costs);
         card.append(
-          make(
-            "span",
-            "upgrade-icon",
-            { update: "🤖", tested: "🧪", train: "🎓", rest: "☕" }[
-              option.kind
-            ] || "🎁",
-          ),
+          iconNode(optionIcons[option.kind] || "gift", "upgrade-icon"),
           make("strong", "", option.label),
-          make("p", "", option.text),
         );
-        const facts = make("dl", "upgrade-facts");
-        for (const fact of option.facts)
-          facts.append(make("dt", "", fact.label), make("dd", "", fact.value));
-        card.append(facts);
+        if (gives) card.append(make("span", "upgrade-gives", gives.value));
+        for (const note of notes)
+          card.append(
+            make("small", "upgrade-note", `${note.label}: ${note.value}`),
+          );
+        if (costs) {
+          const chip = make("span", "upgrade-cost");
+          chip.append(iconNode("budget", ""), costs.value);
+          card.append(chip);
+        }
         $("breakOptions").append(card);
       }
     }
@@ -2041,17 +2216,67 @@
   }
   window.addEventListener("resize", repositionPopups);
   document.addEventListener("scroll", repositionPopups, true);
+  // The checking gauge: a half circle from too little (0) to too much (1), with "about right"
+  // between 0.2 and 0.8 as the rules decide, and a pin where this game came out.
+  function dialSVG(position, verdict) {
+    const cx = 180,
+      cy = 166,
+      r = 118;
+    const at = (p, radius) => {
+      const angle = Math.PI * (1 - p);
+      return [cx + radius * Math.cos(angle), cy - radius * Math.sin(angle)].map(
+        (n) => Math.round(n * 10) / 10,
+      );
+    };
+    const arc = (from, to, radius = r) => {
+      const [x1, y1] = at(from, radius),
+        [x2, y2] = at(to, radius);
+      return `M${x1} ${y1} A${radius} ${radius} 0 0 1 ${x2} ${y2}`;
+    };
+    const p = Math.max(0, Math.min(1, position));
+    const zone = (cls, from, to, word) =>
+      `<path class="dial-zone ${cls}${verdict === word ? " on" : ""}" d="${arc(from, to)}"/>`;
+    const [px, py] = at(p, r),
+      [nx, ny] = at(p, r - 20),
+      [lx, ly] = at(p, r + 37);
+    return (
+      `<svg viewBox="0 0 360 212" aria-hidden="true">` +
+      `<path id="dialMiddle" class="dial-guide" d="${arc(0.2, 0.8, r - 6)}"/>` +
+      zone("zone-little", 0, 0.2, "too little") +
+      zone("zone-much", 0.8, 1, "too much") +
+      zone("zone-right", 0.2, 0.8, "about right") +
+      [0.2, 0.8]
+        .map((b) => {
+          const [x1, y1] = at(b, r - 17),
+            [x2, y2] = at(b, r + 17);
+          return `<line class="dial-split" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+        })
+        .join("") +
+      `<text class="dial-word${verdict === "about right" ? " on" : ""}"><textPath href="#dialMiddle" startOffset="${p < 0.5 ? 75 : 25}%" text-anchor="middle">About right</textPath></text>` +
+      `<text class="dial-end${verdict === "too little" ? " on" : ""}" x="${cx - r}" y="${cy + 38}" text-anchor="middle">Too little</text>` +
+      `<text class="dial-end${verdict === "too much" ? " on" : ""}" x="${cx + r}" y="${cy + 38}" text-anchor="middle">Too much</text>` +
+      `<line class="dial-needle" x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}"/>` +
+      `<circle class="dial-hub" cx="${cx}" cy="${cy}" r="11"/><circle class="dial-hub-dot" cx="${cx}" cy="${cy}" r="4"/>` +
+      `<circle class="dial-pin" cx="${px}" cy="${py}" r="11"/>` +
+      `<g class="dial-you" transform="translate(${lx} ${ly})"><rect x="-23" y="-12" width="46" height="24" rx="12"/><text y="4.5" text-anchor="middle">You</text></g>` +
+      `</svg>`
+    );
+  }
   function paintAssurance(end) {
     const a = end.assurance;
     $("assurance").hidden = !a;
+    $("checkingPaid").hidden = !a;
     if (a) {
       $("assuranceDial").setAttribute(
         "aria-label",
-        `Checking: ${a.verdict}, from too little to too much`,
+        `Checking: ${a.verdict}, on a dial from too little to too much`,
       );
-      $("assuranceMarker").style.left =
-        `${Math.max(0, Math.min(1, a.position)) * 100}%`;
-      text("assuranceVerdict", a.verdict);
+      $("assuranceDial").innerHTML = dialSVG(a.position, a.verdict);
+      $("assurance").dataset.verdict = a.verdict;
+      text(
+        "assuranceVerdict",
+        a.verdict.charAt(0).toUpperCase() + a.verdict.slice(1),
+      );
       text("underCost", money(a.underCost));
       text("overCost", money(a.overCost));
       text("assuranceText", a.text);
@@ -2059,44 +2284,51 @@
       for (const group of a.groups) {
         const row = make("article", "assurance-group");
         row.dataset.group = group.id;
-        row.append(
-          make("strong", "", `${group.icon} ${group.name}`),
-          make("span", "", `${money(group.checkCost)} spent on checks`),
-          make(
-            "span",
-            "",
-            `${group.caught} caught · ${money(group.prevented)} estimated saved`,
-          ),
-          make(
-            "span",
-            "",
-            `${group.shipped} wrong shipped · ${money(group.shippedCost)}`,
-          ),
-          make("p", "", group.text),
+        row.dataset.verdict = group.verdict;
+        const head = make("div", "group-head");
+        head.append(
+          iconNode(`gift-${group.id}`, "group-icon"),
+          make("b", "", group.name),
+          make("span", "group-verdict", group.verdict),
         );
+        const figures = make("dl", "group-figures");
+        for (const [label, value] of [
+          ["Spent on checks", money(group.checkCost)],
+          [
+            "Caught",
+            `${group.caught} · ${money(group.prevented)} saved (estimate)`,
+          ],
+          ["Wrong shipped", `${group.shipped} · ${money(group.shippedCost)}`],
+        ])
+          figures.append(make("dt", "", label), make("dd", "", value));
+        row.append(head, figures, make("p", "", group.text));
         $("assuranceGroups").append(row);
       }
-      text(
-        "noChecks",
-        `Estimated without checks: ${a.noChecks.wrong} wrong gifts · ${money(a.noChecks.cost)}`,
+      $("noChecks").replaceChildren(
+        iconNode("mistakes", "spend-icon"),
+        make("b", "", "With no checks (estimate): "),
+        `${a.noChecks.wrong} wrong gifts, about ${money(a.noChecks.cost)}`,
       );
     }
     $("practices").hidden = !end.used;
     $("practiceTiles").replaceChildren();
     if (!end.used) return;
     for (const [icon, actions] of [
-      ["🧑🤖", [["assist", "Elves confirm AI drafts", "Human in the loop"]]],
-      ["🔎", [["risky", "Check risky ones", "Risk-based checking"]]],
-      ["💬", [["asked", "Ask child", "Escalate ambiguity to a person"]]],
       [
-        "🧪",
+        "human-in-loop",
+        [["assist", "Elves confirm AI drafts", "Human in the loop"]],
+      ],
+      ["risk-check", [["risky", "Check risky ones", "Risk-based checking"]]],
+      ["escalate", [["asked", "Ask child", "Escalate ambiguity to a person"]]],
+      [
+        "test-release",
         [
           ["tested", "Test update", "Test before release"],
           ["rolledBack", "Roll back", "Way to undo"],
         ],
       ],
       [
-        "☕",
+        "oversight",
         [
           ["trained", "Train checkers", "Keep human oversight sharp"],
           ["rested", "Rest checkers", "Keep human oversight sharp"],
@@ -2104,14 +2336,23 @@
       ],
     ]) {
       const tile = make("article", "practice-tile");
-      tile.append(make("span", "practice-icon", icon));
+      tile.dataset.used = String(actions.some(([flag]) => end.used[flag]));
+      tile.append(iconNode(icon, "practice-icon"));
       for (const [flag, label, meaning] of actions) {
         const action = make("div", "practice-action");
         action.dataset.used = String(end.used[flag]);
         action.dataset.practice = flag;
-        action.append(
-          make("strong", "", `${end.used[flag] ? "✓" : "○"} ${label}`),
-          make("span", "", meaning),
+        const tick = make("span", "practice-tick");
+        tick.innerHTML = end.used[flag]
+          ? '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+          : "";
+        tick.setAttribute("aria-hidden", "true");
+        const label_ = make("strong", "", label);
+        label_.prepend(tick);
+        action.append(label_, make("span", "", meaning));
+        action.setAttribute(
+          "aria-label",
+          `${label}, ${end.used[flag] ? "done" : "not done"}: ${meaning}`,
         );
         tile.append(action);
       }
@@ -2151,33 +2392,36 @@
       );
     } catch {}
     text("endPoints", Number.isFinite(e.points) ? `${e.points} points` : "");
-    text(
-      "endStars",
-      e.stars !== undefined ? `${e.stars} / ${view.score.best} ★` : "",
-    );
+    $("endStars").replaceChildren();
+    if (e.stars !== undefined)
+      $("endStars").append(
+        make("span", "end-stars-number", e.stars),
+        make("small", "", ` / ${view.score.best}`),
+        make("span", "end-stars-label", "stars"),
+      );
     text(
       "personalBest",
       hadPreviousGame && personalBest
-        ? `${canCelebrate && newBest ? "New best score! " : ""}${canCelebrate && newStars ? "New best stars! " : ""}Best score: ${personalBest.points} · Best stars: ${personalBest.stars} ★`
+        ? `${canCelebrate && newBest ? "New best score! " : ""}${canCelebrate && newStars ? "New best stars! " : ""}Best: ${personalBest.points} points, ${personalBest.stars} stars`
         : "",
     );
     $("endRuns").replaceChildren();
     for (const run of e.runs || []) {
       const card = make("article", "run-report");
-      card.append(
-        make("b", "", `Sleigh ${run.run} · ${"★".repeat(run.stars)}`),
-        make("span", "run-cargo", `${run.cargo.icon} ${run.cargo.name}`),
-        make(
-          "p",
-          "",
-          `${run.right}/${run.target} correct · ${run.wrong} wrong`,
-        ),
-        make(
-          "small",
-          "",
-          run.missedBy || (run.bonus ? `+${run.bonus} clean-run bonus` : ""),
-        ),
+      card.dataset.stars = run.stars;
+      const head = make("div", "run-head");
+      head.append(
+        iconNode(`cargo-${run.cargo.id}`, "run-cargo-icon"),
+        make("b", "", `Run ${run.run}`),
+        make("span", "run-cargo", run.cargo.name),
       );
+      card.append(head, goalMarks(run.goals || []));
+      card.append(
+        make("p", "", `${run.right}/${run.target} right · ${run.wrong} wrong`),
+      );
+      const note =
+        run.missedBy || (run.bonus ? `+${run.bonus} clean-run bonus` : "");
+      if (note) card.append(make("small", "", note));
       $("endRuns").append(card);
     }
     text(
@@ -2187,8 +2431,27 @@
         : "Christmas blunders",
     );
     $("blunderCollection").replaceChildren(
-      ...collectedBlunders.map((item) => revealedToy(item, "blunder")),
+      ...collectedBlunders.map((item) => {
+        const card = make("div", "blunder");
+        card.append(
+          drawnToy(item.name, false, "blunder-art"),
+          make("b", "", item.name),
+        );
+        return card;
+      }),
     );
+    const missing =
+      e.blunderTotal !== undefined
+        ? e.blunderTotal - collectedBlunders.length
+        : 0;
+    if (missing > 0) {
+      const locked = make("div", "blunder blunder-locked");
+      locked.append(
+        make("span", "blunder-art", "?"),
+        make("b", "", `${missing} more to find`),
+      );
+      $("blunderCollection").append(locked);
+    }
     text("copyStatus", "");
     $("copyFallback").hidden = true;
     text(
@@ -2199,34 +2462,63 @@
           ? "Christmas needs a little rework."
           : "Some wishes are still waiting.",
     );
-    text(
-      "resultSummary",
-      `${e.right} correct gifts / ${view.target} · ${e.wrong} wrong gifts delivered · ${e.lost} letters lost`,
+    $("resultSummary").replaceChildren(
+      ...[
+        ["right", "gift", "Right gifts", e.right, `of ${view.target} needed`],
+        ["wrong", "wrong-gift", "Wrong gifts delivered", e.wrong, ""],
+        ["lost", "lost-letter", "Letters lost", e.lost, "never loaded"],
+      ].map(([cls, icon, label, value, note]) => {
+        const tile = make("div", `end-tile tile-${cls}`);
+        const top = make("span", "end-tile-label");
+        top.append(iconNode(icon, "end-tile-icon"), label);
+        tile.append(top, make("b", "", value));
+        if (note) tile.append(make("small", "", note));
+        return tile;
+      }),
     );
     text("lessonTitle", e.lesson.title);
     text("lessonText", e.lesson.text);
+    paintCauses(
+      $("endCauses"),
+      e.causes || [],
+      "No wrong gifts this Christmas.",
+    );
     $("account").replaceChildren();
-    for (const [label, key] of [
-      ["People", "people"],
-      ["AI", "ai"],
-      ["Checking", "checking"],
-      ["Fixing mistakes", "fixing"],
-      ["Spent from budget", "spent"],
-      ["Available budget", "budget"],
-      ["Cost of wrong gifts delivered", "mistakes"],
-      ["Estimated losses prevented", "prevented"],
+    const spent =
+      e.costs.people + e.costs.ai + e.costs.checking + e.costs.fixing;
+    for (const [icon, label, value, cls] of [
+      ["people", "People", money(e.costs.people), ""],
+      ["ai", "AI", money(e.costs.ai), ""],
+      ["checks", "Checking", money(e.costs.checking), ""],
+      ["fixing", "Fixing mistakes", money(e.costs.fixing), ""],
+      [
+        "budget",
+        "Spent from budget",
+        `${money(spent)} of ${money(e.costs.budget)}`,
+        "account-total",
+      ],
+      [
+        "mistakes",
+        "Cost of wrong gifts delivered",
+        money(e.costs.mistakes),
+        "account-loss",
+      ],
+      [
+        "prevented",
+        "Estimated losses prevented",
+        money(e.costs.prevented),
+        "account-saved",
+      ],
     ]) {
-      const dt = document.createElement("dt"),
-        dd = document.createElement("dd");
-      dt.textContent = label;
-      dd.textContent = money(
-        key === "spent"
-          ? e.costs.people + e.costs.ai + e.costs.checking + e.costs.fixing
-          : e.costs[key],
-      );
-      $("account").append(dt, dd);
+      const row = make("tr", cls);
+      const name = make("th", "");
+      name.scope = "row";
+      name.append(iconNode(icon, "account-icon"), label);
+      row.append(name, make("td", "", value));
+      $("account").append(row);
     }
     $("report").showModal();
+    $("report").scrollTop = 0;
   }
   reset();
   requestAnimationFrame(frame);

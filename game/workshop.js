@@ -305,11 +305,11 @@ const PATTERN_WINDOW = 30; // seconds within which the same wrong toy from the A
 const CASE_ORDER = { source: 0, made: 1, aboard: 2 };
 // A decision's name in a few words, by step for the incident and by kind for the others.
 const CASE_TITLES = {
-  source: "Stop new mistakes",
-  made: "Gifts in the workshop",
+  source: "Faulty update",
+  made: "Faulty update's gifts",
   aboard: "Wrong gifts on sleigh",
-  judge: "Checker question",
-  unclear: "Clarify this wish",
+  judge: "Checker unsure",
+  unclear: "Unclear wish",
   pattern: "Repeated mistake",
 };
 
@@ -440,11 +440,11 @@ const MOMENTS = {
     control: "checking",
     unlocks: ["checking"],
     completes: ["setChecking"],
-    title: "A wrong gift went aboard",
+    title: "Choose what to check",
     text: (w, x) =>
       x?.result === "wrong"
-        ? "A wrong gift just went aboard unchecked. Choose which parcels the elves check."
-        : "Nothing checks parcels before they leave. Choose which parcels the elves check.",
+        ? "A wrong gift just went aboard unchecked. Choose which gifts the elves check."
+        : "Nothing checks gifts before they leave. Choose which gifts the elves check.",
   },
   bypass: {
     control: "bypass",
@@ -452,7 +452,7 @@ const MOMENTS = {
     completes: ["move", "bypass"],
     title: "The checking pile is full",
     text: () =>
-      "The checking pile is full and the toy line has stopped. Add a checker or let parcels through.",
+      "The checking pile is full and toy making has stopped. Add a checker or let gifts through.",
   },
   cocoa: {
     control: "cocoa",
@@ -466,19 +466,14 @@ const MOMENTS = {
     control: "case",
     unlocks: [],
     completes: ["resolve"],
-    title: "A case for you",
+    title: "A decision for you",
     text: (w) =>
       ({
-        judge:
-          "A checker is unsure about a parcel. Compare the toy with the wish, then ship or remake it.",
+        judge: "Compare the toy with the wish. The clock keeps running.",
         unclear:
-          "The AI is unsure what a child means. Accept its reading or have an elf ask.",
-        pattern:
-          "The same wrong toy keeps turning up. Decide whether to look into it.",
-        update:
-          "A toy machine update is on offer. Read its facts, then install, test or skip it.",
-        incident:
-          "Your update is making full-sized trains. Decide what to do, one step at a time.",
+          "Compare the wish with the AI's reading. The clock keeps running.",
+        pattern: "Look at what was made. The clock keeps running.",
+        incident: "Answer one step at a time. The clock keeps running.",
       })[w.cases[0].kind],
   },
 };
@@ -1113,6 +1108,13 @@ class Workshop {
     return x.w.big ? WRONG_PRICE.big : WRONG_PRICE.everyday;
   }
 
+  // Seconds of play, said plainly, or "longer than the run" when they outlast the run under way.
+  span(seconds) {
+    return seconds > this.runNumber * RUN_SECONDS - this.t
+      ? "longer than the run"
+      : `about ${Math.round(seconds)} s`;
+  }
+
   timeLeft() {
     return Math.round(this.duration - this.t);
   }
@@ -1467,7 +1469,7 @@ class Workshop {
   finishJob(job) {
     const seconds = this.t - job.since;
     const spent = job.money + job.count * PRICE.remake;
-    const text = `${job.what}: ${job.count} remade in ${Math.round(seconds)} seconds, ${job.caught} of them wrong, about ${money(job.avoided)} of mistakes avoided, ${money(spent)} spent.`;
+    const text = `${job.what}: ${job.caught} of ${job.count} were wrong, about ${money(job.avoided)} saved for ${money(spent)}.`;
     this.consequence("case", text, {
       seconds,
       checked: job.count,
@@ -1663,23 +1665,21 @@ class Workshop {
     }
   }
 
-  // What happened, then what the player can do; the figures belong to the options.
+  // What happened, in one short sentence; the choices are the options' own labels.
   caseText(c) {
     const x = c.parcels[0];
     switch (c.kind) {
       case "judge":
-        return `A checker is unsure about ${x.w.child}'s parcel. Check the toy against the wish, then ship or remake it.`;
+        return `A checker is unsure about ${x.w.child}'s gift.`;
       case "unclear":
-        return `${x.w.child}'s wish is unclear: '${x.w.wish}' Accept the AI's reading or have an elf ask.`;
+        return `${x.w.child}'s wish could mean two things.`;
       case "pattern":
-        return `The checkers keep seeing ${a(c.name)}. Look into it, hold what was made, or carry on.`;
+        return `The checkers keep finding ${a(c.name)}.`;
       default:
         return {
-          source:
-            "Your update is making full-sized trains. Roll it back, or keep it running for now.",
-          made: "Parcels from the faulty update are still in the workshop. Remake them, check each, or let them go.",
-          aboard:
-            "Wrong gifts are on the sleigh. Bring them back to be remade, or leave them aboard.",
+          source: "The faulty update is making full-sized trains.",
+          made: "Gifts the faulty update made are still in the workshop.",
+          aboard: "Wrong gifts go to children when the sleigh leaves.",
         }[c.step];
     }
   }
@@ -1802,7 +1802,7 @@ class Workshop {
   }
 
   options(c) {
-    const checker = this.staff(2).length ? null : "no checker at dispatch";
+    const checker = this.staff(2).length ? null : "no elf at checking";
     const broke = this.left() <= 0 ? "out of money" : null;
     const list = this.affected(c);
     const n = list.length;
@@ -1834,14 +1834,14 @@ class Workshop {
             "Ship it",
             0,
             0,
-            `this parcel; if it is wrong, ${money(this.price(x))} lost`,
+            `${money(this.price(x))} lost if it is wrong`,
           ),
           o(
             "remake",
             "Remake it",
             remake,
             PRICE.remake,
-            `this parcel; a checker for ${remake} s while ${this.q.check.length} wait`,
+            `${does(this.q.check.length, "gift", "waits", "wait")} at checking`,
             checker,
           ),
         ];
@@ -1853,15 +1853,15 @@ class Workshop {
             "Ask the child",
             ELF_SECONDS.ask,
             PRICE.ask,
-            `this letter; an elf at reading for ${ELF_SECONDS.ask} s and a letter back`,
-            this.staff(0).length ? null : "nobody at reading to ask",
+            "an elf at reading writes back",
+            this.staff(0).length ? null : "no elf at reading",
           ),
           o(
             "accept",
             "Accept the AI's reading",
             0,
             0,
-            `this letter; if the reading is wrong, ${money(this.price(x))} at risk`,
+            `${money(this.price(x))} at risk if the reading is wrong`,
           ),
         ];
         break;
@@ -1872,15 +1872,15 @@ class Workshop {
             "Investigate",
             INVESTIGATE_SECONDS,
             PRICE.investigate,
-            "the toy machine; a checker looks into it",
+            "a checker looks into the toy machine",
             checker ?? broke,
           ),
           o(
             "hold",
-            "Hold the parcels made since",
+            "Remake what was made since",
             n * ELF_SECONDS.remake,
             n * PRICE.remake,
-            `${plural(n, "parcel")} remade, about ${Math.round(n * ELF_SECONDS.remake)} s of checkers`,
+            `${plural(n, "gift")} remade; ${this.span(n * ELF_SECONDS.remake)} of checkers`,
             n ? null : "none waiting",
           ),
           o(
@@ -1888,7 +1888,7 @@ class Workshop {
             "Carry on",
             0,
             0,
-            `nothing; ${n === 1 ? "the parcel" : `the ${n} parcels`} made since ${n === 1 ? "goes" : "go"} on as they are`,
+            `${does(n, "gift", "goes", "go")} on as made`,
           ),
         ];
         break;
@@ -1900,7 +1900,7 @@ class Workshop {
               "Roll it back",
               ROLLBACK_SECONDS,
               PRICE.rollback,
-              `the toy line stops ${ROLLBACK_SECONDS} s and loses the speed-up`,
+              `toy making stops ${ROLLBACK_SECONDS} s; then ${this.toyRate(this.incident?.speedBefore)} toys a minute`,
               broke,
             ),
             o(
@@ -1908,7 +1908,7 @@ class Workshop {
               "Keep it running",
               0,
               0,
-              `keeps making trains, about ${Math.round(this.toyRate() * RISK.fault)} a minute; asked again in ${KEEP_AGAIN} s`,
+              `about ${Math.round(this.toyRate() * RISK.fault)} trains a minute; asked again in ${KEEP_AGAIN} s`,
             ),
           ],
           made: [
@@ -1917,7 +1917,7 @@ class Workshop {
               "Remake them all",
               n * ELF_SECONDS.remake,
               PRICE.made + n * PRICE.remake,
-              `${plural(n, "parcel")}; dispatch waits until they are done`,
+              `${plural(n, "gift")} remade first; loading waits for them`,
               broke,
             ),
             o(
@@ -1925,14 +1925,14 @@ class Workshop {
               "Check each one",
               n * ELF_SECONDS.check,
               n * PRICE.check,
-              `${does(n, "parcel", "goes", "go")} to the checking pile; wrong ones get remade`,
+              `${does(n, "gift", "goes", "go")} to checking; wrong ones remade`,
             ),
             o(
               "letGo",
               "Let them go",
               0,
               0,
-              `${does(n, "parcel", "goes", "go")} on as they are; about ${atRisk} of wrong gifts`,
+              `about ${atRisk} of wrong gifts; ${does(n, "gift", "goes", "go")} on as made`,
             ),
           ],
           aboard: [
@@ -1941,7 +1941,7 @@ class Workshop {
               "Bring them back",
               n * recallSeconds(n),
               recallPrice(list),
-              `${plural(n, "wrong gift")}, about ${Math.round(n * recallSeconds(n))} s of checkers`,
+              `${plural(n, "wrong gift")} back; ${this.span(n * recallSeconds(n))} of checkers`,
               broke ?? checker,
             ),
             o(
@@ -1949,7 +1949,7 @@ class Workshop {
               "Leave them",
               0,
               0,
-              `${does(n, "wrong gift", "stays", "stay")} aboard, ${atRisk} at departure`,
+              `${atRisk} at departure; ${does(n, "wrong gift", "stays", "stay")} aboard`,
             ),
           ],
         }[c.step];
@@ -2018,15 +2018,15 @@ class Workshop {
       this.reveal(x);
       if (optionId === "ship") {
         text = x.wrong
-          ? `Shipped, and it was wrong: a ${money(this.price(x))} gift went aboard as ${a(x.made.name)}.`
-          : "Shipped, and it was right: no checker time or money spent.";
+          ? `Shipped, but it was wrong: ${a(x.made.name)}.`
+          : "Shipped, and it was right.";
         outcome = { parcels: 1 };
         this.load(x);
       } else {
         if (x.wrong) this.caught(x);
         text = x.wrong
-          ? `Remade: a checker spent ${Math.round(ELF_SECONDS.remake)} s and ${money(PRICE.remake)} to save a ${money(this.price(x))} gift.`
-          : `Remade, though it was right: a checker spent ${Math.round(ELF_SECONDS.remake)} s and ${money(PRICE.remake)} for nothing.`;
+          ? `Remade: it was wrong, so ${money(PRICE.remake)} saved a ${money(this.price(x))} gift.`
+          : `Remade, though it was right: ${money(PRICE.remake)} for nothing.`;
         outcome = {
           seconds: ELF_SECONDS.remake,
           money: PRICE.remake,
@@ -2040,12 +2040,12 @@ class Workshop {
       if (optionId === "ask") {
         this.asked(x);
         this.q.orders.push(x);
-        text = `An elf spent ${ELF_SECONDS.ask} s and ${money(PRICE.ask)} asking ${x.w.child}: the letter went on as ${a(x.w.wanted.name)}.`;
+        text = `Asked ${x.w.child} for ${money(PRICE.ask)}: it is ${a(x.w.wanted.name)}.`;
         outcome = { seconds: ELF_SECONDS.ask, money: PRICE.ask, parcels: 1 };
       } else {
         x.accepted = true;
         this.q.letters.unshift(x);
-        text = `Accepted: the AI makes ${a(this.aiReading(x).name)} for ${x.w.child}, and no elf time was spent.`;
+        text = `Accepted: the AI makes ${a(this.aiReading(x).name)} for ${x.w.child}.`;
         outcome = { parcels: 1 };
       }
     } else if (c.kind === "pattern") {
@@ -2055,13 +2055,13 @@ class Workshop {
         const real = c.name === LOCOMOTIVE.name && this.incident?.fault;
         if (real) this.notice("case");
         text = real
-          ? `A checker spent ${INVESTIGATE_SECONDS} s and ${money(PRICE.investigate)}: the last update is making these trains.`
-          : `A checker spent ${INVESTIGATE_SECONDS} s and ${money(PRICE.investigate)}: no shared fault, the repeats were bad luck.`;
+          ? "Investigated: the last update is faulty and makes these trains."
+          : "Investigated: no shared fault, just bad luck.";
         outcome = { seconds: INVESTIGATE_SECONDS, money: PRICE.investigate };
       } else if (optionId === "hold") {
         this.take(held);
         const job = {
-          what: "Held parcels",
+          what: "Remade since",
           count: held.length,
           left: held.length,
           caught: 0,
@@ -2070,14 +2070,14 @@ class Workshop {
           since: this.t,
         };
         held.forEach((x) => this.toRework(x, ELF_SECONDS.remake, job));
-        text = `${plural(held.length, "parcel")} made since the first ${c.name} go to be remade: about ${Math.round(held.length * ELF_SECONDS.remake)} s of checkers and ${money(held.length * PRICE.remake)}.`;
+        text = `${plural(held.length, "gift")} sent to be remade: ${this.span(held.length * ELF_SECONDS.remake)} of checkers, ${money(held.length * PRICE.remake)}.`;
         outcome = {
           seconds: held.length * ELF_SECONDS.remake,
           money: held.length * PRICE.remake,
           parcels: held.length,
         };
       } else {
-        text = `Carried on: ${plural(held.length, "parcel")} made since ${held.length === 1 ? "goes" : "go"} on as before, with no time spent.`;
+        text = `Carried on: ${does(held.length, "gift", "goes", "go")} on as made.`;
         outcome = { parcels: held.length };
       }
     } else
@@ -2125,21 +2125,21 @@ class Workshop {
         this.used.rolledBack = true;
         this.pay("fixing", PRICE.rollback);
         tell(
-          `Rolling back: the toy line stops ${ROLLBACK_SECONDS} s, costs ${money(PRICE.rollback)}, and goes back to ${this.toyRate(inc.speedBefore)} toys a minute.`,
+          `Rolling back for ${money(PRICE.rollback)}: toy making stops ${ROLLBACK_SECONDS} s.`,
           { seconds: ROLLBACK_SECONDS, money: PRICE.rollback },
         );
         break;
       case "keep":
         inc.keptAt = this.t;
         tell(
-          `Kept running at ${this.toyRate()} toys a minute, with about ${Math.round(this.toyRate() * RISK.fault)} trains a minute; you will be asked again.`,
+          `Kept running: about ${Math.round(this.toyRate() * RISK.fault)} trains a minute. Asked again in ${KEEP_AGAIN} s.`,
           {},
         );
         break;
       case "remakeAll": {
         this.take(list);
         const job = {
-          what: "Remade the update's parcels",
+          what: "The faulty update's gifts",
           count: n,
           left: n,
           caught: 0,
@@ -2158,7 +2158,7 @@ class Workshop {
           { count: n },
         );
         tell(
-          `${does(n, "parcel", "goes", "go")} to be remade first: about ${Math.round(n * ELF_SECONDS.remake)} s of checkers and ${money(PRICE.made + n * PRICE.remake)}.`,
+          `${does(n, "gift", "goes", "go")} to be remade first: ${this.span(n * ELF_SECONDS.remake)}, ${money(PRICE.made + n * PRICE.remake)}.`,
           {
             seconds: n * ELF_SECONDS.remake,
             money: PRICE.made + n * PRICE.remake,
@@ -2172,7 +2172,7 @@ class Workshop {
         list.forEach((x) => (x.route = "check"));
         this.q.check.unshift(...list);
         tell(
-          `${plural(n, "parcel")} went to the checking pile: about ${Math.round(n * ELF_SECONDS.check)} s of checks, and the wrong ones get remade.`,
+          `${does(n, "gift", "goes", "go")} to checking: ${this.span(n * ELF_SECONDS.check)}.`,
           {
             seconds: n * ELF_SECONDS.check,
             money: n * PRICE.check,
@@ -2181,10 +2181,9 @@ class Workshop {
         );
         break;
       case "letGo":
-        tell(
-          `${plural(n, "parcel")} from the update go on unchanged; no time spent.`,
-          { parcels: n },
-        );
+        tell(`Let go: ${does(n, "gift", "goes", "go")} on as made.`, {
+          parcels: n,
+        });
         break;
       case "bringBack": {
         this.aboard = this.aboard.filter((x) => !list.includes(x));
@@ -2214,7 +2213,7 @@ class Workshop {
           { count: n },
         );
         tell(
-          `${does(n, "wrong gift", "comes", "come")} back to be remade: about ${Math.round(n * recallSeconds(n))} s of checkers and ${money(recallPrice(list))}.`,
+          `${does(n, "wrong gift", "comes", "come")} back to be remade: ${this.span(n * recallSeconds(n))}, ${money(recallPrice(list))}.`,
           {
             seconds: n * recallSeconds(n),
             money: recallPrice(list),
@@ -2225,7 +2224,7 @@ class Workshop {
       }
       default:
         tell(
-          `${does(n, "wrong gift", "stays", "stay")} aboard, costing ${money(sum(list.map((x) => this.price(x))))} at departure.`,
+          `${does(n, "wrong gift", "stays", "stay")} aboard: ${money(sum(list.map((x) => this.price(x))))} at departure.`,
           { money: sum(list.map((x) => this.price(x))), parcels: n },
         );
     }

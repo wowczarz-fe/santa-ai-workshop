@@ -119,41 +119,63 @@ const WRONG_MIN = 1;
 const ALLOWANCE = { base: 300, perGift: 4 };
 const GOALS_FROM = 2 / 3;
 // Where a wrong gift that reached the sleigh came from, and the control that would have stopped it.
+// fix is the advice in parts, each with a test of whether the settings already follow it
+// (causes() leaves those out).
 const WRONG_CAUSES = {
   guessed: {
     name: "The AI guessed unclear wishes",
     control: "ask",
-    fix: "Turn on Ask the child, or put reading on Assist.",
+    fix: [
+      ["turn on Ask the child", (w) => w.ask],
+      ["put reading on Assist", (w) => w.ai[0] <= 1],
+    ],
   },
   big: {
     name: "AI slips on big gifts that went out unchecked",
     control: "checking",
-    fix: "Check the risky ones, so every big gift gets a check.",
+    fix: [
+      [
+        "check the risky ones, so every big gift gets a check",
+        (w) => w.checking >= 1,
+      ],
+    ],
   },
   misread: {
     name: "AI misreadings of everyday letters",
     control: "ai0",
-    fix: "Put reading on Assist so an elf confirms, or check a few more.",
+    fix: [
+      ["put reading on Assist so an elf confirms", (w) => w.ai[0] <= 1],
+      ["check a few more", (w) => w.checking === 2],
+    ],
   },
   misMade: {
     name: "AI slips making everyday toys",
     control: "ai1",
-    fix: "Put toys on Assist so an elf confirms, or check a few more.",
+    fix: [
+      ["put toys on Assist so an elf confirms", (w) => w.ai[1] <= 1],
+      ["check a few more", (w) => w.checking === 2],
+    ],
   },
   waved: {
     name: "Checkers stopped looking",
     control: "train",
-    fix: "Train them at a break, or rest them with cocoa.",
+    fix: [
+      ["train them at a break", (w) => w.vig.trained],
+      ["rest them with cocoa", () => false],
+    ],
   },
   faulty: {
     name: "The faulty update",
     control: "update",
-    fix: "Roll a faulty update back as soon as it shows, or test updates first.",
+    fix: [
+      ["roll a faulty update back as soon as it shows", () => false],
+      ["test updates first", () => false],
+    ],
   },
   tired: {
     name: "Tired elves' slips",
     control: "cocoa",
-    fix: "Send elves for cocoa before they get tired.",
+    fix: [["send elves for cocoa before they get tired", () => false]],
   },
 };
 // Seconds Assist or risky checking must run before the end summary counts it as used, so one click
@@ -207,6 +229,10 @@ const strain = (tired) => Math.max(0, tired - FRESH);
 const SLIPS_FROM = 50;
 const slipping = (tired) => Math.max(0, tired - SLIPS_FROM);
 const CHECKER_STRAIN = 0.6; // checking tires more than reading or making
+// Tiredness took this share of a station's working time or more: the end screen names it as the
+// reason that station held the line up. Elves rested at about 60 lose about a tenth; never rested,
+// about half.
+const TIRED_SHARE = 0.25;
 const COCOA_MOMENT_AT = 55; // tiredness at which a guided run suggests cocoa for a working elf
 
 const BUDGET = 1800;
@@ -386,7 +412,7 @@ const slug = (name) => name.toLowerCase().replace(/[^a-z]+/g, "-");
 const LOCOMOTIVE = { name: "full-sized locomotive", icon: "🚂" };
 
 const a = (name) => (/^[aeio]/.test(name) ? "an " : "a ") + name;
-const money = (n) => "£" + Math.round(n);
+const money = (n) => "£" + Math.round(n).toLocaleString("en-GB");
 const share = (test) =>
   EVERYDAY_WISHES.filter(test).length / EVERYDAY_WISHES.length;
 const sum = (list) => list.reduce((total, n) => total + n, 0);
@@ -650,6 +676,10 @@ class Workshop {
       wavedCost: 0,
       burnouts: 0,
       checkerBurnouts: 0,
+      // Elf-seconds of work at each station, and the part of them tiredness took (slower work, and
+      // whole seconds while burnt out), for the end lesson.
+      tiredWork: [0, 0, 0],
+      tiredLost: [0, 0, 0],
       jammed: 0,
       holding: [0, 0, 0], // seconds each station was the one holding gifts back
       faulty: 0,
@@ -658,6 +688,7 @@ class Workshop {
       toys: 0,
       toyMistakes: 0,
     };
+    this.tiredRun = { work: 0, lost: 0, burnouts: 0 };
     this.end = null;
     for (let i = 0; i < 6; i++) this.arrive();
     this.assignWork();
@@ -2327,9 +2358,24 @@ class Workshop {
       e.doing = e.rest > 0 ? "burnt out" : "having cocoa";
   }
 
+  // Counts an elf's time at a station towards the game's and the run's tiredness figures.
+  tiredTally(s, dt, lost) {
+    this.stats.tiredWork[s] += dt;
+    this.stats.tiredLost[s] += dt * lost;
+    this.tiredRun.work += dt;
+    this.tiredRun.lost += dt * lost;
+  }
+
   elvesTick(dt) {
     this.elves.forEach((e, i) => {
       this.pay("people", dt * (e.station === BREAK ? COCOA_WAGE : WAGE));
+      if (e.station === BREAK && e.rest > 0) this.tiredTally(e.home, dt, 1);
+      else if (e.station < BREAK && e.doing !== "nothing to do")
+        this.tiredTally(
+          e.station,
+          dt,
+          Math.min(1, strain(e.tired) * TIRED_SLOWS),
+        );
       if (e.station === BREAK) {
         e.tired = Math.max(
           0,
@@ -2354,6 +2400,7 @@ class Workshop {
       Object.assign(e, { home: s, station: BREAK, rest: BURNOUT_SECONDS });
       this.stats.burnouts++;
       if (s === 2) this.stats.checkerBurnouts++;
+      this.tiredRun.burnouts++;
       this.say("tired", `${e.name} burnt out: off for a long cocoa break.`, {
         elf: i,
       });
@@ -2534,7 +2581,7 @@ class Workshop {
       const aiHelps =
         s < 2 &&
         id !== "clarify" &&
-        this.ai[s] < 2 &&
+        this.ai[s] === 0 &&
         this.unlocked.has(lever) &&
         this.staff(s).length >= 3;
       return aiHelps
@@ -2746,6 +2793,10 @@ class Workshop {
         : 1;
     const biggest = this.biggestLoss(right, mistakes);
     const assurance = this.assurance(biggest);
+    // Tiredness slowed the station that held the line up: the headline and lesson name it.
+    const worn =
+      (biggest === "held" && assurance.tired) ||
+      (biggest === "lost" && this.tiredAt(this.longestHolding()));
     let lesson = this.lesson(rating, right, costs, biggest);
     // A lesson about how much was checked takes its title from the assurance verdict, so the two
     // always agree, and says what to do next time while the dial gives the figures.
@@ -2769,12 +2820,14 @@ class Workshop {
       headline:
         rating === 3 || !biggest
           ? "Christmas, carefully delivered."
-          : {
-              wrong: "Fast, but wrong.",
-              over: "Careful, but slow.",
-              held: "Careful, but slow.",
-              lost: "Too slow for the letters.",
-            }[biggest],
+          : worn
+            ? "Too tired to keep up."
+            : {
+                wrong: "Fast, but wrong.",
+                over: "Careful, but slow.",
+                held: "Careful, but slow.",
+                lost: "Too slow for the letters.",
+              }[biggest],
       lesson,
       assurance,
       checkingAnswer: this.checkingAnswer(assurance),
@@ -2809,6 +2862,16 @@ class Workshop {
   // was the station holding the line. Held and lost gifts count only when the sleigh fell short of
   // the target, because only then did they cost a gift. The headline, the lesson and the assurance
   // dial all follow this one comparison.
+  // Whether tiredness took TIRED_SHARE or more of station s's working time this game.
+  tiredAt(s) {
+    return this.stats.tiredLost[s] >= TIRED_SHARE * this.stats.tiredWork[s];
+  }
+
+  // The station that held gifts back for longest.
+  longestHolding() {
+    return this.stats.holding.indexOf(Math.max(...this.stats.holding));
+  }
+
   biggestLoss(right, mistakes) {
     const a = this.assure;
     const late = (n) => (right < this.target ? n * LATE_PRICE : 0);
@@ -2822,7 +2885,9 @@ class Workshop {
     return amount > 0 ? id : null;
   }
 
-  // One sentence answering "Was checking worth it?" from the assurance figures.
+  // One sentence answering "Was checking worth it?" from the assurance figures. Its "but" follows the
+  // dial's verdict, so the two never disagree: only "too little" asks for more checks, only "too
+  // much" names checks that did not pay, and a bottleneck names the gifts the pile held back.
   checkingAnswer(a) {
     const checked = sum(a.groups.map((g) => g.checked));
     const checkCost = sum(a.groups.map((g) => g.checkCost));
@@ -2836,11 +2901,14 @@ class Workshop {
     const wasted = a.groups.find(
       (g) => g.verdict === "cost more than it saved" && g.checkCost >= 20,
     );
-    const but = exposed
-      ? `, but more checks on ${exposed.name.toLowerCase()} would have paid`
-      : paid && wasted
-        ? `, though not on ${wasted.name.toLowerCase()}`
-        : "";
+    if (a.verdict === "bottleneck")
+      return `Not as run: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts, but the pile held back ${plural(a.held, "gift")}.`;
+    const but =
+      a.verdict === "too little" && exposed
+        ? `, but more checks on ${exposed.name.toLowerCase()} would have paid`
+        : a.verdict === "too much" && wasted
+          ? `, though not on ${wasted.name.toLowerCase()}`
+          : "";
     return paid
       ? `Yes: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts${but}.`
       : `No: ${money(checkCost)} of checks stopped only about ${money(a.prevented)} of wrong gifts${but}.`;
@@ -2946,11 +3014,14 @@ class Workshop {
       ? "extra checks and the gifts they held back"
       : "extra checks";
     const held = a.heldBy.all + a.heldBy.some;
+    const tired = verdict === "bottleneck" && this.tiredAt(2);
     const text = {
       "too little": `Too little checking. Wrong gifts that skipped a check cost ${under}, ${extra} only ${over}.`,
       "about right": `Checking was about right. Wrong gifts that skipped a check cost ${under}, ${extra} ${over}.`,
       "too much": `Too much checking. ${extra[0].toUpperCase() + extra.slice(1)} cost ${over}, wrong gifts that skipped a check ${under}.`,
-      bottleneck: `Checking held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh: move an elf to checking when its pile fills.`,
+      bottleneck: tired
+        ? `Tired checkers held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh: rest them with cocoa before they burn out.`
+        : `Checking held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh: move an elf to checking when its pile fills.`,
     }[verdict];
     return {
       verdict,
@@ -2965,6 +3036,8 @@ class Workshop {
       shippedCost: Math.round(total("shippedCost")),
       // Every gift checking held back, the figure the bottleneck text names.
       held,
+      // A bottleneck where tiredness took TIRED_SHARE or more of the checkers' time.
+      tired,
       spent: Math.round(this.spent.checking + a.askCost + a.trainCost),
       groups,
       noChecks: {
@@ -3043,6 +3116,15 @@ class Workshop {
     return x.cause === "the AI made the wrong toy" ? "misMade" : "misread";
   }
 
+  // A cause's advice without the parts the settings already follow, or "" when they follow it all.
+  causeFix(id) {
+    const left = WRONG_CAUSES[id].fix
+      .filter(([, done]) => !done(this))
+      .map(([text]) => text)
+      .join(", or ");
+    return left ? left[0].toUpperCase() + left.slice(1) + "." : "";
+  }
+
   // Up to three causes of the wrong gifts given, dearest first.
   causes(list) {
     return Object.entries(Object.groupBy(list, (x) => this.causeId(x)))
@@ -3052,7 +3134,7 @@ class Workshop {
         wrong: xs.length,
         cost: sum(xs.map((x) => this.price(x))),
         control: WRONG_CAUSES[id].control,
-        fix: WRONG_CAUSES[id].fix,
+        fix: this.causeFix(id),
       }))
       .sort((p, q) => q.cost - p.cost || q.wrong - p.wrong)
       .slice(0, 3);
@@ -3140,11 +3222,14 @@ class Workshop {
       goals,
       goalsCountFrom: this.goalsCountFrom(n),
       causes: this.causes(wrongGifts),
-      // How tired the elves were as the sleigh left, on average, 0 to 100.
+      // The share of the working elves' time that tiredness took during the run, 0 to 100: slower
+      // work while tired, and all of it while burnt out. Idle elves do not count.
       tired: Math.round(
-        sum(this.elves.map((e) => e.tired)) / this.elves.length,
+        (100 * this.tiredRun.lost) / Math.max(1, this.tiredRun.work),
       ),
+      burnouts: this.tiredRun.burnouts,
     };
+    this.tiredRun = { work: 0, lost: 0, burnouts: 0 };
     this.spentAtRun = { ...this.spent };
     this.assure.run = this.freshRun();
     this.allSlips = [...(this.allSlips ?? []), ...slips];
@@ -3332,14 +3417,25 @@ class Workshop {
       );
     // Their words come from the assurance verdict, which follows the same loss.
     if (missed && biggest === "held")
-      return L("Checking was the bottleneck", "");
+      return this.tiredAt(2)
+        ? L(
+            "Tired checkers held up the line",
+            "Send checkers for cocoa before they burn out.",
+          )
+        : L("Checking was the bottleneck", "");
     if (missed && biggest === "over") return L("Too much checking", "");
     if (missed && biggest === "lost") {
-      const longest = st.holding.indexOf(Math.max(...st.holding));
-      return L(
-        "Letters piled up",
-        `${this.lost} letters lost in full piles; ${STATION_NAMES[longest].toLowerCase()} held things up longest. Move free elves there.`,
-      );
+      const longest = this.longestHolding();
+      const where = STATION_NAMES[longest].toLowerCase();
+      return this.tiredAt(longest)
+        ? L(
+            "Tired elves let letters pile up",
+            `${this.lost} letters lost; tired elves at ${where} held things up longest. Rest them with cocoa.`,
+          )
+        : L(
+            "Letters piled up",
+            `${this.lost} letters lost in full piles; ${where} held things up longest. Move free elves there.`,
+          );
     }
     // Wrong gifts that went aboard while the decision that would have stopped them waited.
     const wrongDelivered = this.delivered.filter((x) => x.wrong);
@@ -3351,7 +3447,7 @@ class Workshop {
     if (missed && waited > 0 && waited * 2 >= costs.mistakes)
       return L(
         "A decision waited too long",
-        `The faulty update's trains cost ${money(waited)} of ${money(costs.mistakes)} in wrong gifts while its decision waited. Open a waiting decision as soon as it shows.`,
+        `While its decision waited, the faulty update's trains cost ${money(waited)} of the ${money(costs.mistakes)} in wrong gifts. Open a waiting decision as soon as it shows.`,
       );
     // Where most of what the delivered mistakes cost came from, when one cause stands out. Weighed by
     // cost, so a few wrong big gifts outweigh many cheap slips.

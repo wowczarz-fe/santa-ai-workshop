@@ -444,7 +444,7 @@ function checkChoice(v, w) {
   );
   assert.strictEqual(
     Object.keys(ch.report).join(),
-    "run,right,wrong,target,stars,missedBy,bonus,slips,more,spent,assurance,cargo,goals,goalsCountFrom,causes,tired",
+    "run,right,wrong,target,stars,missedBy,bonus,slips,more,spent,assurance,cargo,goals,goalsCountFrom,causes,tired,burnouts",
   );
   assert(
     ch.report.tired >= 0 && ch.report.tired <= 100,

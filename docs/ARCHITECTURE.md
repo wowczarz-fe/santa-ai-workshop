@@ -109,11 +109,15 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
   lesson under it. Both follow one comparison of the game's losses in its own money (below):
   "Fast, but wrong." when the wrong gifts delivered cost most, "Careful, but slow." when gifts held
   back by checking did, "Too slow for the letters." when other lost letters did, and "Christmas,
-  carefully delivered." for a rating of 3 or a game with no loss. The assurance verdict follows the
-  same comparison, so the dial, the lesson and the headline agree.
+  carefully delivered." for a rating of 3 or a game with no loss. "Too tired to keep up." replaces
+  the second and third when tiredness took a quarter or more (`TIRED_SHARE`) of the working time
+  at the station that held the line up: checking for held gifts, the station that held gifts back
+  longest for lost letters. The assurance verdict follows the same comparison, so the dial, the
+  lesson and the headline agree.
 - `end.checkingAnswer` is one sentence answering "Was checking worth it?": yes or no with what the
-  checks cost and about what they stopped, and the kind of gift where more checks would have paid,
-  or where checks did not pay, when there is one.
+  checks cost and about what they stopped. It follows the dial's verdict: with `"too little"` it
+  names the kind of gift where more checks would have paid, with `"too much"` the kind where checks
+  did not pay, and with `"bottleneck"` it says how many gifts the pile held back.
 - `end.used` is `{ assist, risky, asked, tested, rolledBack, trained, rested }`, each `true` once the
   player has done that thing in this game, set when the action succeeds and never cleared:
   `assist` an AI level on Assist for at least 10 seconds of play in all, `risky` checking on the
@@ -139,6 +143,7 @@ beforehand: a risky batch can happen to come out clean.
 | `caught`, `prevented`    | Wrong toys stopped before the sleigh, and about what they would have cost (an estimate)            |
 | `shipped`, `shippedCost` | Wrong gifts that reached children and stayed, checked or not, and what they cost                   |
 | `held`                   | Gifts held back by checking in the whole game (below), the figure the bottleneck `text` names      |
+| `tired`                  | `true` for a bottleneck where tiredness took a quarter or more of the checkers' working time       |
 | `spent`                  | £ on checking, asking children, training and investigating                                         |
 | `groups`                 | One row per kind of parcel (below)                                                                 |
 | `noChecks`               | `{ wrong, cost }`: every wrong toy made, and about what they would have cost had none been checked |
@@ -170,7 +175,8 @@ beforehand: a risky batch can happen to come out clean.
   checking every parcel (over-checking); gifts held back by checking while only some parcels were
   checked (a bottleneck); and other letters lost to a full pile. Held and lost gifts count only
   when the game fell short of its target. When the bottleneck is the largest, `verdict` is
-  `"bottleneck"` whatever `position` says, and `text` names the gifts held back and the fix.
+  `"bottleneck"` whatever `position` says, and `text` names the gifts held back and the fix: rest
+  the checkers with cocoa when `tired`, else move an elf to checking.
   When over-checking is the largest, `verdict` is `"too much"` and `position` is moved into
   that zone if the money alone left it short of it.
 - A group is `{ id, name, icon, parcels, wrongMade, checked, caught, shipped, checkCost, prevented,
@@ -185,7 +191,9 @@ shippedCost, shippedUnchecked, shippedUncheckedCost, verdict, text }` for `id` `
 - `end.lesson` agrees with the verdict: a lesson about how much was checked, or about the
   bottleneck, takes its title from `assurance`, and its text says what to do next time, so it
   never repeats `assurance.text`. When lost letters were the largest loss
-  the lesson is "Letters piled up", naming the station that held things up longest. When the
+  the lesson is "Letters piled up", naming the station that held things up longest, or "Tired elves
+  let letters pile up" when tiredness took a quarter or more of that station's working time. A
+  bottleneck with tired checkers is "Tired checkers held up the line". When the
   faulty update's trains that went aboard while its decision waited unanswered made at least half
   of what the wrong gifts cost, the lesson says so.
 
@@ -363,10 +371,12 @@ After each of the first three runs leaves, `choice` is set and the rules stop un
 
 A choice is `{ id, run, report, next, title, text, options, openCase }`.
 
-- `report` is `{ run, right, wrong, target, stars, missedBy, bonus, slips, more, spent, assurance, cargo, goals, goalsCountFrom, causes, tired }`:
+- `report` is `{ run, right, wrong, target, stars, missedBy, bonus, slips, more, spent, assurance, cargo, goals, goalsCountFrom, causes, tired, burnouts }`:
   how the run that just left went. `missedBy` names the first goal it missed, in the player's words,
-  or is `null`. `goals` is the run's three goals with their final figures. `tired` is the elves'
-  average tiredness as the sleigh left, 0 to 100.
+  or is `null`. `goals` is the run's three goals with their final figures. `tired` is the share of the
+  working elves' time during the run that tiredness took, 0 to 100: the slower work of a tired elf,
+  and all of a burnt-out elf's time. Idle elves do not count. `burnouts` counts the elves that burnt
+  out during the run.
   `slips` is `[{ wish, wanted, made, cause, cost }]` for the wrong gifts delivered, dearest first, at
   most three, with `more` on the report counting the rest. `cause` names what let it through: "the
   AI guessed an unclear wish", "made by the faulty update", "the AI on a big gift", "a tired elf",
@@ -377,7 +387,8 @@ A choice is `{ id, run, report, next, title, text, options, openCase }`.
   where that run's wrong gifts came from (below).
 - A cause is `{ id, name, wrong, cost, control, fix }`: up to three, dearest first. `wrong` and
   `cost` count the wrong gifts it accounts for, `control` is the control that would have stopped
-  them, and `fix` one short sentence saying how. `end.causes` covers the whole game, and a
+  them, and `fix` one short sentence saying how, leaving out any part the settings already follow
+  (`""` when they follow all of it). `end.causes` covers the whole game, and a
   `loaded` news item carries the `cause` id and `control` of the wrong gift it reports.
 
   | `id`      | Wrong gifts from                                     | `control`  |

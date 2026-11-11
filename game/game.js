@@ -1275,6 +1275,10 @@
     const lines = [];
     const top = report.causes[0];
     const slip = report.slips[0];
+    // A short sleigh whose elves lost a quarter of their work or more to tiredness names that in the
+    // one line under the figures, in place of the wrong-gift cause; a waiting decision still comes first.
+    const full = report.goals.find((g) => g.id === "full");
+    const worn = !full?.met && (report.tired ?? 0) >= 25;
     if (choice.openCase) {
       const line = breakLine(
         "break-line-case",
@@ -1289,6 +1293,22 @@
         line.append(open);
       }
       lines.push(line);
+    } else if (worn) {
+      const burnt = report.burnouts
+        ? ` · ${plural(report.burnouts, "burnout")}`
+        : "";
+      lines.push(
+        breakLine(
+          "break-line-tired",
+          "role-tired",
+          make(
+            "b",
+            "break-line-figure",
+            `Tired elves lost ${report.tired}% of their work${burnt}`,
+          ),
+          " Send them for cocoa.",
+        ),
+      );
     } else if (report.wrong && top) {
       const cost = report.assurance.shippedCost;
       const line = breakLine(
@@ -1299,7 +1319,7 @@
           "break-line-figure",
           `${plural(report.wrong, "wrong gift")} · ${money(cost)}`,
         ),
-        ` ${top.name}. ${top.fix}`,
+        top.fix ? ` ${top.name}. ${top.fix}` : ` ${top.name}.`,
       );
       if (slip) {
         const pair = make("span", "break-line-slip");
@@ -1320,15 +1340,6 @@
         ),
       );
     }
-    const full = report.goals.find((g) => g.id === "full");
-    if (report.tired >= 50 && !full.met)
-      lines.push(
-        breakLine(
-          "break-line-tired",
-          "role-tired",
-          `Tired elves slowed the line (average ${Math.round(report.tired)} tired)`,
-        ),
-      );
     $("breakLines").replaceChildren(...lines);
   }
   function paintBreakDetail(report) {

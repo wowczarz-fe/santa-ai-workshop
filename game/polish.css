@@ -990,3 +990,72 @@ body[data-look="polish"] .sleigh-column > * {
     flex: none;
   }
 }
+body[data-look="polish"] .board {
+  grid-template-rows: 52px 123px minmax(175px, 1fr) 0 147px;
+}
+body[data-look="polish"] #controls2 {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+body[data-look="polish"] [data-control="checking"] {
+  grid-column: 1 / -1;
+}
+body[data-look="polish"] [data-control="checking"] .switch {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-rows: repeat(3, 26px);
+  gap: 1px 4px;
+  padding: 4px;
+  min-height: 88px;
+}
+body[data-look="polish"] [data-control="checking"] .switch-choice {
+  grid-column: 2;
+  height: 26px;
+}
+body[data-look="polish"] [data-control="checking"] .switch-button {
+  position: relative;
+  flex-direction: row;
+  justify-content: flex-start;
+  height: 26px;
+  min-height: 26px;
+  padding: 3px 8px;
+}
+body[data-look="polish"] [data-control="checking"] .switch-label {
+  line-height: 18px;
+}
+body[data-look="polish"] #controls2 [data-control="bypass"] button,
+body[data-look="polish"] #controls2 .vigilance {
+  height: 20px;
+  min-height: 20px;
+  padding: 2px 4px;
+}
+body[data-look="polish"] .station.behind .station-number {
+  background: #74560f;
+  color: white;
+}
+body[data-look="polish"] .paper-sleigh-scene {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+}
+body[data-look="polish"] .sleigh-art {
+  position: relative;
+  grid-row: 1;
+  height: 100%;
+  min-height: 0;
+}
+body[data-look="polish"] .sleigh-total {
+  position: static;
+  grid-row: 2;
+  width: auto;
+  margin: 0 8px;
+  background: transparent;
+}
+body[data-look="polish"] .arrival {
+  position: static;
+  grid-row: 3;
+  margin: 3px 6px;
+}
+@media (max-width: 999px) {
+  body[data-look="polish"] .board {
+    grid-template-rows: 51px 123px minmax(130px, 1fr) 0 145px;
+  }
+}

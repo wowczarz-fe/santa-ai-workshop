@@ -1135,3 +1135,35 @@ body[data-look="paper"] #cocoa:has(.elf-card) .cocoa-label > span {
     font-size: 23px;
   }
 }
+body[data-look="paper"] #piles0 {
+  display: grid;
+  grid-template-columns: 1fr;
+  width: 110px;
+  right: auto;
+  gap: 6px;
+}
+body[data-look="paper"] #piles0 .queue {
+  grid-template-rows: 36px 45px auto 3px;
+}
+body[data-look="paper"] #piles0 .queue-tag {
+  padding: 3px 6px;
+}
+body[data-look="paper"] #piles0 .queue-picture,
+body[data-look="paper"] #piles0 .stack {
+  height: 45px !important;
+}
+@media (min-width: 1000px) {
+  body[data-look="paper"] #right {
+    font-size: 38px;
+  }
+  body[data-look="paper"] #wrong,
+  body[data-look="paper"] #budget,
+  body[data-look="paper"] #clock {
+    font-size: 34px;
+  }
+}
+@media (min-width: 1000px) {
+  body[data-look="paper"] .dashboard .clock-box {
+    margin-left: 32px;
+  }
+}

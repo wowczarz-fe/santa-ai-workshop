@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Belt and Brake</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="snow" aria-hidden="true"></div>
+    <main class="app">
+      <header class="hud">
+        <div class="goal">
+          <span class="label">Good gifts</span>
+          <b id="score">0</b><span class="of">/ <span id="target"></span></span>
+        </div>
+        <div class="clock" id="clock"></div>
+        <div class="bar"><span id="fill"></span><i id="pace"></i></div>
+      </header>
+      <p class="instruction" id="instruction"></p>
+      <section class="belt" id="belt">
+        <div class="machine" id="machine">
+          <span class="gear" aria-hidden="true">⚙️</span>
+          <b>AI toy machine</b>
+          <span class="status" id="status"></span>
+        </div>
+        <div class="track" id="track"></div>
+        <div class="sleigh" id="sleigh">
+          <span aria-hidden="true">🛷</span> <b>Santa's sleigh</b>
+        </div>
+        <div class="reactions" id="reactions" aria-live="polite"></div>
+      </section>
+      <footer class="controls">
+        <div class="lever" id="lever" role="group" aria-label="Machine speed">
+          <i class="knob" aria-hidden="true"></i>
+        </div>
+        <button class="brake" id="brake" hidden>🛑<span>Brake</span></button>
+      </footer>
+    </main>
+    <div class="overlay" id="overlay">
+      <div class="card" id="card"></div>
+    </div>
+    <script src="rules.js"></script>
+    <script src="page.js"></script>
+  </body>
+</html>

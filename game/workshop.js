@@ -16,12 +16,23 @@ const CHECKER_SPEED = 0.75;
 const PASS = 0.12;
 const CHECK = 2.2; // about eighteen times a pass
 const REMAKE = 4;
+const UNWRAP = 1.5; // a quarantined parcel: opened and its train swapped, quicker than a full remake
 const RECALL = 8; // fetching it back off the sleigh, then remaking it
 const ASKING = 1.6; // an unclear letter while the child answers
 const INSPECT_SECONDS = 3;
 const ROLLBACK_SECONDS = 8;
+const NOTICE = 12; // seconds after the update lands by which its trains are noticed anyway
 const TRAINING_SECONDS = 10;
-const BURNOUT_SECONDS = 30;
+// A cocoa break in time is short; a burnt-out elf is gone for a minute and comes back still tired.
+const BURNOUT_SECONDS = 60;
+const BURNOUT_RECOVERY = 0.5;
+const COCOA_RECOVERY = 6;
+// Tiredness 0 to 100. Above FRESH it slows an elf and makes a checker miss more mistakes.
+const FRESH = 30;
+const TIRED_SLOWS = 0.014;
+const TIRED_MISSES = 0.01;
+const strain = (tired) => Math.max(0, tired - FRESH);
+const CHECKER_STRAIN = 0.25; // checking tires more than reading or making
 const SAMPLE = 0.08; // share of parcels a spot-check opens
 
 // Indexed by AI level: by hand, assist, automate.
@@ -169,6 +180,7 @@ class Workshop {
       checked: 0,
       prevented: 0,
       waved: 0,
+      wavedCost: 0,
       burnouts: 0,
       checkerBurnouts: 0,
       jammed: 0,
@@ -262,7 +274,7 @@ class Workshop {
   }
 
   power(s) {
-    return sum(this.staff(s).map((e) => 1 - e.tired * 0.005));
+    return sum(this.staff(s).map((e) => 1 - strain(e.tired) * TIRED_SLOWS));
   }
 
   cap(s, level = this.ai[s]) {
@@ -281,7 +293,8 @@ class Workshop {
   }
 
   suspect(x) {
-    return x.unsure || (x.batch && Boolean(this.incident?.known));
+    if (x.batch && this.incident?.known) return "batch";
+    return x.unsure ? "unsure" : false;
   }
 
   // An unclear wish stops being risky once the child has been asked.
@@ -335,10 +348,11 @@ class Workshop {
 
   catchChance(byAi) {
     const team = this.staff(2);
-    const tired = sum(team.map((e) => e.tired)) / Math.max(1, team.length);
+    const tired =
+      sum(team.map((e) => strain(e.tired))) / Math.max(1, team.length);
     return Math.max(
       0.35,
-      0.87 - tired * 0.004 - (byAi && this.overtrusting() ? 0.3 : 0),
+      0.87 - tired * TIRED_MISSES - (byAi && this.overtrusting() ? 0.3 : 0),
     );
   }
 
@@ -427,7 +441,7 @@ class Workshop {
       ),
     );
     at(AT.update, "update", () => {
-      this.incident = { fault: true, known: false, rollingBack: 0 };
+      this.incident = { fault: true, known: false, rollingBack: 0, trains: 0 };
       this.say("update", "A shiny new AI update just reached the toy line.");
       this.unlock(
         "rollback",
@@ -464,7 +478,8 @@ class Workshop {
     this.elves.forEach((e, i) => {
       this.pay("people", dt * (e.station === BREAK ? COCOA_WAGE : WAGE));
       if (e.station === BREAK) {
-        e.tired = Math.max(0, e.tired - dt * 3);
+        const recovery = e.rest > 0 ? BURNOUT_RECOVERY : COCOA_RECOVERY;
+        e.tired = Math.max(0, e.tired - dt * recovery);
         if (e.rest > 0 && (e.rest = countDown(e.rest, dt)) === 0)
           e.station = e.home;
         return;
@@ -472,9 +487,9 @@ class Workshop {
       const s = e.station;
       const pressure = this.queues[s].length / this.limits[s];
       const effort =
-        0.3 +
+        0.35 +
         Math.max(0, pressure - 0.25) * 0.75 +
-        (s === 2 ? 0.1 * this.checking : 0);
+        (s === 2 ? CHECKER_STRAIN + 0.1 * this.checking : 0);
       e.tired = Math.min(
         100,
         Math.max(0, e.tired + dt * (this.busy(s) ? effort : -0.12)),
@@ -567,6 +582,7 @@ class Workshop {
       const faulty = x.batch && x.roll.make < FAULT_RISK[this.ai[1]];
       x.wrong = faulty || x.wrong || x.roll.make < MAKE_RISK[this.ai[1]];
       x.made = faulty ? LOCOMOTIVE : x.wrong ? x.w.wrong : x.w.wanted;
+      if (faulty) this.incident.trains++;
       x.unsure =
         x.roll.unsure <
         (x.wrong && !faulty ? UNSURE_IF_WRONG : UNSURE_IF_RIGHT);
@@ -595,7 +611,10 @@ class Workshop {
     this.pay("checking", PRICE.check);
     if (x.wrong && x.roll.catch >= this.catchChance(x.byAi)) {
       x.slipped = true;
-      if (x.byAi && this.overtrusting()) this.stats.waved++;
+      if (x.byAi && this.overtrusting()) {
+        this.stats.waved++;
+        this.stats.wavedCost += this.price(x);
+      }
       return this.load(x);
     }
     this.reveal(x);
@@ -632,13 +651,16 @@ class Workshop {
   reveal(x) {
     if (x.result) return;
     x.result = x.wrong ? "wrong" : "right";
-    if (x.made === LOCOMOTIVE && !this.incident.known) {
-      this.incident.known = true;
-      this.unlock(
-        "quarantine",
-        "Full-sized trains! Roll back the update and quarantine the marked parcels.",
-      );
-    }
+    if (x.made === LOCOMOTIVE) this.spotUpdate();
+  }
+
+  spotUpdate() {
+    if (this.incident.known) return;
+    this.incident.known = true;
+    this.unlock(
+      "quarantine",
+      "Full-sized trains! Roll back the update and quarantine the marked parcels.",
+    );
   }
 
   // A copy taken now, so news keeps showing the toy as the AI made it.
@@ -670,6 +692,8 @@ class Workshop {
     const inc = this.incident;
     if (inc?.fault && inc.known && !inc.rollingBack && this.ai[1] > 0)
       this.stats.faulty += dt;
+    // Even with dispatch backed up, the elves notice trains piling up soon after the update lands.
+    if (inc?.trains && this.t >= AT.update + NOTICE) this.spotUpdate();
     if (this.blocked(0))
       this.sayEvery(
         10,
@@ -839,15 +863,18 @@ class Workshop {
         title: "The money ran out",
         text: `The money ran out after ${Math.round(st.brokeAt)} seconds: checking cost ${money(costs.checking)} and fixing ${money(costs.fixing)}. Spend on the checks that stop the dearest mistakes.`,
       };
-    if (missed && st.checking[2] / d >= 0.3 && costs.checking > costs.prevented)
+    const dear = costs.checking > costs.prevented;
+    if (missed && st.checking[2] / d >= 0.3 && (dear || st.jammed >= 30))
       return {
         title: "Too much checking",
-        text: `Checking cost ${money(costs.checking)} but stopped mistakes worth only ${money(costs.prevented)}, and parcels sat stuck at dispatch for ${Math.round(st.jammed)} seconds. Check where a mistake is likely or dear, and let the rest through.`,
+        text: dear
+          ? `Checking cost ${money(costs.checking)} but stopped mistakes worth only ${money(costs.prevented)}, and parcels sat stuck at dispatch for ${Math.round(st.jammed)} seconds. Check where a mistake is likely or dear, and let the rest through.`
+          : `Checking every parcel left presents stuck at dispatch for ${Math.round(st.jammed)} seconds, so only ${right} right gifts made the sleigh. Check where a mistake is likely or dear, and let the rest through.`,
       };
     if (missed && checkedShare < 0.2 && costs.mistakes > costs.checking)
       return {
         title: "Too little checking",
-        text: `Wrong gifts cost ${money(costs.mistakes)}, far more than the ${money(costs.checking)} spent on checking. The more the AI does, the more its work needs checking.`,
+        text: `Wrong gifts cost ${money(costs.mistakes)}, far more than the ${money(costs.checking)} spent on checking; wrong big gifts alone cost ${money(bigWrong)}. The more the AI does, the more its work needs checking, most of all on the big gifts.`,
       };
     if (st.faulty >= 15)
       return {
@@ -859,15 +886,11 @@ class Workshop {
         title: "Tired checkers miss mistakes",
         text: `${st.checkerBurnouts} checkers burnt out, and tired ones let mistakes slip. Send elves for cocoa before they are worn out.`,
       };
-    if (missed && st.waved >= 3)
+    // Fires even with top rating: the mistakes are in the bill whatever else went well.
+    if (st.waved >= 4)
       return {
         title: "The checkers trusted the AI too much",
-        text: `Late in the shift, untrained checkers waved ${st.waved} wrong AI gifts through. Training them early keeps them sharp.`,
-      };
-    if (missed && st.checking[1] / d < 0.4)
-      return {
-        title: "Every parcel checked the same",
-        text: `Big gifts and parcels the AI was unsure about were where mistakes were likeliest and dearest; wrong big gifts alone cost ${money(bigWrong)}. Checking the risky ones puts the effort where it pays.`,
+        text: `Late in the shift, untrained checkers waved ${st.waved} wrong AI gifts through, costing ${money(st.wavedCost)}. Training them early keeps them sharp.`,
       };
     if (!missed && st.checking[1] / d >= 0.5)
       return {
@@ -1005,10 +1028,9 @@ class Workshop {
     if (this.why("quarantine")) return false;
     const marked = this.marked();
     this.queues[2] = this.queues[2].filter((x) => !marked.includes(x));
-    marked.forEach((x) => {
-      x.held = true;
-      this.toRework(x, REMAKE);
-    });
+    // Quarantined parcels go first, so the hold lasts only as long as they take.
+    marked.forEach((x) => Object.assign(x, { held: true, remake: UNWRAP }));
+    this.rework.unshift(...marked);
     this.pay("fixing", PRICE.quarantine);
     this.say(
       "quarantined",
@@ -1086,7 +1108,7 @@ class Workshop {
       inspect: `takes a checker for ${INSPECT_SECONDS} seconds, costs ${money(PRICE.inspect)}`,
       train: `halves checking speed for ${TRAINING_SECONDS} seconds, costs ${money(PRICE.train)}`,
       rollback: `stops the toy line for ${ROLLBACK_SECONDS} seconds, costs ${money(PRICE.rollback)}`,
-      quarantine: `remakes ${marked || "the"} marked parcels, ${each(REMAKE)}, plus ${money(PRICE.quarantine)}`,
+      quarantine: `remakes ${marked || "the"} marked parcels, ${each(UNWRAP)}, plus ${money(PRICE.quarantine)}`,
       recall: `remakes ${wrong || "the"} wrong gifts, ${each(RECALL)}, plus ${money(PRICE.recall)}`,
     }[name];
   }

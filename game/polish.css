@@ -1,0 +1,978 @@
+body[data-look="polish"] {
+  --ink: #233c37;
+  --paper: #f8f8f4;
+  --line: #d1ded5;
+  --teal: #286e73;
+  --pine: #163f43;
+  --red: #c64235;
+  --gold: #bf9b45;
+  background: #f8f8f4;
+  color: var(--ink);
+  font-family: Arial, sans-serif;
+}
+body[data-look="polish"] h1,
+body[data-look="polish"] h2,
+body[data-look="polish"] h3 {
+  font-family: Arial, sans-serif;
+}
+body[data-look="polish"] > header {
+  height: 50px;
+  background: #fff;
+  color: var(--pine);
+  border-bottom: 1px solid var(--line);
+  padding: 8px 18px;
+}
+body[data-look="polish"] > header h1 {
+  font:
+    700 22px Arial,
+    sans-serif;
+}
+body[data-look="polish"] .wordmark {
+  background: none;
+  width: 94px;
+  padding: 0;
+}
+body[data-look="polish"] button {
+  background: #fff;
+  border-color: #c3d2c8;
+}
+body[data-look="polish"] button:hover:not(:disabled) {
+  background: #eaf3ee;
+}
+body[data-look="polish"] button.primary {
+  background: var(--teal);
+  color: #fff;
+}
+body[data-look="polish"] button[aria-pressed="true"] {
+  background: #dcebe5;
+  border-color: var(--teal);
+}
+body[data-look="polish"] main {
+  max-width: 1500px;
+  padding: 0 14px;
+}
+body[data-look="polish"] .dashboard {
+  height: 106px;
+  border: 0;
+  border-radius: 0 0 10px 10px;
+  margin: 0 -14px;
+  padding: 14px 22px 19px;
+  background: linear-gradient(110deg, #24595d, #163f43);
+  color: white;
+  gap: 22px;
+  position: relative;
+}
+body[data-look="polish"] .dashboard::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  height: 13px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 18px 8px, #c64235 3px, transparent 3.5px) 0 0/70px
+      12px,
+    radial-gradient(circle at 49px 8px, #f0cf6c 3px, transparent 3.5px) 0 0/70px
+      12px,
+    repeating-linear-gradient(
+      160deg,
+      transparent 0 14px,
+      #43835d 15px 18px,
+      transparent 19px 34px
+    );
+}
+body[data-look="polish"] .dashboard strong {
+  font:
+    700 32px Arial,
+    sans-serif;
+  color: #fff;
+}
+body[data-look="polish"] .dashboard span,
+body[data-look="polish"] .dashboard small {
+  color: #d1e4df;
+}
+body[data-look="polish"] .dashboard .goal > strong {
+  font-size: 39px;
+}
+body[data-look="polish"] .dashboard .metric,
+body[data-look="polish"] .dashboard .goal,
+body[data-look="polish"] .dashboard .clock-box {
+  background: transparent;
+  color: #fff;
+  border: 0;
+}
+body[data-look="polish"] .dashboard #wrongBadge strong,
+body[data-look="polish"] .dashboard #wrong {
+  display: inline-block;
+  padding: 3px 11px;
+  border-radius: 13px;
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 0 0 4px #ffffff18;
+}
+body[data-look="polish"] .dashboard #wrongBadge:has(#wrong) {
+  background: transparent;
+}
+body[data-look="polish"] .dashboard .score-metric {
+  min-width: 66px;
+}
+body[data-look="polish"] .dashboard .score-metric strong {
+  font-size: 24px;
+}
+body[data-look="polish"] .dashboard #goal {
+  accent-color: #f0cf6c;
+  width: 100%;
+  max-width: 250px;
+}
+body[data-look="polish"] #paceFill {
+  accent-color: #8ed0d2;
+  height: 4px;
+  width: 100%;
+  max-width: 250px;
+  opacity: 0.8;
+}
+body[data-look="polish"] #countdownRing {
+  width: 45px;
+  height: 45px;
+  color: #f0cf6c;
+}
+body[data-look="polish"] #countdownRing .countdown-hand {
+  stroke: #f0cf6c;
+}
+body[data-look="polish"] #adventRuns {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+body[data-look="polish"] #adventRuns .run-door {
+  border: 0;
+  border-radius: 5px;
+  background: #dce6df;
+  color: var(--pine);
+  min-width: 30px;
+  padding: 3px 5px;
+  box-shadow: none;
+  height: auto;
+}
+body[data-look="polish"] #adventRuns .run-door[data-state="current"] {
+  background: #f0cf6c;
+}
+body[data-look="polish"] #adventRuns .run-door[data-state="done"] {
+  background: var(--teal);
+  color: white;
+}
+body[data-look="polish"] #adventRuns .door-number {
+  font:
+    700 11px Arial,
+    sans-serif;
+}
+body[data-look="polish"] #adventRuns .door-stars {
+  font-size: 10px;
+  color: inherit;
+}
+body[data-look="polish"] .status-row {
+  height: 34px;
+  min-height: 34px;
+  color: var(--ink);
+  padding: 0 1px;
+}
+body[data-look="polish"] #status {
+  color: #52685d;
+  font-size: 12px;
+}
+body[data-look="polish"] #paceLabel {
+  color: var(--teal);
+  background: white;
+  border-color: var(--line);
+}
+body[data-look="polish"] .board {
+  height: calc(100dvh - 212px);
+  min-height: 535px;
+  grid-template-rows: 52px 107px minmax(175px, 1fr) 0 147px;
+  padding: 0;
+  gap: 10px;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+body[data-look="polish"] .board > .station {
+  border: 1px solid #cadbd0;
+  border-radius: 13px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 2px 1px #14332908;
+}
+body[data-look="polish"] .column-heading {
+  grid-row: 1;
+  padding: 7px 10px;
+  background: #eaf2ee;
+  border-bottom: 1px solid var(--line);
+  gap: 4px 7px;
+  align-content: center;
+}
+body[data-look="polish"] .column-heading::before {
+  height: 4px;
+  background: repeating-linear-gradient(
+    45deg,
+    #286e73 0 5px,
+    transparent 5px 12px
+  );
+}
+body[data-look="polish"] .column-heading h2 {
+  font:
+    700 16px Arial,
+    sans-serif;
+}
+body[data-look="polish"] .station-number {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 0;
+  background: var(--teal);
+  color: white;
+  border-radius: 50%;
+  font:
+    700 12px Arial,
+    sans-serif;
+}
+body[data-look="polish"] .paper-rate {
+  flex-basis: auto;
+  margin-left: auto;
+  gap: 3px;
+}
+body[data-look="polish"] .station-rate {
+  font-size: 12px;
+  border: 1px solid #cfddd3;
+  border-radius: 14px;
+  padding: 2px 6px;
+  background: white;
+}
+body[data-look="polish"] .capacity-label {
+  display: none;
+}
+body[data-look="polish"] .station-bottleneck {
+  font-size: 9px;
+  background: #bf9b45;
+  color: #352706;
+  border-radius: 10px;
+  padding: 1px 5px;
+}
+body[data-look="polish"] .station.behind .column-heading {
+  background: #fcf4dc;
+}
+body[data-look="polish"] .paper-scene {
+  grid-row: 3;
+  margin: 0 9px 8px;
+  overflow: visible;
+  background: none;
+  min-height: 0;
+}
+body[data-look="polish"] .paper-scene .machine {
+  pointer-events: none;
+  position: absolute;
+  inset: auto 4px auto auto;
+  top: 5px;
+  width: 32px;
+  height: 26px;
+  opacity: 0.65;
+  z-index: 1;
+}
+body[data-look="polish"] .paper-scene .machine > svg {
+  inset: 0;
+  width: 32px;
+  height: 26px;
+}
+body[data-look="polish"] .paper-scene .queue-piles {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 6px;
+  align-items: stretch;
+}
+body[data-look="polish"] #piles0 {
+  grid-template-rows: 1.35fr 1fr;
+}
+body[data-look="polish"] #piles1 {
+  width: auto;
+  right: 0;
+}
+body[data-look="polish"] .queue {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: 20px minmax(25px, 1fr) 11px 4px;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  padding: 6px 9px 5px;
+  gap: 0 4px;
+  border: 1px solid #d7e1d7;
+  border-radius: 7px;
+  background: #f4f6ef;
+  box-shadow: none;
+  color: #233c37;
+  transform: none;
+}
+body[data-look="polish"] .queue:hover {
+  background: #edf3e9;
+}
+body[data-look="polish"] .queue-name {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 11px;
+  line-height: 16px;
+  align-self: center;
+}
+body[data-look="polish"] .queue-count {
+  grid-column: 2;
+  grid-row: 1;
+  font:
+    700 22px Arial,
+    sans-serif;
+  line-height: 22px;
+  align-self: center;
+}
+body[data-look="polish"] .queue-trend {
+  font-size: 12px;
+}
+body[data-look="polish"] .queue-picture {
+  grid-column: 1/-1;
+  grid-row: 2;
+  height: auto !important;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+body[data-look="polish"] .queue-rate {
+  grid-column: 1/-1;
+  grid-row: 3;
+  font-size: 9px;
+  line-height: 11px;
+}
+body[data-look="polish"] .queue progress {
+  grid-column: 1/-1;
+  grid-row: 4;
+  height: 4px;
+  width: 100%;
+  accent-color: var(--teal);
+}
+body[data-look="polish"] .stack {
+  width: 145px;
+  height: 100%;
+  margin: auto;
+}
+body[data-look="polish"] .stack i {
+  width: 33px;
+  height: 27px;
+  bottom: calc(var(--layer) * var(--fill) * 45px);
+  transform: rotate(-5deg);
+}
+body[data-look="polish"] .stack i:nth-child(3n + 1) {
+  left: 24px !important;
+  transform: rotate(-7deg);
+}
+body[data-look="polish"] .stack i:nth-child(3n + 2) {
+  left: 55px !important;
+  transform: rotate(5deg);
+}
+body[data-look="polish"] .stack i:nth-child(3n) {
+  left: 86px !important;
+  transform: rotate(-2deg);
+}
+body[data-look="polish"] .stack i.big {
+  width: 40px;
+  height: 33px;
+}
+body[data-look="polish"] #queue-orders .stack i {
+  bottom: calc(var(--layer) * var(--fill) * 95px);
+}
+body[data-look="polish"] .stack i svg {
+  filter: drop-shadow(0 1px 1px #2b443322);
+}
+body[data-look="polish"] .paper-belt {
+  grid-row: 4;
+  display: none;
+}
+body[data-look="polish"] .paper-floor {
+  grid-row: 5;
+  background: linear-gradient(to bottom, #fff 0 60%, #f0eadb 60% 100%);
+  border-top: 1px solid #e2e8df;
+  padding: 5px 6px;
+}
+body[data-look="polish"] .crew-heading {
+  height: 15px;
+}
+body[data-look="polish"] .crew-heading span {
+  color: #68766b;
+  font-size: 9px;
+}
+body[data-look="polish"] .paper-floor .crew {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 60px;
+  gap: 1px 2px;
+  align-items: start;
+}
+body[data-look="polish"] .paper-floor .crew:not(:has(.elf-card:nth-child(5))) {
+  grid-template-columns: repeat(var(--crew-count, 3), minmax(0, 1fr));
+  grid-auto-rows: 118px;
+  align-items: end;
+}
+body[data-look="polish"] .elf {
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  height: 60px;
+  min-height: 60px;
+  padding: 0 2px 5px;
+}
+body[data-look="polish"] .elf:hover:not(:disabled) {
+  background: #e7f0e780;
+  border-color: #c7d7ca;
+}
+body[data-look="polish"] .elf.tired {
+  background: #ffede8;
+  border-color: #e4afa3;
+}
+body[data-look="polish"] .elf svg,
+body[data-look="polish"] #cocoa .elf svg {
+  width: 30px;
+  height: 36px;
+  filter: none;
+}
+body[data-look="polish"]
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(5)))
+  .elf {
+  height: 118px;
+}
+body[data-look="polish"]
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(5)))
+  .elf
+  svg,
+body[data-look="polish"]
+  #cocoa
+  .crew:not(:has(.elf-card:nth-child(5)))
+  .elf
+  svg {
+  width: 62px;
+  height: 83px;
+}
+body[data-look="polish"] .elf-name {
+  font:
+    700 10px/11px Arial,
+    sans-serif;
+}
+body[data-look="polish"] .elf-task {
+  font:
+    10px/11px Arial,
+    sans-serif;
+}
+body[data-look="polish"]
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(5)))
+  .elf-name {
+  font-size: 12px;
+  line-height: 13px;
+}
+body[data-look="polish"]
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(5)))
+  .elf-task {
+  font-size: 11px;
+  line-height: 12px;
+}
+body[data-look="polish"] .elf-doing {
+  background: #fff;
+  border: 1px solid #d4e0d6;
+  border-radius: 50%;
+  top: 0;
+  right: 0;
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  display: grid;
+  place-items: center;
+}
+body[data-look="polish"]
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(5)))
+  .elf-doing {
+  top: 0;
+}
+body[data-look="polish"] .elf progress {
+  bottom: 1px;
+  height: 4px;
+  left: 25%;
+  width: 50%;
+  accent-color: #3b9d67;
+}
+body[data-look="polish"] .crew-hint {
+  background: #eaf3ed;
+  color: #286e73;
+  border-radius: 5px;
+  font-size: 10px;
+}
+body[data-look="polish"] .controls {
+  grid-row: 2;
+  background: #fff;
+  margin: 0;
+  padding: 7px 9px;
+  gap: 3px;
+  align-content: start;
+}
+body[data-look="polish"] .switch {
+  background: #dce6e0;
+  border: 0;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 2px;
+  box-shadow: inset 0 2px 3px #163f4320;
+  position: relative;
+}
+body[data-look="polish"] .switch-button {
+  height: 46px;
+  border-radius: 9px;
+  background: transparent;
+  padding: 3px 2px;
+}
+body[data-look="polish"] .switch-button[aria-pressed="true"] {
+  color: #1c6268;
+  background: #fff;
+  box-shadow: 0 2px 6px #183f4329;
+  border: 0;
+}
+body[data-look="polish"] .switch-button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  right: 7px;
+  top: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #42b97c;
+  box-shadow: 0 0 0 2px #42b97c22;
+}
+body[data-look="polish"] .switch-art {
+  height: 22px;
+  color: #53695c;
+}
+body[data-look="polish"] .switch-art svg {
+  height: 20px;
+  width: 25px;
+}
+body[data-look="polish"] .switch-label {
+  font-size: 11px;
+}
+body[data-look="polish"] .switch-button[aria-pressed="true"] .switch-label {
+  font-weight: bold;
+}
+body[data-look="polish"] [data-control="checking"] .switch {
+  padding: 4px 4px 4px 75px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 83px;
+}
+body[data-look="polish"] [data-control="checking"] .switch::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 15px;
+  width: 51px;
+  height: 51px;
+  border-radius: 50%;
+  border: 4px solid #c1cfc5;
+  background: repeating-conic-gradient(#fff 0deg 5deg, #dce5dd 5deg 10deg);
+  box-shadow: 0 2px 6px #193a3b24;
+}
+body[data-look="polish"] [data-control="checking"] .switch::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  top: 25px;
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+  background:
+    linear-gradient(0deg, transparent 44%, #286e73 44% 56%, transparent 56%),
+    #f8fbf7;
+  transform: rotate(-40deg);
+  box-shadow: 0 1px 3px #163f4333;
+}
+body[data-look="polish"]
+  [data-control="checking"]
+  .switch:has([data-checking="1"][aria-pressed="true"])::after {
+  transform: rotate(0);
+}
+body[data-look="polish"]
+  [data-control="checking"]
+  .switch:has([data-checking="2"][aria-pressed="true"])::after {
+  transform: rotate(40deg);
+}
+body[data-look="polish"] [data-control="checking"] .switch-choice {
+  min-height: 0;
+}
+body[data-look="polish"] [data-control="checking"] .switch-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 7px;
+  height: 23px;
+  min-height: 23px;
+  text-align: left;
+}
+body[data-look="polish"] [data-control="checking"] .switch-button::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #afc2b5;
+  flex: none;
+}
+body[data-look="polish"]
+  [data-control="checking"]
+  .switch-button[aria-pressed="true"]::before {
+  background: #42b97c;
+}
+body[data-look="polish"] [data-control="checking"] .switch-button::after {
+  display: none;
+}
+body[data-look="polish"] [data-control="checking"] .switch-art {
+  display: none;
+}
+body[data-look="polish"] .mode-caption {
+  font-size: 10px;
+  color: #5d7164;
+}
+body[data-look="polish"] .small-action {
+  border-radius: 6px;
+  min-height: 23px;
+  padding: 3px 6px;
+  font-size: 10px;
+}
+body[data-look="polish"] #controls2 {
+  padding-top: 4px;
+}
+body[data-look="polish"] #controls2 [data-control="bypass"],
+body[data-look="polish"] #controls2 .vigilance {
+  position: relative;
+  z-index: 2;
+}
+body[data-look="polish"] .vigilance {
+  min-height: 18px;
+  padding: 2px 5px;
+  font-size: 9px;
+}
+body[data-look="polish"] .sleigh-column .paper-scene {
+  grid-row: 2/4;
+  background: #dcecec;
+  border-radius: 10px;
+  margin-top: 8px;
+}
+body[data-look="polish"] .sleigh-art {
+  inset: 0;
+}
+body[data-look="polish"] .sleigh-art > svg {
+  width: 100%;
+  height: 100%;
+}
+body[data-look="polish"] .sleigh-total {
+  top: auto;
+  bottom: 34px;
+  left: 10px;
+  max-width: none;
+  width: calc(100% - 20px);
+  text-align: center;
+  background: #ffffffc9;
+  box-shadow: none;
+  border: 0;
+  padding: 4px;
+  border-radius: 8px;
+}
+body[data-look="polish"] .sleigh-total strong {
+  font:
+    700 35px Georgia,
+    serif;
+}
+body[data-look="polish"] .sleigh-total span {
+  font-size: 11px;
+}
+body[data-look="polish"] .arrival {
+  bottom: 4px;
+  left: 6px;
+  right: 6px;
+  max-width: none;
+  padding: 3px 6px;
+  background: #fff;
+  border: 0;
+  border-radius: 6px;
+}
+body[data-look="polish"] .sleigh-column .controls {
+  grid-row: 5;
+  padding: 4px 8px;
+  background: #fff;
+}
+body[data-look="polish"] #cocoa {
+  grid-row: 4;
+  height: auto;
+  position: absolute;
+  bottom: 155px;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  min-height: 30px;
+  background: #f0eadb;
+  border-top: 1px solid #ddd1bb;
+  border-bottom: 1px solid #ddd1bb;
+  padding: 3px 8px;
+}
+body[data-look="polish"] #cocoa:has(.elf-card) {
+  position: relative;
+  grid-row: 5;
+  inset: auto;
+  height: 147px;
+}
+body[data-look="polish"] .sleigh-column:has(#cocoa .elf-card) .controls {
+  grid-row: 3;
+  align-self: end;
+}
+body[data-look="polish"] .cocoa-label {
+  height: 24px;
+  color: #6f572f;
+}
+body[data-look="polish"] .cocoa-label > span {
+  width: 28px;
+  height: 28px;
+}
+body[data-look="polish"] .cocoa-label b {
+  font-size: 12px;
+}
+body[data-look="polish"] .wrong-delivery {
+  background: #ffebe5;
+  border: 1px solid #e8aa9b;
+  border-radius: 8px;
+  padding: 7px;
+}
+body[data-look="polish"] .wrong-delivery b {
+  font-size: 12px;
+  color: #a3332a;
+}
+body[data-look="polish"] .sleigh-note {
+  color: #647568;
+}
+body[data-look="polish"] .floating-panel,
+body[data-look="polish"] dialog {
+  background: #fff;
+  border: 1px solid #bdcec2;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px #173f4330;
+  color: var(--ink);
+}
+body[data-look="polish"] #tutorial {
+  background: #fffaf0;
+  border-color: #bf9b45;
+}
+body[data-look="polish"] #infoPopover {
+  background: #fff;
+  border-color: #bdcec2;
+  color: var(--ink);
+}
+body[data-look="polish"] .panel-head .eyebrow {
+  color: #627364;
+}
+body[data-look="polish"] .popup-pointer polygon {
+  fill: #fffaf0;
+  stroke: #bf9b45;
+}
+body[data-look="polish"] main > footer {
+  color: #607567;
+  height: 22px;
+}
+body[data-look="polish"] .station.destination .paper-floor,
+body[data-look="polish"] #cocoa.destination {
+  background: #e4efdc;
+  box-shadow: inset 0 0 0 3px #bf9b45;
+}
+@media (max-width: 999px) {
+  body[data-look="polish"] > header {
+    height: 54px;
+    padding: 7px 9px;
+    gap: 8px;
+  }
+  body[data-look="polish"] > header h1 {
+    font-size: 16px;
+  }
+  body[data-look="polish"] .wordmark {
+    width: 65px;
+  }
+  body[data-look="polish"] #adventRuns {
+    gap: 2px;
+  }
+  body[data-look="polish"] #adventRuns .run-door {
+    min-width: 22px;
+    padding: 2px;
+  }
+  body[data-look="polish"] main {
+    padding: 0 8px;
+  }
+  body[data-look="polish"] .dashboard {
+    margin: 0 -8px;
+    min-height: 117px;
+    height: auto;
+    padding: 9px 10px 15px;
+    gap: 4px 8px;
+    grid-template-columns: 1.15fr 0.85fr 1fr;
+  }
+  body[data-look="polish"] .dashboard .goal {
+    min-width: 0;
+  }
+  body[data-look="polish"] .dashboard strong {
+    font-size: 25px;
+  }
+  body[data-look="polish"] .dashboard .goal > strong {
+    font-size: 29px;
+  }
+  body[data-look="polish"] #countdownRing {
+    width: 28px;
+    height: 28px;
+  }
+  body[data-look="polish"] #pause {
+    min-height: 28px;
+  }
+  body[data-look="polish"] .dashboard .clock-box {
+    min-width: 0;
+  }
+  body[data-look="polish"] .status-row {
+    height: auto;
+    min-height: 43px;
+    padding: 3px 0;
+  }
+  body[data-look="polish"] #status {
+    font-size: 11px;
+  }
+  body[data-look="polish"] #stationPicker {
+    height: 36px;
+    margin: 3px 0 6px;
+  }
+  body[data-look="polish"] #stationPicker button {
+    background: white;
+    font-size: 11px;
+    border-radius: 7px;
+  }
+  body[data-look="polish"] #stationPicker button[aria-pressed="true"] {
+    background: var(--teal);
+    color: #fff;
+    box-shadow: none;
+    border-color: var(--teal);
+  }
+  body[data-look="polish"] .board {
+    height: calc(100dvh - 280px);
+    min-height: 520px;
+    grid-template-columns: repeat(4, calc(100vw - 28px));
+    grid-template-rows: 51px 108px minmax(130px, 1fr) 0 145px;
+    gap: 8px;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 0;
+  }
+  body[data-look="polish"] .board > .station {
+    border: 1px solid #cadbd0;
+    border-radius: 12px;
+  }
+  body[data-look="polish"] .column-heading {
+    padding: 7px 10px;
+  }
+  body[data-look="polish"] .column-heading h2 {
+    font-size: 16px;
+  }
+  body[data-look="polish"] .station-rate {
+    font-size: 12px;
+  }
+  body[data-look="polish"] .paper-scene .machine > svg {
+    left: 0;
+    width: 32px;
+  }
+  body[data-look="polish"] .paper-scene .queue-piles {
+    inset: 0;
+    width: auto;
+  }
+  body[data-look="polish"] #piles2 {
+    width: auto;
+  }
+  body[data-look="polish"] .queue {
+    grid-template-rows: 19px minmax(20px, 1fr) 10px 4px;
+    padding: 5px 9px;
+  }
+  body[data-look="polish"] .queue-count {
+    font-size: 22px;
+  }
+  body[data-look="polish"] .queue-name {
+    font-size: 12px;
+  }
+  body[data-look="polish"]
+    .paper-floor
+    .crew:not(:has(.elf-card:nth-child(5)))
+    .elf
+    svg {
+    height: 79px;
+    width: 59px;
+  }
+  body[data-look="polish"]
+    .paper-floor
+    .crew:not(:has(.elf-card:nth-child(5)))
+    .elf {
+    height: 115px;
+  }
+  body[data-look="polish"] .sleigh-column .controls {
+    grid-row: 5;
+  }
+  body[data-look="polish"] #cocoa {
+    bottom: 150px;
+  }
+  body[data-look="polish"] #cocoa:has(.elf-card) {
+    height: 145px;
+  }
+  body[data-look="polish"] #casePanel {
+    background: #fff;
+    border-color: #bdcec2;
+    border-radius: 14px 14px 5px 5px;
+  }
+  body[data-look="polish"]:has(#caseCue:not([hidden])) .board {
+    height: calc(100dvh - 305px);
+    min-height: 500px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-look="polish"] .switch::after,
+  body[data-look="polish"] .switch-button {
+    transition: none;
+  }
+}
+
+body[data-look="polish"] .queue-tag {
+  display: contents;
+}
+body[data-look="polish"] .dashboard .clock-box {
+  padding-left: 51px;
+  min-width: 150px;
+}
+body[data-look="polish"] #countdownRing {
+  left: 1px;
+  top: 12px;
+}
+@media (max-width: 999px) {
+  body[data-look="polish"] .dashboard .clock-box {
+    padding-left: 34px;
+    min-width: 0;
+  }
+  body[data-look="polish"] #countdownRing {
+    left: 0;
+    top: 2px;
+  }
+}

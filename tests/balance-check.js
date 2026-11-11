@@ -893,8 +893,8 @@ function assuranceOf(seed, plan) {
 const BY_CARGO = {
   everyday: { ai: [1, 1], ask: true, checking: 0, staff: [3, 3, 2] },
   big: { ai: [1, 1], checking: 0, staff: [3, 3, 2] },
-  unclear: { ai: [1, 2], checking: 0, staff: [3, 0, 5] },
-  rush: { ai: [2, 2], ask: true, checking: 1, staff: [2, 0, 6] },
+  unclear: { ai: [1, 1], checking: 0, staff: [3, 3, 2] },
+  rush: { ai: [2, 2], checking: 1, staff: [0, 0, 8] },
 };
 for (const seed of SEEDS.slice(0, 3)) {
   const few = assuranceOf(seed, () => ({
@@ -916,7 +916,7 @@ for (const seed of SEEDS.slice(0, 3)) {
   assert.strictEqual(
     all.verdict,
     "too much",
-    `seed ${seed}: two checkers on everything read ${all.verdict}`,
+    `seed ${seed}: two checkers on everything read ${all.verdict} at ${all.position}`,
   );
   assert.strictEqual(
     fitted.verdict,

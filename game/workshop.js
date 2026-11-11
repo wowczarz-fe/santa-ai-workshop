@@ -42,10 +42,10 @@ const ELF_SECONDS = {
   read: [5.5, 2.6],
   readUnclear: 9, // an elf reading an unclear wish by hand works out what the child means
   make: [5.5, 2.6],
-  ask: 15,
+  ask: 5,
   check: 4.5,
   pass: 0.16,
-  remake: 5.3,
+  remake: 10, // remaking a caught mistake: catching it late costs more than preventing it
   recall: 20, // fetching a gift back off a loaded sleigh, then remaking it
 };
 const AI_SECONDS = { read: 0.6, make: 0.75 };
@@ -59,11 +59,11 @@ const RISK = {
   elfRead: 0.005,
   aiRead: 0.02,
   aiReadBig: 0.15,
-  aiGuess: 0.6,
+  aiGuess: 0.8,
   asked: 0.01,
   elfMake: 0.005,
   aiMake: 0.05,
-  aiMakeBig: 0.2,
+  aiMakeBig: 0.3,
   fault: 0.65,
   perStrain: 0.008, // per point of tiredness above SLIPS_FROM
 };
@@ -90,7 +90,6 @@ const ABOARD_AT = 5;
 // and well above what elves working by hand deliver, so every run needs the player.
 const RUNS = 4;
 const RUN_SECONDS = 60;
-const RUN_TARGETS = [40, 62, 66, 68];
 const POINTS = { right: 10, star: 20, clean: 50, budgetLeft: 0.2 };
 const BREAK_PRICE = { update: 20, tested: 20, train: 70, rest: 40 };
 const TEST_DELAY = 20; // seconds into the next run a tested update goes in, when the test is clean
@@ -167,17 +166,58 @@ const GUIDED_OPENING = {
   ai1: 22,
   checking: 40,
 };
+// What each sleigh run carries. The first run always carries everyday gifts, the plain mix of all
+// wishes; the other three carry one each of big, unclear and rush, in an order drawn from the seed.
+// big and unclear are the shares of letters drawn from the big wishes and from the unclear ones that
+// are not big, the rest coming from plain wishes. rate scales LETTER_RATE for that run, and target is
+// the right gifts the run needs for three stars.
+const CARGO = {
+  everyday: {
+    name: "Everyday gifts",
+    icon: "🎁",
+    big: null,
+    unclear: null,
+    rate: 1,
+    target: 40,
+  },
+  big: {
+    name: "Big gifts",
+    icon: "📦",
+    big: 0.7,
+    unclear: 0.05,
+    rate: 1,
+    target: 50,
+  },
+  unclear: {
+    name: "Letters from little ones",
+    icon: "🖍️",
+    big: 0.05,
+    unclear: 0.8,
+    rate: 1,
+    target: 44,
+  },
+  rush: {
+    name: "The rush",
+    icon: "⏱️",
+    big: 0.05,
+    unclear: 0.05,
+    rate: 2,
+    target: 72,
+  },
+};
+const LATER_CARGO = ["big", "unclear", "rush"];
+const LETTER_RATE = 1.3; // letters a second after the first minute, before the cargo's rate
+// Seconds of letters already in the workshop that a run still delivers after letters stop coming.
+const PIPELINE_SECONDS = 15;
 // Letters a second from each time on: a trickle three readers nearly manage, then faster than hand
-// reading can keep up with, then enough for the toy line to fall behind, a rush whose start
-// differs from game to game, and the run-out.
-const ramp = (rushAt, { trickle, speedUp }) => [
+// reading can keep up with, then from the second run on whatever that run's cargo brings.
+const ramp = (cargo, { trickle, speedUp }) => [
   [0, trickle],
   [speedUp, 0.8],
-  [60, 1.3],
-  [rushAt, 2.2],
-  [rushAt + 40, 1.3],
+  ...cargo
+    .slice(1)
+    .map((id, i) => [(i + 1) * RUN_SECONDS, LETTER_RATE * CARGO[id].rate]),
 ];
-const RUSH_FROM = [95, 130];
 const CASE_GAP = 20;
 const CASES_FROM = 60;
 const CONSEQUENCE_GAP = 45;
@@ -237,6 +277,9 @@ const WISHES = [
   };
 });
 const TIMMY = WISHES[0];
+const BIG_WISHES = WISHES.slice(1).filter((w) => w.big);
+const UNCLEAR_WISHES = WISHES.slice(1).filter((w) => w.unclear && !w.big);
+const PLAIN_WISHES = WISHES.slice(1).filter((w) => !w.big && !w.unclear);
 const EVERYDAY_WISHES = WISHES.slice(1);
 const slug = (name) => name.toLowerCase().replace(/[^a-z]+/g, "-");
 const LOCOMOTIVE = { name: "full-sized locomotive", icon: "🚂" };
@@ -379,8 +422,6 @@ class Workshop {
     this.versionId = VERSIONS[version] ? version : "standard";
     this.v = VERSIONS[this.versionId];
     this.duration = 240;
-    this.runTargets = RUN_TARGETS.map((n) => Math.round(n * this.v.letters));
-    this.target = sum(this.runTargets);
     this.t = 0;
     this.elves = ELF_NAMES.map((name, i) => ({
       name,
@@ -402,10 +443,24 @@ class Workshop {
     this.machineSpeed = 1;
     this.updates = this.planUpdates();
     this.opening = this.guided ? GUIDED_OPENING : OPENING;
-    this.ramp = ramp(
-      RUSH_FROM[0] + Math.floor(this.rng() * (RUSH_FROM[1] - RUSH_FROM[0])),
-      this.opening,
-    );
+    // One draw picks one of the six orders of the later cargoes.
+    const order = Math.floor(this.rng() * 6);
+    const later = [...LATER_CARGO];
+    const first = later.splice(order % 3, 1);
+    if (order >= 3) later.reverse();
+    this.cargo = ["everyday", ...first, ...later];
+    // A run's target is its cargo's, cut down in proportion for a run that letters stop arriving for
+    // part-way through (the last one, after the workshop closes to new letters).
+    this.runTargets = this.cargo.map((id, i) => {
+      const open =
+        Math.min((i + 1) * RUN_SECONDS, AT.close + PIPELINE_SECONDS) -
+        i * RUN_SECONDS;
+      return Math.round(
+        CARGO[id].target * Math.min(1, open / RUN_SECONDS) * this.v.letters,
+      );
+    });
+    this.target = sum(this.runTargets);
+    this.ramp = ramp(this.cargo, this.opening);
     this.runNumber = 1;
     this.delivered = [];
     this.reports = [];
@@ -538,6 +593,33 @@ class Workshop {
         testRolls: Array.from({ length: TEST_TOYS }, () => this.rng()),
       };
     });
+  }
+
+  // A wish from the mix of the run under way. Everyday runs draw from all wishes alike.
+  pickWish() {
+    const c = CARGO[this.cargo[this.runNumber - 1]];
+    const from = (list) => list[Math.floor(this.rng() * list.length)];
+    if (c.big === null) return from(EVERYDAY_WISHES);
+    const r = this.rng();
+    return from(
+      r < c.big
+        ? BIG_WISHES
+        : r < c.big + c.unclear
+          ? UNCLEAR_WISHES
+          : PLAIN_WISHES,
+    );
+  }
+
+  // A cargo as the page sees it, with one plain sentence a player can act on.
+  cargoView(id) {
+    const c = CARGO[id];
+    const text = {
+      everyday: `Everyday gifts: a wrong one costs ${money(WRONG_PRICE.everyday)}, a wrong big one ${money(WRONG_PRICE.big)}.`,
+      big: `Mostly big gifts: the AI slips more on them, and a wrong one costs ${money(WRONG_PRICE.big)}.`,
+      unclear: `Letters from little ones: about ${Math.round(c.unclear * 10)} in 10 wishes are unclear, and the AI guesses them.`,
+      rush: `A rush: letters come about ${c.rate} times as fast.`,
+    }[id];
+    return { id, name: c.name, icon: c.icon, text };
   }
 
   inflowAt(t) {
@@ -737,9 +819,7 @@ class Workshop {
   }
 
   arrive(timmy = false) {
-    const w = timmy
-      ? TIMMY
-      : EVERYDAY_WISHES[Math.floor(this.rng() * EVERYDAY_WISHES.length)];
+    const w = timmy ? TIMMY : this.pickWish();
     const roll = {};
     for (const k of "read make unsure sample catch confirm watch skip judge".split(
       " ",
@@ -829,7 +909,7 @@ class Workshop {
   seconds(id, x) {
     if (id === "letters") {
       if (this.ai[0] === 2) return AI_SECONDS.read;
-      return this.ai[0] === 0 && x?.w.unclear && !x.asked
+      return this.ai[0] === 0 && x?.w?.unclear && !x.asked
         ? ELF_SECONDS.readUnclear
         : ELF_SECONDS.read[this.ai[0]];
     }
@@ -986,8 +1066,12 @@ class Workshop {
         "Timmy writes: 'A little train, please.' How little is little?",
       );
     });
-    at(this.ramp[3][0], "rush", () =>
-      this.say("rush", "Last-minute rush! Letters now arrive twice as fast."),
+    const rushRun = this.cargo.indexOf("rush");
+    at(rushRun * RUN_SECONDS, "rush", () =>
+      this.say(
+        "rush",
+        `The rush is on! Letters now arrive about ${CARGO.rush.rate} times as fast.`,
+      ),
     );
     if (this.pendingTest && this.t >= this.pendingTest.at) this.finishTest();
     this.raiseIncident();
@@ -2512,6 +2596,7 @@ class Workshop {
         slips: r.slips.map((x) => ({ ...x })),
         spent: { ...r.spent },
         assurance: { ...r.assurance },
+        cargo: { ...r.cargo },
       })),
       blunders: [...this.blunders.values()].map((b) => ({ ...b })),
       blunderTotal: BLUNDER_TOTAL,
@@ -2592,9 +2677,9 @@ class Workshop {
     const under = money(underCost);
     const over = money(overCost);
     const text = {
-      "too little": `This time, checking came out too little: unchecked wrong gifts and recalls cost ${under}, against about ${over} for checks that did not pay and gifts held up. The figures for each kind of gift show where the mistakes got through.`,
-      "about right": `This time, checking came out about right: unchecked wrong gifts and recalls cost ${under}, and checks that did not pay and gifts held up about ${over}. Neither side of the bill ran away.`,
-      "too much": `This time, checking came out too much: checks that did not pay and gifts held up cost about ${over}, against ${under} of unchecked wrong gifts and recalls. The figures for each kind of gift show where checks cost more than they saved.`,
+      "too little": `This time there was too little checking: unchecked wrong gifts and recalls cost ${under}, against about ${over} for checks that did not pay and gifts held up. The figures for each kind of gift show where the mistakes got through.`,
+      "about right": `This time checking was about right: unchecked wrong gifts and recalls cost ${under}, and checks that did not pay and gifts held up about ${over}. Neither side of the bill ran away.`,
+      "too much": `This time there was too much checking: checks that did not pay and gifts held up cost about ${over}, against ${under} of unchecked wrong gifts and recalls. The figures for each kind of gift show where checks cost more than they saved.`,
     }[verdict];
     return {
       verdict,
@@ -2704,6 +2789,7 @@ class Workshop {
         ),
       ),
       assurance: round(this.assure.run),
+      cargo: this.cargoView(this.cargo[n - 1]),
     };
     this.spentAtRun = { ...this.spent };
     this.assure.run = this.freshRun();
@@ -2796,6 +2882,10 @@ class Workshop {
       id: ++this.lastChoiceId,
       run: report.run,
       report,
+      next: {
+        cargo: this.cargoView(this.cargo[report.run]),
+        target: this.runTargets[report.run],
+      },
       title: `Sleigh run ${report.run} has left`,
       text: `Pick one thing to do before run ${report.run + 1}.`,
       options,
@@ -2884,42 +2974,44 @@ class Workshop {
         "By hand is careful but slow",
         `Your elves delivered only ${right} right gifts from ${this.lastId + this.lost} letters. With the AI doing some of the work, the same elves could have delivered far more and checked it too.`,
       );
-    // Where most of the delivered mistakes came from, when one cause stands out.
+    // Where most of what the delivered mistakes cost came from, when one cause stands out. Weighed by
+    // cost, so a few wrong big gifts outweigh many cheap slips.
     const slips = this.allSlips ?? [];
+    const costOf = (list) => sum(list.map((x) => x.cost));
     const top = Object.entries(Object.groupBy(slips, (x) => x.cause)).sort(
-      (p, q) => q[1].length - p[1].length,
+      (p, q) => costOf(q[1]) - costOf(p[1]),
     )[0];
     const byCause = {
       "the AI guessed an unclear wish": [
         "Unclear wishes, guessed",
-        "Most of your wrong gifts were unclear wishes the AI guessed. Asking the child, or checking unclear wishes, stops them.",
+        "Most of what your wrong gifts cost came from unclear wishes the AI guessed. Asking the child, or checking unclear wishes, stops them.",
       ],
       "the AI on a big gift": [
         "Big gifts the AI got wrong",
-        "Most of your wrong gifts were big gifts the AI got wrong. Check the big ones: they cost the most.",
+        "Most of what your wrong gifts cost came from big gifts the AI got wrong. Check the big ones: they cost the most.",
       ],
       "made by the faulty update": [
         "The faulty update's trains",
-        "Most of your wrong gifts came from the faulty update. Roll it back as soon as it shows, then deal with what it made.",
+        "Most of what your wrong gifts cost came from the faulty update. Roll it back as soon as it shows, then deal with what it made.",
       ],
       "waved through by relaxed checkers": [
         "Waved through",
-        "Most of your wrong gifts were waved through by relaxed checkers. Training them at a break keeps them careful.",
+        "Most of what your wrong gifts cost came from gifts relaxed checkers waved through. Training them at a break keeps them careful.",
       ],
       "let through unchecked": [
         "Let through unchecked",
-        "Most of your wrong gifts went through without a check. One more checker would have kept the pile moving.",
+        "Most of what your wrong gifts cost came from gifts let through without a check. One more checker would have kept the pile moving.",
       ],
       "a tired elf": [
         "Tired hands",
-        "Most of your wrong gifts were slips by tired elves. A short cocoa break keeps them sharp.",
+        "Most of what your wrong gifts cost came from slips by tired elves. A short cocoa break keeps them sharp.",
       ],
     };
     if (
       missed &&
       top &&
       slips.length >= 4 &&
-      top[1].length * 2 >= slips.length &&
+      costOf(top[1]) * 2 >= costOf(slips) &&
       byCause[top[0]]
     )
       return L(...byCause[top[0]]);
@@ -3223,6 +3315,11 @@ class Workshop {
           slips: this.choice.report.slips.map((x) => ({ ...x })),
           spent: { ...this.choice.report.spent },
           assurance: { ...this.choice.report.assurance },
+          cargo: { ...this.choice.report.cargo },
+        },
+        next: {
+          cargo: { ...this.choice.next.cargo },
+          target: this.choice.next.target,
         },
         options: this.choice.options.map((o) => ({
           ...o,
@@ -3238,6 +3335,7 @@ class Workshop {
         number: this.runNumber,
         of: RUNS,
         target: this.runTargets[this.runNumber - 1],
+        cargo: this.cargoView(this.cargo[this.runNumber - 1]),
         leavesIn: Math.max(
           0,
           Math.round(this.runNumber * RUN_SECONDS - this.t),
@@ -3293,6 +3391,7 @@ class Workshop {
           slips: r.slips.map((x) => ({ ...x })),
           spent: { ...r.spent },
           assurance: { ...r.assurance },
+          cargo: { ...r.cargo },
         })),
       },
     };

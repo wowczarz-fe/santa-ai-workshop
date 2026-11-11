@@ -304,7 +304,7 @@ const WISHES = [
   "Nina | A guitar so I can rock. | 🎸 toy guitar | 🪨 big rock | unclear big",
   "Omar | A space helmet. | 👩‍🚀 space helmet | 🐠 fishbowl",
   "Rosa | A chess set, please. | ♟️ chess set | 🗄️ chest of drawers | big",
-  "Lena | Drums like my dad plays. | 🥁 toy drum kit | 🪘 full concert drum kit | unclear big",
+  "Lena | A car like my mum's. | 🚗 pedal car | 🚙 full-sized car | unclear big",
   "Freya | Pink roller skates. | 🛼 pair of pink roller skates | ⛸️ pair of ice skates | big subtle",
   "Kai | A yo-yo. | 🪀 yo-yo | 🥣 bowl of yoghurt",
   "Elsie | A magic wand. | 🪄 magic wand | 🥖 baguette",

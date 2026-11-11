@@ -413,7 +413,7 @@ function checkChoice(v, w) {
   );
   assert.strictEqual(
     Object.keys(ch.report).join(),
-    "run,right,wrong,target,stars,missedBy,bonus,slips,more",
+    "run,right,wrong,target,stars,missedBy,bonus,slips,more,spent,assurance",
   );
   for (const s of ch.report.slips)
     assert(CAUSES.includes(s.cause), `slip cause "${s.cause}"`);
@@ -829,6 +829,42 @@ for (const version of VERSION_IDS)
     assert(
       w.delivered.filter((x) => x.wrong).length + w.view().sleigh.wrong <= 2,
       `${version} seed ${seed}: hands-off by hand ships few wrong gifts by 80 s`,
+    );
+  }
+
+// The end summary reads too little for few checks on automation, too much for checking everything
+// with two checkers, and about right for checking the risky ones with every elf at checking.
+for (const [ai, checking, staff, verdict] of [
+  [2, 0, [0, 0, 8], "too little"],
+  [2, 2, [3, 3, 2], "too much"],
+  [2, 1, [0, 0, 8], "about right"],
+])
+  for (const seed of SEEDS.slice(0, 3)) {
+    const w = new Workshop({ seed });
+    w.setAi(0, ai);
+    w.setAi(1, ai);
+    w.setChecking(checking);
+    let elf = 0;
+    staff.forEach((n, s) => {
+      for (let k = 0; k < n; k++) w.move(elf++, s);
+    });
+    while (!w.end) {
+      const v = w.view();
+      if (v.choice) w.choose(v.choice.id, "rest");
+      if (v.case && !v.case.resolving)
+        w.resolve(v.case.id, v.case.options.find((o) => o.available).id);
+      w.step(0.1);
+    }
+    const a = w.view().end.assurance;
+    assert.strictEqual(
+      a.verdict,
+      verdict,
+      `seed ${seed}, checking ${checking}, staff ${staff.join("-")}: assurance ${a.verdict} at ${a.position}`,
+    );
+    assert.strictEqual(
+      a.groups.reduce((n, g) => n + g.caught, 0),
+      a.caught,
+      "group catches add up",
     );
   }
 

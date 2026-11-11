@@ -133,6 +133,20 @@ const PRICE = {
   ask: 3, // a letter back to the child
 };
 const WRONG_PRICE = { everyday: 12, big: 100 };
+// For the end summary: what a gift that misses its sleigh while it waits to be checked is worth. The
+// child gets it late or not at all, so it counts as half a wrong everyday gift.
+const LATE_PRICE = WRONG_PRICE.everyday / 2;
+// The kinds of parcel the end summary splits checking by. A gift that is both big and unclear counts
+// as big, because its mistake costs the big price.
+const GROUPS = [
+  { id: "everyday", name: "Everyday gifts", icon: "🎁", one: "everyday gift" },
+  { id: "big", name: "Big gifts", icon: "📦", one: "big gift" },
+  { id: "unclear", name: "Unclear wishes", icon: "❓", one: "unclear wish" },
+];
+const groupOf = (w) => (w.big ? "big" : w.unclear ? "unclear" : "everyday");
+// The end summary dial: below little it reads too little checking, above much too much. settle is the
+// share of all money spent that the two losses must reach before the dial moves far from the middle.
+const ASSURANCE = { little: 0.35, much: 0.65, settle: 0.1 };
 
 const AT = { close: 211 };
 // When the letters speed up, when Timmy writes, and the latest each card may wait for its real
@@ -438,6 +452,43 @@ class Workshop {
     this.lastId = 0;
     this.inflow = 0;
     this.spent = { people: 0, ai: 0, checking: 0, fixing: 0 };
+    this.spentAtRun = { ...this.spent };
+    // What checking did, by kind of parcel and for the sleigh run under way, for the summaries.
+    this.assure = {
+      groups: Object.fromEntries(
+        GROUPS.map((g) => [
+          g.id,
+          {
+            parcels: 0,
+            wrongMade: 0,
+            wrongMadeCost: 0,
+            checked: 0,
+            caught: 0,
+            shipped: 0,
+            checkCost: 0,
+            prevented: 0,
+            shippedCost: 0,
+            shippedUnchecked: 0,
+            shippedUncheckedCost: 0,
+          },
+        ]),
+      ),
+      run: this.freshRun(),
+      held: 0,
+      recallCost: 0,
+      askCost: 0,
+      trainCost: 0,
+    };
+    // What the player has done at least once, for the end summary.
+    this.used = {
+      assist: false,
+      risky: false,
+      asked: false,
+      tested: false,
+      rolledBack: false,
+      trained: false,
+      rested: false,
+    };
     this.stats = {
       ai: [0, 0, 0],
       checking: [0, 0, 0],
@@ -544,6 +595,23 @@ class Workshop {
         .map(([k, n]) => [k, Math.round(n)]),
     );
     this.say("consequence", text, { about, facts: kept });
+  }
+
+  freshRun() {
+    return {
+      caught: 0,
+      prevented: 0,
+      shipped: 0,
+      shippedCost: 0,
+      held: 0,
+      checkCost: 0,
+    };
+  }
+
+  // Adds to a kind of parcel's tally, and to the sleigh run's when the run keeps that figure.
+  assured(x, field, amount = 1) {
+    this.assure.groups[groupOf(x.w)][field] += amount;
+    if (field in this.assure.run) this.assure.run[field] += amount;
   }
 
   fresh() {
@@ -1006,7 +1074,9 @@ class Workshop {
   // A child has explained the wish; the elf who asked rarely gets it wrong, and then only slightly.
   asked(x) {
     x.asked = true;
+    this.used.asked = true;
     this.pay("people", PRICE.ask);
+    this.assure.askCost += PRICE.ask;
     x.wrong = x.roll.read < RISK.asked;
     if (x.wrong)
       Object.assign(x, {
@@ -1077,6 +1147,11 @@ class Workshop {
         : 0;
     }
     x.wrong ||= slip;
+    this.assured(x, "parcels");
+    if (x.wrong) {
+      this.assured(x, "wrongMade");
+      this.assured(x, "wrongMadeCost", this.price(x));
+    }
     this.stats.toys++;
     if (slip) this.stats.toyMistakes++;
     x.made = faulty ? LOCOMOTIVE : x.wrong ? x.wrongToy : x.w.wanted;
@@ -1123,6 +1198,8 @@ class Workshop {
     }
     this.stats.checked++;
     this.pay("checking", PRICE.check);
+    this.assured(x, "checked");
+    this.assured(x, "checkCost", PRICE.check);
     this.report.checking.checked++;
     this.report.checking.money += PRICE.check;
     x.exit = "checked";
@@ -1166,6 +1243,8 @@ class Workshop {
   }
 
   caught(x) {
+    this.assured(x, "caught");
+    this.assured(x, "prevented", this.price(x));
     this.stats.caught++;
     this.stats.prevented += this.price(x);
     this.report.checking.caught++;
@@ -1184,6 +1263,14 @@ class Workshop {
       if (x.wrong) {
         job.caught++;
         job.avoided += this.price(x);
+        // A gift brought back off the sleigh was not stopped in time; its remake is part of the recall.
+        if (x.recalled) {
+          if (x.recalled === "unchecked")
+            this.assure.recallCost += PRICE.remake;
+        } else {
+          this.assured(x, "caught");
+          this.assured(x, "prevented", this.price(x));
+        }
       }
     }
     x.exit ??= "remade";
@@ -1810,6 +1897,7 @@ class Workshop {
       case "rollback":
         inc.rollingBack = ROLLBACK_SECONDS;
         this.stats.rolledBack = true;
+        this.used.rolledBack = true;
         this.pay("fixing", PRICE.rollback);
         tell(
           `Rolling back: the toy line stops ${ROLLBACK_SECONDS} s, costs ${money(PRICE.rollback)}, and goes back to ${this.toyRate(inc.speedBefore)} toys a minute.`,
@@ -1884,7 +1972,14 @@ class Workshop {
           money: PRICE.recall + n * PRICE.recallEach,
           since: this.t,
         };
-        list.forEach((x) => this.toRework(x, ELF_SECONDS.recall, job));
+        list.forEach((x) => {
+          // The summary counts a recall against too little checking only for a gift that went out unchecked.
+          x.recalled =
+            x.exit === "checked" || x.exit === "case" ? "checked" : "unchecked";
+          if (x.recalled === "unchecked")
+            this.assure.recallCost += PRICE.recall / n + PRICE.recallEach;
+          this.toRework(x, ELF_SECONDS.recall, job);
+        });
         this.pay("fixing", PRICE.recall + n * PRICE.recallEach);
         this.say(
           "recalled",
@@ -2390,21 +2485,135 @@ class Workshop {
       : right >= this.target * 0.8 && wrongShare <= 0.2
         ? 2
         : 1;
+    const assurance = this.assurance();
+    let lesson = this.lesson(rating, right, costs);
+    // A lesson about how much was checked takes its title and words from the assurance verdict, so
+    // the two always agree and both tell how this game turned out.
+    const titles = {
+      "too little": "Too little checking",
+      "about right": "Checking in the right places",
+      "too much": "Too much checking",
+    };
+    if (Object.values(titles).includes(lesson.title))
+      lesson = { title: titles[assurance.verdict], text: assurance.text };
     this.end = {
       right,
       wrong: wrongGifts.length,
       lost: this.lost,
       rating,
       costs,
-      lesson: this.lesson(rating, right, costs),
+      lesson,
+      assurance,
+      used: { ...this.used },
       stars: sum(this.reports.map((r) => r.stars)),
       points: Math.round(this.points),
       runs: this.reports.map((r) => ({
         ...r,
         slips: r.slips.map((x) => ({ ...x })),
+        spent: { ...r.spent },
+        assurance: { ...r.assurance },
       })),
       blunders: [...this.blunders.values()].map((b) => ({ ...b })),
       blunderTotal: BLUNDER_TOTAL,
+    };
+  }
+
+  // Whether checking was too little, about right or too much, in the game's own money.
+  //   underCost: what under-checking lost: wrong gifts that reached children without a check (never
+  //     sent for one, waved through by relaxed checkers, or let through), plus the recalls and
+  //     remakes of such gifts brought back off the sleigh. A mistake that slipped past a checker who
+  //     did look is the price of checks being imperfect, not of checking too little.
+  //   overCost: what over-checking lost: the checking money spent on kinds of parcel where the checks
+  //     cost more than the mistakes they stopped, plus LATE_PRICE for each gift that missed a sleigh
+  //     because checking held it up.
+  //   position = 0.5 + (overCost / (underCost + overCost) - 0.5) * weight, where
+  //     weight = lost / (lost + ASSURANCE.settle * all money spent) and lost = underCost + overCost.
+  //   So 0 is all under-checking, 1 all over-checking, and losses that are small against the whole
+  //   bill keep the dial near the middle. Below ASSURANCE.little it reads "too little", above
+  //   ASSURANCE.much "too much", and "about right" between.
+  // The texts tell how this game turned out, not whether a choice was wise beforehand: a risky batch
+  // can happen to come out clean. Estimated amounts (what checks prevented, gifts held up) read "about".
+  assurance() {
+    const a = this.assure;
+    const groups = GROUPS.map((g) => {
+      const t = a.groups[g.id];
+      const unchecked = t.parcels - t.checked;
+      // Left exposed: the wrong gifts that got through unchecked cost more than checking the rest would have.
+      const verdict =
+        t.shippedUncheckedCost > unchecked * PRICE.check
+          ? "left exposed"
+          : t.checkCost > t.prevented
+            ? "cost more than it saved"
+            : "paid";
+      const kind = g.name.toLowerCase();
+      const count = (n) => `${n} ${n === 1 ? g.one : kind}`;
+      const stopped = t.prevented
+        ? `about ${money(t.prevented)} of wrong gifts`
+        : "no wrong gifts";
+      const text = {
+        paid: t.checked
+          ? `This time, checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${stopped}.`
+          : `This time, no ${kind} were checked, and their unchecked slips cost ${money(t.shippedUncheckedCost)}.`,
+        "cost more than it saved": `This time, checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${t.prevented ? "only " : ""}${stopped}.`,
+        "left exposed": `This time, wrong ${kind} that went out unchecked cost ${money(t.shippedUncheckedCost)}, more than the ${money(unchecked * PRICE.check)} that checking the other ${unchecked} would have cost.`,
+      }[verdict];
+      const { wrongMadeCost, ...shown } = t;
+      return {
+        id: g.id,
+        name: g.name,
+        icon: g.icon,
+        ...Object.fromEntries(
+          Object.entries(shown).map(([k, v]) => [k, Math.round(v)]),
+        ),
+        verdict,
+        text,
+      };
+    });
+    const total = (field) => sum(Object.values(a.groups).map((t) => t[field]));
+    const underCost = total("shippedUncheckedCost") + a.recallCost;
+    const overCost =
+      sum(
+        Object.values(a.groups)
+          .filter((t) => t.checkCost > t.prevented)
+          .map((t) => t.checkCost),
+      ) +
+      a.held * LATE_PRICE;
+    const lost = underCost + overCost;
+    const weight =
+      lost /
+      Math.max(1, lost + ASSURANCE.settle * sum(Object.values(this.spent)));
+    const position = lost ? 0.5 + (overCost / lost - 0.5) * weight : 0.5;
+    const verdict =
+      position < ASSURANCE.little
+        ? "too little"
+        : position > ASSURANCE.much
+          ? "too much"
+          : "about right";
+    const under = money(underCost);
+    const over = money(overCost);
+    const text = {
+      "too little": `This time, checking came out too little: unchecked wrong gifts and recalls cost ${under}, against about ${over} for checks that did not pay and gifts held up. The figures for each kind of gift show where the mistakes got through.`,
+      "about right": `This time, checking came out about right: unchecked wrong gifts and recalls cost ${under}, and checks that did not pay and gifts held up about ${over}. Neither side of the bill ran away.`,
+      "too much": `This time, checking came out too much: checks that did not pay and gifts held up cost about ${over}, against ${under} of unchecked wrong gifts and recalls. The figures for each kind of gift show where checks cost more than they saved.`,
+    }[verdict];
+    return {
+      verdict,
+      position: Math.round(position * 100) / 100,
+      underCost: Math.round(underCost),
+      overCost: Math.round(overCost),
+      wrongMade: total("wrongMade"),
+      caught: total("caught"),
+      prevented: Math.round(total("prevented")),
+      shipped: total("shipped"),
+      shippedCost: Math.round(total("shippedCost")),
+      held: a.held,
+      spent: Math.round(this.spent.checking + a.askCost + a.trainCost),
+      groups,
+      noChecks: {
+        wrong: total("wrongMade"),
+        cost: Math.round(total("wrongMadeCost")),
+      },
+      text,
     };
   }
 
@@ -2460,6 +2669,22 @@ class Workshop {
         cost: this.price(x),
       }))
       .sort((p, q) => q.cost - p.cost);
+    for (const x of wrongGifts) {
+      this.assured(x, "shipped");
+      this.assured(x, "shippedCost", this.price(x));
+      // Unchecked: never sent for a check, waved through, or let through; not one a checker or the player looked at.
+      if (x.exit !== "checked" && x.exit !== "case") {
+        this.assured(x, "shippedUnchecked");
+        this.assured(x, "shippedUncheckedCost", this.price(x));
+      }
+    }
+    // Gifts held up by checking: waiting in the checking pile, or toy orders stuck behind it while it is full.
+    const held =
+      this.q.check.length + (this.full("check") ? this.q.orders.length : 0);
+    this.assure.held += held;
+    this.assure.run.held += held;
+    const round = (o) =>
+      Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Math.round(v)]));
     const report = {
       run: n,
       right,
@@ -2470,7 +2695,18 @@ class Workshop {
       bonus,
       slips: slips.slice(0, 3),
       more: Math.max(0, slips.length - 3),
+      spent: round(
+        Object.fromEntries(
+          Object.entries(this.spent).map(([k, v]) => [
+            k,
+            v - this.spentAtRun[k],
+          ]),
+        ),
+      ),
+      assurance: round(this.assure.run),
     };
+    this.spentAtRun = { ...this.spent };
+    this.assure.run = this.freshRun();
     this.allSlips = [...(this.allSlips ?? []), ...slips];
     this.reports.push(report);
     this.delivered.push(...this.aboard);
@@ -2585,11 +2821,14 @@ class Workshop {
       };
     } else if (optionId === "tested") {
       this.pay("ai", BREAK_PRICE.tested);
+      this.used.tested = true;
       this.pendingTest = { u, at: this.t + TEST_DELAY };
       text = `The update will be tried on a few toys; it goes in ${TEST_DELAY} s into the next run if they come out right.`;
       outcome = { money: BREAK_PRICE.tested, seconds: TEST_DELAY };
     } else if (optionId === "train") {
       this.pay("people", BREAK_PRICE.train);
+      this.assure.trainCost += BREAK_PRICE.train;
+      this.used.trained = true;
       this.vig.trained = true;
       this.say(
         "trained",
@@ -2599,6 +2838,7 @@ class Workshop {
       outcome = { money: BREAK_PRICE.train };
     } else {
       this.pay("people", BREAK_PRICE.rest);
+      this.used.rested = true;
       for (const e of this.elves)
         Object.assign(e, {
           tired: 0,
@@ -2788,6 +3028,7 @@ class Workshop {
     )
       return false;
     this.ai[station] = level;
+    if (level === 1) this.used.assist = true;
     this.did("setAi");
     return true;
   }
@@ -2804,6 +3045,7 @@ class Workshop {
     if (![0, 1, 2].includes(level) || this.why("checking")) return false;
     if (level !== this.checking) this.reportChecking();
     this.checking = level;
+    if (level === 1) this.used.risky = true;
     this.did("setChecking");
     return true;
   }
@@ -2979,6 +3221,8 @@ class Workshop {
         report: {
           ...this.choice.report,
           slips: this.choice.report.slips.map((x) => ({ ...x })),
+          spent: { ...this.choice.report.spent },
+          assurance: { ...this.choice.report.assurance },
         },
         options: this.choice.options.map((o) => ({
           ...o,
@@ -3038,6 +3282,18 @@ class Workshop {
         ...this.end,
         costs: { ...this.end.costs },
         lesson: { ...this.end.lesson },
+        assurance: {
+          ...this.end.assurance,
+          groups: this.end.assurance.groups.map((g) => ({ ...g })),
+          noChecks: { ...this.end.assurance.noChecks },
+        },
+        used: { ...this.end.used },
+        runs: this.end.runs.map((r) => ({
+          ...r,
+          slips: r.slips.map((x) => ({ ...x })),
+          spent: { ...r.spent },
+          assurance: { ...r.assurance },
+        })),
       },
     };
   }

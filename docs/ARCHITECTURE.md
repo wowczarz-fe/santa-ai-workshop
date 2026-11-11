@@ -64,7 +64,7 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
 | `incident`                | `null` or `{ known, rollingBack, suspectWaiting }`                                                           |
 | `actions`                 | For each control: `{ unlocked, available, why, cost }`                                                       |
 | `news`                    | `[{ id, t, kind, text, ... }]`, newest first                                                                 |
-| `end`                     | `null` or `{ right, wrong, lost, rating, costs, lesson: { title, text } }`                                   |
+| `end`                     | `null` or `{ right, wrong, lost, rating, costs, lesson: { title, text }, assurance, used }`                  |
 
 - An elf's `station` is 0 to 3, `tired` is 0 to 100, and `resting` is `true` while a break cannot be
   cut short. `doing` is a short phrase for what the elf is doing now, such as "reading letters",
@@ -100,6 +100,56 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
 - `end.costs` is `{ people, ai, checking, fixing, mistakes, prevented, total, budget }`. `mistakes`
   is what the delivered wrong gifts cost. `prevented` is an estimate of what the mistakes that
   checking caught would have cost; the page labels it as an estimate.
+- `end.used` is `{ assist, risky, asked, tested, rolledBack, trained, rested }`, each `true` once the
+  player has done that thing in this game, set when the action succeeds and never cleared:
+  `assist` an AI level set to assist at either station, `risky` checking set to the risky ones,
+  `asked` a child asked (with asking on, or from a case), `tested` the test-it-first break option,
+  `rolledBack` a faulty update rolled back, `trained` the training break option, `rested` the
+  cocoa-for-everyone break option.
+
+### The assurance summary
+
+`end.assurance` says whether checking came out too little, about right or too much in this game,
+in the game's own money. It describes how this game turned out, not whether a choice was wise
+beforehand: a risky batch can happen to come out clean.
+
+| Field                    | Meaning                                                                                            |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| `verdict`                | `"too little"`, `"about right"` or `"too much"`                                                    |
+| `position`               | 0 to 1 for a dial: 0 far too little, 0.5 about right, 1 far too much                               |
+| `underCost`              | £ lost to under-checking (below)                                                                   |
+| `overCost`               | £ lost to over-checking (below); partly an estimate                                                |
+| `wrongMade`              | Wrong toys the workshop made in the whole game                                                     |
+| `caught`, `prevented`    | Wrong toys stopped before the sleigh, and about what they would have cost (an estimate)            |
+| `shipped`, `shippedCost` | Wrong gifts that reached children and stayed, checked or not, and what they cost                   |
+| `held`                   | Gifts that missed a sleigh because checking held them up                                           |
+| `spent`                  | £ on checking, asking children, training and investigating                                         |
+| `groups`                 | One row per kind of parcel (below)                                                                 |
+| `noChecks`               | `{ wrong, cost }`: every wrong toy made, and about what they would have cost had none been checked |
+| `text`                   | Two short sentences: the verdict for this game with the two costs                                  |
+
+- `underCost` is what wrong gifts cost that reached children without a check (never sent for one,
+  waved through by relaxed checkers, or let through), plus the recalls and remakes of such gifts
+  brought back off the sleigh. A mistake that slipped past a checker who did look counts in
+  `shipped` but not here: it is the price of checks being imperfect, not of checking too little.
+- `overCost` is the checking money spent on kinds of parcel where checks cost more than the
+  mistakes they stopped, plus £6 (half a wrong everyday gift, `LATE_PRICE`) for each gift that
+  missed a sleigh because checking held it up. A held gift is one in the checking pile when a sleigh
+  leaves, or a toy order stuck behind a full checking pile; one that misses two sleighs counts twice.
+- `position` is `overCost / (underCost + overCost)`, pulled toward 0.5 when the two together are
+  small against all the money spent: `0.5 + (share - 0.5) * lost / (lost + 0.1 * spent)`. Below
+  0.35 the verdict is `"too little"`, above 0.65 `"too much"`.
+- A group is `{ id, name, icon, parcels, wrongMade, checked, caught, shipped, checkCost, prevented,
+shippedCost, shippedUnchecked, shippedUncheckedCost, verdict, text }` for `id` `"everyday"`,
+  `"big"` or `"unclear"`. A gift that is both big and unclear counts as big, because its mistake
+  costs the big price; `"everyday"` is everything else. `parcels` counts parcels made.
+  `shippedUnchecked` and `shippedUncheckedCost` are the part of `shipped` that went out without a
+  check.
+- A group's `verdict` is `"left exposed"` when its wrong gifts that went out unchecked cost more
+  than checking the rest of that kind would have, else `"cost more than it saved"` when its checks
+  cost more than they prevented, else `"paid"`. `text` is one short sentence with the figures.
+- `end.lesson` agrees with the verdict: a lesson about how much was checked takes its title and
+  text from `assurance`.
 
 ### Parcels
 
@@ -243,12 +293,15 @@ After each of the first three runs leaves, `choice` is set and the rules stop un
 
 A choice is `{ id, run, report, title, text, options }`.
 
-- `report` is `{ run, right, wrong, target, stars, missedBy, bonus, slips }`: how the run that just
+- `report` is `{ run, right, wrong, target, stars, missedBy, bonus, slips, spent, assurance }`: how the run that just
   left went. `missedBy` says how far it was from the next star, in the player's words, or is `null`.
   `slips` is `[{ wish, wanted, made, cause, cost }]` for the wrong gifts delivered, dearest first, at
   most three, with `more` on the report counting the rest. `cause` names what let it through: "the
   AI guessed an unclear wish", "made by the faulty update", "the AI on a big gift", "a tired elf",
   "waved through by relaxed checkers", "let through unchecked".
+  `spent` is `{ people, ai, checking, fixing }`: the money spent during that run, the break before
+  it included. `assurance` is `{ caught, prevented, shipped, shippedCost, held, checkCost }` for that
+  run, on the same terms as `end.assurance`.
 - `options` is up to four of `{ id, kind, label, text, facts }`, and the player picks exactly one.
   `kind` is `"update"` (install an AI update now), `"tested"` (test it first: if the test is clean
   it is installed part-way through the next run, if not nothing is installed), `"train"` (train the

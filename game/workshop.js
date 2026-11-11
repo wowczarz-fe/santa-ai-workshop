@@ -87,8 +87,8 @@ const NOTICE_AFTER = 4; // faulty trains seen by checkers or on the sleigh befor
 // Checkers relax after a run of clean AI-made parcels: quicker checks, some skipped, drafts trusted.
 const VIGILANCE = [
   { state: "careful", from: 0, speed: 1, skip: 0, trust: 0 },
-  { state: "relaxing", from: 15, speed: 0.75, skip: 0.3, trust: 0.3 },
-  { state: "waving through", from: 40, speed: 0.5, skip: 0.7, trust: 0.6 },
+  { state: "relaxing", from: 8, speed: 0.75, skip: 0.5, trust: 0.3 },
+  { state: "waving through", from: 20, speed: 0.5, skip: 0.9, trust: 0.6 },
 ];
 
 // A cocoa break in time is short; a burnt-out elf is gone for a minute and comes back still tired.
@@ -118,11 +118,14 @@ const PRICE = {
 };
 const WRONG_PRICE = { everyday: 12, big: 60 };
 
-const AT = { timmy: 32, update: 75, rush: 110, calm: 150, close: 211 };
+const AT = { timmy: 45, update: 75, rush: 110, calm: 150, close: 211 };
 const INFLOW = 0.88;
 const RUSH_INFLOW = 1.65;
 const CASE_CAP = 6;
 const CASE_GAP = 20;
+const CONSEQUENCE_GAP = 45;
+const CASES_FROM = 60;
+const PATTERN_WINDOW = 30; // seconds within which the same wrong toy from the AI counts as a pattern
 
 // child | words | wanted toy | wrong toy the AI might make | flags
 const WISHES = [
@@ -265,6 +268,10 @@ const MOMENTS = {
   },
 };
 
+const FIRST_MOMENTS = ["elves", "ai0", "ai1", "ask", "checking"];
+const URGENT_MOMENTS = ["bypass", "rollback", "quarantine", "recall"];
+const MOMENT_GAP = 15;
+
 const DOING = {
   letters: ["reading letters", "confirming the AI's readings"],
   clarify: ["asking a child"],
@@ -324,6 +331,9 @@ class Workshop {
     this.happened = new Set();
     this.moment = null;
     this.momentQueue = [];
+    this.shown = new Set();
+    this.lastMomentAt = -MOMENT_GAP;
+    this.consequenceAt = {};
     this.news = [];
     this.lastNews = 0;
     this.newsAt = {};
@@ -385,7 +395,15 @@ class Workshop {
   }
 
   // An assurance decision reporting what it did; facts that do not apply are left out.
+  // At most one per subject every CONSEQUENCE_GAP seconds, and only when there is something to say.
   consequence(about, text, facts) {
+    const telling = facts.caught > 0 || facts.waiting > 0 || facts.money >= 10;
+    if (
+      !telling ||
+      this.t - (this.consequenceAt[about] ?? -99) < CONSEQUENCE_GAP
+    )
+      return;
+    this.consequenceAt[about] = this.t;
     const kept = Object.fromEntries(
       Object.entries(facts)
         .filter(([, n]) => n !== undefined)
@@ -406,33 +424,52 @@ class Workshop {
   }
 
   // Tutorial moments: the first real example of each decision, one open at a time.
+  // A moment waits for its turn: the first ones in a fixed order, then as they come, with at least
+  // MOMENT_GAP seconds of play between two. Controls that matter at once work before their card shows.
   reach(id, parcelId = null) {
     if (!this.guided || this.happened.has("moment:" + id)) return;
     this.happened.add("moment:" + id);
+    if (URGENT_MOMENTS.includes(id))
+      MOMENTS[id].unlocks.forEach((c) => this.unlocked.add(c));
+    this.momentQueue.push({ id, parcelId });
+    this.showMoment();
+  }
+
+  showMoment() {
+    if (
+      this.moment ||
+      !this.momentQueue.length ||
+      this.t - this.lastMomentAt < MOMENT_GAP
+    )
+      return;
+    const next = FIRST_MOMENTS.find((id) => !this.shown.has(id));
+    const i = next ? this.momentQueue.findIndex((q) => q.id === next) : 0;
+    if (i < 0) return;
+    const [{ id, parcelId }] = this.momentQueue.splice(i, 1);
     const m = MOMENTS[id];
     for (const control of m.unlocks) {
       this.unlocked.add(control);
       this.say("unlock", m.title, { control });
     }
-    this.momentQueue.push({
+    this.shown.add(id);
+    this.lastMomentAt = this.t;
+    this.moment = {
       id,
       control: m.control,
       title: m.title,
       text: m.text,
       parcelId,
       completes: [...m.completes],
-    });
-    this.moment ??= this.momentQueue.shift();
+    };
   }
 
   did(call) {
-    if (this.moment?.completes.includes(call))
-      this.moment = this.momentQueue.shift() ?? null;
+    if (this.moment?.completes.includes(call)) this.moment = null;
   }
 
   acknowledge(momentId) {
     if (this.moment?.id !== momentId) return false;
-    this.moment = this.momentQueue.shift() ?? null;
+    this.moment = null;
     return true;
   }
 
@@ -681,11 +718,9 @@ class Workshop {
       this.reach("bypass", this.q.check[0].id);
     const tired = this.elves.find((e) => e.station < BREAK && e.tired >= 60);
     if (tired) this.reach("cocoa");
-    if (
-      this.happened.has("moment:checking") &&
-      this.vigilance().state !== "careful"
-    )
+    if (this.t >= 90 && this.vigilance().state === "waving through")
       this.reach("train");
+    this.showMoment();
   }
 
   // Unclear letters go to the clarify pile when asking is on; an unclear big gift may become a case.
@@ -742,11 +777,7 @@ class Workshop {
     else if (id === "check" || id === "pass") {
       this.stats.passed++;
       if (id === "check") this.checkParcel(x);
-      else {
-        // Loading clean-looking AI parcels without opening them breeds the same trust as checking them.
-        if (x.byAi) this.cleanParcel();
-        this.load(x);
-      }
+      else this.load(x);
     } else this.remade(x);
   }
 
@@ -939,8 +970,12 @@ class Workshop {
     this.sightings.push({ t: this.t, name: x.made.name, parcel: x });
     if (x.made === LOCOMOTIVE && ++this.incident.seen >= NOTICE_AFTER)
       this.notice(by);
+    // Only the AI repeats itself; the same slip by two different elves is a coincidence.
     const same = this.sightings.filter(
-      (s) => s.name === x.made.name && this.t - s.t <= 60,
+      (s) =>
+        s.name === x.made.name &&
+        s.parcel.byAi &&
+        this.t - s.t <= PATTERN_WINDOW,
     );
     const fresh = !this.cases.some(
       (c) => c.kind === "pattern" && c.name === x.made.name,
@@ -991,6 +1026,8 @@ class Workshop {
   canOpenCase() {
     return (
       this.v.cases &&
+      this.unlocked.has("checking") &&
+      this.t >= CASES_FROM &&
       this.cases.length < 2 &&
       this.caseCount < CASE_CAP &&
       this.t - this.lastCaseAt >= CASE_GAP
@@ -1357,8 +1394,9 @@ class Workshop {
       this.unreportedLost = 0;
     if (inc?.known && this.marked().length)
       this.reach("quarantine", this.marked()[0].id);
-    if (this.t - this.report.checking.since >= 30) this.reportChecking();
-    if (this.t - this.report.ask.since >= 30) this.reportAsking();
+    if (this.t - this.report.checking.since >= CONSEQUENCE_GAP)
+      this.reportChecking();
+    if (this.t - this.report.ask.since >= CONSEQUENCE_GAP) this.reportAsking();
     // Averaged over about 15 seconds; too early to judge in the first seconds; re-armed once comfortably back.
     const now = this.estimate();
     this.projected += (now.projected - this.projected) * Math.min(1, dt / 15);
@@ -1717,10 +1755,8 @@ class Workshop {
   bypass() {
     if (this.why("bypass")) return false;
     const waiting = this.q.check.splice(0);
-    waiting.forEach((x) => (x.exit = "bypassed"));
-    this.q.pass.unshift(...waiting);
-    this.bypassed += waiting.length;
     const rate = this.stats.caught / Math.max(1, this.stats.checked);
+    this.bypassed += waiting.length;
     this.say(
       "bypassed",
       `${waiting.length} parcels went through without a check.`,
@@ -1731,6 +1767,12 @@ class Workshop {
       `Let ${waiting.length} parcels through unchecked. At the catch rate so far, about ${Math.round(waiting.length * rate)} of them could be wrong, about ${money(waiting.length * rate * AVERAGE_PRICE)} at risk.`,
       { checked: 0, waiting: 0 },
     );
+    // Straight onto the sleigh: whatever was wrong in them, a faulty batch included, ships.
+    for (const x of waiting) {
+      x.exit = "bypassed";
+      this.stats.passed++;
+      this.load(x);
+    }
     this.did("bypass");
     return true;
   }

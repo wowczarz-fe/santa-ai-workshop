@@ -24,21 +24,25 @@ const fill = (v, id) => v.queues[id].parcels.length / v.queues[id].limit;
 // differs from the sensible one in the one thing its name says.
 function rests(w, v, m) {
   m.home ??= {};
+  const staff = v.stations.map((st) => st.staff);
   v.elves.forEach((e, i) => {
     if (
       e.station < 3 &&
       e.tired >= 60 &&
-      v.stations[e.station].staff > 1 &&
+      staff[e.station] > 1 &&
       w.move(i, 3)
-    )
+    ) {
       m.home[i] = e.station;
+      staff[e.station]--;
+    }
     if (e.station === 3 && !e.resting && e.tired <= 10)
       w.move(i, m.home[i] ?? 2);
   });
 }
 
 // Answers cases as a careful player would: judges the toy against the wish, asks, investigates.
-function answer(w, v) {
+// `unclear` forces the answer to unclear cases, and the letters answered each way are remembered.
+function answer(w, v, m = {}, unclear = null) {
   const c = v.case;
   if (!c || c.resolving) return;
   const ok = (id) => c.options.find((o) => o.id === id && o.available);
@@ -48,15 +52,15 @@ function answer(w, v) {
         ? "ship"
         : "remake"
       : c.kind === "unclear"
-        ? ok("ask")
-          ? "ask"
-          : "accept"
+        ? (unclear ?? (ok("ask") ? "ask" : "accept"))
         : ok("investigate")
           ? "investigate"
           : ok("hold")
             ? "hold"
             : "carryOn";
-  if (ok(pick)) w.resolve(c.id, pick);
+  if (!ok(pick) || !w.resolve(c.id, pick) || c.kind !== "unclear") return;
+  m.unclear ??= { ask: [], accept: [] };
+  m.unclear[pick].push(c.evidence[0].parcelId);
 }
 
 // Moves one elf every few seconds to the station whose piles are fullest, keeping one asker,
@@ -71,9 +75,11 @@ function balance(w, v, m, keep = [1, 1, 2], toDispatch = true) {
   if (v.ai[1] === 2) need[1] = 0;
   if (!toDispatch) need[2] = 0;
   const to = argmax(need);
-  const from = argmax(
-    need.map((n, s) => (s !== to && v.stations[s].staff > keep[s] ? -n : -9)),
+  const spare = need.map((n, s) =>
+    s !== to && v.stations[s].staff > keep[s] ? -n : -9,
   );
+  if (Math.max(...spare) === -9) return;
+  const from = argmax(spare);
   const elf = v.elves.findIndex((e) => e.station === from && !e.resting);
   if (need[to] - need[from] > 0.25 && elf >= 0 && w.move(elf, to))
     m.moved = v.t;
@@ -128,9 +134,11 @@ const players = {
       watch = true,
       staffCheck = true,
       bypass = false,
+      ask = true,
+      unclear = null,
     } = {},
   ) {
-    w.setAsk(true);
+    w.setAsk(ask);
     w.setChecking(1);
     w.setAi(0, 2);
     w.setAi(1, 2);
@@ -139,7 +147,7 @@ const players = {
     balance(w, v, m, [1, watch ? 1 : 0, 2], staffCheck);
     if (!watch) v.elves.forEach((e, i) => e.station === 1 && w.move(i, 2));
     if (bypass && fill(v, "check") >= 0.3) w.bypass();
-    answer(w, v);
+    answer(w, v, m, unclear);
     if (update) respond(w, v, m);
   },
   lateOnUpdate: (w, v, m) => players.sensible(w, v, m, { update: false }),
@@ -150,6 +158,11 @@ const players = {
     players.sensible(w, v, m, { staffCheck: false, bypass: true }),
   // Nobody watches the toy machine, so only checkers, cases or the sleigh can notice the update.
   noWatcher: (w, v, m) => players.sensible(w, v, m, { watch: false }),
+  // Asking is off, so unclear big gifts come as cases: one player asks the child, one accepts the AI.
+  askUnclear: (w, v, m) =>
+    players.sensible(w, v, m, { ask: false, unclear: "ask" }),
+  acceptUnclear: (w, v, m) =>
+    players.sensible(w, v, m, { ask: false, unclear: "accept" }),
   // Skips checking and fixes mistakes after loading instead: must not beat checking first.
   recallHappy(w, v, m) {
     rests(w, v, m);
@@ -239,8 +252,14 @@ function play(name, seed, version, guided = false) {
     checkerBurnouts: 0,
     burnouts: 0,
     first60: null,
+    caseKinds: [],
+    firstCaseAt: null,
+    consequences: [],
+    trainsLoaded: 0,
+    readWrong: new Map(),
     hash: crypto.createHash("sha1"),
   };
+  const seenCases = new Set();
   let last = null;
   let lastNews = 0;
   const memo = {};
@@ -259,7 +278,16 @@ function play(name, seed, version, guided = false) {
       for (const n of v.news.filter((n) => n.id > lastNews).reverse()) {
         run.kinds.add(n.kind);
         if (n.kind === "behind") run.behindAt.push(n.t);
-        if (n.kind === "case") run.cases++;
+        if (n.kind === "case") {
+          run.cases++;
+          run.firstCaseAt ??= n.t;
+        }
+        if (n.kind === "consequence") run.consequences.push(n);
+        if (
+          n.kind === "loaded" &&
+          n.check.made.name === "full-sized locomotive"
+        )
+          run.trainsLoaded++;
         if (n.kind === "noticed") run.noticedBy = n.by;
         if (n.kind === "checked" && v.case?.kind === "judge")
           run.judgedWhileOpen++;
@@ -273,13 +301,25 @@ function play(name, seed, version, guided = false) {
           );
       }
       lastNews = v.news[0]?.id ?? lastNews;
+      if (v.case && !seenCases.has(v.case.id)) {
+        seenCases.add(v.case.id);
+        run.caseKinds.push(v.case.kind);
+      }
       while (v.moment) {
-        run.moments.push(`${v.t.toFixed(0)}s ${v.moment.id}`);
+        run.moments.push({ t: v.t, id: v.moment.id });
         assert(w.acknowledge(v.moment.id));
         v = w.view();
       }
       players[name](w, v, memo);
       last = v;
+    }
+    // How an answered unclear letter was read, seen while it waits for the toy line.
+    for (const id of [
+      ...(memo.unclear?.ask ?? []),
+      ...(memo.unclear?.accept ?? []),
+    ]) {
+      const x = w.q.orders.find((x) => x.id === id);
+      if (x && !run.readWrong.has(id)) run.readWrong.set(id, x.wrong);
     }
     w.step(0.1);
   }
@@ -287,6 +327,8 @@ function play(name, seed, version, guided = false) {
   run.end = w.view().end;
   run.target = w.target;
   run.skipped = w.vig.skipped;
+  run.memo = memo;
+  run.sleigh = w.view().sleigh.parcels;
   run.toyMistakes = w.stats.toyMistakes / Math.max(1, w.stats.toys);
   run.hash = run.hash.digest("hex");
   return run;
@@ -402,7 +444,57 @@ for (const version of VERSION_IDS) {
       version === "piles" ? r.cases === 0 : r.cases <= 6,
       `${version}: case count ${r.cases}`,
     );
+  for (const r of runs) {
+    assert(
+      r.firstCaseAt === null || r.firstCaseAt >= 60,
+      `${version}: no case before 60 seconds`,
+    );
+    const bySubject = {};
+    for (const n of r.consequences) {
+      const f = n.facts;
+      assert(
+        f.caught > 0 || f.waiting > 0 || f.money >= 10,
+        `${version}: consequence with nothing to say`,
+      );
+      assert(
+        n.t - (bySubject[n.about] ?? -99) >= 45,
+        `${version}: consequences about ${n.about} too close`,
+      );
+      bySubject[n.about] = n.t;
+    }
+  }
+  for (const r of results.byHand)
+    assert(
+      !r.caseKinds.includes("pattern"),
+      `${version}: a by-hand line raised a pattern case`,
+    );
+  assert(
+    mean(results.bypassHeavy, (r) => r.trainsLoaded) >
+      mean(results.sensible, (r) => r.trainsLoaded),
+    `${version}: bypassing during the faulty update ships trains`,
+  );
   if (version !== "piles") {
+    // How the answered letters were read, before the toy line or a check could change them.
+    const wrongShare = (runs, choice) => {
+      const made = runs.flatMap((r) =>
+        (r.memo.unclear?.[choice] ?? [])
+          .filter((id) => r.readWrong.has(id))
+          .map((id) => r.readWrong.get(id)),
+      );
+      return {
+        n: made.length,
+        wrong: made.filter(Boolean).length / Math.max(1, made.length),
+      };
+    };
+    const asked = wrongShare(results.askUnclear, "ask");
+    const accepted = wrongShare(results.acceptUnclear, "accept");
+    console.log(
+      `  unclear cases: ${asked.n} asked, ${Math.round(asked.wrong * 100)}% misread; ${accepted.n} accepted, ${Math.round(accepted.wrong * 100)}% misread`,
+    );
+    assert(
+      asked.n >= 5 && accepted.n >= 5 && asked.wrong + 0.2 < accepted.wrong,
+      `${version}: asking the child beats accepting the AI's guess`,
+    );
     assert(
       runs.some((r) => r.noticedBy === "case"),
       `${version}: investigating a real pattern makes the update known`,
@@ -425,7 +517,32 @@ for (const version of VERSION_IDS) {
   console.log(
     `  guided sensible right: ${guided.map((r) => r.end.right).join(" ")}`,
   );
-  console.log(`  moments (seed 1): ${guided[0].moments.join(", ")}`);
+  console.log(
+    `  moments (seed 1): ${guided[0].moments.map((m) => `${Math.round(m.t)}s ${m.id}`).join(", ")}`,
+  );
+  for (const r of guided) {
+    const ids = r.moments.map((m) => m.id);
+    assert.deepStrictEqual(
+      ids.slice(0, FIRST_MOMENTS.length),
+      FIRST_MOMENTS,
+      `${version}: first moments in order`,
+    );
+    r.moments.forEach((m, i) =>
+      assert(
+        i === 0 || m.t - r.moments[i - 1].t >= MOMENT_GAP - 0.5,
+        `${version}: moments ${MOMENT_GAP}s apart`,
+      ),
+    );
+    const train = r.moments.find((m) => m.id === "train");
+    assert(
+      !train || train.t >= 90,
+      `${version}: training moment after 90 seconds`,
+    );
+    assert(
+      r.firstCaseAt === null || r.firstCaseAt >= 60,
+      `${version}: no case before 60 seconds`,
+    );
+  }
   assert.strictEqual(
     play("sensible", 3, version).hash,
     play("sensible", 3, version).hash,

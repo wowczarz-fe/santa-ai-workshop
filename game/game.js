@@ -360,18 +360,25 @@
     slot.dataset.goal = id;
     slot.dataset.help = `goal:${id}`;
     slot.dataset.info = `goal:${id}`;
-    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i></span><span class="hud-note"></span>`;
+    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i>${id === "full" ? '<b class="hud-tick"></b>' : ""}</span>`;
     $("goals").append(slot);
     goalSlots[id] = slot;
   }
-  const goalsNote = make("span", "goals-note");
-  $("goals").append(goalsNote);
+  // From how many right gifts aboard the mistakes and spend stars count; marked on the sleigh bar.
+  // Until the rules give goalsCountFrom, it is read from the goal note, remembered per run.
+  const notedFrom = new Map();
+  function goalsFrom() {
+    const noted = Number(
+      /(\d+) right/.exec(view.run.goals?.find((g) => g.note)?.note)?.[1],
+    );
+    if (noted) notedFrom.set(view.run.number, noted);
+    return view.run.goalsCountFrom ?? notedFrom.get(view.run.number) ?? null;
+  }
   function paintGoals() {
     text(
       "goalsTitle",
       `Sleigh ${view.run.number} of ${view.run.of}: a star for each goal`,
     );
-    const waiting = (view.run.goals || []).filter((g) => g.waiting && g.note);
     // While a recall card is open, the wrong-gift goal previews the count after the recall.
     const c = view.case;
     const recall =
@@ -387,12 +394,16 @@
     goalSlots.right.classList.toggle("hud-previewing", after !== null);
     goalSlots.right.querySelector(".hud-preview").textContent =
       after !== null ? `${after} after recall` : "";
-    goalsNote.textContent =
-      after !== null
-        ? `Right gifts: ${after} wrong after recall`
-        : waiting.length
-          ? `${waiting.map((g) => g.name).join(", ")}: ${waiting[0].note}`
-          : "";
+    const from = goalsFrom();
+    const full = (view.run.goals || []).find((g) => g.id === "full");
+    goalSlots.full.querySelector(".hud-tick").hidden = !from || !full;
+    if (from && full)
+      goalSlots.full
+        .querySelector(".hud-tick")
+        .style.setProperty(
+          "--tick",
+          Math.min(1, from / Math.max(1, full.need)),
+        );
     for (const goal of view.run.goals || []) {
       const slot = goalSlots[goal.id];
       if (!slot) continue;
@@ -417,8 +428,6 @@
           state === "waiting" ? "star-empty" : "star",
         );
       }
-      slot.querySelector(".hud-note").textContent =
-        goal.waiting && goal.note ? goal.note : "";
       slot
         .querySelector(".hud-bar i")
         .style.setProperty(
@@ -427,7 +436,7 @@
         );
       slot.setAttribute(
         "aria-label",
-        `${goal.name}: ${figure(goal.now)} of ${figure(goal.need)}, ${{ met: "star earned so far", waiting: goal.note, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
+        `${goal.name}: ${figure(goal.now)} of ${figure(goal.need)}, ${{ met: "star earned so far", waiting: `counts from ${from} right gifts`, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
       );
     }
   }
@@ -534,6 +543,7 @@
     lastMoment = null;
     lastCase = null;
     openedCases.clear();
+    notedFrom.clear();
     resolvedAt = -Infinity;
     ended = false;
     lastWrong = null;
@@ -601,7 +611,8 @@
     view = game.view();
     paintGoals();
     text("budget", money(view.budget.left));
-    text("runLabel", view.run ? `${view.run.number}/${view.run.of}` : "");
+    const allowance = view.run.goals?.find((g) => g.id === "cost")?.need;
+    $("money").classList.toggle("low", view.budget.left < (allowance ?? 0));
     if ($("cargoBadge").dataset.cargo !== view.run.cargo.id) {
       $("cargoBadge").dataset.cargo = view.run.cargo.id;
       iconText(
@@ -655,12 +666,6 @@
         `Sleigh ${i + 1}${stars === undefined ? (i + 1 === view.run.number ? ", current" : ", upcoming") : `, ${stars} stars`}`,
       );
     });
-    $("paceFill").max = view.target;
-    $("paceFill").value = view.pace.projected;
-    $("paceFill").setAttribute(
-      "aria-label",
-      `Projected ${Math.round(view.pace.projected)} of ${view.target} correct gifts`,
-    );
     $("countdownRing").style.setProperty(
       "--remaining",
       Math.max(0, view.run.leavesIn / (view.duration / view.run.of)),
@@ -674,10 +679,6 @@
       "mission",
       `Deliver ${view.target} correct gifts${view.run ? ` across ${view.run.of} sleighs` : ""} in ${Math.round(view.duration / 60)} minutes.`,
     );
-    text(
-      "paceLabel",
-      `Projected ${Math.round(view.pace.projected)} / ${view.target} overall`,
-    );
     $("pause").disabled = !started || !!view.end;
     text("pause", manualPaused ? "Resume" : "Pause");
     text(
@@ -688,13 +689,11 @@
           ? "Departure"
           : manualPaused
             ? "Paused by you"
-            : view.choice
-              ? "Paused for your choice"
-              : view.moment
-                ? "Paused for guidance"
-                : document.hidden
-                  ? "Paused while away"
-                  : "",
+            : view.choice || view.moment
+              ? "Paused"
+              : document.hidden
+                ? "Paused while away"
+                : "",
     );
     for (let s = 0; s < 3; s++) {
       const station = view.stations[s];
@@ -1579,7 +1578,6 @@
   }
   function paintGuidance() {
     const moment = started && !view.end ? view.moment : null;
-    $("guidanceContinue").hidden = !moment;
     $("tutorial").hidden = !moment || moment.control === "case";
     $("caseGuidance").hidden = !moment || moment.control !== "case";
     if (!moment) {
@@ -1907,13 +1905,6 @@
           `"${caughtSnapshot.wish}" Wanted ${caughtSnapshot.wanted.name}, made ${caughtSnapshot.made.name}.`,
         ],
       ];
-    if (key === "pace")
-      return [
-        "On pace for",
-        [
-          `About ${Math.round(view.pace.projected)} right gifts by the last sleigh, against ${view.target}.`,
-        ],
-      ];
     if (key === "caseFacts")
       return [
         "All evidence",
@@ -1928,11 +1919,14 @@
       type = parts[0];
     if (type === "goal") {
       const goal = view.run.goals.find((g) => g.id === parts[1]);
+      const from = goalsFrom();
       return [
         goal.name,
         [
           `${cap(goal.text)}.`,
-          goal.waiting && goal.note ? `${cap(goal.note)}.` : "",
+          from
+            ? `Stars for mistakes and spend count once ${from} right gifts are aboard.`
+            : "",
         ].filter(Boolean),
       ];
     }
@@ -2361,7 +2355,6 @@
     paint();
   };
   $("continue").onclick = acknowledge;
-  $("guidanceContinue").onclick = acknowledge;
   $("caseContinue").onclick = acknowledge;
   $("skipGuidance").onclick = skip;
   $("caseCue").onclick = () => {

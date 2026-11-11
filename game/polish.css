@@ -102,6 +102,22 @@ body[data-look="polish"] .dashboard .clock-box {
   color: #fff;
   border: 0;
 }
+/* Money left: the whole game's money, small and muted beside the clock, red below one run's allowance */
+body[data-look="polish"] .dashboard #money {
+  min-width: 0;
+  align-self: center;
+}
+body[data-look="polish"] .dashboard #money strong {
+  font-size: 18px;
+  line-height: 22px;
+  color: #d1e4df;
+}
+body[data-look="polish"] .dashboard #money span {
+  color: #a9cdc6;
+}
+body[data-look="polish"] .dashboard #money.low strong {
+  color: #ff9f90;
+}
 body[data-look="polish"] .dashboard #wrongBadge strong,
 body[data-look="polish"] .dashboard #wrong {
   display: inline-block;
@@ -139,6 +155,18 @@ body[data-look="polish"] #countdownRing {
 }
 body[data-look="polish"] #countdownRing .countdown-hand {
   stroke: #f0cf6c;
+}
+/* Why the clock stopped: a line the clock box always keeps, so the clock never moves */
+body[data-look="polish"] .dashboard #pauseState {
+  display: block;
+  height: 13px;
+  line-height: 13px;
+  color: #f0cf6c;
+  font-size: 11px;
+  font-weight: 700;
+}
+body[data-look="polish"] .dashboard #pauseState:empty {
+  visibility: hidden;
 }
 /* The decision cue: the only gold button, pulsing until its decision is opened */
 body[data-look="polish"] .dashboard .case-cue {
@@ -235,6 +263,9 @@ body[data-look="polish"] #adventRuns .run-door[data-state="current"] {
 body[data-look="polish"] #adventRuns .run-door[data-state="done"] {
   background: var(--teal);
   color: white;
+  width: auto;
+  min-width: 36px;
+  padding: 0 6px;
 }
 body[data-look="polish"] #adventRuns .door-number {
   font:
@@ -1153,8 +1184,36 @@ body[data-look="polish"] .dashboard .hud-preview {
 body[data-look="polish"] .dashboard .hud-name {
   color: #cfe3de;
 }
-body[data-look="polish"] .dashboard .hud-slot[data-state="waiting"] {
-  border-color: #f0cf6c80;
+body[data-look="polish"] .dashboard .goals-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+body[data-look="polish"] .dashboard .hud-slot {
+  grid-template-rows: 14px 26px 8px;
+  border-style: solid;
+}
+body[data-look="polish"] .dashboard .hud-slot .hud-note,
+body[data-look="polish"] .dashboard .goals-note {
+  display: none;
+}
+body[data-look="polish"] .dashboard .hud-slot[data-state] .hud-bar {
+  display: block;
+  position: relative;
+  overflow: visible;
+}
+body[data-look="polish"] .dashboard .hud-tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: calc(var(--tick, 0) * 100%);
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: #fff;
 }
 body[data-look="polish"] .dashboard .hud-slot[data-state="waiting"] .hud-star {
   background: transparent;

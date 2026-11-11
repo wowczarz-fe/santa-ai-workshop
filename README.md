@@ -6,4 +6,16 @@ AI in check.
 Play: run `uv run python -m http.server 8000 --directory game` and open <http://localhost:8000/>.
 With a browser on the same machine as the files, opening `game/index.html` from disk works too.
 
+## Play online
+
+Address: **ADDRESS TO BE ADDED** (fill this in once GitHub Pages is switched on).
+
+Every push to `main` publishes the `game/` folder exactly as it is, through the
+[`publish-game.yml`](.github/workflows/publish-game.yml) workflow. There is no build step. To
+publish again without a new push, run "Publish game" by hand from the repository's Actions tab.
+
+Publishing needs GitHub Pages switched on once: in the repository's Settings, under Pages, set the
+source to "GitHub Actions". Who can open the site depends on the repository: a public site is open
+to anyone who has the address.
+
 Working on the game with an agent: start at [`AGENTS.md`](AGENTS.md).

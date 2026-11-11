@@ -91,7 +91,9 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
   clean AI-made parcels the checkers have seen in a row, `secondsPerCheck` what a check takes them
   now, `skipped` how many checks they have skipped, and `trained` whether training has been done.
 - `pace.projected` is the right gifts expected at departure at the current pace, `behind` whether
-  that is short of the target, and `slowest` the station holding things up. Each step smooths
+  that is short of the target, and `slowest` the station holding things up: the furthest along
+  the line whose own pile is filling, or `null` when no pile is filling because letters are not
+  arriving faster than the workshop works. Each step smooths
   `projected` over about 15 seconds; a player action works both out afresh at once, even while the
   clock is stopped.
 - `actions` has a key for each of `ai0`, `ai1`, `ask`, `checking` and `bypass`. `unlocked` says whether the guided run
@@ -255,7 +257,7 @@ Every item has `id`, `t`, `kind` and `text`. Some carry more:
 | `broke`       |                                                                                  | The money ran out; paid actions stop                 |
 | `blocked`     | `station`                                                                        | A station stopped because the next one is full       |
 | `lost`        | `count`                                                                          | Letters were lost to a full pile                     |
-| `behind`      | `station`                                                                        | The pace first falls short of the target             |
+| `behind`      | `station`, or `null` when no station is holding things up                        | The pace first falls short of the target             |
 | `milestone`   | `right`                                                                          | The sleigh passed a round number of right gifts      |
 | `cleared`     | `queue`                                                                          | A pile that was more than half full has been emptied |
 | `departed`    | `run`, `right`, `wrong`, `target`, `stars`                                       | A sleigh run left                                    |

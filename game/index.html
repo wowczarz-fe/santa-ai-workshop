@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=3f81a09-popups2" />
+    <link rel="stylesheet" href="style.css?v=8962583-impact1" />
   </head>
   <body>
     <header>
@@ -47,7 +47,7 @@
         </button>
         <div class="goal" data-info="goal" tabindex="0">
           <span
-            >Correct gifts
+            >Correct this sleigh
             <button
               class="info-button"
               data-help="goal"
@@ -81,6 +81,7 @@
         <p id="status" role="status" aria-live="polite">
           Drag an elf, or tap one then its destination.
         </p>
+        <button id="paceLabel" class="pace-label" data-help="pace"></button>
         <button id="guidanceContinue" hidden>Continue playing →</button
         ><button
           id="helpMove"
@@ -255,22 +256,23 @@
       </div>
       <p id="resultSummary"></p>
       <div id="endRuns" class="end-runs"></div>
-      <section class="collection">
-        <h3 id="collectionTitle">Christmas blunders</h3>
-        <div id="blunderCollection"></div>
+
+      <section class="end-account">
+        <h3>The Christmas account</h3>
+        <dl id="account"></dl>
+        <p class="muted">
+          Prevented losses estimate what caught mistakes would have cost.
+        </p>
       </section>
       <section class="lesson">
         <h3 id="lessonTitle"></h3>
         <p id="lessonText"></p>
       </section>
-      <details class="end-account">
-        <summary>The Christmas account</summary>
-        <dl id="account"></dl>
-        <p id="prevented"></p>
-        <p class="muted">
-          Prevented losses estimate what caught mistakes would have cost.
-        </p>
-      </details>
+
+      <section class="collection">
+        <h3 id="collectionTitle">Christmas blunders</h3>
+        <div id="blunderCollection"></div>
+      </section>
       <button id="copyResult">Copy result</button>
       <p id="copyStatus" role="status"></p>
       <textarea
@@ -298,7 +300,7 @@
     <div id="celebration" class="celebration" aria-hidden="true"></div>
     <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
-    <script src="workshop.js?v=3f81a09-popups2"></script>
-    <script src="game.js?v=3f81a09-popups2"></script>
+    <script src="workshop.js?v=8962583-impact1"></script>
+    <script src="game.js?v=8962583-impact1"></script>
   </body>
 </html>

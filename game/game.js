@@ -57,7 +57,8 @@
     lastArrival = null,
     notice = null,
     newsSeen = new Set(),
-    rateChanges = new Map();
+    rateChanges = new Map(),
+    spareHints = new Map();
   let infoAnchor = null,
     infoKey = null,
     infoPinned = false,
@@ -98,7 +99,7 @@
     const station = make("section", "station");
     station.id = `station${s}`;
     station.dataset.destination = s;
-    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine"><svg viewBox="0 0 100 80" aria-hidden="true">${machineArt[s]}</svg><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine"><svg viewBox="0 0 100 80" aria-hidden="true">${machineArt[s]}</svg><strong class="station-rate" id="rate${s}"></strong><span class="station-bottleneck" id="bottleneck${s}"></span><span class="capacity-label">${["Reading", "Toy making", "Human checks + passing"][s]}</span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
     station
       .querySelector(".column-heading")
       .append(
@@ -140,6 +141,9 @@
         sw.append(position);
       }
       addGroup(`ai${s}`, sw);
+      const caption = make("span", "mode-caption");
+      caption.id = `mode${s}`;
+      $(`controls${s}`).append(caption);
     }
     if (s === 0) {
       const b = make("button", "small-action", "💬 Ask the child");
@@ -182,7 +186,7 @@
       b.draggable = true;
       b.dataset.elf = i;
       b.dataset.info = `elf:${i}`;
-      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><progress class="fatigue" max="100" value="0"></progress><span class="elf-doing" aria-hidden="true"></span>`;
+      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><span class="elf-task"></span><progress class="fatigue" max="100" value="0"></progress><span class="elf-doing" aria-hidden="true"></span>`;
       const more = infoButton(`elf:${i}`, `About ${elf.name}`);
       more.classList.add("elf-info");
       wrap.append(b, more);
@@ -206,6 +210,7 @@
     newsSeen = new Set();
     notice = null;
     rateChanges.clear();
+    spareHints.clear();
     closeInfo();
     buildElves();
     $("walkthrough").checked = guided;
@@ -286,6 +291,10 @@
       "mission",
       `Deliver ${view.target} correct gifts${view.run ? ` across ${view.run.of} sleighs` : ""} in ${Math.round(view.duration / 60)} minutes.`,
     );
+    text(
+      "paceLabel",
+      `Projected ${Math.round(view.pace.projected)} / ${view.target} overall`,
+    );
     $("pause").disabled = !started || !!view.end;
     text("pause", manualPaused ? "Resume" : "Pause");
     text(
@@ -307,6 +316,9 @@
     for (let s = 0; s < 3; s++) {
       const station = view.stations[s];
       text(`staff${s}`, `${station.working} working · ${station.idle} idle`);
+      const capacity = station.rate;
+      text(`rate${s}`, `${Math.round(capacity)} a minute`);
+      text(`bottleneck${s}`, view.pace.slowest === s ? "Bottleneck" : "");
       $(`station${s}`).classList.toggle(
         "faulty",
         s === 1 && !!view.incident?.known,
@@ -332,8 +344,8 @@
         const change = rateChanges.get(id);
         node.querySelector(".queue-rate").textContent =
           change && change.until > performance.now()
-            ? `${Math.round(change.after - change.before) > 0 ? "+" : ""}${Math.round(change.after - change.before)}/min${Math.round(change.after - change.before) === 0 ? " unchanged" : ""}`
-            : `${Math.round(q.rate)}/min`;
+            ? `${Math.round(change.after - change.before) > 0 ? "+" : ""}${Math.round(change.after - change.before)} a minute${Math.round(change.after - change.before) === 0 ? " unchanged" : ""}`
+            : `${Math.round(q.rate)} a minute`;
         node.dataset.delta =
           change && change.after < change.before ? "down" : "up";
         node.classList.toggle(
@@ -385,9 +397,50 @@
         "aria-label",
         `${elf.name}, ${elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
       );
-      b.querySelector(".elf-doing").textContent =
-        elf.station === 3 ? "☕" : elf.doing === "nothing to do" ? "◌" : "⚙";
+      const role = elf.doing.includes("asking")
+        ? ["💬", "asking"]
+        : elf.doing.includes("watch")
+          ? ["👁", "watching"]
+          : elf.doing.includes("confirm")
+            ? ["✓", "confirm"]
+            : elf.doing === "nothing to do"
+              ? ["◌", "idle"]
+              : elf.station === 3 || elf.resting
+                ? ["☕", "resting"]
+                : elf.doing.includes("reading")
+                  ? ["✉", "reading"]
+                  : elf.doing.includes("making")
+                    ? ["🛠", "making"]
+                    : elf.doing.includes("checking")
+                      ? ["🔎", "checking"]
+                      : ["⚙", "working"];
+      b.querySelector(".elf-doing").textContent = role[0];
+      b.querySelector(".elf-task").textContent = role[1];
+      b.dataset.role = role[1];
     });
+    for (let station = 0; station < 2; station++) {
+      text(
+        `mode${station}`,
+        ["Elves do the work", "Elves confirm each", "Machine works alone"][
+          view.ai[station]
+        ],
+      );
+      $(`mode${station}`).hidden =
+        !started || !view.actions[`ai${station}`].unlocked;
+      const spare = view.elves.filter(
+        (elf) =>
+          elf.station === station &&
+          (elf.doing === "nothing to do" || elf.doing.includes("watch")),
+      );
+      text(
+        `spare${station}`,
+        spare.length && (spareHints.get(station) || 0) > performance.now()
+          ? `${spare.length} free to move · help with checks`
+          : "",
+      );
+      $(`spare${station}`).style.top =
+        `${$(`elves${station}`).offsetTop + $(`elves${station}`).offsetHeight + 3}px`;
+    }
     document
       .querySelectorAll("[data-destination]")
       .forEach((node) =>
@@ -662,13 +715,13 @@
   }
   function positionPanel(panel, anchor, protectedNodes = []) {
     const anchorBounds = anchor.getBoundingClientRect();
-    if (panel === $("infoPopover")) {
+    if (panel === $("infoPopover") || innerWidth < 1000) {
       const roomBeside = Math.max(
         anchorBounds.left - 24,
         innerWidth - anchorBounds.right - 24,
       );
       panel.style.maxHeight = `${roomBeside >= panel.offsetWidth ? innerHeight - 24 : Math.max(80, anchorBounds.top - 24, innerHeight - anchorBounds.bottom - 24)}px`;
-    }
+    } else panel.style.maxHeight = "";
     const r = anchorBounds,
       p = panel.getBoundingClientRect(),
       gap = 12,
@@ -677,7 +730,8 @@
     let horizontal = Math.max(12, Math.min(r.left, w - p.width - 12));
     if (
       panel.id === "tutorial" &&
-      ["ai0", "ai1"].includes(panel.dataset.control)
+      panel.dataset.compact === "true" &&
+      anchor.closest(".station")
     ) {
       const column = anchor.closest(".station").getBoundingClientRect();
       if (p.width <= column.width - 2 && column.left >= 0 && column.right <= w)
@@ -804,6 +858,13 @@
         panel.id === "infoPopover" ? "#193b35" : "#b6c5ba",
       );
   }
+  function showAnchorOnce(panel, anchor, key) {
+    const visit = `${key}:${innerWidth < 1000 ? "narrow" : "wide"}`;
+    if (panel.dataset.anchorVisit === visit) return;
+    panel.dataset.anchorVisit = visit;
+    if (innerWidth < 1000)
+      anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
   function paintGuidance() {
     const moment = started && !view.end ? view.moment : null;
     $("guidanceContinue").hidden = !moment;
@@ -811,10 +872,16 @@
     $("caseGuidance").hidden = !moment || moment.control !== "case";
     if (!moment) {
       hidePopupPointer("tutorial");
+      delete $("tutorial").dataset.anchorVisit;
       lastMoment = null;
       return;
     }
     $("tutorial").dataset.control = moment.control;
+    $("tutorial").dataset.compact = String(
+      ["ai0", "ai1", "ask", "checking", "cocoa", "bypass"].includes(
+        moment.control,
+      ),
+    );
     text("tutorialTitle", moment.title);
     text("tutorialText", moment.text);
     text(
@@ -830,7 +897,20 @@
       paintCase();
     } else {
       const ai = moment.control === "ai0" || moment.control === "ai1";
+      const tiredElf = Number.isInteger(moment.elf)
+        ? moment.elf
+        : view.elves
+            .map((elf, index) => ({ elf, index }))
+            .filter((item) => item.elf.station < 3)
+            .sort((a, b) => b.elf.tired - a.elf.tired)[0]?.index;
       const anchor =
+        (["checking", "sleigh"].includes(moment.control) &&
+        !$("wrongDelivery").hidden
+          ? $("wrongDelivery")
+          : null) ||
+        (moment.control === "cocoa" && tiredElf !== undefined
+          ? document.querySelector(`[data-elf="${tiredElf}"]`)
+          : null) ||
         (ai
           ? document.querySelector(
               moment.control === "ai0" ? '[data-ai="0,1"]' : '[data-ai="1,2"]',
@@ -847,16 +927,19 @@
       const protectedNodes = [
         ...document.querySelectorAll(".crew, [data-move]:not([hidden])"),
         $("cocoa"),
-        ...(ai
+        ...(["ai0", "ai1", "ask", "checking", "cocoa", "bypass"].includes(
+          moment.control,
+        )
           ? [
-              actionGroups.get(moment.control),
-              ...document.querySelectorAll(
-                `#station${moment.control === "ai0" ? 0 : 1} .queue`,
-              ),
+              ...(actionGroups.has(moment.control)
+                ? [actionGroups.get(moment.control)]
+                : []),
+              ...(anchor.closest(".station")?.querySelectorAll(".queue") || []),
             ]
           : []),
         anchor,
       ];
+      showAnchorOnce($("tutorial"), anchor, moment.id);
       positionPanel($("tutorial"), anchor, protectedNodes);
     }
     lastMoment = moment.id;
@@ -869,6 +952,7 @@
       lastCase = null;
       $("casePanel").hidden = true;
       hidePopupPointer("casePanel");
+      delete $("casePanel").dataset.anchorVisit;
       return;
     }
     text(
@@ -884,6 +968,7 @@
     $("casePanel").hidden = !started || !caseOpen || !!view.end;
     if ($("casePanel").hidden) {
       hidePopupPointer("casePanel");
+      delete $("casePanel").dataset.anchorVisit;
       return;
     }
     const headings = {
@@ -1045,6 +1130,7 @@
         1 - c.resolving.remaining / c.resolving.duration;
     }
     const anchor = caseAnchor(c);
+    showAnchorOnce($("casePanel"), anchor, `${c.id}:${c.step}`);
     positionPanel($("casePanel"), anchor, [anchor]);
   }
   function caseAnchor(c) {
@@ -1074,6 +1160,14 @@
           `Made: ${caughtSnapshot.made.icon} ${caughtSnapshot.made.name}`,
         ],
       ];
+    if (key === "pace")
+      return [
+        "Projected correct gifts",
+        [
+          `At the current pace, about ${Math.round(view.pace.projected)} correct gifts across all sleigh runs, against the overall target of ${view.target}.`,
+          "This estimate changes when staffing, AI or checking changes.",
+        ],
+      ];
     if (key === "score")
       return [
         "Christmas points",
@@ -1099,7 +1193,14 @@
           l.who,
           l.speed,
           l.risk,
-          `${Math.round(l.perMinute)} parcels/min · ${money(l.costPerMinute)}/min`,
+          `${Math.round(l.perMinute)} parcels a minute · ${money(l.costPerMinute)} a minute`,
+          Number(parts[2]) === 2
+            ? Number(parts[1]) === 0
+              ? "The machine reads letters. Elves can ask children about unclear wishes; idle elves can move."
+              : "The machine makes toys. Elves watch for faults; watching elves can move to checking."
+            : Number(parts[2]) === 1
+              ? "An elf confirms each result before it moves on."
+              : "",
         ],
       ];
     }
@@ -1172,6 +1273,9 @@
         stationNames[s],
         [
           `${v.staff} elves: ${v.working} working, ${v.idle} idle.`,
+          v.rate !== undefined
+            ? `${v.rate} gifts a minute: ${["reading capacity", "toy-making capacity", "human checking and passing at the current checking policy"][s]}.`
+            : "",
           v.blocked ||
             "Move elves here to change the available human capacity.",
           view.pace.behind && view.pace.slowest === s
@@ -1215,7 +1319,7 @@
       goal: [
         "Correct gifts",
         [
-          `Deliver ${view.target} correct gifts before departure. Wrong gifts do not count.`,
+          `This sleigh needs ${view.run?.target ?? view.target} correct gifts. The overall goal is ${view.target} across all sleigh runs. Wrong gifts do not count.`,
         ],
       ],
       clock: [
@@ -1274,13 +1378,19 @@
       ]
     );
   }
+  function infoPositionAnchor() {
+    return infoKey?.startsWith("elf:")
+      ? document.querySelector(`[data-elf="${infoKey.split(":")[1]}"]`) ||
+          infoAnchor
+      : infoAnchor;
+  }
   function renderInfo() {
     const [title, lines] = getInfo(infoKey);
     text("infoTitle", title);
     $("infoContent").replaceChildren(
       ...lines.filter(Boolean).map((line) => make("p", "", line)),
     );
-    positionPanel($("infoPopover"), infoAnchor);
+    positionPanel($("infoPopover"), infoPositionAnchor());
   }
   function openInfo(anchor, key, pinned = false) {
     closeInfo();
@@ -1384,7 +1494,12 @@
     }
     if (target.dataset.ai) {
       const [s, l] = target.dataset.ai.split(",").map(Number);
+      const wasAutomated = view.ai[s] === 2;
       perform(() => game.setAi(s, l));
+      if (l === 2 && !wasAutomated) {
+        spareHints.set(s, performance.now() + 5000);
+        paint();
+      }
       return;
     }
     if (target.dataset.checking !== undefined) {
@@ -1624,7 +1739,7 @@
   function repositionPopups() {
     paintGuidance();
     paintCase();
-    if (infoAnchor) positionPanel($("infoPopover"), infoAnchor);
+    if (infoAnchor) positionPanel($("infoPopover"), infoPositionAnchor());
   }
   window.addEventListener("resize", repositionPopups);
   document.addEventListener("scroll", repositionPopups, true);
@@ -1720,6 +1835,7 @@
       ["Checking", "checking"],
       ["Fixing mistakes", "fixing"],
       ["Delivered mistakes", "mistakes"],
+      ["Estimated losses prevented", "prevented"],
       ["Total cost", "total"],
       ["Available budget", "budget"],
     ]) {
@@ -1729,10 +1845,6 @@
       dd.textContent = money(e.costs[key]);
       $("account").append(dt, dd);
     }
-    text(
-      "prevented",
-      `${money(e.costs.prevented)} in estimated losses prevented by catching mistakes.`,
-    );
     $("report").showModal();
   }
   reset();

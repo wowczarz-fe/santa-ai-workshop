@@ -8,7 +8,7 @@ With a browser on the same machine as the files, opening `game/index.html` from 
 
 ## Play online
 
-Address: **ADDRESS TO BE ADDED** (fill this in once GitHub Pages is switched on).
+Address: <https://wowczarz-fe.github.io/santa-ai-workshop/>
 
 Every push to `main` publishes the `game/` folder exactly as it is, through the
 [`publish-game.yml`](.github/workflows/publish-game.yml) workflow. There is no build step. To

@@ -538,6 +538,201 @@ main {
 .tutorial[data-control="ai1"] .panel-head {
   display: none;
 }
+/* Top bar: the three goals of the run under way, one star each */
+.dashboard .goals {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 640px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: center;
+  gap: 3px 8px;
+}
+.dashboard .goals-title {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  line-height: 12px;
+}
+.dashboard .goal-slot {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 7px;
+  min-width: 0;
+  min-height: 0;
+  padding: 4px 8px 5px;
+  border-radius: 8px;
+  text-align: left;
+  color: inherit;
+}
+.dashboard .goal-star {
+  grid-row: 1 / 3;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+}
+.dashboard .goal-star .ui-icon {
+  width: 17px;
+  height: 17px;
+}
+.dashboard .goal-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+.dashboard .goal-slot .goal-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+  font-size: inherit;
+}
+@media (max-width: 999px) {
+  main .dashboard {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
+  }
+  body[data-look] main .dashboard .clock-box {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 6px;
+    min-width: 0;
+    margin: 0;
+    padding-left: 0;
+  }
+  body[data-look] main .dashboard #countdownRing {
+    position: static;
+    grid-row: 1 / 3;
+    width: 28px;
+    height: 28px;
+  }
+  body[data-look] main .dashboard .clock-box > span {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  body[data-look] main .dashboard .clock-box > strong {
+    grid-column: 2;
+    grid-row: 2;
+    line-height: 1.1;
+  }
+  body[data-look] main .dashboard #pauseState {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+  body[data-look] main .dashboard .clock-box > .info-button {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+  body main .dashboard #pause {
+    grid-column: 3;
+    align-self: center;
+  }
+}
+.dashboard .goal-name .ui-icon {
+  width: 13px;
+  height: 13px;
+}
+.dashboard .goal-figures {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.dashboard .goal-figures b {
+  font-size: 24px;
+  line-height: 26px;
+  font-variant-numeric: tabular-nums;
+}
+.dashboard .goal-figures small {
+  font-size: 12px;
+}
+.dashboard .goal-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  margin-top: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #0000001f;
+}
+.dashboard .goal-note {
+  display: none;
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  font-size: 9.5px;
+  line-height: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dashboard .goal-slot[data-state="waiting"] .goal-note {
+  display: block;
+}
+.dashboard .goal-slot[data-state="waiting"] .goal-bar {
+  display: none;
+}
+.dashboard .goal-slot[data-state="waiting"] {
+  border-style: dashed;
+}
+.dashboard .goal-bar i {
+  display: block;
+  height: 100%;
+  width: calc(var(--fill, 0) * 100%);
+  border-radius: 2px;
+  background: currentColor;
+}
+/* A wrong gift lights up the control that would have stopped it */
+.control-row.mistake-hint,
+.wrong-delivery.mistake-hint,
+#cocoa.mistake-hint {
+  position: relative;
+}
+.mistake-hint {
+  outline: 2px solid #c64235;
+  outline-offset: 2px;
+  border-radius: 8px;
+  animation: mistake-pulse 1s ease-in-out 3;
+}
+@keyframes mistake-pulse {
+  50% {
+    outline-color: #c6423500;
+    box-shadow: 0 0 0 6px #c6423533;
+  }
+}
+.mistake-hint-label {
+  position: absolute;
+  z-index: 6;
+  right: 4px;
+  top: -11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #c64235;
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 6px #0003;
+}
+#cocoa .mistake-hint-label {
+  top: auto;
+  bottom: 6px;
+}
+#stationPicker .mistake-hint-tab {
+  box-shadow: inset 0 -3px 0 #c64235;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mistake-hint {
+    animation: none;
+  }
+}
 .queue-rate {
   align-self: end;
   font-size: 10px;

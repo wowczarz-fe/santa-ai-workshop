@@ -536,6 +536,74 @@ body[data-look="paper"] #tutorial .link-button {
   color: #705132;
   font-size: 11px;
 }
+body[data-look="paper"] .dashboard .goal-slot {
+  border: 1px solid #d4c6a740;
+  border-radius: 4px;
+  background: #f4ead314;
+  color: var(--paper);
+}
+body[data-look="paper"] .dashboard .goal-slot:hover:not(:disabled) {
+  background: #f4ead326;
+}
+body[data-look="paper"] .dashboard .goal-star {
+  background: #00000033;
+  color: #f4ead34d;
+}
+body[data-look="paper"] .dashboard .goal-slot[data-state="met"] .goal-star {
+  background: #d2a44733;
+  color: #e7bd5c;
+  box-shadow: 0 0 0 1.5px #d2a447;
+}
+body[data-look="paper"] .dashboard .goals-title {
+  color: #d4c6a7;
+}
+body[data-look="paper"] .dashboard .goal-name {
+  color: #d4c6a7;
+}
+body[data-look="paper"] .dashboard .goal-slot[data-state="waiting"] {
+  border-color: #d2a447;
+}
+body[data-look="paper"] .dashboard .goal-slot[data-state="waiting"] .goal-star {
+  background: transparent;
+  color: #e7bd5c;
+  box-shadow: inset 0 0 0 1.5px #d2a44799;
+}
+body[data-look="paper"] .dashboard .goal-note {
+  color: #e7bd5c;
+}
+body[data-look="paper"] .dashboard .goal-figures b {
+  color: var(--paper);
+  font-family: Georgia, serif;
+  font-weight: normal;
+}
+body[data-look="paper"] .dashboard .goal-figures small {
+  color: #d4c6a7;
+}
+body[data-look="paper"] .dashboard .goal-bar {
+  background: #f4ead326;
+  color: #9fc7a8;
+}
+body[data-look="paper"] .dashboard .goal-slot[data-goal="full"] .goal-bar {
+  color: #d2a447;
+}
+body[data-look="paper"] .dashboard .goal-slot[data-state="failed"] {
+  border-color: #e0707f;
+  background: #a3263a66;
+}
+body[data-look="paper"] .dashboard .goal-slot[data-state="failed"] .goal-bar {
+  color: #ff9aa6;
+}
+@media (min-width: 1000px) {
+  body[data-look="paper"] .dashboard .goals-title {
+    display: none;
+  }
+}
+@media (max-width: 999px) {
+  body[data-look="paper"] .dashboard .goals {
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+}
 .sleigh-column {
   text-align: left;
 }

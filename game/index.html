@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=02e9525-cargo1" />
-    <link rel="stylesheet" href="paper.css?v=02e9525-cargo1" />
-    <link rel="stylesheet" href="polish.css?v=02e9525-cargo1" />
+    <link rel="stylesheet" href="style.css?v=7b3bf55-polish1" />
+    <link rel="stylesheet" href="paper.css?v=7b3bf55-polish1" />
+    <link rel="stylesheet" href="polish.css?v=7b3bf55-polish1" />
   </head>
   <body>
     <header>
@@ -54,26 +54,15 @@
     </header>
     <main>
       <section class="dashboard" aria-label="Christmas progress">
-        <button class="metric score-metric" data-help="score">
-          <span>Points</span><strong id="scoreValue">0</strong
-          ><small id="scoreStars"></small>
-        </button>
-        <div class="goal" data-info="goal" tabindex="0">
-          <span
-            >Correct this sleigh
-            <button
-              class="info-button"
-              data-help="goal"
-              aria-label="About the goal"
-            >
-              i
-            </button></span
-          ><strong id="right"></strong
-          ><progress id="goal" max="1" value="0"></progress>
+        <div
+          id="goals"
+          class="goals"
+          role="group"
+          aria-label="This sleigh run: one star for each goal"
+        >
+          <span class="goals-title" id="goalsTitle"></span>
         </div>
-        <button id="wrongBadge" class="metric" data-help="wrong">
-          <span>Wrong gifts</span><strong id="wrong"></strong></button
-        ><button class="metric" data-help="budget">
+        <button class="metric" data-help="budget">
           <span>Budget left</span><strong id="budget"></strong>
         </button>
         <div class="clock-box" data-info="clock" tabindex="0">
@@ -397,10 +386,10 @@
     <div id="celebration" class="celebration" aria-hidden="true"></div>
     <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
-    <script src="workshop.js?v=02e9525-cargo1"></script>
-    <script src="paper-art.js?v=02e9525-cargo1"></script>
-    <script src="polish-art.js?v=02e9525-cargo1"></script>
-    <script src="shared-art.js?v=02e9525-cargo1"></script>
-    <script src="game.js?v=02e9525-cargo1"></script>
+    <script src="workshop.js?v=7b3bf55-polish1"></script>
+    <script src="paper-art.js?v=7b3bf55-polish1"></script>
+    <script src="polish-art.js?v=7b3bf55-polish1"></script>
+    <script src="shared-art.js?v=7b3bf55-polish1"></script>
+    <script src="game.js?v=7b3bf55-polish1"></script>
   </body>
 </html>

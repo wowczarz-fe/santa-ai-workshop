@@ -1039,6 +1039,76 @@ body[data-look="polish"] .dashboard::after {
 body.reduce-motion[data-look="polish"] .dashboard::before {
   animation: none;
 }
+body[data-look="polish"] .dashboard .goal-slot {
+  border: 1px solid #ffffff1f;
+  background: #ffffff12;
+  color: #fff;
+}
+body[data-look="polish"] .dashboard .goal-slot:hover:not(:disabled) {
+  background: #ffffff21;
+}
+body[data-look="polish"] .dashboard .goal-star {
+  background: #00000026;
+  color: #ffffff4d;
+}
+body[data-look="polish"] .dashboard .goal-slot[data-state="met"] .goal-star {
+  background: #f0cf6c2e;
+  color: #f0cf6c;
+  box-shadow: 0 0 0 1.5px #f0cf6cb3;
+}
+body[data-look="polish"] .dashboard .goal-name {
+  color: #cfe3de;
+}
+body[data-look="polish"] .dashboard .goal-slot[data-state="waiting"] {
+  border-color: #f0cf6c80;
+}
+body[data-look="polish"]
+  .dashboard
+  .goal-slot[data-state="waiting"]
+  .goal-star {
+  background: transparent;
+  color: #f0cf6c;
+  box-shadow: inset 0 0 0 1.5px #f0cf6c80;
+}
+body[data-look="polish"] .dashboard .goal-note {
+  color: #f0cf6c;
+}
+body[data-look="polish"] .dashboard .goal-figures b {
+  color: #fff;
+}
+body[data-look="polish"] .dashboard .goal-figures small {
+  color: #a9cdc6;
+}
+body[data-look="polish"] .dashboard .goal-bar {
+  background: #ffffff24;
+  color: #8ed0d2;
+}
+body[data-look="polish"] .dashboard .goal-slot[data-goal="full"] .goal-bar {
+  color: #f0cf6c;
+}
+body[data-look="polish"] .dashboard .goal-slot[data-state="failed"] {
+  border-color: #ff8a7a99;
+  background: #c6423533;
+}
+body[data-look="polish"]
+  .dashboard
+  .goal-slot[data-state="failed"]
+  .goal-figures
+  b {
+  color: #ffc2b8;
+}
+body[data-look="polish"] .dashboard .goal-slot[data-state="failed"] .goal-bar {
+  color: #ff8a7a;
+}
+@media (max-width: 999px) {
+  body[data-look="polish"] .dashboard .goals {
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+  body[data-look="polish"] main .dashboard {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
+  }
+}
 @media (max-width: 999px) {
   body[data-look="polish"] > header {
     height: 54px;

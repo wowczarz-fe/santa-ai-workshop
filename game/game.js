@@ -300,6 +300,115 @@
     },
     { passive: true },
   );
+  // The three goals of the run under way, one star each.
+  const goalSlots = {};
+  for (const [id, art] of [
+    ["full", "gift"],
+    ["right", "wrong-gift"],
+    ["cost", "budget"],
+  ]) {
+    const slot = make("button", "goal-slot");
+    slot.dataset.goal = id;
+    slot.dataset.help = `goal:${id}`;
+    slot.dataset.info = `goal:${id}`;
+    slot.innerHTML = `<span class="goal-star">${icon("star")}</span><span class="goal-name">${icon(art)}<span></span></span><span class="goal-figures"><b></b><small></small></span><span class="goal-bar" aria-hidden="true"><i></i></span><span class="goal-note"></span>`;
+    $("goals").append(slot);
+    goalSlots[id] = slot;
+  }
+  function paintGoals() {
+    text(
+      "goalsTitle",
+      `Sleigh ${view.run.number} of ${view.run.of}: a star for each goal`,
+    );
+    for (const goal of view.run.goals || []) {
+      const slot = goalSlots[goal.id];
+      if (!slot) continue;
+      const figure = (n) => (goal.id === "cost" ? money(n) : String(n));
+      slot.querySelector(".goal-name > span").textContent = goal.name;
+      slot.querySelector(".goal-figures b").textContent = figure(goal.now);
+      slot.querySelector(".goal-figures small").textContent =
+        ` / ${figure(goal.need)}${goal.id === "right" ? " wrong" : ""}`;
+      // met: lit star; waiting: inside the limit but the sleigh is not full enough yet;
+      // failed: a limit goal not met; open: the full-sleigh goal still filling.
+      const state = goal.met
+        ? "met"
+        : goal.waiting
+          ? "waiting"
+          : goal.id === "full"
+            ? "open"
+            : "failed";
+      if (slot.dataset.state !== state) {
+        slot.dataset.state = state;
+        slot.querySelector(".goal-star").innerHTML = icon(
+          state === "waiting" ? "star-empty" : "star",
+        );
+      }
+      slot.querySelector(".goal-note").textContent =
+        goal.waiting && goal.note ? goal.note : "";
+      slot
+        .querySelector(".goal-bar i")
+        .style.setProperty(
+          "--fill",
+          Math.min(1, goal.now / Math.max(1, goal.need)),
+        );
+      slot.setAttribute(
+        "aria-label",
+        `${goal.name}: ${figure(goal.now)} of ${figure(goal.need)}, ${{ met: "star earned so far", waiting: goal.note, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
+      );
+    }
+  }
+  // A wrong gift lights up, for about three seconds, the control that would have stopped it.
+  // The training and update choices live on the break card, so their hint goes on the sleigh.
+  const hintWords = {
+    ask: "Ask the child",
+    checking: "Check the risky ones",
+    ai0: "Try Assist",
+    ai1: "Try Assist",
+    cocoa: "Cocoa break",
+    train: "Train the checkers",
+    update: "Test updates first",
+  };
+  let mistakeHint = null,
+    pendingCause = null;
+  const hintLabel = make("span", "mistake-hint-label");
+  hintLabel.setAttribute("role", "status");
+  function showMistakeHint(control) {
+    if (!hintWords[control]) return;
+    mistakeHint = { control, until: performance.now() + 3000 };
+    setTimeout(paintMistakeHint, 3100);
+  }
+  function paintMistakeHint() {
+    let target = null;
+    if (mistakeHint && mistakeHint.until > performance.now() && !view.end) {
+      const control = mistakeHint.control;
+      target = control === "cocoa" ? $("cocoa") : actionGroups.get(control);
+      if (!target?.getClientRects().length) target = $("wrongDelivery");
+      if (!target.getClientRects().length) target = $("sleigh");
+    }
+    document
+      .querySelectorAll(".mistake-hint")
+      .forEach(
+        (node) => node !== target && node.classList.remove("mistake-hint"),
+      );
+    const column = target?.closest(".station");
+    $("stationPicker")
+      .querySelectorAll("[data-station-page]")
+      .forEach((tab) =>
+        tab.classList.toggle(
+          "mistake-hint-tab",
+          !!column &&
+            Number(tab.dataset.stationPage) ===
+              (column.id === "sleigh" ? 3 : Number(column.id.slice(7))),
+        ),
+      );
+    if (!target) {
+      hintLabel.remove();
+      return;
+    }
+    target.classList.add("mistake-hint");
+    hintLabel.textContent = hintWords[mistakeHint.control];
+    if (hintLabel.parentNode !== target) target.append(hintLabel);
+  }
   const elfNodes = [];
   function buildElves() {
     for (const node of elfNodes) node.remove();
@@ -334,6 +443,8 @@
     newsSeen = new Set();
     notice = null;
     rateChanges.clear();
+    mistakeHint = null;
+    pendingCause = null;
     spareHints.clear();
     closeInfo();
     buildElves();
@@ -390,20 +501,8 @@
   }
   function paint() {
     view = game.view();
-    text("right", `${view.sleigh.right} / ${view.run?.target ?? view.target}`);
-    $("goal").max = view.run?.target ?? view.target;
-    $("goal").value = view.sleigh.right;
-    text("wrong", view.sleigh.wrong);
+    paintGoals();
     text("budget", money(view.budget.left));
-    text("scoreValue", view.score?.points ?? 0);
-    const scoreStars = view.score
-      ? `${view.score.stars}/${view.score.best}`
-      : "";
-    if ($("scoreStars").dataset.value !== scoreStars) {
-      $("scoreStars").dataset.value = scoreStars;
-      $("scoreStars").innerHTML = scoreStars && icon("star");
-      $("scoreStars").append(scoreStars);
-    }
     text("runLabel", view.run ? `${view.run.number}/${view.run.of}` : "");
     if ($("cargoBadge").dataset.cargo !== view.run.cargo.id) {
       $("cargoBadge").dataset.cargo = view.run.cargo.id;
@@ -468,7 +567,6 @@
       "--remaining",
       Math.max(0, view.run.leavesIn / (view.duration / view.run.of)),
     );
-    $("wrongBadge").classList.toggle("has-wrong", view.sleigh.wrong > 0);
     const left = Math.ceil(view.run?.leavesIn ?? view.duration - view.t);
     text(
       "clock",
@@ -807,8 +905,15 @@
     );
     paintCase();
     paintGuidance();
+    if (started && view.choice)
+      pendingCause = view.choice.report.causes?.[0]?.control ?? null;
+    else if (pendingCause) {
+      showMistakeHint(pendingCause);
+      pendingCause = null;
+    }
     paintChoice();
     paintEffects();
+    paintMistakeHint();
     if (infoKey && infoAnchor?.isConnected) renderInfo();
     if (view.end && !ended) {
       ended = true;
@@ -920,6 +1025,7 @@
   }
   function handleNews(news) {
     if (!started) return;
+    if (news.kind === "loaded" && news.control) showMistakeHint(news.control);
     if (news.kind === "milestone") {
       iconText($("milestoneToast"), "gift", news.text);
       toastUntil = performance.now() + 3500;
@@ -961,7 +1067,7 @@
       const from = $("queue-pass").getBoundingClientRect(),
         to = $("sleighRight").getBoundingClientRect();
       const visible = to.left >= 0 && to.right <= innerWidth;
-      const target = visible ? to : $("right").getBoundingClientRect();
+      const target = visible ? to : goalSlots.full.getBoundingClientRect();
       effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? from.right - 40 : target.left))}px`;
       effect.style.top = `${Math.max(12, Math.min(innerHeight - 40, visible ? from.top : target.bottom))}px`;
       effect.style.setProperty(
@@ -1462,11 +1568,6 @@
           `About ${Math.round(view.pace.projected)} right gifts by the last sleigh, against ${view.target}.`,
         ],
       ];
-    if (key === "score")
-      return [
-        "Points",
-        ["Right gifts add points, wrong gifts take them away."],
-      ];
     if (key === "caseFacts")
       return [
         "All evidence",
@@ -1474,6 +1575,16 @@
       ];
     const parts = key.split(":"),
       type = parts[0];
+    if (type === "goal") {
+      const goal = view.run.goals.find((g) => g.id === parts[1]);
+      return [
+        goal.name,
+        [
+          `${cap(goal.text)}.`,
+          goal.waiting && goal.note ? `${cap(goal.note)}.` : "",
+        ].filter(Boolean),
+      ];
+    }
     if (type === "ai") {
       const l = view.levers[`ai${parts[1]}`][Number(parts[2])];
       return [l.name, [`${cap(l.who)}, ${l.speed}.`, `Watch for: ${l.risk}.`]];
@@ -1560,22 +1671,10 @@
       ];
     }
     const fixed = {
-      goal: [
-        "Right gifts",
-        [
-          `This sleigh needs ${view.run?.target ?? view.target}. Wrong gifts do not count.`,
-        ],
-      ],
       clock: [
         "Until departure",
         [
           "The sleigh leaves at zero. Pause and walkthrough cards stop the clock.",
-        ],
-      ],
-      wrong: [
-        "Wrong gifts",
-        [
-          "Each one costs money. Tap the last wrong gift to see what went wrong.",
         ],
       ],
       budget: ["Budget", ["Elves, AI, checks and fixes all cost money."]],

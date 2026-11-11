@@ -779,6 +779,11 @@
         trend.dataset.trend = q.trend || "";
         trend.setAttribute("aria-label", q.trend ? `Pile ${q.trend}` : "");
         node.classList.toggle("blocked", !!q.blocked);
+        // On a phone the ask pile hides while asking is off and nothing waits in it.
+        node.classList.toggle(
+          "asking-off",
+          id === "clarify" && !view.ask && !q.parcels.length,
+        );
         node.classList.toggle("full", q.parcels.length >= q.limit);
         node.querySelector("progress").value = q.progress;
         const change = rateChanges.get(id);
@@ -2405,7 +2410,8 @@
         .elementFromPoint(e.clientX, e.clientY)
         ?.closest("[data-destination]");
       if (destination) moveElf(Number(destination.dataset.destination));
-      else {
+      // A drop that moved nothing lets go of the elf.
+      if (selected !== null) {
         selected = null;
         paint();
       }

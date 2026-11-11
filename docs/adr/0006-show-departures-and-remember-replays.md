@@ -1,0 +1,29 @@
+---
+status: accepted
+---
+
+# Show departures and remember replays
+
+## Context
+
+Four sleigh departures give players time to see what their choices delivered and choose one improvement. Guidance must leave the elves and destinations usable. Feedback must show observed outcomes without revealing unchecked gifts.
+
+## Considered options
+
+- Keep upgrades beside the running line. That competes with staffing and checking decisions during play.
+- Keep a comparison picker in the opening card. It distracts from starting a single game; query parameters remain sufficient for comparing versions.
+- Replay the same letters by default. This makes repeat play predictable; a fixed seed in the address remains available for reproducible comparisons.
+
+## Decision
+
+Show each departure report and its upgrade choices together in a wide card while the rules are paused. Keep the rules' explanation of missed stars, mistakes and costs. Show only facts marked primary on case cards and make the full evidence available through information controls.
+
+Protect every elf crew and movement destination when placing guidance, including alternative actions mentioned by the card. Keep native drag state separate from touch pointer cancellation.
+
+Animate positive changes in the observed correct-gift count, and show supplied milestone, cleared-pile and checked-mistake events. Effects do not receive pointer input and remain static when motion is reduced.
+
+Start replay immediately without guidance, using a fresh seed unless the address fixes one. Remember highest points and highest stars independently, plus uniquely identified blunders revealed by the rules. Storage failure keeps the game playable. Copy a result only when the player presses the copy button, with selectable text when clipboard access fails.
+
+## Consequences
+
+The player can compare causes, costs and upgrades before the next run. Replays have variety while explicit seeds still reproduce a game. Local records belong to this browser. Movement, break cards, storage failure and touch information controls require browser checks alongside the rules checks.

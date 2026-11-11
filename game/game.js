@@ -17,18 +17,19 @@
   const money = (n) => `£${Math.round(n).toLocaleString()}`;
   const params = new URLSearchParams(location.search);
   const requestedSeed = params.get("seed");
-  const seed =
+  const fixedSeed =
     requestedSeed !== null && Number.isFinite(Number(requestedSeed))
       ? Number(requestedSeed)
-      : 2026;
-  let version = ["piles", "cases", "calm"].includes(params.get("version"))
-    ? params.get("version")
-    : "cases";
-  const versionNames = {
-    piles: "A · Workshop decisions",
-    cases: "B · Extra checker questions",
-    calm: "C · Slower with questions",
-  };
+      : null;
+  let seed;
+  function nextSeed() {
+    return (
+      fixedSeed ??
+      (globalThis.crypto?.getRandomValues
+        ? crypto.getRandomValues(new Uint32Array(1))[0]
+        : Math.floor(Math.random() * 4294967296))
+    );
+  }
   const queueIds = [
     ["letters", "clarify"],
     ["orders"],
@@ -61,7 +62,25 @@
     infoKey = null,
     infoPinned = false,
     drag = null,
-    suppressClick = 0;
+    suppressClick = 0,
+    nativeDragElf = null;
+  let lastChoice = null,
+    observedRight = 0,
+    observedRun = null,
+    caughtSnapshot = null,
+    caughtUntil = 0,
+    toastUntil = 0;
+  let personalBest = null,
+    collectedBlunders = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem("workshop-personal-best"));
+    if (saved && Number.isFinite(saved.points)) personalBest = saved;
+    const collection = JSON.parse(localStorage.getItem("workshop-blunders"));
+    if (Array.isArray(collection))
+      collectedBlunders = collection.filter(
+        (item) => item && item.id !== undefined && item.name,
+      );
+  } catch {}
   const make = (tag, cls, content) => {
     const node = document.createElement(tag);
     if (cls) node.className = cls;
@@ -79,7 +98,7 @@
     const station = make("section", "station");
     station.id = `station${s}`;
     station.dataset.destination = s;
-    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine" aria-hidden="true"><svg viewBox="0 0 100 80">${machineArt[s]}</svg></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine"><svg viewBox="0 0 100 80" aria-hidden="true">${machineArt[s]}</svg><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
     station
       .querySelector(".column-heading")
       .append(
@@ -92,7 +111,7 @@
       q.dataset.info = `queue:${id}`;
       q.dataset.help = `queue:${id}`;
       q.innerHTML =
-        '<span class="queue-name"></span><strong class="queue-count"></strong><span class="queue-picture"><span class="stack"></span></span><span class="queue-rate"></span><progress max="1" value="0"></progress>';
+        '<span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span><span class="queue-trend" role="img"></span></strong><span class="queue-picture"><span class="stack"></span></span><span class="queue-rate"></span><progress max="1" value="0"></progress>';
       $(`piles${s}`).append(q);
     }
     const addGroup = (key, node) => {
@@ -140,10 +159,7 @@
         sw.append(position);
       }
       addGroup("checking", sw);
-      for (const [key, label] of [
-        ["bypass", "↗ Let through"],
-        ["train", "🎓 Train checkers"],
-      ]) {
+      for (const [key, label] of [["bypass", "↗ Let through"]]) {
         const b = make("button", "small-action", label);
         b.dataset.action = key;
         b.dataset.info = `action:${key}`;
@@ -155,11 +171,6 @@
       vigilance.dataset.info = "vigilance";
       $(`controls${s}`).append(vigilance);
     }
-  }
-  for (const [id, label] of Object.entries(versionNames)) {
-    const b = make("button", "version-option", label);
-    b.dataset.version = id;
-    $("versions").append(b);
   }
   const elfNodes = [];
   function buildElves() {
@@ -178,8 +189,9 @@
       elfNodes.push(wrap);
     });
   }
-  function reset(showIntro = true) {
-    game = new Workshop({ seed, version, guided });
+  function reset(showIntro = true, freshSeed = true) {
+    if (freshSeed) seed = nextSeed();
+    game = new Workshop({ seed, guided });
     view = game.view();
     started = false;
     manualPaused = false;
@@ -198,10 +210,18 @@
     buildElves();
     $("walkthrough").checked = guided;
     $("report").close();
+    $("breakDialog").close();
+    lastChoice = null;
+    observedRight = 0;
+    observedRun = null;
+    caughtSnapshot = null;
+    $("celebration").replaceChildren();
+    $("milestoneToast").hidden = true;
     $("restartDialog").close();
     const url = new URL(location.href);
-    url.searchParams.set("seed", seed);
-    url.searchParams.set("version", version);
+    if (fixedSeed !== null) url.searchParams.set("seed", fixedSeed);
+    else url.searchParams.delete("seed");
+    url.searchParams.delete("version");
     history.replaceState(null, "", url);
     paint();
     if (showIntro && !$("intro").open) $("intro").showModal();
@@ -240,23 +260,32 @@
   }
   function paint() {
     view = game.view();
-    text("right", `${view.sleigh.right} / ${view.target}`);
-    $("goal").max = view.target;
+    text("right", `${view.sleigh.right} / ${view.run?.target ?? view.target}`);
+    $("goal").max = view.run?.target ?? view.target;
     $("goal").value = view.sleigh.right;
     text("wrong", view.sleigh.wrong);
     text("budget", money(view.budget.left));
-    const left = Math.ceil(view.duration - view.t);
+    text("scoreValue", view.score?.points ?? 0);
+    text(
+      "scoreStars",
+      view.score ? `${view.score.stars} ★ / ${view.score.best}` : "",
+    );
+    text("runLabel", view.run ? `${view.run.number}/${view.run.of}` : "");
+    text(
+      "runStars",
+      (view.run?.stars || [])
+        .map((stars, i) => `${i + 1}: ${"★".repeat(stars)}`)
+        .join("   "),
+    );
+    const left = Math.ceil(view.run?.leavesIn ?? view.duration - view.t);
     text(
       "clock",
       `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`,
     );
     text(
       "mission",
-      `Deliver ${view.target} correct gifts in ${Math.round(view.duration / 60)} minutes.`,
+      `Deliver ${view.target} correct gifts${view.run ? ` across ${view.run.of} sleighs` : ""} in ${Math.round(view.duration / 60)} minutes.`,
     );
-    text("versionLabel", versionNames[version]);
-    for (const b of $("versions").children)
-      b.setAttribute("aria-pressed", String(b.dataset.version === version));
     $("pause").disabled = !started || !!view.end;
     text("pause", manualPaused ? "Resume" : "Pause");
     text(
@@ -267,11 +296,13 @@
           ? "Departure"
           : manualPaused
             ? "Paused by you"
-            : view.moment
-              ? "Paused for guidance"
-              : document.hidden
-                ? "Paused while away"
-                : "",
+            : view.choice
+              ? "Paused for your choice"
+              : view.moment
+                ? "Paused for guidance"
+                : document.hidden
+                  ? "Paused while away"
+                  : "",
     );
     for (let s = 0; s < 3; s++) {
       const station = view.stations[s];
@@ -288,8 +319,13 @@
         const q = view.queues[id],
           node = $(`queue-${id}`);
         node.querySelector(".queue-name").textContent = q.name;
-        node.querySelector(".queue-count").textContent =
+        node.querySelector(".queue-amount").textContent =
           `${q.parcels.length}/${q.limit}`;
+        const trend = node.querySelector(".queue-trend");
+        trend.textContent =
+          { growing: "↑", shrinking: "↓", steady: "→" }[q.trend] || "";
+        trend.dataset.trend = q.trend || "";
+        trend.setAttribute("aria-label", q.trend ? `Pile ${q.trend}` : "");
         node.classList.toggle("blocked", !!q.blocked);
         node.classList.toggle("full", q.parcels.length >= q.limit);
         node.querySelector("progress").value = q.progress;
@@ -393,6 +429,24 @@
     text("vigilance", `● ${view.vigilance.state}`);
     $("vigilance").hidden = !started || !view.actions.checking.unlocked;
     $("vigilance").dataset.state = view.vigilance.state;
+    const focus = started && !view.end ? view.focus : null;
+    for (let station = 0; station < 3; station++)
+      text(`focus${station}`, focus?.station === station ? focus.text : "");
+    text("cocoaFocus", focus?.station === 3 ? focus.text : "");
+    const focusTarget =
+      focus?.control === "cocoa"
+        ? $("cocoa")
+        : focus?.control === "elves"
+          ? $(`elves${focus.station}`)
+          : actionGroups.get(focus?.control);
+    for (const node of [
+      ...actionGroups.values(),
+      $("elves0"),
+      $("elves1"),
+      $("elves2"),
+      $("cocoa"),
+    ])
+      node.classList.toggle("needs-attention", node === focusTarget);
     text("sleighRight", view.sleigh.right);
     const arrivals = view.sleigh.parcels;
     const newest = arrivals.at(-1);
@@ -423,6 +477,7 @@
     for (const n of [...view.news].reverse()) {
       if (newsSeen.has(n.id)) continue;
       newsSeen.add(n.id);
+      handleNews(n);
       const priority =
         n.kind === "loaded" && n.check?.result === "wrong"
           ? 4
@@ -450,6 +505,8 @@
     );
     paintCase();
     paintGuidance();
+    paintChoice();
+    paintEffects();
     if (infoKey && infoAnchor?.isConnected) renderInfo();
     if (view.end && !ended) {
       ended = true;
@@ -461,7 +518,149 @@
       showReport();
     }
   }
-  function positionPanel(panel, anchor) {
+  function paintChoice() {
+    const choice = started ? view.choice : null;
+    if (!choice) {
+      $("breakDialog").close();
+      lastChoice = null;
+      return;
+    }
+    if (lastChoice !== choice.id) {
+      lastChoice = choice.id;
+      const report = choice.report;
+      text("breakRun", `Sleigh ${report.run} has left`);
+      text("breakTitle", choice.title);
+      text("breakText", choice.text);
+      text("breakStars", "★".repeat(report.stars));
+      text(
+        "breakCounts",
+        `${report.right} / ${report.target} correct · ${report.wrong} wrong`,
+      );
+      text("breakMissed", report.missedBy || "");
+      text(
+        "breakBonus",
+        report.bonus ? `+${report.bonus} clean-run bonus` : "",
+      );
+      text(
+        "breakMore",
+        report.more ? `${report.more} more wrong gifts were delivered.` : "",
+      );
+      $("breakSlips").replaceChildren();
+      for (const slip of report.slips) {
+        const card = make("article", "delivery-slip");
+        card.append(
+          make("strong", "slip-toy", `${slip.made.icon} ${slip.made.name}`),
+          make("p", "", `Wanted: ${slip.wanted.icon} ${slip.wanted.name}`),
+          make("p", "", `“${slip.wish}”`),
+          make("p", "slip-cause", `${slip.cause} · ${money(slip.cost)}`),
+        );
+        $("breakSlips").append(card);
+      }
+      $("breakOptions").replaceChildren();
+      $("breakOptions").style.setProperty("--choices", choice.options.length);
+      for (const option of choice.options) {
+        const card = make("button", "upgrade-card");
+        card.dataset.choose = option.id;
+        card.dataset.choiceId = choice.id;
+        card.append(
+          make(
+            "span",
+            "upgrade-icon",
+            { update: "🤖", tested: "🧪", train: "🎓", rest: "☕" }[
+              option.kind
+            ] || "🎁",
+          ),
+          make("strong", "", option.label),
+          make("p", "", option.text),
+        );
+        const facts = make("dl", "upgrade-facts");
+        for (const fact of option.facts)
+          facts.append(make("dt", "", fact.label), make("dd", "", fact.value));
+        card.append(facts);
+        $("breakOptions").append(card);
+      }
+    }
+    closeInfo();
+    if (!$("breakDialog").open) {
+      $("breakDialog").showModal();
+      $("breakDialog").focus({ preventScroll: true });
+      $("breakDialog").scrollTop = 0;
+      $("breakDeparture").classList.remove("break-arrival");
+      void $("breakDeparture").offsetWidth;
+      $("breakDeparture").classList.add("break-arrival");
+    }
+  }
+  function handleNews(news) {
+    if (!started) return;
+    if (news.kind === "milestone") {
+      text("milestoneToast", `🎁 ${news.text}`);
+      toastUntil = performance.now() + 3500;
+      $("milestoneToast").hidden = false;
+    }
+    if (news.kind === "cleared" && view.queues[news.queue]) {
+      const node = $(`queue-${news.queue}`);
+      node.dataset.clearedEvent = news.id;
+      node.classList.add("pile-cleared");
+      setTimeout(() => {
+        if (node.dataset.clearedEvent === String(news.id))
+          node.classList.remove("pile-cleared");
+      }, 1800);
+    }
+    if (news.kind === "checked" && news.check?.result === "wrong") {
+      caughtSnapshot = news.check;
+      caughtUntil = performance.now() + 5000;
+    }
+    if (news.kind === "departed") {
+      const sleigh = document.querySelector(".sleigh-art");
+      sleigh.classList.remove("departing");
+      void sleigh.offsetWidth;
+      sleigh.classList.add("departing");
+      setTimeout(() => sleigh.classList.remove("departing"), 1600);
+    }
+  }
+  function paintEffects() {
+    const run = view.run?.number ?? 1;
+    if (run !== observedRun) {
+      observedRun = run;
+      observedRight = 0;
+    }
+    const gained = view.sleigh.right - observedRight;
+    observedRight = view.sleigh.right;
+    if (started && gained > 0 && !view.end) {
+      const effect = make("span", "gift-flight", `🎁 +${gained}`);
+      const from = $("queue-pass").getBoundingClientRect(),
+        to = $("sleighRight").getBoundingClientRect();
+      const visible = to.left >= 0 && to.right <= innerWidth;
+      const target = visible ? to : $("right").getBoundingClientRect();
+      effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? from.right - 40 : target.left))}px`;
+      effect.style.top = `${Math.max(12, Math.min(innerHeight - 40, visible ? from.top : target.bottom))}px`;
+      effect.style.setProperty(
+        "--fly-x",
+        `${visible ? target.left - from.right + 40 : 0}px`,
+      );
+      effect.style.setProperty(
+        "--fly-y",
+        `${visible ? target.top - from.top : 0}px`,
+      );
+      while ($("celebration").children.length >= 4)
+        $("celebration").firstChild.remove();
+      $("celebration").append(effect);
+      setTimeout(() => effect.remove(), 1500);
+    }
+    if (toastUntil < performance.now()) $("milestoneToast").hidden = true;
+    let caught = $("caughtToy");
+    if (!caught) {
+      caught = make("button", "caught-toy");
+      caught.id = "caughtToy";
+      caught.dataset.help = "caughtToy";
+      caught.dataset.info = "caughtToy";
+      $("feedback2").append(caught);
+    }
+    caught.hidden = !caughtSnapshot || performance.now() > caughtUntil;
+    if (caughtSnapshot)
+      caught.textContent = `Caught! ${caughtSnapshot.made.icon} ${caughtSnapshot.made.name}`;
+  }
+  function positionPanel(panel, anchor, protectedNodes = []) {
     const anchorBounds = anchor.getBoundingClientRect();
     if (panel === $("infoPopover")) {
       const roomBeside = Math.max(
@@ -477,18 +676,35 @@
       h = innerHeight;
     const horizontal = Math.max(12, Math.min(r.left, w - p.width - 12));
     const vertical = Math.max(12, Math.min(r.top, h - p.height - 12));
+    const protectedBounds = protectedNodes
+      .map((node) => node.getBoundingClientRect())
+      .filter((rect) => rect.width && rect.height);
     const places = [
       { x: r.right + gap, y: vertical },
       { x: r.left - p.width - gap, y: vertical },
       { x: horizontal, y: r.bottom + gap },
       { x: horizontal, y: r.top - p.height - gap },
+      {
+        x: w - p.width - 12,
+        y: Math.max(12, $("board").getBoundingClientRect().top),
+      },
+      { x: 12, y: 12 },
+      { x: w - p.width - 12, y: 12 },
+      { x: 12, y: h - p.height - 12 },
     ];
     const fit = places.find(
       (a) =>
         a.x >= 12 &&
         a.y >= 12 &&
         a.x + p.width <= w - 12 &&
-        a.y + p.height <= h - 12,
+        a.y + p.height <= h - 12 &&
+        protectedBounds.every(
+          (rect) =>
+            a.x + p.width <= rect.left ||
+            a.x >= rect.right ||
+            a.y + p.height <= rect.top ||
+            a.y >= rect.bottom,
+        ),
     ) || {
       x: w - p.width - 12,
       y: Math.max(12, Math.min(r.bottom + gap, h - p.height - 12)),
@@ -527,7 +743,12 @@
               ? "sleigh"
               : "elves0",
         );
-      positionPanel($("tutorial"), anchor);
+      const protectedNodes = [
+        ...document.querySelectorAll(".crew, [data-move]:not([hidden])"),
+        $("cocoa"),
+        anchor,
+      ];
+      positionPanel($("tutorial"), anchor, protectedNodes);
     }
     lastMoment = moment.id;
   }
@@ -571,17 +792,24 @@
     );
     text("caseTitle", c.text);
     const facts = $("caseFacts");
+    $("casePanel").dataset.kind = c.kind;
     const preferred =
       c.kind === "update"
         ? c.step === "tested"
           ? ["Promises", "Test", "After the test"]
           : ["Promises", "Updates like this go wrong", "A test now"]
         : null;
-    const shown = preferred
-      ? preferred
-          .map((label) => c.facts.findIndex((f) => f.label === label))
+    const hasPrimary = c.facts.some((f) => typeof f.primary === "boolean");
+    const shown = hasPrimary
+      ? c.facts
+          .map((f, i) => (f.primary ? i : -1))
           .filter((i) => i >= 0)
-      : c.facts.slice(0, 3).map((_, i) => i);
+          .slice(0, 3)
+      : preferred
+        ? preferred
+            .map((label) => c.facts.findIndex((f) => f.label === label))
+            .filter((i) => i >= 0)
+        : c.facts.slice(0, 3).map((_, i) => i);
     if (!shown.length) shown.push(...c.facts.slice(0, 3).map((_, i) => i));
     const signature = shown.map((i) => c.facts[i].label).join("|");
     if (facts.dataset.signature !== signature) {
@@ -717,6 +945,25 @@
     );
   }
   function getInfo(key) {
+    if (key === "caughtToy" && caughtSnapshot)
+      return [
+        "A checker caught this",
+        [
+          `Wish: ${caughtSnapshot.wish}`,
+          `Wanted: ${caughtSnapshot.wanted.icon} ${caughtSnapshot.wanted.name}`,
+          `Made: ${caughtSnapshot.made.icon} ${caughtSnapshot.made.name}`,
+        ],
+      ];
+    if (key === "score")
+      return [
+        "Christmas points",
+        [
+          "Right gifts earn points. Wrong gifts cost points. Clean runs, stars and remaining budget also count.",
+          view.score
+            ? `${view.score.stars} of ${view.score.best} stars so far.`
+            : "",
+        ],
+      ];
     if (key === "caseFacts")
       return [
         "Decision evidence",
@@ -773,6 +1020,10 @@
         [
           `${q.parcels.length} waiting, room for ${q.limit}.`,
           `${Math.round(q.rate)} parcels a minute with the current staffing and AI setting.`,
+          q.inflow !== undefined
+            ? `${Math.round(q.inflow)} parcels arriving per minute.`
+            : "",
+          q.trend ? `This pile is ${q.trend}.` : "",
           rateChanges.has(parts[1])
             ? `Last move: ${Math.round(rateChanges.get(parts[1]).before)} → ${Math.round(rateChanges.get(parts[1]).after)} parcels per minute.`
             : "",
@@ -976,7 +1227,7 @@
   });
   document.addEventListener("pointercancel", () => {
     drag = null;
-    selected = null;
+    if (nativeDragElf === null) selected = null;
     paint();
     $("dragGhost").hidden = true;
     document
@@ -1023,14 +1274,16 @@
       perform(() => (a === "ask" ? game.setAsk(!view.ask) : game[a]()));
       return;
     }
-    if (target.dataset.resolve) {
-      perform(() => game.resolve(view.case.id, target.dataset.resolve));
+    if (
+      target.dataset.choose &&
+      view.choice &&
+      String(view.choice.id) === target.dataset.choiceId
+    ) {
+      perform(() => game.choose(view.choice.id, target.dataset.choose));
       return;
     }
-    if (target.dataset.version) {
-      guided = $("walkthrough").checked;
-      version = target.dataset.version;
-      reset();
+    if (target.dataset.resolve) {
+      perform(() => game.resolve(view.case.id, target.dataset.resolve));
       return;
     }
   });
@@ -1047,6 +1300,7 @@
     node.addEventListener("drop", (e) => {
       e.preventDefault();
       node.classList.remove("drop");
+      if (nativeDragElf !== null) selected = nativeDragElf;
       moveElf(Number(node.dataset.destination));
     });
   });
@@ -1054,9 +1308,18 @@
     const elf = e.target.closest("[data-elf]");
     if (!elf) return;
     closeInfo();
-    selected = Number(elf.dataset.elf);
+    nativeDragElf = Number(elf.dataset.elf);
+    selected = nativeDragElf;
     e.dataTransfer.setData("text/plain", String(selected));
     e.dataTransfer.effectAllowed = "move";
+    paint();
+  });
+  document.addEventListener("dragend", () => {
+    nativeDragElf = null;
+    selected = null;
+    document
+      .querySelectorAll(".drop")
+      .forEach((node) => node.classList.remove("drop"));
     paint();
   });
   document.addEventListener("pointerdown", (e) => {
@@ -1106,10 +1369,31 @@
     if (e.pointerType === "touch" && help)
       openInfo(help, help.dataset.help, true);
   });
+  $("breakDialog").addEventListener("cancel", (event) =>
+    event.preventDefault(),
+  );
+  $("copyResult").onclick = async () => {
+    const end = view.end;
+    const link = new URL(location.href);
+    link.searchParams.set("seed", seed);
+    link.searchParams.delete("version");
+    const result = `Santa’s AI Workshop: ${end.points} points, ${end.stars}/${view.score.best} stars. ${end.right} correct gifts, ${end.wrong} wrong. ${link.href}`;
+    try {
+      await navigator.clipboard.writeText(result);
+      text("copyStatus", "Result copied.");
+      $("copyFallback").hidden = true;
+    } catch {
+      $("copyFallback").value = result;
+      $("copyFallback").hidden = false;
+      $("copyFallback").focus();
+      $("copyFallback").select();
+      text("copyStatus", "Select and copy your result below.");
+    }
+  };
   $("start").onclick = () => {
     if (guided !== $("walkthrough").checked) {
       guided = $("walkthrough").checked;
-      reset(false);
+      reset(false, false);
     }
     if (!guided) game.skipGuidance();
     started = true;
@@ -1169,7 +1453,8 @@
   $("restartDialog").addEventListener("cancel", () => (restartOpen = false));
   $("replay").onclick = () => {
     guided = false;
-    reset();
+    reset(false);
+    $("start").click();
   };
   $("closeReport").onclick = () => $("report").close();
   $("motion").onclick = () => {
@@ -1187,6 +1472,7 @@
       !restartOpen &&
       !document.hidden &&
       !view.moment &&
+      !view.choice &&
       !view.end
     ) {
       game.step(dt);
@@ -1209,6 +1495,75 @@
   });
   function showReport() {
     const e = view.end;
+    const newBest =
+      Number.isFinite(e.points) &&
+      (!personalBest || e.points > personalBest.points);
+    const newStars =
+      Number.isFinite(e.stars) &&
+      (!personalBest || e.stars > personalBest.stars);
+    if (Number.isFinite(e.points))
+      personalBest = {
+        points: newBest ? e.points : personalBest.points,
+        stars: newStars ? e.stars : personalBest.stars,
+      };
+    const collection = new Map(
+      collectedBlunders.map((item) => [item.id, item]),
+    );
+    for (const item of e.blunders || []) collection.set(item.id, item);
+    collectedBlunders = [...collection.values()];
+    try {
+      if (personalBest)
+        localStorage.setItem(
+          "workshop-personal-best",
+          JSON.stringify(personalBest),
+        );
+      localStorage.setItem(
+        "workshop-blunders",
+        JSON.stringify(collectedBlunders),
+      );
+    } catch {}
+    text("endPoints", Number.isFinite(e.points) ? `${e.points} points` : "");
+    text(
+      "endStars",
+      e.stars !== undefined ? `${e.stars} / ${view.score.best} ★` : "",
+    );
+    text(
+      "personalBest",
+      personalBest
+        ? `${newBest ? "New best score! " : ""}${newStars ? "New best stars! " : ""}Best score: ${personalBest.points} · Best stars: ${personalBest.stars} ★`
+        : "",
+    );
+    $("endRuns").replaceChildren();
+    for (const run of e.runs || []) {
+      const card = make("article", "run-report");
+      card.append(
+        make("b", "", `Sleigh ${run.run} · ${"★".repeat(run.stars)}`),
+        make(
+          "p",
+          "",
+          `${run.right}/${run.target} correct · ${run.wrong} wrong`,
+        ),
+        make(
+          "small",
+          "",
+          run.missedBy || (run.bonus ? `+${run.bonus} clean-run bonus` : ""),
+        ),
+      );
+      $("endRuns").append(card);
+    }
+    text(
+      "collectionTitle",
+      e.blunderTotal !== undefined
+        ? `Christmas blunders · ${collectedBlunders.length}/${e.blunderTotal} found`
+        : "Christmas blunders",
+    );
+    $("blunderCollection").replaceChildren(
+      ...collectedBlunders.map((item) =>
+        make("span", "blunder", `${item.icon || "🎁"} ${item.name}`),
+      ),
+    );
+    text("copyStatus", "");
+    $("copyFallback").hidden = true;
     text(
       "resultTitle",
       e.rating === 3
@@ -1219,7 +1574,7 @@
     );
     text(
       "resultSummary",
-      `${e.right} correct gifts / ${view.target} · ${e.wrong} wrong gifts aboard · ${e.lost} letters lost`,
+      `${e.right} correct gifts / ${view.target} · ${e.wrong} wrong gifts delivered · ${e.lost} letters lost`,
     );
     text("lessonTitle", e.lesson.title);
     text("lessonText", e.lesson.text);

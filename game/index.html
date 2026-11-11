@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=f11855e-compact2" />
+    <link rel="stylesheet" href="style.css?v=26052df-runs1" />
   </head>
   <body>
     <header>
@@ -41,6 +41,10 @@
     </header>
     <main>
       <section class="dashboard" aria-label="Christmas progress">
+        <button class="metric score-metric" data-help="score">
+          <span>Points</span><strong id="scoreValue">0</strong
+          ><small id="scoreStars"></small>
+        </button>
         <div class="goal" data-info="goal" tabindex="0">
           <span
             >Correct gifts
@@ -90,7 +94,7 @@
         <section id="sleigh" class="station sleigh-column">
           <div class="column-heading">
             <span class="station-number">04</span>
-            <h2>SLEIGH</h2>
+            <h2>SLEIGH <small id="runLabel"></small></h2>
             <button
               class="info-button"
               data-help="sleigh"
@@ -100,6 +104,11 @@
             </button>
           </div>
           <div class="sleigh-art" aria-hidden="true">🛷 <span>✧</span></div>
+          <div
+            id="runStars"
+            class="run-stars"
+            aria-label="Finished sleigh runs"
+          ></div>
           <div class="sleigh-total">
             <strong id="sleighRight">0</strong><span>right gifts aboard</span>
           </div>
@@ -108,7 +117,7 @@
             ><b id="arrivalLabel">Waiting for gifts</b>
           </div>
           <button id="wrongDelivery" class="wrong-delivery" hidden>
-            <span class="eyebrow">Last wrong delivery</span
+            <span class="eyebrow">Last wrong gift</span
             ><span id="wrongToy" class="wrong-toy"></span><b id="wrongName"></b
             ><span>See wish & gift ↗</span>
           </button>
@@ -133,16 +142,17 @@
             i
           </button>
         </div>
+        <span id="cocoaFocus" class="cocoa-focus"></span>
         <div id="elves3" class="crew"></div>
         <button class="move-target" data-move="3" hidden>Move here</button>
       </section>
       <footer>
-        <span id="versionLabel"></span
+        <span>Christmas Eve at the workshop</span
         ><span>Frontier Economics · Illustrative costs and risks</span>
       </footer>
     </main>
     <dialog id="intro">
-      <span class="eyebrow">The Christmas experiment</span>
+      <span class="eyebrow">Christmas Eve</span>
       <h2>Make Christmas work.</h2>
       <p>Santa uses AI to help the elves keep up.</p>
       <p id="mission"></p>
@@ -150,13 +160,7 @@
         Move elves between the piles. Spend time and money checking where it
         helps.
       </p>
-      <fieldset class="version-picker">
-        <legend>Compare three test builds</legend>
-        <p>
-          Same workshop decisions, with extra questions or more breathing room.
-        </p>
-        <div id="versions"></div>
-      </fieldset>
+
       <label class="guidance-choice"
         ><input type="checkbox" id="walkthrough" checked /> Show the
         walkthrough</label
@@ -214,24 +218,68 @@
       <b id="infoTitle"></b>
       <div id="infoContent"></div>
     </aside>
+    <dialog
+      id="breakDialog"
+      class="break-dialog"
+      tabindex="-1"
+      aria-labelledby="breakTitle"
+    >
+      <div class="break-heading">
+        <span id="breakDeparture" aria-hidden="true">🛷</span>
+        <span class="eyebrow" id="breakRun"></span
+        ><span>Clock paused · choose one</span>
+      </div>
+      <h2 id="breakTitle"></h2>
+      <p id="breakText"></p>
+      <div class="break-report">
+        <div>
+          <strong id="breakStars"></strong>
+          <p id="breakCounts"></p>
+          <p id="breakMissed"></p>
+          <p id="breakBonus"></p>
+        </div>
+        <div id="breakSlips" class="break-slips"></div>
+      </div>
+      <p id="breakMore" class="muted"></p>
+      <div id="breakOptions" class="break-options"></div>
+    </dialog>
     <dialog id="report">
       <div class="panel-head">
         <span class="eyebrow">Christmas morning</span
         ><button id="closeReport">View workshop</button>
       </div>
       <h2 id="resultTitle"></h2>
+      <div class="end-score">
+        <strong id="endPoints"></strong><span id="endStars"></span
+        ><span id="personalBest"></span>
+      </div>
       <p id="resultSummary"></p>
+      <div id="endRuns" class="end-runs"></div>
+      <section class="collection">
+        <h3 id="collectionTitle">Christmas blunders</h3>
+        <div id="blunderCollection"></div>
+      </section>
       <section class="lesson">
         <h3 id="lessonTitle"></h3>
         <p id="lessonText"></p>
       </section>
-      <h3>The Christmas account</h3>
-      <dl id="account"></dl>
-      <p id="prevented"></p>
-      <p class="muted">
-        Prevented losses estimate what caught mistakes would have cost.
-      </p>
-      <button id="replay" class="primary">Try the same Christmas again →</button
+      <details class="end-account">
+        <summary>The Christmas account</summary>
+        <dl id="account"></dl>
+        <p id="prevented"></p>
+        <p class="muted">
+          Prevented losses estimate what caught mistakes would have cost.
+        </p>
+      </details>
+      <button id="copyResult">Copy result</button>
+      <p id="copyStatus" role="status"></p>
+      <textarea
+        id="copyFallback"
+        aria-label="Result to copy"
+        readonly
+        hidden
+      ></textarea>
+      <button id="replay" class="primary">Play again →</button
       ><a
         href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/"
         target="_blank"
@@ -247,8 +295,10 @@
         ><button id="cancelRestart">Keep playing</button>
       </div>
     </dialog>
+    <div id="celebration" class="celebration" aria-hidden="true"></div>
+    <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
-    <script src="workshop.js?v=f11855e-compact2"></script>
-    <script src="game.js?v=f11855e-compact2"></script>
+    <script src="workshop.js?v=26052df-runs1"></script>
+    <script src="game.js?v=26052df-runs1"></script>
   </body>
 </html>

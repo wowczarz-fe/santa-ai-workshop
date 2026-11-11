@@ -391,6 +391,8 @@ const share = (test) =>
   EVERYDAY_WISHES.filter(test).length / EVERYDAY_WISHES.length;
 const sum = (list) => list.reduce((total, n) => total + n, 0);
 const countDown = (n, dt) => (n - dt < 1e-9 ? 0 : n - dt);
+// "twice", "3 times": how many times as fast.
+const times = (n) => (n === 2 ? "twice" : `${n} times`);
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 // "1 parcel goes", "2 parcels go".
 const does = (n, word, one, many) =>
@@ -712,7 +714,7 @@ class Workshop {
       everyday: `A wrong gift costs ${money(WRONG_PRICE.everyday)}, a big one ${money(WRONG_PRICE.big)}.`,
       big: `The AI slips more, and a wrong one costs ${money(WRONG_PRICE.big)}.`,
       unclear: `${Math.round(c.unclear * 10)} in 10 wishes unclear: the AI guesses them.`,
-      rush: `Letters come ${c.rate} times as fast.`,
+      rush: `Letters come ${times(c.rate)} as fast.`,
     }[id];
     return { id, name: c.name, icon: c.icon, text };
   }
@@ -1186,7 +1188,7 @@ class Workshop {
     at(rushRun * RUN_SECONDS, "rush", () =>
       this.say(
         "rush",
-        `The rush: letters come ${CARGO.rush.rate} times as fast.`,
+        `The rush: letters come ${times(CARGO.rush.rate)} as fast.`,
       ),
     );
     if (this.pendingTest && this.t >= this.pendingTest.at) this.finishTest();
@@ -1691,7 +1693,7 @@ class Workshop {
       default:
         return {
           source: "The faulty update is making full-sized trains.",
-          made: "Gifts the faulty update made are still in the workshop.",
+          made: `${plural(this.affected(c).length, "gift")} from the faulty update not loaded yet.`,
           aboard: "Wrong gifts go to children when the sleigh leaves.",
         }[c.step];
     }
@@ -1893,7 +1895,7 @@ class Workshop {
             "Remake what was made since",
             n * ELF_SECONDS.remake,
             n * PRICE.remake,
-            `${plural(n, "gift")} remade; ${this.span(n * ELF_SECONDS.remake)} of checkers`,
+            `${plural(n, "gift")} remade; checkers busy ${this.span(n * ELF_SECONDS.remake)}`,
             n ? null : "none waiting",
           ),
           o(
@@ -1930,7 +1932,7 @@ class Workshop {
               "Remake them all",
               n * ELF_SECONDS.remake,
               PRICE.made + n * PRICE.remake,
-              `${plural(n, "gift")} remade first; loading waits for them`,
+              `loading waits for them; ${plural(n, "gift")} remade first`,
               broke,
             ),
             o(
@@ -1938,14 +1940,14 @@ class Workshop {
               "Check each one",
               n * ELF_SECONDS.check,
               n * PRICE.check,
-              `${does(n, "gift", "goes", "go")} to checking; wrong ones remade`,
+              `wrong ones remade; ${does(n, "gift", "goes", "go")} to checking`,
             ),
             o(
               "letGo",
               "Let them go",
               0,
               0,
-              `about ${atRisk} of wrong gifts; ${does(n, "gift", "goes", "go")} on as made`,
+              `about ${atRisk} of wrong gifts go out; ${does(n, "gift", "goes", "go")} on as made`,
             ),
           ],
           aboard: [
@@ -1954,7 +1956,7 @@ class Workshop {
               "Bring them back",
               n * recallSeconds(n),
               recallPrice(list),
-              `${plural(n, "wrong gift")} back; ${this.span(n * recallSeconds(n))} of checkers`,
+              `${plural(n, "wrong gift")} back; checkers busy ${this.span(n * recallSeconds(n))}`,
               broke ?? checker,
             ),
             o(
@@ -1962,7 +1964,7 @@ class Workshop {
               "Leave them",
               0,
               0,
-              `${atRisk} at departure; ${does(n, "wrong gift", "stays", "stay")} aboard`,
+              `${atRisk} lost at departure; ${does(n, "wrong gift", "stays", "stay")} aboard`,
             ),
           ],
         }[c.step];
@@ -2083,7 +2085,7 @@ class Workshop {
           since: this.t,
         };
         held.forEach((x) => this.toRework(x, ELF_SECONDS.remake, job));
-        text = `${plural(held.length, "gift")} sent to be remade: ${this.span(held.length * ELF_SECONDS.remake)} of checkers, ${money(held.length * PRICE.remake)}.`;
+        text = `${plural(held.length, "gift")} sent to be remade for ${money(held.length * PRICE.remake)}: checkers busy ${this.span(held.length * ELF_SECONDS.remake)}.`;
         outcome = {
           seconds: held.length * ELF_SECONDS.remake,
           money: held.length * PRICE.remake,
@@ -2171,7 +2173,7 @@ class Workshop {
           { count: n },
         );
         tell(
-          `${does(n, "gift", "goes", "go")} to be remade first: ${this.span(n * ELF_SECONDS.remake)}, ${money(PRICE.made + n * PRICE.remake)}.`,
+          `${does(n, "gift", "goes", "go")} to be remade first for ${money(PRICE.made + n * PRICE.remake)}: checkers busy ${this.span(n * ELF_SECONDS.remake)}.`,
           {
             seconds: n * ELF_SECONDS.remake,
             money: PRICE.made + n * PRICE.remake,
@@ -2185,7 +2187,7 @@ class Workshop {
         list.forEach((x) => (x.route = "check"));
         this.q.check.unshift(...list);
         tell(
-          `${does(n, "gift", "goes", "go")} to checking: ${this.span(n * ELF_SECONDS.check)}.`,
+          `${does(n, "gift", "goes", "go")} to checking: checkers busy ${this.span(n * ELF_SECONDS.check)}.`,
           {
             seconds: n * ELF_SECONDS.check,
             money: n * PRICE.check,
@@ -2226,7 +2228,7 @@ class Workshop {
           { count: n },
         );
         tell(
-          `${does(n, "wrong gift", "comes", "come")} back to be remade: ${this.span(n * recallSeconds(n))}, ${money(recallPrice(list))}.`,
+          `${does(n, "wrong gift", "comes", "come")} back to be remade for ${money(recallPrice(list))}: checkers busy ${this.span(n * recallSeconds(n))}.`,
           {
             seconds: n * recallSeconds(n),
             money: recallPrice(list),
@@ -3246,7 +3248,7 @@ class Workshop {
       this.pay("ai", BREAK_PRICE.tested);
       this.used.tested = true;
       this.pendingTest = { u, at: this.t + TEST_DELAY };
-      text = `Testing the update: it goes in ${TEST_DELAY} s into the run if the test toys pass.`;
+      text = `Testing the update: it goes in after ${TEST_DELAY} s if it passes.`;
       outcome = { money: BREAK_PRICE.tested, seconds: TEST_DELAY };
     } else if (optionId === "train") {
       this.pay("people", BREAK_PRICE.train);

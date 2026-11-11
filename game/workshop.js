@@ -133,13 +133,31 @@ const PRICE = {
 };
 const WRONG_PRICE = { everyday: 12, big: 100 };
 
-const AT = { timmy: 45, close: 211 };
+const AT = { close: 211 };
+// When the letters speed up, when Timmy writes, and the latest each card may wait for its real
+// example. A guided run moves faster so every basic control is met inside the first sleigh run.
+const OPENING = {
+  trickle: 0.5,
+  speedUp: 30,
+  timmy: 45,
+  ai0: 50,
+  ai1: 70,
+  checking: 80,
+};
+const GUIDED_OPENING = {
+  trickle: 0.4,
+  speedUp: 13,
+  timmy: 24,
+  ai0: 14,
+  ai1: 22,
+  checking: 40,
+};
 // Letters a second from each time on: a trickle three readers nearly manage, then faster than hand
 // reading can keep up with, then enough for the toy line to fall behind, a rush whose start
 // differs from game to game, and the run-out.
-const ramp = (rushAt) => [
-  [0, 0.5],
-  [30, 0.8],
+const ramp = (rushAt, { trickle, speedUp }) => [
+  [0, trickle],
+  [speedUp, 0.8],
   [60, 1.3],
   [rushAt, 2.2],
   [rushAt + 40, 1.3],
@@ -372,8 +390,10 @@ class Workshop {
     this.vig = { cleanRun: 0, skipped: 0, trained: false };
     this.machineSpeed = 1;
     this.updates = this.planUpdates();
+    this.opening = this.guided ? GUIDED_OPENING : OPENING;
     this.ramp = ramp(
       RUSH_FROM[0] + Math.floor(this.rng() * (RUSH_FROM[1] - RUSH_FROM[0])),
+      this.opening,
     );
     this.runNumber = 1;
     this.delivered = [];
@@ -887,7 +907,8 @@ class Workshop {
         fn();
       }
     };
-    at(AT.timmy, "timmy", () => {
+    const o = this.opening;
+    at(o.timmy, "timmy", () => {
       this.arrive(true);
       this.say(
         "timmy",
@@ -903,16 +924,16 @@ class Workshop {
     // Each AI lever comes as the answer to a pile that has started to grow.
     const growing = (id, n) =>
       this.trend(id) === "growing" && this.q[id].length >= n;
-    if ((this.t >= this.ramp[1][0] && growing("letters", 8)) || this.t >= 50)
+    if ((this.t >= this.ramp[1][0] && growing("letters", 8)) || this.t >= o.ai0)
       this.reach("ai0");
     if (
       this.happened.has("moment:ai0") &&
-      (growing("orders", 8) || this.t >= 70)
+      (growing("orders", 8) || this.t >= o.ai1)
     )
       this.reach("ai1");
     const unclear = this.q.letters.find((x) => x.w.unclear && !x.asked);
-    if (this.t > AT.timmy && unclear) this.reach("ask", unclear.id);
-    if (this.t >= 80) this.reach("checking");
+    if (this.t > o.timmy && unclear) this.reach("ask", unclear.id);
+    if (this.t >= o.checking) this.reach("checking");
     if (this.happened.has("moment:checking") && this.full("check"))
       this.reach("bypass", this.q.check[0].id);
     if (this.elves.some((e) => e.station < BREAK && e.tired >= 60))
@@ -1200,7 +1221,7 @@ class Workshop {
         : "";
     const text = `Wrong gift aboard! ${x.w.child} wished for ${a(x.w.wanted.name)} and got ${a(x.made.name)}.${slipped}`;
     this.say("loaded", text, { check: this.copy(x) });
-    if (this.t >= AT.timmy) this.reach("checking", x.id);
+    if (this.t >= this.opening.timmy) this.reach("checking", x.id);
     if (x.exit === "skipped" && !this.vig.trained) {
       const elf = this.staff(2)[0]?.name ?? "A checker";
       this.sayEvery(

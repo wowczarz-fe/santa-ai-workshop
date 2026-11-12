@@ -44,7 +44,7 @@ function conditional(c) {
     case "aboard": {
       // Worth fetching back when leaving them costs more than the fetching, counting checker time at £1 a second.
       const bring = c.options.find((o) => o.id === "bringBack");
-      return num(fact(c, "Cost if left")) > bring.money + bring.seconds &&
+      return num(fact(c, "In your cost now")) > bring.money + bring.seconds &&
         left >= 30
         ? "bringBack"
         : "leave";
@@ -444,7 +444,13 @@ function checkChoice(v, w) {
 // Every wrong gift's news line names one action open now, and nothing said during play points at
 // what only half-time sells.
 function checkNews(n) {
-  // A drift line waits for the first DRIFT_QUIET seconds and names what to do now.
+  // A caught gift never reached the child, and a drift line waits for the first DRIFT_QUIET seconds
+  // and names what to do now.
+  if (n.kind === "checked" && /^Caught/.test(n.text))
+    assert(
+      !/ got /.test(n.text) && /remade/.test(n.text),
+      `a caught line says the child got it: ${n.text}`,
+    );
   if (n.kind === "relaxed")
     assert(
       n.t >= DRIFT_QUIET && /rested elf/.test(n.text),

@@ -109,7 +109,8 @@ An elf is `{ name, station, tired, energy, mood, resting, doing }`, for example
 - `resting`: `true` while a burnt-out elf is on its long break, which cannot be cut short. It comes
   back to its station by itself after 15 seconds.
 - `doing`: a short phrase: `"reading letters"`, `"confirming the AI's readings"`, `"making toys"`,
-  `"confirming the AI's toys"`, `"checking gifts"`, `"loading gifts"`, `"remaking gifts"`,
+  `"confirming the AI's toys"`, `"checking gifts"`, `"loading"` (checkers loading straight-through
+  gifts onto the sleigh), `"remaking"` (checkers remaking a caught or recalled gift),
   `"nothing to do"`, `"having cocoa"` or `"burnt out"`. Elves at a station on Automate have nothing
   to do there.
 
@@ -268,8 +269,9 @@ recall.
   toy it leaves, `scope` what it does in words (the part before the first semicolon is a few words
   a chip can show), `goal` `null` or a few words on what it does to the goals, `available` `false`
   with a short `why` when it cannot be chosen now.
-- `stake` (unclear letters only): what a wrong guess costs once aboard, in pounds: 12 for an
-  everyday wish, 100 for a big one, as `prices` shows them.
+- `stake` (unclear letters only): what a wrong guess costs once aboard, a number of pounds: 12
+  for an everyday wish, 100 for a big one, as `prices` shows them. Format it on the page, for
+  example `"£12 if wrong"`.
 - `resolving` is `null` until the player answers, then `{ optionId, remaining, duration }` while
   the chosen option takes its time. The decision stays open and takes no second answer until
   `remaining` reaches zero; then it closes with a `resolved` news item. An option that takes no
@@ -282,15 +284,15 @@ recall.
   text: "Amir writes: 'A bat, please! I love caves.' It could mean two things.",
   facts: [ { label: "Gift", value: "£12 if wrong", primary: true },
            { label: "Ask", value: "waits 10 s, comes out right", primary: true },
-           { label: "Guess", value: "about 2 in 3 wrong, AI reads", primary: true },
+           { label: "Guess", value: "70% wrong, AI reads", primary: true },
            { label: "Time left", value: "116 s", primary: false } ],
   evidence: [ { parcelId: 36, child: "Amir", wish: "A bat, please! I love caves.", made: null } ],
   affected: { count: 1, ids: [36] },
   options: [ { id: "ask", label: "Ask the child", seconds: 10, money: 0, risk: null,
                scope: "the letter waits about 10 s; the gift comes out right", why: null, goal: null, available: true },
              { id: "guess", label: "Let the reader guess", seconds: 0, money: 0, risk: 0.7,
-               scope: "goes on now; about 2 in 3 wrong, the AI guesses confidently", why: null, goal: null, available: true } ],
-  resolving: null }
+               scope: "goes on now; 70% wrong, the AI guesses confidently", why: null, goal: null, available: true } ],
+  resolving: null, stake: 12 }
 ```
 
 - The letter is set aside as it arrives and waits for the answer; it never joins the letter pile
@@ -299,14 +301,16 @@ recall.
 - `"ask"` counts down 10 seconds in `resolving`; then the child's answer comes back, the letter is
   read right and goes to the toy pile. No elf is taken from its station.
 - `"guess"` closes at once: the letter goes to the front of the letter pile and the reader guesses
-  as it reads it. By hand an elf is wrong about 1 in 3; with the AI reading (Assist or Automate) it
-  is wrong about 2 in 3, and an elf confirming the AI's guess cannot tell either. The `risk` and
+  as it reads it. By hand an elf is wrong 35% of the time; with the AI reading (Assist or Automate)
+  70%, and an elf confirming the AI's guess cannot tell either. Every line about a guess gives the
+  chance as a percentage, the same figure as `risk`. The `risk` and
   the `"Guess"` fact follow the reading level at the moment. A guessed gift counts as risky for
   checking, but a checker catches only 3 in 10 wrong guesses.
 
 ### Faulty update (`step` `"source"`)
 
-Raised once, when a faulty update installed at half-time becomes known. Facts: `"Trains so far"`,
+Raised once, when a faulty update installed at half-time becomes known, which takes at least one
+full-sized train. Facts: `"Trains so far"` (every train it has made, caught or not),
 `"Rolling back"` (`"8 s, £65"`), `"Toys a minute"` (`"112 now, 80 after"`), `"Time left"`.
 Options: `"rollback"` (toy making stops 8 seconds, £65, then the machine is back to its old speed)
 and `"keep"` (risk 0.65: the machine keeps making full-sized trains until the sleigh leaves). Both
@@ -316,10 +320,12 @@ workshop are marked `suspect: "batch"`, so checking the risky ones checks them.
 ### Recall (`step` `"aboard"`)
 
 Raised once a game, when the wrong gifts aboard reach 5 (not while a faulty update is running).
-Facts: `"Wrong gifts"`, `"Big gifts"`, `"Cost if left"`, `"Time left"`. Options: `"bringBack"`
-(the wrong gifts come off the sleigh at once and the checkers remake them, 4 seconds each and at
-most 20 in all; costs the recall price; needs an elf at checking) and `"leave"` (they stay and cost
-their price when the sleigh leaves). `goal` on each reads, when it applies, `"Few mistakes goal
+Facts: `"Wrong gifts"`, `"Big gifts"`, `"In your cost now"` (what they already add to the cost
+so far), `"Time left"`. Options: `"bringBack"` (the wrong gifts come off the sleigh at once and the
+checkers remake them, 4 seconds each and at most 20 in all; costs the recall price instead of what
+they count now; needs an elf at checking; `scope` "costs £395 instead of the £412 they count now;
+checkers busy about 20 s") and `"leave"` (they stay, and their price stays in the cost; `scope`
+"their £412 stays in your cost"). `goal` on each reads, when it applies, `"Few mistakes goal
 saved"`, `"Within budget goal lost"` or `"Few mistakes goal lost"`, and `scope` ends with the same
 words.
 

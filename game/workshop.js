@@ -414,6 +414,7 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const does = (n, word, one, many) =>
   `${plural(n, word)} ${n === 1 ? one : many}`;
 // "about 2 in 3" for a chance, rounded to a fraction a player reads at a glance.
+const percent = (p) => `${Math.round(p * 100)}%`;
 const chance = (p) => {
   const n =
     [2, 3, 4, 5, 10, 20].find(
@@ -437,8 +438,8 @@ const DOING = {
   letters: ["reading letters", "confirming the AI's readings"],
   orders: ["making toys", "confirming the AI's toys"],
   check: ["checking gifts"],
-  pass: ["loading gifts"],
-  rework: ["remaking gifts"],
+  pass: ["loading"],
+  rework: ["remaking"],
 };
 
 class Workshop {
@@ -1104,7 +1105,7 @@ class Workshop {
     }
     this.reveal(x);
     const text = x.wrong
-      ? `Caught: ${this.mixUp(x)}.`
+      ? `Caught: ${this.madeAs(x)}. It goes back to be remade.`
       : `Checked: ${x.w.child}'s ${x.w.wanted.name} is right.`;
     this.say("checked", text, {
       check: this.copy(x, Math.round(this.secondsPerCheck() * 10) / 10, "elf"),
@@ -1120,6 +1121,14 @@ class Workshop {
   }
 
   // A wrong gift in a few words: "Nina got a big rock, not a toy guitar", or for a tired elf's slip
+  // What a wrong gift came out as, before anyone received it: "Rosa's chess set came out as a chest
+  // of drawers", or "came out the wrong size".
+  madeAs(x) {
+    return x.made.name === this.slipToy(x).name
+      ? `${x.w.child}'s ${x.w.wanted.name} came out the wrong size`
+      : `${x.w.child}'s ${x.w.wanted.name} came out as ${a(x.made.name)}`;
+  }
+
   // "Rosa's chess set came out the wrong size".
   mixUp(x) {
     return x.made.name === this.slipToy(x).name
@@ -1456,7 +1465,7 @@ class Workshop {
         f("Ask", `waits ${ASK_SECONDS} s, comes out right`, true),
         f(
           "Guess",
-          `${chance(this.guessRisk())} wrong, ${this.ai[0] ? "AI reads" : "elves read"}`,
+          `${percent(this.guessRisk())} wrong, ${this.ai[0] ? "AI reads" : "elves read"}`,
           true,
         ),
         time,
@@ -1479,7 +1488,7 @@ class Workshop {
     return [
       f("Wrong gifts", list.length, true),
       f("Big gifts", list.filter((x) => x.w.big).length, true),
-      f("Cost if left", money(sum(list.map((x) => this.price(x)))), true),
+      f("In your cost now", money(sum(list.map((x) => this.price(x)))), true),
       time,
     ];
   }
@@ -1514,7 +1523,7 @@ class Workshop {
           0,
           0,
           p,
-          `goes on now; ${chance(p)} wrong${this.ai[0] ? ", the AI guesses confidently" : ""}`,
+          `goes on now; ${percent(p)} wrong${this.ai[0] ? ", the AI guesses confidently" : ""}`,
         ),
       ];
     } else if (c.step === "source")
@@ -1544,7 +1553,7 @@ class Workshop {
           n * recallSeconds(n),
           recallPrice(list),
           null,
-          `${plural(n, "wrong gift")} back; checkers busy ${this.span(n * recallSeconds(n))}`,
+          `costs ${money(recallPrice(list))} instead of the ${money(sum(list.map((x) => this.price(x))))} they count now; checkers busy ${this.span(n * recallSeconds(n))}`,
           this.staff(2).length ? null : "no elf at checking",
         ),
         o(
@@ -1553,7 +1562,7 @@ class Workshop {
           0,
           0,
           null,
-          `${money(sum(list.map((x) => this.price(x))))} lost when the sleigh leaves`,
+          `their ${money(sum(list.map((x) => this.price(x))))} stays in your cost`,
         ),
       ];
     const goal = c.step === "aboard" ? this.aboardGoals(list) : {};
@@ -1626,7 +1635,7 @@ class Workshop {
         x.guessed = true;
         this.used.guessed++;
         this.q.letters.unshift(x);
-        text = `${x.w.child}'s letter goes on: the reader guesses, ${chance(this.guessRisk())} wrong.`;
+        text = `${x.w.child}'s letter goes on: the reader guesses, ${percent(this.guessRisk())} wrong.`;
         outcome = { parcels: 1 };
       }
     } else
@@ -1720,7 +1729,7 @@ class Workshop {
       }
       default:
         tell(
-          `${does(n, "wrong gift", "stays", "stay")} aboard: ${money(sum(list.map((x) => this.price(x))))} when the sleigh leaves.`,
+          `${does(n, "wrong gift", "stays", "stay")} aboard: ${n === 1 ? "its" : "their"} ${money(sum(list.map((x) => this.price(x))))} stays in your cost.`,
           { money: sum(list.map((x) => this.price(x))), parcels: n },
         );
     }

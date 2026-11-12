@@ -886,6 +886,50 @@ main {
 .wrong-delivery {
   position: relative;
 }
+.wrong-delivery[hidden] {
+  display: none;
+}
+/* At checking, the straight-through and remake piles are two small counters under the main pile */
+.mini-piles {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+body[data-look] .queue.queue-mini {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: auto;
+  min-height: 30px;
+  padding: 3px 7px;
+}
+.queue-mini .ui-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+body[data-look] .queue-mini .queue-name {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body[data-look] .queue-mini .queue-count {
+  font:
+    700 13px/16px Arial,
+    sans-serif;
+}
+body[data-look] .queue-mini.full {
+  border-color: #c64235;
+  background: #fbe9e5;
+}
 .wrong-delivery .big-tag {
   position: absolute;
   left: 8px;

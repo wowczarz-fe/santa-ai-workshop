@@ -1745,6 +1745,16 @@ body[data-look="paper"] #piles2 {
 body[data-look="paper"] #piles2 .queue-name {
   min-height: 26px;
 }
+body[data-look="paper"] #piles2 .mini-piles {
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+body[data-look="paper"] #piles2 .queue.queue-mini {
+  border: 1px solid #b59b72;
+  background: var(--paper, #f4ead3);
+  box-shadow: 1px 2px 2px #2b1c1429;
+}
 body[data-look="paper"] #station0 .paper-scene .machine > svg,
 body[data-look="paper"] #station1 .paper-scene .machine > svg {
   left: 120px;

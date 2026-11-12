@@ -38,6 +38,7 @@
   }
   const queueIds = [["letters"], ["orders"], ["check", "pass", "rework"]];
   const stationNames = ["LETTERS", "TOYS", "CHECKING"];
+  const miniPiles = { pass: "let-through", rework: "fixing" };
   let game,
     view,
     started = false,
@@ -156,14 +157,26 @@
         infoButton(`station:${s}`, `About ${stationNames[s].toLowerCase()}`),
       );
     $("board").insertBefore(station, $("sleigh"));
+    // One pile per station; at checking the straight-through and remake piles are two small
+    // counters under it.
     for (const id of queueIds[s]) {
-      const q = make("button", "queue");
+      const mini = miniPiles[id];
+      const q = make("button", mini ? "queue queue-mini" : "queue");
       q.id = `queue-${id}`;
       q.dataset.info = `queue:${id}`;
       q.dataset.help = `queue:${id}`;
-      q.innerHTML =
-        '<span class="queue-tag"><span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span><span class="queue-trend" role="img"></span></strong></span><span class="queue-picture"><span class="stack"></span></span><span class="queue-rate"></span><progress max="1" value="0"></progress>';
-      $(`piles${s}`).append(q);
+      q.innerHTML = mini
+        ? `${icon(mini)}<span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span></strong>`
+        : '<span class="queue-tag"><span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span><span class="queue-trend" role="img"></span></strong></span><span class="queue-picture"><span class="stack"></span></span><progress max="1" value="0"></progress>';
+      if (!mini) $(`piles${s}`).append(q);
+      else {
+        if (!$(`minis${s}`)) {
+          const row = make("div", "mini-piles");
+          row.id = `minis${s}`;
+          $(`piles${s}`).append(row);
+        }
+        $(`minis${s}`).append(q);
+      }
     }
     const addGroup = (key, node) => {
       const wrap = make("div", "control-row");
@@ -622,15 +635,19 @@
         const q = view.queues[id],
           node = $(`queue-${id}`);
         node.querySelector(".queue-name").textContent = q.name;
-        node.querySelector(".queue-amount").textContent =
-          `${q.parcels.length}/${q.limit}`;
+        // A small counter shows the count alone; it turns red when its pile is full.
+        node.querySelector(".queue-amount").textContent = miniPiles[id]
+          ? String(q.parcels.length)
+          : `${q.parcels.length}/${q.limit}`;
+        node.classList.toggle("blocked", !!q.blocked);
+        node.classList.toggle("full", q.parcels.length >= q.limit);
+        // The two small counters at checking carry only their name and count.
+        if (miniPiles[id]) continue;
         const trend = node.querySelector(".queue-trend");
         if (!trend.firstChild) trend.innerHTML = trendArrow;
         trend.hidden = !q.trend;
         trend.dataset.trend = q.trend || "";
         trend.setAttribute("aria-label", q.trend ? `Pile ${q.trend}` : "");
-        node.classList.toggle("blocked", !!q.blocked);
-        node.classList.toggle("full", q.parcels.length >= q.limit);
         node.querySelector("progress").value = q.progress;
         const stack = node.querySelector(".stack");
         const signature = q.parcels

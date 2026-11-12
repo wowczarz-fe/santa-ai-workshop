@@ -337,6 +337,11 @@ body[data-look="polish"] #piles1 {
   width: auto;
   right: 0;
 }
+/* Checking: the main pile takes the room, the two small counters sit under it */
+body[data-look="polish"] #piles2 {
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-auto-rows: auto;
+}
 body[data-look="polish"] .queue {
   display: grid;
   grid-template-columns: 1fr auto;

@@ -497,7 +497,7 @@ body[data-look="paper"] .station-bottleneck .ui-icon {
   width: 11px;
   height: 11px;
 }
-body[data-look="paper"] #tutorial {
+body[data-look="paper"] #tour {
   width: 320px;
   padding: 14px 16px 12px;
   background: var(--paper);
@@ -507,22 +507,22 @@ body[data-look="paper"] #tutorial {
     3px 4px 0 #2b1c1430,
     0 10px 24px #14251a55;
 }
-body[data-look="paper"] #tutorial h3 {
+body[data-look="paper"] #tour h3 {
   margin: 4px 0;
   color: var(--teal);
   font:
     bold 18px/1.25 Georgia,
     serif;
 }
-body[data-look="paper"] #tutorial p {
+body[data-look="paper"] #tour p {
   margin: 0;
   font-size: 13px;
   line-height: 1.45;
 }
-body[data-look="paper"] #tutorial .panel-actions {
+body[data-look="paper"] #tour .panel-actions {
   margin-top: 12px;
 }
-body[data-look="paper"] #tutorial #continue {
+body[data-look="paper"] #tour #tourNext {
   min-height: 32px;
   padding: 7px 14px;
   border: 0;
@@ -531,7 +531,7 @@ body[data-look="paper"] #tutorial #continue {
   font-size: 12px;
   font-weight: bold;
 }
-body[data-look="paper"] #tutorial .link-button {
+body[data-look="paper"] #tour .link-button {
   background: none;
   color: #705132;
   font-size: 11px;
@@ -825,11 +825,6 @@ dialog {
   }
   #paceLabel {
     font-size: 10px;
-  }
-  #guidanceContinue {
-    font-size: 10px;
-    min-height: 24px;
-    padding: 3px;
   }
   #stationPicker {
     display: grid;
@@ -2333,8 +2328,8 @@ body[data-look="paper"] #cocoa .cocoa-focus {
 body[data-look="paper"] #cocoa .cocoa-focus:empty {
   display: none;
 }
-/* The walkthrough card wears the colour of the control it points at */
-body[data-look="paper"] #tutorial {
+/* The tour card wears the colour of the control it points at */
+body[data-look="paper"] #tour {
   border-color: var(--attention);
 }
 /* Gold is the decision cue's: the open station tab is marked in red and cream */

@@ -171,11 +171,6 @@ main {
   font-size: 11px;
   flex-shrink: 0;
 }
-#guidanceContinue {
-  color: white;
-  background: var(--teal);
-  border-color: var(--teal);
-}
 #helpMove {
   width: 25px;
   min-height: 25px;
@@ -507,7 +502,26 @@ main {
 .ask-toggle[aria-pressed="true"] .toggle-state {
   color: #237743;
 }
-/* Walkthrough card: title, text, one action button */
+/* Tour card: where it is, a title, one line, Skip and Next */
+.tour {
+  width: 300px;
+  border: 2px solid var(--gold);
+  background: #fff5da;
+}
+.tour h3 {
+  margin: 4px 0;
+}
+.tour p {
+  margin: 0;
+}
+.tour .panel-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+.tour #tourNext {
+  min-width: 84px;
+  font-size: 12px;
+}
 .link-button {
   border: 0;
   background: none;
@@ -517,26 +531,6 @@ main {
   text-underline-offset: 2px;
   color: inherit;
   opacity: 0.75;
-}
-.tutorial .panel-actions {
-  align-items: center;
-  justify-content: space-between;
-}
-.tutorial.floating-panel[data-compact="true"] .panel-actions,
-.tutorial.floating-panel[data-control="ai0"] .panel-actions,
-.tutorial.floating-panel[data-control="ai1"] .panel-actions {
-  display: flex;
-  margin-top: 8px;
-}
-.tutorial[data-compact="true"] #skipGuidance,
-.tutorial[data-control="ai0"] #skipGuidance,
-.tutorial[data-control="ai1"] #skipGuidance {
-  display: none;
-}
-.tutorial[data-compact="true"] .panel-head,
-.tutorial[data-control="ai0"] .panel-head,
-.tutorial[data-control="ai1"] .panel-head {
-  display: none;
 }
 /* Top bar: the goals of the run under way, one star each */
 .dashboard .goals {
@@ -1635,11 +1629,6 @@ footer {
   padding: 15px;
   box-shadow: 0 10px 35px #1d392d44;
 }
-.tutorial {
-  border: 2px solid var(--gold);
-  background: #fff5da;
-  width: 300px;
-}
 .panel-head {
   display: flex;
   align-items: center;
@@ -2044,9 +2033,6 @@ dialog p {
   }
   .case-panel {
     width: calc(100vw - 24px);
-  }
-  .tutorial {
-    width: min(320px, calc(100vw - 24px));
   }
   footer {
     gap: 10px;
@@ -2491,36 +2477,6 @@ dialog p {
   pointer-events: none;
   overflow: hidden;
 }
-.tutorial[data-control="ai0"],
-.tutorial[data-control="ai1"] {
-  padding: 8px;
-}
-.tutorial[data-control="ai0"] .panel-head,
-.tutorial[data-control="ai1"] .panel-head {
-  position: absolute;
-  right: 6px;
-  top: 6px;
-}
-.tutorial[data-control="ai0"] .panel-head .eyebrow,
-.tutorial[data-control="ai1"] .panel-head .eyebrow,
-.tutorial[data-control="ai0"] .panel-actions,
-.tutorial[data-control="ai1"] .panel-actions,
-.tutorial[data-control="ai0"] #tutorialPause,
-.tutorial[data-control="ai1"] #tutorialPause {
-  display: none;
-}
-.tutorial[data-control="ai0"] h3,
-.tutorial[data-control="ai1"] h3 {
-  font-size: 15px;
-  line-height: 18px;
-  margin: 0 28px 5px 0;
-}
-.tutorial[data-control="ai0"] p,
-.tutorial[data-control="ai1"] p {
-  font-size: 11.5px;
-  line-height: 14px;
-  margin: 0;
-}
 .station-rate {
   position: absolute;
   left: 55px;
@@ -2546,29 +2502,6 @@ dialog p {
   min-height: 25px;
   color: #476353;
   white-space: nowrap;
-}
-.tutorial[data-compact="true"] {
-  padding: 8px;
-}
-.tutorial[data-compact="true"] .panel-head {
-  position: absolute;
-  right: 6px;
-  top: 6px;
-}
-.tutorial[data-compact="true"] .panel-head .eyebrow,
-.tutorial[data-compact="true"] .panel-actions,
-.tutorial[data-compact="true"] #tutorialPause {
-  display: none;
-}
-.tutorial[data-compact="true"] h3 {
-  font-size: 15px;
-  line-height: 18px;
-  margin: 0 28px 5px 0;
-}
-.tutorial[data-compact="true"] p {
-  font-size: 11.5px;
-  line-height: 14px;
-  margin: 0;
 }
 .capacity-label {
   position: absolute;
@@ -2604,9 +2537,6 @@ dialog p {
   font-size: 10px;
   color: #22684b;
   pointer-events: none;
-}
-.tutorial[data-compact="true"] {
-  width: min(300px, calc(100vw - 24px));
 }
 
 .cargo-badge {

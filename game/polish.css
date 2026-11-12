@@ -681,7 +681,7 @@ body[data-look="polish"] .elf-card .rest-cue .ui-icon {
 body[data-look="polish"] .elf-card.needs-attention {
   border-radius: 9px;
 }
-/* The control a walkthrough card names: outlined and pulsing until used or put off */
+/* The control the tour points at: outlined and pulsing while its step shows */
 body[data-look="polish"] .walk-target {
   position: relative;
   outline: 3px solid #d9a636;
@@ -983,10 +983,6 @@ body[data-look="polish"] dialog {
   box-shadow: 0 8px 28px #173f4330;
   color: var(--ink);
 }
-body[data-look="polish"] #tutorial {
-  background: #fffaf0;
-  border-color: #bf9b45;
-}
 body[data-look="polish"] #infoPopover {
   background: #fff;
   border-color: #bdcec2;
@@ -1085,7 +1081,7 @@ body[data-look="polish"] .ask-toggle .toggle-state {
 body[data-look="polish"] .ask-toggle[aria-pressed="true"] .toggle-state {
   color: var(--teal);
 }
-body[data-look="polish"] #tutorial {
+body[data-look="polish"] #tour {
   width: 320px;
   padding: 14px 16px 12px;
   background: #fff;
@@ -1093,37 +1089,34 @@ body[data-look="polish"] #tutorial {
   border-radius: 14px;
   box-shadow: 0 12px 32px #173f4333;
 }
-body[data-look="polish"] #tutorial .eyebrow {
+body[data-look="polish"] #tour .eyebrow {
   color: #8a6d22;
   font-size: 10px;
   letter-spacing: 1px;
 }
-body[data-look="polish"] #tutorial h3 {
+body[data-look="polish"] #tour h3 {
   margin: 4px 0 4px;
   color: var(--pine);
   font:
     700 17px/1.25 Arial,
     sans-serif;
 }
-body[data-look="polish"] #tutorial p {
+body[data-look="polish"] #tour p {
   margin: 0;
   font-size: 13px;
   line-height: 1.45;
 }
-body[data-look="polish"] #tutorial .panel-actions {
+body[data-look="polish"] #tour .panel-actions {
   margin-top: 12px;
 }
-body[data-look="polish"] #tutorial #continue {
-  color: var(--teal);
-  background: #fff;
+body[data-look="polish"] #tour #tourNext {
   min-height: 34px;
   padding: 7px 16px;
-  border: 1px solid #c3d2c8;
   border-radius: 9px;
   font-size: 12px;
   font-weight: bold;
 }
-body[data-look="polish"] #tutorial .link-button {
+body[data-look="polish"] #tour .link-button {
   background: none;
   color: #5d7164;
   font-size: 11px;

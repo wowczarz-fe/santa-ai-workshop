@@ -47,19 +47,17 @@
     started = false,
     manualPaused = false,
     restartOpen = false,
-    restartGuided = null,
     selected = null,
     caseOpen = false,
-    lastMoment = null,
     lastCase = null,
-    ended = false;
-  let remembered = false;
+    ended = false,
+    tourStep = null;
+  // The tour is ticked until the player has finished one game.
+  let showTour = true;
   try {
-    remembered =
-      localStorage.getItem("workshop-walkthrough-finished") === "yes";
+    showTour = localStorage.getItem("workshop-walkthrough-finished") !== "yes";
   } catch {}
-  let guided = !remembered,
-    lastWrong = null,
+  let lastWrong = null,
     lastArrival = null,
     notice = null,
     newsSeen = new Set(),
@@ -465,12 +463,12 @@
   }
   function paintMistakeHint() {
     let target = null;
-    // A walkthrough card's outline is the only one while the card is up.
+    // The tour's outline is the only one while the tour is up.
     if (
       mistakeHint &&
       mistakeHint.until > performance.now() &&
       !view.end &&
-      !(view.moment && view.moment.control !== "case")
+      tourStep === null
     ) {
       const control = mistakeHint.control;
       target =
@@ -556,14 +554,14 @@
   }
   function reset(showIntro = true, freshSeed = true) {
     if (freshSeed) seed = nextSeed();
-    game = new Workshop({ seed, guided });
+    game = new Workshop({ seed });
     view = game.view();
     started = false;
     manualPaused = false;
     restartOpen = false;
     selected = null;
     caseOpen = false;
-    lastMoment = null;
+    tourStep = null;
     lastCase = null;
     openedCases.clear();
     resolvedAt = -Infinity;
@@ -577,7 +575,7 @@
     pendingCause = null;
     closeInfo();
     buildElves();
-    $("walkthrough").checked = guided;
+    $("walkthrough").checked = showTour;
     $("report").close();
     $("breakDialog").close();
     lastChoice = null;
@@ -630,26 +628,7 @@
         elfNodes[moved].querySelector(".elf").focus({ preventScroll: true });
     }
   }
-  function acknowledge() {
-    if (view.moment) perform(() => game.acknowledge(view.moment.id));
-  }
-  function skip() {
-    perform(() => game.skipGuidance());
-    guided = false;
-  }
   const focusTag = make("span", "focus-tag");
-  // The exact control a walkthrough card asks the player to use.
-  function momentTarget(moment) {
-    const c = moment.control;
-    if (c === "ai0" || c === "ai1")
-      return document.querySelector(`[data-ai="${c[2]},1"]`);
-    if (c === "ask" || c === "bypass")
-      return document.querySelector(`[data-action="${c}"]`);
-    if (c === "cocoa")
-      return Number.isInteger(moment.elf) ? elfNodes[moment.elf] : $("cocoa");
-    if (c === "elves") return $("elves1");
-    return actionGroups.get(c) || null;
-  }
   // A line stays up at least 4 seconds unless something more important comes; 9 at most.
   function say(words, priority) {
     const now = performance.now();
@@ -742,7 +721,7 @@
       "mission",
       `Elves and AI must deliver ${view.target} right gifts${view.run ? ` on ${view.run.of} sleighs` : ""} in ${Math.round(view.duration / 60)} minutes.`,
     );
-    $("pause").disabled = !started || !!view.end;
+    $("pause").disabled = !started || !!view.end || tourStep !== null;
     document.querySelector("main > footer").hidden = started && !view.end;
     text("pause", manualPaused ? "Resume" : "Pause");
     text(
@@ -750,7 +729,7 @@
       // One word: the Pause button, the card or the break already says why.
       started &&
         !view.end &&
-        (manualPaused || view.choice || view.moment || document.hidden)
+        (manualPaused || view.choice || tourStep !== null || document.hidden)
         ? "Paused"
         : "",
     );
@@ -936,8 +915,6 @@
             ],
       );
       $(`mode${station}`).classList.toggle("spare", spare > 0);
-      $(`mode${station}`).hidden =
-        !started || !view.actions[`ai${station}`].unlocked;
     }
     document
       .querySelectorAll("[data-destination]")
@@ -964,7 +941,6 @@
     });
     for (const [key, group] of actionGroups) {
       const action = view.actions[key];
-      group.hidden = !started || !action.unlocked;
       group
         .querySelectorAll("button:not(.info-button)")
         .forEach((b) => (b.disabled = !action.available || !!view.end));
@@ -1017,22 +993,17 @@
     }
     lastAttention = attention;
     // The checkers' eye shows only once they stop looking properly.
-    $("vigilance").hidden =
-      !started || !view.actions.checking.unlocked || attention === "sharp";
+    $("vigilance").hidden = attention === "sharp";
     $("vigilance").dataset.state = view.vigilance.state;
-    // One outlined thing at a time: the control a walkthrough card names, else the rules' focus,
-    // with its reason as a tag on the outlined box. A tired elf gets its own card outlined.
-    const moment =
-      started && !view.end && view.moment?.control !== "case"
-        ? view.moment
-        : null;
-    const focus = started && !view.end && !moment ? view.focus : null;
+    // One outlined thing at a time: the control the tour points at, else the rules' focus, with
+    // its reason as a tag on the outlined box. A tired elf gets its own card outlined.
+    const walkTarget = tourStep === null ? null : tourSteps[tourStep].target();
+    const focus = started && !view.end && !walkTarget ? view.focus : null;
     const tiredElf =
       focus?.control === "cocoa"
         ? view.elves.findIndex((elf) => focus.text.includes(elf.name))
         : -1;
     text("cocoaFocus", focus?.station === 3 ? focus.text : "");
-    const walkTarget = moment ? momentTarget(moment) : null;
     const focusTarget =
       tiredElf >= 0
         ? elfNodes[tiredElf]
@@ -1104,8 +1075,7 @@
       handleNews(n);
       // Routine lines never show: a card title repeated, or a check that found nothing wrong.
       const priority =
-        n.kind === "unlock" ||
-        (n.kind === "checked" && n.check?.result !== "wrong")
+        n.kind === "checked" && n.check?.result !== "wrong"
           ? 0
           : n.kind === "loaded" && n.check?.result === "wrong"
             ? 4
@@ -1121,7 +1091,7 @@
       "status",
       selected !== null
         ? `${view.elves[selected].name}: ${!narrow ? "drag or tap to a lit station" : view.elves[selected].station < 3 ? "tap Rest, or a lit station tab then Move here" : "tap a lit station tab, then Move here"}.`
-        : started && view.moment
+        : tourStep !== null
           ? ""
           : notice && notice.until > performance.now()
             ? notice.text
@@ -1130,7 +1100,7 @@
               : "Drag an elf to a new station.",
     );
     paintCase();
-    paintGuidance();
+    paintTour();
     if (started && view.choice)
       pendingCause = view.choice.report.causes?.[0]?.control ?? null;
     else if (pendingCause) {
@@ -1143,8 +1113,7 @@
     if (infoKey && infoAnchor?.isConnected) renderInfo();
     if (view.end && !ended) {
       ended = true;
-      remembered = true;
-      guided = false;
+      showTour = false;
       try {
         localStorage.setItem("workshop-walkthrough-finished", "yes");
       } catch {}
@@ -1671,18 +1640,6 @@
       w = innerWidth,
       h = innerHeight;
     let horizontal = Math.max(12, Math.min(r.left, w - p.width - 12));
-    if (
-      panel.id === "tutorial" &&
-      panel.dataset.compact === "true" &&
-      anchor.closest(".station")
-    ) {
-      const column = anchor.closest(".station").getBoundingClientRect();
-      if (p.width <= column.width - 2 && column.left >= 0 && column.right <= w)
-        horizontal = Math.max(
-          column.left + 1,
-          Math.min(horizontal, column.right - p.width - 1),
-        );
-    }
     const vertical = Math.max(12, Math.min(r.top, h - p.height - 12));
     const protectedBounds = protectedNodes
       .map((node) => node.getBoundingClientRect())
@@ -1816,93 +1773,72 @@
     if (innerWidth < 1000)
       anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
-  function paintGuidance() {
-    const moment = started && !view.end ? view.moment : null;
-    $("tutorial").hidden = !moment || moment.control === "case";
-    if (!moment) {
-      hidePopupPointer("tutorial");
-      delete $("tutorial").dataset.anchorVisit;
-      lastMoment = null;
+  // The tour before the clock: one step per control, each beside the real control. The clock
+  // starts when the last step or Skip ends it.
+  const tourSteps = [
+    {
+      title: "Elves",
+      text: "Move elves to whichever station has work piling up.",
+      target: () => $("elves0"),
+    },
+    {
+      title: "AI switch",
+      text: "By hand, Assist, Automate: more AI is faster, and makes more mistakes.",
+      target: () => actionGroups.get("ai0"),
+    },
+    {
+      title: "Checking",
+      text: "Checks catch mistakes but cost time and money. Bigger stakes, more checks.",
+      target: () => actionGroups.get("checking"),
+    },
+    {
+      title: "Cocoa",
+      text: "Tired elves slow and slip. Rest them before their energy runs out.",
+      target: () => $("cocoa"),
+    },
+  ];
+  function showTourStep(step) {
+    tourStep = step;
+    caseOpen = false;
+    const { title, text: words, target } = tourSteps[step];
+    text("tourCount", `Clock stopped · ${step + 1} of ${tourSteps.length}`);
+    text("tourTitle", title);
+    text("tourText", words);
+    text("tourNext", step === tourSteps.length - 1 ? "Start" : "Next");
+    // On a phone the control may be a page or a scroll away: bring it into view first.
+    const anchor = target(),
+      column = anchor.closest(".station");
+    if (column)
+      $("board").scrollTo({
+        left: column.offsetLeft - $("board").offsetLeft,
+        behavior: "instant",
+      });
+    anchor.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "instant",
+    });
+    paint();
+    $("tour").focus({ preventScroll: true });
+  }
+  function endTour() {
+    tourStep = null;
+    $("board").scrollLeft = 0;
+    paint();
+    document.activeElement?.blur();
+  }
+  function nextTourStep() {
+    if (tourStep === tourSteps.length - 1) endTour();
+    else showTourStep(tourStep + 1);
+  }
+  function paintTour() {
+    const anchor = tourStep === null ? null : tourSteps[tourStep].target();
+    $("tour").hidden = !anchor;
+    if (!anchor) {
+      hidePopupPointer("tour");
       return;
     }
-    $("tutorial").dataset.control = moment.control;
-    $("tutorial").dataset.compact = String(
-      ["ai0", "ai1", "ask", "checking", "cocoa", "bypass"].includes(
-        moment.control,
-      ),
-    );
-    text("tutorialTitle", moment.title);
-    // On a phone the cocoa strip is on another page, so the card names the Rest button instead.
-    const elfName = view.elves[moment.elf]?.name;
-    text(
-      "tutorialText",
-      innerWidth < 1000 && moment.control === "cocoa" && elfName
-        ? moment.text.replace(/Drag them to cocoa/, `Tap ${elfName}, then Rest`)
-        : moment.text,
-    );
-    if (moment.control === "case") {
-      hidePopupPointer("tutorial");
-      caseOpen = true;
-      paintCase();
-    } else {
-      // Another card takes over from an open decision; the cue still waits.
-      if (caseOpen) {
-        caseOpen = false;
-        paintCase();
-      }
-      const ai = moment.control === "ai0" || moment.control === "ai1";
-      const tiredElf = Number.isInteger(moment.elf)
-        ? moment.elf
-        : view.elves
-            .map((elf, index) => ({ elf, index }))
-            .filter((item) => item.elf.station < 3)
-            .sort((a, b) => b.elf.tired - a.elf.tired)[0]?.index;
-      const anchor =
-        (["checking", "sleigh"].includes(moment.control) &&
-        !$("wrongDelivery").hasAttribute("data-empty")
-          ? $("wrongDelivery")
-          : null) ||
-        (moment.control === "cocoa" && tiredElf !== undefined
-          ? document.querySelector(`[data-elf="${tiredElf}"]`)
-          : null) ||
-        (ai
-          ? document.querySelector(
-              moment.control === "ai0" ? '[data-ai="0,1"]' : '[data-ai="1,2"]',
-            )
-          : null) ||
-        actionGroups.get(moment.control) ||
-        $(
-          moment.control === "cocoa"
-            ? "cocoa"
-            : moment.control === "sleigh"
-              ? "sleigh"
-              : "elves1",
-        );
-      const protectedNodes = [
-        document.querySelector(".dashboard"),
-        ...(innerWidth >= 1000 &&
-        look !== "paper" &&
-        ["elves", "cocoa", "bypass"].includes(moment.control)
-          ? document.querySelectorAll(".machine")
-          : []),
-        ...document.querySelectorAll(".crew, [data-move]:not([hidden])"),
-        $("cocoa"),
-        ...(["ai0", "ai1", "ask", "checking", "cocoa", "bypass"].includes(
-          moment.control,
-        )
-          ? [
-              ...(actionGroups.has(moment.control)
-                ? [actionGroups.get(moment.control)]
-                : []),
-              ...(anchor.closest(".station")?.querySelectorAll(".queue") || []),
-            ]
-          : []),
-        anchor,
-      ];
-      showAnchorOnce($("tutorial"), anchor, moment.id);
-      positionPanel($("tutorial"), anchor, protectedNodes);
-    }
-    lastMoment = moment.id;
+    positionPanel($("tour"), anchor, [anchor]);
   }
   // How many wrong gifts an option brings off the sleigh, from its scope words.
   function recallCount(c, o) {
@@ -2286,7 +2222,7 @@
       clock: [
         "Until departure",
         [
-          "The sleigh leaves at zero. Pause and walkthrough cards stop the clock.",
+          "The sleigh leaves at zero. Pause and the walkthrough stop the clock.",
         ],
       ],
       budget: ["Budget", ["Elves, AI, checks and fixes all cost money."]],
@@ -2636,22 +2572,33 @@
     }
   };
   $("start").onclick = () => {
-    if (guided !== $("walkthrough").checked) {
-      guided = $("walkthrough").checked;
-      reset(false, false);
-    }
-    if (!guided) game.skipGuidance();
+    showTour = $("walkthrough").checked;
     started = true;
     $("intro").close();
     $("board").scrollLeft = 0;
-    paint();
+    if (showTour) showTourStep(0);
+    else paint();
   };
   $("pause").onclick = () => {
     manualPaused = !manualPaused;
     paint();
   };
-  $("continue").onclick = acknowledge;
-  $("skipGuidance").onclick = skip;
+  $("tourNext").onclick = nextTourStep;
+  $("tourSkip").onclick = endTour;
+  // In the tour Enter goes on (buttons keep their own Enter) and Escape skips.
+  document.addEventListener("keydown", (event) => {
+    if (tourStep === null) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      endTour();
+    } else if (
+      event.key === "Enter" &&
+      !event.target.closest("button, a, input")
+    ) {
+      event.preventDefault();
+      nextTourStep();
+    }
+  });
   $("caseCue").onclick = () => {
     caseOpen = !caseOpen;
     if (caseOpen && view.case && innerWidth < 1000) {
@@ -2670,22 +2617,13 @@
   };
   $("closeCase").onclick = () => {
     caseOpen = false;
-    if (view.moment?.control === "case") acknowledge();
     paint();
     returnFocus();
   };
+  // In play the Walkthrough button shows the tour again, with the clock stopped.
   $("guidanceToggle").onclick = () => {
-    if (!started) {
-      $("walkthrough").checked = !$("walkthrough").checked;
-      return;
-    }
-    if (guided) skip();
-    else {
-      restartGuided = true;
-      restartOpen = true;
-      text("restartTitle", "Restart with the walkthrough?");
-      $("restartDialog").showModal();
-    }
+    if (!started) $("walkthrough").checked = !$("walkthrough").checked;
+    else if (!view.end && !view.choice && tourStep === null) showTourStep(0);
   };
   $("restart").onclick = () => {
     if (!started || view.end) {
@@ -2693,22 +2631,15 @@
       return;
     }
     restartOpen = true;
-    text("restartTitle", "Start this Christmas again?");
     $("restartDialog").showModal();
   };
-  $("confirmRestart").onclick = () => {
-    if (restartGuided !== null) guided = restartGuided;
-    restartGuided = null;
-    reset();
-  };
+  $("confirmRestart").onclick = () => reset();
   $("cancelRestart").onclick = () => {
     restartOpen = false;
-    restartGuided = null;
     $("restartDialog").close();
   };
   $("restartDialog").addEventListener("cancel", () => {
     restartOpen = false;
-    restartGuided = null;
   });
   // The opening card is the only way in, so Escape cannot close it before the run starts.
   $("intro").addEventListener("cancel", (event) => event.preventDefault());
@@ -2716,7 +2647,7 @@
     if (!started) $("intro").showModal();
   });
   $("replay").onclick = () => {
-    guided = false;
+    showTour = false;
     reset(false);
     $("start").click();
   };
@@ -2752,7 +2683,7 @@
       !manualPaused &&
       !restartOpen &&
       !document.hidden &&
-      !view.moment &&
+      tourStep === null &&
       !view.choice &&
       !view.end
     ) {
@@ -2770,7 +2701,7 @@
     paint();
   });
   function repositionPopups() {
-    paintGuidance();
+    paintTour();
     paintCase();
     if (infoAnchor) positionPanel($("infoPopover"), infoPositionAnchor());
   }

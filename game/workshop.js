@@ -85,18 +85,19 @@ const SIGN_IF_GOOD = 0.3;
 const TEST_TOYS = 4;
 const ABOARD_AT = 5; // wrong gifts aboard that raise the one recall decision
 
-// One sleigh, filled over two halves with a pause between them. The target sits just below what a
-// careful player manages and well above what elves working by hand deliver.
+// One sleigh, filled over two halves with a pause between them. The target sits below what a careful
+// player manages (about 144), above what checking every gift gets through in most games, and out of
+// reach of a first game on Assist, so filling it is what a second game rewards.
 const HALF_SECONDS = 75;
 const DURATION = 2 * HALF_SECONDS;
 const CLOSE = DURATION - 15; // letters stop coming, so the last ones can still reach the sleigh
-const TARGET = 144;
+const TARGET = 130;
 // Three goals for the game, one star each (ADR 0014). full: the right gifts aboard reach the
 // target. right: at most WRONG_ALLOWED wrong gifts aboard. cost: the cost so far, wrong gifts
 // aboard at what they will cost included, stays within COST_LIMIT. The right and cost goals count
 // only once the sleigh holds GOALS_FROM of its target, so a near-empty sleigh earns nothing.
 const WRONG_ALLOWED = 3;
-const COST_LIMIT = 700;
+const COST_LIMIT = 740;
 const GOALS_FROM = 0.4;
 // Where a wrong gift that reached the sleigh came from, and the control that would have stopped it.
 // fix is the advice in parts, each with a test of whether the settings already follow it

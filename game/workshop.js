@@ -3422,7 +3422,7 @@ class Workshop {
       return this.tiredAt(2)
         ? L(
             "Tired checkers held up the line",
-            "Send checkers for cocoa before they burn out.",
+            "Tired checkers slow down, then burn out for a long break.",
           )
         : L("Checking was the bottleneck", "");
     if (missed && biggest === "over") return L("Too much checking", "");

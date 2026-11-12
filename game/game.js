@@ -1303,6 +1303,17 @@
         "ask",
         "Decision still waiting: ",
         make("b", "", choice.openCase.title),
+        // A short, tired sleigh keeps its reason on this one line, as a figure.
+        ...(worn
+          ? [
+              " · ",
+              make(
+                "b",
+                "break-line-figure",
+                `tired elves lost ${report.tired}%`,
+              ),
+            ]
+          : []),
       );
       if (view.case) {
         const open = make("button", "break-open-case", "Open it");

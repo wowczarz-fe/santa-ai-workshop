@@ -86,20 +86,21 @@ const TEST_TOYS = 4;
 const ABOARD_AT = 5; // wrong gifts aboard that raise the one recall decision
 const WRONG_LINE_GAP = 20; // seconds before a wrong-gift line repeats the same advice
 
-// One sleigh, filled over two halves with a pause between them. The target sits below what a careful
-// player manages (about 144), above what checking every gift gets through in most games, and out of
-// reach of a first game on Assist, so filling it is what a second game rewards.
+// One sleigh, filled over two halves with a pause between them. The target sits where a first-time
+// player on the good strategy (reading on Automate, toys on Assist, the risky ones checked) fills it
+// in about four games in ten; checking everything is held back by its cost, not by this target.
 const HALF_SECONDS = 75;
 const DURATION = 2 * HALF_SECONDS;
 const CLOSE = DURATION - 15; // letters stop coming, so the last ones can still reach the sleigh
-const TARGET = 130;
+const TARGET = 108;
 // Three goals for the game, one star each (ADR 0014). full: the right gifts aboard reach the
 // target. right: at most WRONG_ALLOWED wrong gifts aboard. cost: the cost so far, wrong gifts
 // aboard at what they will cost included, stays within COST_LIMIT. The right and cost goals count
-// only once the sleigh holds GOALS_FROM of its target, so a near-empty sleigh earns nothing.
+// only once the sleigh holds GOALS_FROM of its target, so a slow sleigh earns nothing for being
+// cheap and clean.
 const WRONG_ALLOWED = 3;
-const COST_LIMIT = 740;
-const GOALS_FROM = 0.4;
+const COST_LIMIT = 850;
+const GOALS_FROM = 0.7;
 // Where a wrong gift that reached the sleigh came from, and the control that would have stopped it.
 // fix is the advice in parts, each with a test of whether the settings already follow it
 // (causes() leaves those out).
@@ -214,8 +215,11 @@ const strain = (tired) => Math.max(0, tired - FRESH);
 // Elves working by hand make almost no mistakes until properly tired, and then only ordinary slips.
 const SLIPS_FROM = 50;
 const slipping = (tired) => Math.max(0, tired - SLIPS_FROM);
-const WORK_STRAIN = 1.1; // tiredness a working elf gains a second, so one never rested burns out about once a half
-const CHECKER_STRAIN = 0.3; // checking tires more than reading or making
+// Tiredness a working elf gains a second: one never rested burns out late in the first half and
+// again in the second, so a player who rests elves when they turn red sees about one burnout a game.
+const WORK_STRAIN = 0.65;
+const CHECKER_STRAIN = 0.1; // checking tires a little more than reading or making
+const PRESSURE_STRAIN = 0.2; // and a station whose piles are filling up more again
 // Tiredness took this share of a station's working time or more: the end screen names it as the
 // reason that station held the line up. Elves rested at about 60 lose about a tenth; never rested,
 // about half.
@@ -235,7 +239,7 @@ const mood = (e) =>
 
 const AI_PRICE = [0, 0.22, 0.72]; // per station, per second
 const PRICE = {
-  check: 2,
+  check: 4, // each gift sent for a check
   remake: 3,
   rollback: 65,
   recall: 20,
@@ -998,6 +1002,13 @@ class Workshop {
     this.recent = [...this.recent.slice(-49), x];
     x.route = this.needsCheck(x) ? "check" : "pass";
     this.q[x.route].push(x);
+    // A gift sent for a check is paid for as it joins the pile, whether or not a checker then looks
+    // at it properly: the price of checking is the line, not the attention.
+    if (x.route === "check") {
+      this.pay("checking", PRICE.check);
+      this.assured(x, "checkCost", PRICE.check);
+      this.report.checking.money += PRICE.check;
+    }
   }
 
   checkParcel(x) {
@@ -1012,11 +1023,8 @@ class Workshop {
       return this.load(x);
     }
     this.stats.checked++;
-    this.pay("checking", PRICE.check);
     this.assured(x, "checked");
-    this.assured(x, "checkCost", PRICE.check);
     this.report.checking.checked++;
-    this.report.checking.money += PRICE.check;
     x.exit = "checked";
     if (x.wrong && x.roll.catch >= this.checkCatch(x)) {
       x.slipped = true;
@@ -1708,7 +1716,7 @@ class Workshop {
         sum(ids.map((id) => QUEUES[id].limit));
       const effort =
         WORK_STRAIN +
-        Math.max(0, pressure - 0.25) * 0.75 +
+        Math.max(0, pressure - 0.25) * PRESSURE_STRAIN +
         (s === 2 ? CHECKER_STRAIN + 0.1 * this.checking : 0);
       const gain = e.doing === "nothing to do" ? -0.12 : effort;
       e.tired = Math.min(100, Math.max(0, e.tired + dt * gain));

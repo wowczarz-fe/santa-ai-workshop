@@ -205,17 +205,24 @@ function decideSlowly(w, v, m, policy) {
     (m.choices ??= []).push(`${key(c)}:${pick.id}`);
 }
 
-// Someone who did the tour and means well but is slow and imperfect: puts both stations on Assist
-// and checking on the risky ones some seconds in, looks at the screen only every 2 to 4 seconds,
-// turns reading up to Automate once letters pile up, moves an elf about every 20 seconds, rests
-// elves that show red but misses some, and answers decisions late, mostly asking, rolling back and
-// fetching back.
+// Someone who did the tour and means well but is slow and imperfect: sets the AI and checking some
+// seconds in, looks at the screen only every 2 to 4 seconds, moves an elf about every 20 seconds,
+// rests elves that show red but misses some, and answers decisions late, mostly asking, rolling
+// back and fetching back. On the good strategy both stations start on Assist and reading goes up to
+// Automate once letters pile up, as the tour says more AI is faster. With follows, it also does
+// what each wrong-gift line says, a look or two later.
 const meansWell = (c, m) =>
   m.r() < ({ unclear: 0.75, source: 0.75, aboard: 0.75 }[key(c)] ?? 0.5)
     ? { unclear: "ask", source: "rollback", aboard: "bringBack" }[key(c)]
     : { unclear: "guess", source: "keep", aboard: "leave" }[key(c)];
 const firstTimer =
-  ({ checking = 1, rest = true, policy = meansWell } = {}) =>
+  ({
+    ai = "good",
+    checking = 1,
+    rest = true,
+    policy = meansWell,
+    follows = false,
+  } = {}) =>
   (w, v, m) => {
     m.r ??= sloppy(m.seed);
     m.lookAt ??= between(m, 2, 4);
@@ -223,15 +230,60 @@ const firstTimer =
     m.lookAt = v.t + between(m, 2, 4);
     m.aiAt ??= between(m, 4, 10);
     m.checkAt ??= m.aiAt + between(m, 2, 8);
-    if (v.t >= m.aiAt && !m.aiSet) m.aiSet = w.setAi(0, 1) && w.setAi(1, 1);
-    if (v.t >= m.checkAt && !m.checkSet) m.checkSet = w.setChecking(checking);
-    // The tour said more AI is faster: once letters pile up, reading goes up to Automate.
+    m.checking ??= checking;
+    m.dropped ??= [false, false];
+    const start = ai === "good" ? [1, 1] : ai;
+    if (v.t >= m.aiAt && !m.aiSet)
+      m.aiSet = w.setAi(0, start[0]) && w.setAi(1, start[1]);
+    if (v.t >= m.checkAt && !m.checkSet) m.checkSet = w.setChecking(m.checking);
     m.raiseAt ??= between(m, 0.3, 0.6);
-    if (m.aiSet && fill(v, "letters") >= m.raiseAt) w.setAi(0, 2);
+    if (
+      ai === "good" &&
+      m.aiSet &&
+      !m.dropped[0] &&
+      fill(v, "letters") >= m.raiseAt
+    )
+      w.setAi(0, 2);
+    if (follows) followAdvice(w, v, m);
     if (rest) restsWhenRed(w, v, m);
     shuffle(w, v, m);
     decideSlowly(w, v, m, policy);
   };
+
+// Does what each new wrong-gift line says: checks the risky ones, checks all for 20 seconds, puts a
+// station on Assist, or sends the most tired elf (or checker) for cocoa.
+function followAdvice(w, v, m) {
+  const fresh = v.news.filter((n) => n.id > (m.seenNews ?? 0));
+  m.seenNews = v.news[0]?.id ?? m.seenNews;
+  if (m.backAt && v.t >= m.backAt) {
+    w.setChecking(m.checking);
+    m.backAt = null;
+  }
+  for (const n of fresh.filter((n) => n.kind === "loaded")) {
+    (m.followed ??= []).push(n.action);
+    if (n.control === "checking" && n.action === "Check more") {
+      m.checking = Math.max(m.checking, 1);
+      if (!m.backAt) w.setChecking(m.checking);
+    } else if (n.control === "checking") {
+      w.setChecking(2);
+      m.backAt = v.t + 20;
+    } else if (n.control.startsWith("ai:")) {
+      const s = Number(n.control.slice(3));
+      m.dropped[s] = true;
+      w.setAi(s, 1);
+    } else {
+      const at = n.action === "Rest the checkers" ? [2] : [0, 1, 2];
+      const most = v.elves
+        .map((e, i) => ({ e, i }))
+        .filter(({ e }) => at.includes(e.station) && !e.resting)
+        .sort((x, y) => x.e.energy - y.e.energy)[0];
+      if (most && v.stations[most.e.station].staff > 1) {
+        (m.home ??= {})[most.i] = most.e.station;
+        w.move(most.i, 3);
+      }
+    }
+  }
+}
 // Half-time without working anything out: a likely-sounding option, drawn by the player's seed.
 function pickOnAHunch(ch, v, m) {
   const roll = m.r();
@@ -246,22 +298,29 @@ function pickOnAHunch(ch, v, m) {
           : "none";
 }
 
-// Players see only view() and call only the action methods.
+// Players see only view() and call only the action methods. The same strategies are played at two
+// skills: an expert (instant, moves elves every few seconds, works the half-time sums out) and a
+// first-timer (above). Good: reading on Automate, toys on Assist, the risky ones checked.
 const players = {
   byHandIdle: () => {},
   automateIdle: (w) => (w.setAi(0, 2), w.setAi(1, 2)),
   assistIdle: (w) => (w.setAi(0, 1), w.setAi(1, 1)),
-  sensible: active(),
-  automateActive: active({ ai: [2, 2] }),
-  checkAll: active({ checking: 2 }),
-  checkFew: active({ checking: 0 }),
-  neverRests: active({ rest: false }),
-  alwaysGuess: active({
+  expert: active(),
+  expertCheckAll: active({ checking: 2 }),
+  expertCheckFew: active({ checking: 0 }),
+  expertAutomate: active({ ai: [2, 2] }),
+  expertNeverRests: active({ rest: false }),
+  expertGuesses: active({
     policy: (c) => (c.kind === "unclear" ? "guess" : conditional(c)),
   }),
-  firstTimer: firstTimer(),
-  // The same first-timer careless: checking left on a few, every unclear wish guessed and other
-  // decisions answered at random, and nobody rested.
+  first: firstTimer(),
+  firstCheckAll: firstTimer({ checking: 2 }),
+  firstCheckFew: firstTimer({ checking: 0 }),
+  firstAutomate: firstTimer({ ai: [2, 2] }),
+  firstNeverRests: firstTimer({ rest: false }),
+  firstFollows: firstTimer({ follows: true }),
+  // A careless first-timer: checking left on a few, every unclear wish guessed and other decisions
+  // answered at random, and nobody rested.
   careless: firstTimer({
     checking: 0,
     rest: false,
@@ -271,17 +330,13 @@ const players = {
         : c.options[Math.floor(m.r() * c.options.length)].id,
   }),
 };
+const EXPERT = Object.keys(players).filter((n) => n.startsWith("expert"));
 const IDLE = ["byHandIdle", "automateIdle", "assistIdle"];
-const HALF_TIME = {
-  sensible: chooseWell,
-  automateActive: chooseWell,
-  checkAll: chooseWell,
-  checkFew: chooseWell,
-  neverRests: chooseWell,
-  alwaysGuess: chooseWell,
-  firstTimer: pickOnAHunch,
-  careless: pickOnAHunch,
-};
+const HALF_TIME = Object.fromEntries(
+  Object.keys(players)
+    .filter((n) => !IDLE.includes(n))
+    .map((n) => [n, EXPERT.includes(n) ? chooseWell : pickOnAHunch]),
+);
 
 // Nothing in view() may show what the player has not found out, and the shape holds.
 function checkView(v) {
@@ -499,6 +554,7 @@ function play(name, seed) {
   r.stars = v.end.stars;
   r.met = Object.fromEntries(v.end.goals.map((g) => [g.id, g.met]));
   r.choices = memo.choices ?? [];
+  r.followed = memo.followed ?? [];
   r.hash = r.hash.digest("hex");
   return r;
 }
@@ -513,7 +569,7 @@ const starsOf = (name) => results[name].map((r) => r.stars);
 const metShare = (name, id) => shareOf(results[name], (r) => r.met[id]);
 
 console.log(
-  `\nplayer           stars  0/1/2/3      full right cost  right wrong lost   cost  cards  ai/checks/half/fix/wrong  lessons`,
+  `\nplayer             stars  0/1/2/3      full right cost  right wrong lost   cost  cards  ai/checks/half/fix/wrong  lessons`,
 );
 for (const [name, rs] of Object.entries(results)) {
   const s = starsOf(name);
@@ -522,123 +578,157 @@ for (const [name, rs] of Object.entries(results)) {
   const pct = (id) => `${Math.round(metShare(name, id) * 100)}%`.padStart(5);
   const lessons = [...new Set(rs.map((r) => r.end.lesson.title))].join(" / ");
   console.log(
-    `  ${name.padEnd(15)}${mean(s).toFixed(2).padStart(5)}  ${spread.join("/").padEnd(12)}${pct("full")}${pct("right")}${pct("cost")}${avg((r) => r.end.right)}${avg((r) => r.end.wrong)}${avg((r) => r.end.lost)}${avg((r) => r.end.costs.total)}${avg((r) => r.cards, 1)}  ${["ai", "checking", "halfTime", "fixing", "mistakes"].map((k) => Math.round(mean(rs.map((r) => r.end.costs[k])))).join("/")}  ${lessons}`,
+    `  ${name.padEnd(17)}${mean(s).toFixed(2).padStart(5)}  ${spread.join("/").padEnd(12)}${pct("full")}${pct("right")}${pct("cost")}${avg((r) => r.end.right)}${avg((r) => r.end.wrong)}${avg((r) => r.end.lost)}${avg((r) => r.end.costs.total)}${avg((r) => r.cards, 1)}  ${["ai", "checking", "halfTime", "fixing", "mistakes"].map((k) => Math.round(mean(rs.map((r) => r.end.costs[k])))).join("/")}  ${lessons}`,
   );
 }
 
-// The balance targets of the one-sleigh game (ADR 0014): lazy play loses, a first game earns one or
-// two stars, and a careful game two or three.
+// The balance targets of the one-sleigh game (ADR 0014), each strategy played at the same skill:
+// both extremes lose, the good strategy wins, and a first game on it fills the sleigh now and then.
 const starShare = (name, test) => shareOf(starsOf(name), test);
+const avgStars = (name) => mean(starsOf(name));
+const pc = (x) => `${Math.round(x * 100)}%`;
+for (const name of IDLE)
+  assert(
+    starShare(name, (s) => s === 3) === 0 &&
+      starShare(name, (s) => s <= 1) >= 0.6,
+    `${name}: never three stars, mostly 0 or 1`,
+  );
+const firstThree = starShare("first", (s) => s === 3);
 assert(
-  starShare("automateIdle", (s) => s <= 1) >= 0.9,
-  "everything on Automate, untouched: 0 or 1 star in nearly every game",
+  starShare("first", (s) => s === 0) < 0.1 &&
+    starShare("first", (s) => s >= 2) >= 0.6,
+  "a first-timer on the good strategy: rarely no star, two or more in most games",
 );
 assert(
-  starShare("assistIdle", (s) => s === 1) >= 0.5 &&
-    starShare("assistIdle", (s) => s >= 2) <= 0.25 &&
-    starShare("assistIdle", (s) => s === 3) === 0,
-  "Assist, untouched: 1 star typical, 2 rare",
-);
-assert(
-  starShare("byHandIdle", (s) => s <= 1) >= 0.9,
-  "by hand, untouched: 0 or 1 star",
-);
-const sensible = mean(starsOf("sensible"));
-const three = starShare("sensible", (s) => s === 3);
-assert(
-  starShare("sensible", (s) => s === 0) <= 0.05 &&
-    starShare("sensible", (s) => s >= 2) >= 0.8,
-  `a sensible player earns two stars or more in at least 80% of games (${sensible.toFixed(2)})`,
-);
-assert(
-  three >= 0.35 && three <= 0.7,
-  `a sensible player earns three stars in about half of games (${Math.round(three * 100)}%)`,
-);
-// A first game played on the tour's advice, slowly and imperfectly, ends with a star or two; playing
-// well is worth about one more.
-const first = mean(starsOf("firstTimer"));
-const firstTwo = starShare("firstTimer", (s) => s >= 2);
-assert(
-  starShare("firstTimer", (s) => s === 0) < 0.1,
-  "a first-timer ends with no star in under one game in ten",
-);
-assert(
-  firstTwo >= 0.4 && firstTwo <= 0.85,
-  `a first-timer earns two stars or more in about half of games (${Math.round(firstTwo * 100)}%)`,
-);
-assert(
-  sensible - first >= 0.5 && sensible - first <= 1.3,
-  `playing well again is worth about one star (${first.toFixed(2)} to ${sensible.toFixed(2)})`,
-);
-assert(
-  starShare("careless", (s) => s <= 1) >= 0.6 &&
-    mean(starsOf("careless")) <= first - 0.4,
-  "a careless first-timer mostly ends with 0 or 1 star",
-);
-// Both ends lose, the middle wins.
-assert(
-  mean(starsOf("checkAll")) <= sensible - 0.5 &&
-    shareOf(results.checkAll, (r) => !r.met.cost || !r.met.full) >= 0.75,
-  "checking everything costs a star through the cost goal or a held-up sleigh",
-);
-assert(
-  mean(starsOf("checkFew")) <= sensible - 0.5 &&
-    metShare("checkFew", "right") <= 0.25,
-  "checking only a few costs the mistakes star",
+  metShare("first", "full") >= 0.3 && metShare("first", "full") <= 0.55,
+  `a first-timer on the good strategy fills the sleigh in a third to a half of games (${pc(metShare("first", "full"))})`,
 );
 warn(
-  mean(starsOf("alwaysGuess")) <= sensible,
+  firstThree >= 0.1 && firstThree <= 0.25,
+  `a first-timer on the good strategy earns three stars in 10 to 25% of games (${pc(firstThree)})`,
+);
+assert(
+  firstThree <= 0.3,
+  `a first-timer earns three stars in under 30% of games (${pc(firstThree)})`,
+);
+// Checking everything loses mainly through its cost, at either skill.
+for (const name of ["firstCheckAll", "expertCheckAll"])
+  assert(
+    1 - metShare(name, "cost") >= 0.6,
+    `${name} breaks the cost limit in most games (${pc(1 - metShare(name, "cost"))})`,
+  );
+assert(
+  starShare("firstCheckAll", (s) => s < 3) >= 0.85 &&
+    starShare("firstCheckAll", (s) => s === 3) < 0.05,
+  "a first-timer checking everything loses a star in nearly every game",
+);
+assert(
+  1 - metShare("firstCheckFew", "right") > 0.5 &&
+    1 - metShare("expertCheckFew", "right") > 0.75,
+  "checking only a few loses the mistakes star in most games",
+);
+const expertThree = starShare("expert", (s) => s === 3);
+warn(
+  expertThree >= 0.6,
+  `an expert on the good strategy earns three stars in 60% of games or more (${pc(expertThree)})`,
+);
+assert(
+  expertThree >= 0.45 && avgStars("expert") >= avgStars("first"),
+  `an expert on the good strategy earns three stars in about half of games or more (${pc(expertThree)})`,
+);
+for (const name of ["expertCheckAll", "expertAutomate", "expertCheckFew"])
+  assert(
+    starShare(name, (s) => s === 3) <= 0.15 &&
+      avgStars(name) <= avgStars("expert") - 0.5,
+    `${name}: three stars in at most 15% of games, well behind the good strategy`,
+  );
+for (const name of ["firstCheckAll", "firstCheckFew"])
+  assert(
+    avgStars(name) <= avgStars("first") - 0.4,
+    `${name} scores well behind the good strategy at the same skill`,
+  );
+assert(
+  avgStars("firstAutomate") < avgStars("first") &&
+    starShare("firstAutomate", (s) => s === 3) < firstThree,
+  "a first-timer on Automate everywhere scores below the good strategy",
+);
+assert(
+  starShare("careless", (s) => s <= 1) >= 0.6,
+  "a careless first-timer mostly ends with 0 or 1 star",
+);
+// Never resting costs a first-timer about a star; an expert, a fraction of one.
+assert(
+  avgStars("first") - avgStars("firstNeverRests") >= 0.5,
+  `never resting costs a first-timer a star (${avgStars("firstNeverRests").toFixed(2)} against ${avgStars("first").toFixed(2)})`,
+);
+warn(
+  avgStars("expert") - avgStars("expertNeverRests") >= 0.5,
+  "never resting costs an expert a star",
+);
+// Doing what the wrong-gift lines say never makes the game worse.
+assert(
+  avgStars("firstFollows") >= avgStars("first") - 0.05,
+  `following the wrong-gift advice scores no worse (${avgStars("firstFollows").toFixed(2)} against ${avgStars("first").toFixed(2)})`,
+);
+warn(
+  avgStars("expertGuesses") <= avgStars("expert"),
   "asking about unclear wishes pays at least as well as guessing",
 );
-for (const name of ["sensible", "checkAll", "checkFew"])
+for (const name of ["expert", "expertCheckAll", "expertCheckFew"])
   for (const r of results[name])
     assert(
       r.cards >= 2 && r.cards <= 4,
       `${name} seed: ${r.cards} decisions, two to four in a game`,
     );
-// An elf working without rest burns out about once a half: by hand every elf works all game.
+// An elf by hand, never rested, burns out once or twice a game; a first-timer who rests elves when
+// they turn red sees about one burnout a game.
 const perElf = mean(results.byHandIdle.map((r) => r.burnouts.length / 8));
 const firstAt = mean(
   results.byHandIdle.flatMap((r) => Object.values(r.firstBurnout)),
 );
+const firstBurnouts = mean(results.first.map((r) => r.burnouts.length));
 console.log(
-  `\nburnouts by hand, untouched: ${perElf.toFixed(2)} an elf a game, the first at ${firstAt.toFixed(0)} s on average`,
+  `\nburnouts by hand, untouched: ${perElf.toFixed(2)} an elf a game, the first at ${firstAt.toFixed(0)} s on average; first-timer ${firstBurnouts.toFixed(1)} a game`,
 );
 assert(
-  perElf >= 1.3 && perElf <= 2.7,
-  `an elf never rested burns out about once a half (${perElf.toFixed(2)} a game)`,
+  perElf >= 0.3 && perElf <= 1.5,
+  `an elf never rested burns out once or twice a game (${perElf.toFixed(2)} a game)`,
+);
+assert(
+  firstBurnouts <= 1.5,
+  `a first-timer who rests red elves burns out about once a game (${firstBurnouts.toFixed(1)})`,
 );
 // Whenever a first-timer's line stops or a pile fills, the page points at what would free it within
 // about 5 seconds.
-const unhinted = Math.max(...results.firstTimer.map((r) => r.unhinted));
+const unhinted = Math.max(...results.first.map((r) => r.unhinted));
 assert(
   unhinted <= 5,
   `a first-timer's line stood stopped ${unhinted} s with nothing pointed at`,
 );
-// What asks for a first-timer's attention in each half, the half-time card counted in both: no more
-// than about one thing every 10 seconds.
+// What asks for a first-timer's attention in each half, the half-time card counted in both: at most
+// one thing every 15 seconds.
 for (const half of [0, 1]) {
   const calls = ["cards", "burnouts", "wrong"].map((k) =>
-    mean(results.firstTimer.map((r) => r.calls[half][k])),
+    mean(results.first.map((r) => r.calls[half][k])),
   );
   const all = sum(calls) + 1;
   const [cards, burnouts, wrong] = calls.map((n) => n.toFixed(1));
   console.log(
     `first-timer, half ${half + 1}: ${cards} decisions, ${burnouts} burnouts, ${wrong} wrong-gift lines and half-time, one every ${(HALF_SECONDS / all).toFixed(0)} s`,
   );
-  assert(all <= HALF_SECONDS / 10, `half ${half + 1} asks too often`);
+  assert(all <= HALF_SECONDS / 15, `half ${half + 1} asks too often`);
 }
 console.log(
-  `half-time picks (sensible): ${Object.entries(
-    Object.groupBy(results.sensible, (r) => r.halfTime),
+  `half-time picks (expert): ${Object.entries(
+    Object.groupBy(results.expert, (r) => r.halfTime),
   )
     .map(([k, rs]) => `${k} ${rs.length}`)
     .join(", ")}`,
 );
 console.log(
-  `decisions answered (sensible): ${Object.entries(
+  `decisions answered (expert): ${Object.entries(
     Object.groupBy(
-      results.sensible.flatMap((r) => r.choices),
+      results.expert.flatMap((r) => r.choices),
       (x) => x,
     ),
   )
@@ -652,7 +742,7 @@ for (const name of IDLE)
       "asked 0 of 2",
       "an untouched player asked no child",
     );
-for (const r of results.sensible) {
+for (const r of results.expert) {
   const escalate = r.end.practices.find((p) => p.id === "escalate");
   assert(escalate.used && /^asked [12] of 2$/.test(escalate.actions[0].figure));
   assert.strictEqual(
@@ -675,7 +765,7 @@ for (const r of results.sensible) {
     assert.strictEqual(Object.keys(b).join(), "id,name,icon");
   assert(r.end.blunderTotal >= r.end.blunders.length);
 }
-for (const name of ["sensible", "firstTimer"])
+for (const name of ["expert", "first", "firstFollows"])
   assert.strictEqual(
     play(name, 3).hash,
     play(name, 3).hash,
@@ -688,10 +778,10 @@ const children = new Set(
 assert(children.size >= 5 && children.has("Timmy"), [...children].join());
 
 // The end dial reads too little for few checks on automation, too much for checking everything, and
-// in between for the sensible player.
+// in between for the expert on the good strategy.
 const dial = (name) => results[name].map((r) => r.end.assurance);
 console.log(
-  `dial: ${["checkFew", "sensible", "checkAll"]
+  `dial: ${["expertCheckFew", "expert", "expertCheckAll"]
     .map(
       (n) =>
         `${n} ${Object.entries(Object.groupBy(dial(n), (a) => a.verdict))
@@ -701,20 +791,20 @@ console.log(
     .join("; ")}`,
 );
 assert(
-  shareOf(dial("checkFew"), (a) => a.verdict === "too little") >= 0.75,
+  shareOf(dial("expertCheckFew"), (a) => a.verdict === "too little") >= 0.75,
   "checking a few reads too little",
 );
 assert(
-  shareOf(dial("checkAll"), (a) =>
+  shareOf(dial("expertCheckAll"), (a) =>
     ["too much", "bottleneck"].includes(a.verdict),
   ) >= 0.75,
   "checking everything reads too much or a bottleneck",
 );
 warn(
-  shareOf(dial("sensible"), (a) => a.verdict === "about right") >= 0.5,
-  "the sensible player mostly reads about right",
+  shareOf(dial("expert"), (a) => a.verdict === "about right") >= 0.5,
+  "the expert on the good strategy mostly reads about right",
 );
-for (const a of dial("sensible"))
+for (const a of dial("expert"))
   assert.strictEqual(
     a.groups.reduce((n, g) => n + g.caught, 0),
     a.caught,

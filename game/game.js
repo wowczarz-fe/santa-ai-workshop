@@ -36,11 +36,7 @@
         : Math.floor(Math.random() * 4294967296))
     );
   }
-  const queueIds = [
-    ["letters", "clarify"],
-    ["orders"],
-    ["check", "pass", "rework"],
-  ];
+  const queueIds = [["letters"], ["orders"], ["check", "pass", "rework"]];
   const stationNames = ["LETTERS", "TOYS", "CHECKING"];
   let game,
     view,
@@ -69,7 +65,6 @@
     suppressClick = { elf: null, until: 0 },
     nativeDragElf = null;
   let openedCases = new Set(),
-    resolvedAt = -Infinity,
     ignoreClicksUntil = 0;
   let lastChoice = null,
     observedRight = 0,
@@ -222,13 +217,6 @@
       const caption = make("span", "mode-caption");
       caption.id = `mode${s}`;
       $(`controls${s}`).append(caption);
-    }
-    if (s === 0) {
-      const b = make("button", "small-action ask-toggle");
-      b.innerHTML = `${icon("ask")}<span class="toggle-label">Ask the child</span><span class="toggle-track" aria-hidden="true"><span class="toggle-knob"></span></span><span class="toggle-state" aria-hidden="true"></span>`;
-      b.dataset.action = "ask";
-      b.dataset.info = "action:ask";
-      addGroup("ask", b);
     }
     if (s === 2) {
       const sw = make("div", "switch");
@@ -544,7 +532,6 @@
     tourStep = null;
     lastCase = null;
     openedCases.clear();
-    resolvedAt = -Infinity;
     ended = false;
     lastWrong = null;
     lastArrival = null;
@@ -709,11 +696,6 @@
         trend.dataset.trend = q.trend || "";
         trend.setAttribute("aria-label", q.trend ? `Pile ${q.trend}` : "");
         node.classList.toggle("blocked", !!q.blocked);
-        // On a phone the ask pile hides while asking is off and nothing waits in it.
-        node.classList.toggle(
-          "asking-off",
-          id === "clarify" && !view.ask && !q.parcels.length,
-        );
         node.classList.toggle("full", q.parcels.length >= q.limit);
         node.querySelector("progress").value = q.progress;
         const change = rateChanges.get(id);
@@ -744,7 +726,7 @@
               `${p.big ? "big " : ""}${p.suspect ? "suspect " : ""}${p.suspect === "batch" ? "batch" : ""}`,
             );
             // Parcels: a big gift is the gold parcel with a "big" tag; others red or green.
-            item.innerHTML = ["letters", "clarify", "orders"].includes(id)
+            item.innerHTML = ["letters", "orders"].includes(id)
               ? Art.pile?.(id, index) ||
                 Art.icon(id === "orders" ? "parcel-r" : "env")
               : Art.icon(
@@ -784,23 +766,21 @@
         "aria-label",
         `${elf.name}, ${isFree(elf) ? "free to move" : isIdle(elf) ? "waiting for work" : elf.doing}, energy ${energy} of 100. Select to move.`,
       );
-      const role = elf.doing.includes("asking")
-        ? ["role-asking", "asking"]
-        : isFree(elf)
-          ? ["role-idle", "free to move", "free"]
-          : isIdle(elf)
-            ? ["role-idle", "waiting", "waiting"]
-            : elf.doing.includes("confirm")
-              ? ["role-confirming", "confirm"]
-              : elf.station === 3 || elf.resting
-                ? ["role-resting", "resting"]
-                : elf.doing.includes("reading")
-                  ? ["role-reading", "reading"]
-                  : elf.doing.includes("making")
-                    ? ["role-making", "making"]
-                    : elf.doing.includes("checking")
-                      ? ["role-checking", "checking"]
-                      : ["role-making", "working"];
+      const role = isFree(elf)
+        ? ["role-idle", "free to move", "free"]
+        : isIdle(elf)
+          ? ["role-idle", "waiting", "waiting"]
+          : elf.doing.includes("confirm")
+            ? ["role-confirming", "confirm"]
+            : elf.station === 3 || elf.resting
+              ? ["role-resting", "resting"]
+              : elf.doing.includes("reading")
+                ? ["role-reading", "reading"]
+                : elf.doing.includes("making")
+                  ? ["role-making", "making"]
+                  : elf.doing.includes("checking")
+                    ? ["role-checking", "checking"]
+                    : ["role-making", "working"];
       const doing = b.querySelector(".elf-doing");
       if (doing.dataset.icon !== role[0]) {
         doing.dataset.icon = role[0];
@@ -825,7 +805,6 @@
               checking: "p-glass",
               confirm: "p-confirming",
               watching: "p-watching",
-              asking: "p-asking",
               resting: "p-resting",
             }[role[1]] || "",
           ),
@@ -908,9 +887,6 @@
           String(view.checking === Number(b.dataset.checking)),
         ),
       );
-    const ask = document.querySelector('[data-action="ask"]');
-    ask.setAttribute("aria-pressed", String(view.ask));
-    ask.querySelector(".toggle-state").textContent = view.ask ? "On" : "Off";
     document.querySelector('[data-action="bypass"] .bypass-label').textContent =
       `Let through ${view.queues.check.parcels.length}`;
     const attention = attentionOf(view.vigilance.state);
@@ -1783,17 +1759,18 @@
     const said = /(\d+) wrong gift/.exec(o.scope || "");
     return said ? Number(said[1]) : c.affected.count;
   }
-  // Chips for an option: what it does (the first part of its scope), what it does to the run's
-  // goals, money, time, or why it is shut. An option with no price gets no money chip: what it
-  // loses is in its scope.
+  // Chips for an option: what it does (the first part of its scope without a figure, as the figures
+  // get chips of their own), what it does to the goals, money, time, risk, or why it is shut.
   function optionChips(c, o) {
     const recall = recallCount(c, o);
+    const parts = o.scope.split(/;\s*/).filter((part) => part !== o.goal);
     const does =
       recall !== null
         ? `${plural(recall, "wrong gift")} off the sleigh`
-        : o.scope.split(/;\s*/)[0];
+        : (parts.find((part) => !/\d/.test(part)) ?? parts[0]);
     const chips = [];
-    if (!o.available && o.why) chips.push(["chip-why", "", o.why]);
+    if (!o.available && o.why && !c.resolving)
+      chips.push(["chip-why", "", o.why]);
     if (does) chips.push(["chip-does", "", does]);
     if (o.goal)
       for (const part of o.goal.split(/,\s*/))
@@ -1808,22 +1785,18 @@
         "chip-time",
         "clock",
         o.seconds > view.run.leavesIn
-          ? "longer than the run"
+          ? "longer than the time left"
           : `${o.seconds} s`,
+      ]);
+    if (o.risk)
+      chips.push([
+        "chip-risk",
+        "wrong-gift",
+        `${Math.round(o.risk * 100)}% wrong`,
       ]);
     return chips;
   }
-  // The rules' names for each decision, by incident step or by kind.
-  const caseHeadings = {
-    source: "Faulty update",
-    made: "Faulty update's gifts",
-    aboard: "Wrong gifts on sleigh",
-    judge: "Checker unsure",
-    unclear: "Unclear wish",
-    pattern: "Repeated mistake",
-  };
-  const caseHeading = (c) =>
-    caseHeadings[c.step] || caseHeadings[c.kind] || "Decision";
+  const caseHeading = (c) => c.title || "Decision";
   // The decision cue is gold and pulses until its case is opened; a wrong gift caused by that
   // case going aboard makes it pulse again. Built once, so later frames change only its words.
   $("caseCue").innerHTML =
@@ -1838,7 +1811,7 @@
       cue.querySelector(".cue-icon").innerHTML = icon(art);
     }
     const verb = resolving ? `${Math.ceil(c.resolving.remaining)} s` : "Decide";
-    const name = resolving ? " in progress" : `: ${caseHeading(c)}`;
+    const name = resolving ? "\u00a0in progress" : `: ${caseHeading(c)}`;
     if (cue.querySelector(".cue-verb").textContent !== verb)
       cue.querySelector(".cue-verb").textContent = verb;
     if (cue.querySelector(".cue-name").textContent !== name)
@@ -1878,10 +1851,10 @@
       delete $("casePanel").dataset.anchorVisit;
       return;
     }
+    // A new decision waits behind the gold cue until the player opens it.
     if (lastCase !== c.id) {
       lastCase = c.id;
-      // The next step of an incident follows straight on from the answer to the last one.
-      caseOpen = c.kind === "incident" && performance.now() - resolvedAt < 1000;
+      caseOpen = false;
     }
     if (caseOpen) openedCases.add(c.id);
     paintCue(c);
@@ -1894,38 +1867,11 @@
     text("caseTitle", caseHeading(c));
     text("caseText", c.text);
     $("casePanel").dataset.kind = c.kind;
-    // Evidence as drawings: the child's words beside the toy the workshop made.
-    const evidence = $("caseEvidence");
-    const evidenceSignature = JSON.stringify(c.evidence);
-    if (evidence.dataset.signature !== evidenceSignature) {
-      evidence.dataset.signature = evidenceSignature;
-      evidence.replaceChildren();
-      const figure = (cls, label, art, name) => {
-        const node = make("figure", `evidence-figure ${cls}`);
-        node.append(make("span", "evidence-label", label));
-        if (art) node.insertAdjacentHTML("beforeend", art);
-        node.append(make("figcaption", "", name));
-        return node;
-      };
-      for (const e of c.evidence) {
-        const row = make("div", "evidence-item");
-        row.append(figure("evidence-wish", "Wish", "", `"${e.wish}"`));
-        if (e.wanted)
-          row.append(
-            figure("", "Wanted", toyArt(e.wanted.name), e.wanted.name),
-          );
-        const reading =
-          e.reading &&
-          (typeof e.reading === "string" ? e.reading : e.reading.name);
-        if (reading)
-          row.append(figure("", "AI reads", toyArt(reading), reading));
-        if (e.made)
-          row.append(
-            figure("evidence-made", "Made", toyArt(e.made.name), e.made.name),
-          );
-        evidence.append(row);
-      }
-    }
+    // The figure the decision turns on most, such as what the gift costs if wrong: the first of
+    // the rules' primary facts. The rest are behind the card's info button.
+    const stake = c.facts?.find((f) => f.primary);
+    text("caseFact", stake ? `${stake.label}: ${stake.value}` : "");
+    $("caseFact").hidden = !stake;
     // Options: large buttons with an icon, the label and chips for what each costs and does.
     const options = $("caseOptions");
     const ids = new Set(c.options.map((o) => o.id));
@@ -1942,21 +1888,10 @@
         options.append(b);
       }
       const icons = {
-        ship: "sleigh",
-        remake: "fixing",
         ask: "ask",
-        accept: "check",
-        investigate: "role-checking",
-        hold: "hand",
-        carryOn: "play",
-        install: "update",
-        test: "test",
-        skip: "play",
+        guess: "gift-unclear",
         rollback: "rollback",
         keep: "automate",
-        remakeAll: "fixing",
-        checkEach: "role-checking",
-        letGo: "let-through",
         bringBack: "rollback",
         leave: "sleigh",
       };
@@ -1986,10 +1921,7 @@
     }
     $("caseResolving").hidden = !c.resolving;
     if (c.resolving) {
-      text(
-        "caseProgressText",
-        `${Math.ceil(c.resolving.remaining)} seconds remaining`,
-      );
+      text("caseProgressText", `${Math.ceil(c.resolving.remaining)} s left`);
       $("caseProgress").value =
         1 - c.resolving.remaining / c.resolving.duration;
     }
@@ -2003,17 +1935,7 @@
       return $("wrongDelivery").hasAttribute("data-empty")
         ? $("sleighRight")
         : $("wrongDelivery");
-    if (c.kind === "unclear") return $("queue-clarify");
-    if (c.step === "made") {
-      const affected = new Set(c.affected.ids);
-      const queues = Object.values(view.queues)
-        .map((q) => ({
-          id: q.id,
-          count: q.parcels.filter((p) => affected.has(p.id)).length,
-        }))
-        .sort((a, b) => b.count - a.count);
-      if (queues[0]?.count) return $(`queue-${queues[0].id}`);
-    }
+    if (c.kind === "unclear") return $("queue-letters");
     return $("queue-check");
   }
   // What a wrong big gift costs against a wrong everyday one, from the rules' prices.
@@ -2045,10 +1967,7 @@
       return [
         "All evidence",
         [
-          // The whole game's time left is not the run's, so it stays out of view.
-          ...(view.case?.facts || [])
-            .filter((f) => f.label !== "Time left")
-            .map((f) => `${f.label}: ${f.value}.`),
+          ...(view.case?.facts || []).map((f) => `${f.label}: ${f.value}.`),
           ...(view.case?.options || []).map(
             (o) => `${o.label}: ${o.scope}${o.why ? ` (${o.why})` : ""}.`,
           ),
@@ -2081,7 +2000,6 @@
       const a = view.actions[parts[1]];
       return [
         {
-          ask: "Ask the child",
           bypass: "Let through",
           ai0: "AI at reading",
           ai1: "AI at toy-making",
@@ -2100,7 +2018,7 @@
             : `${q.parcels.length} of ${q.limit} waiting, ${Math.round(q.rate)} a minute going out.`,
           q.blocked
             ? `${cap(q.blocked)}.`
-            : ["letters", "clarify"].includes(parts[1])
+            : parts[1] === "letters"
               ? ""
               : bigGiftSentence(),
         ].filter(Boolean),
@@ -2352,7 +2270,7 @@
     }
     if (target.dataset.action) {
       const a = target.dataset.action;
-      perform(() => (a === "ask" ? game.setAsk(!view.ask) : game[a]()));
+      perform(() => game[a]());
       return;
     }
     if (
@@ -2365,9 +2283,17 @@
     }
     if (target.dataset.resolve) {
       // A double-click must not land on whatever sits under the closed panel.
-      resolvedAt = performance.now();
-      ignoreClicksUntil = resolvedAt + 400;
-      perform(() => game.resolve(view.case.id, target.dataset.resolve));
+      ignoreClicksUntil = performance.now() + 400;
+      const c = view.case,
+        option = c.options.find((o) => o.id === target.dataset.resolve);
+      // The card closes on an answer; the cue counts down an answer that takes time.
+      caseOpen = false;
+      perform(() => game.resolve(c.id, option.id));
+      // Asking takes time and says nothing until the answer comes back, so the line says so now.
+      if (view.case?.resolving && c.evidence[0]?.child)
+        sayResult(
+          `Asked ${c.evidence[0].child}: the answer comes in ${option.seconds} s.`,
+        );
       if (!document.activeElement?.offsetParent || target.disabled)
         returnFocus();
       return;

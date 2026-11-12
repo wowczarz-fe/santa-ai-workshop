@@ -775,7 +775,7 @@ main {
 #stationPicker .mistake-hint-tab {
   box-shadow: inset 0 -3px 0 #c64235;
 }
-/* Decision cards: title, the rules' text, evidence as drawings, options as large buttons */
+/* Decision cards: title, the rules' text, the figure at stake, options as large buttons */
 .case-panel.floating-panel {
   width: 440px;
   padding: 14px 16px;
@@ -799,53 +799,18 @@ main {
   font-size: 13px;
   line-height: 1.4;
 }
-.case-panel .case-evidence:empty {
-  display: none;
-}
-.case-panel .evidence-item {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 8px;
-  margin: 0 0 10px;
-  padding: 0;
-  border: 0;
-  background: none;
-}
-.case-panel .evidence-figure {
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  gap: 2px;
-  margin: 0;
-  padding: 6px 8px 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #f6f8f3;
-  text-align: center;
-}
-.case-panel .evidence-label {
+/* The figure the decision turns on, such as what the gift costs if wrong */
+.case-panel .case-fact {
   justify-self: start;
-  font-size: 10px;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: #5d7164;
-}
-.case-panel .evidence-figure .paper-toy {
-  width: 72px;
-  height: 58px;
-}
-.case-panel .evidence-figure figcaption {
+  width: fit-content;
+  margin: -4px 0 10px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--bc-gold-soft, #fbf0d3);
+  color: #6b4f12;
   font-size: 12px;
-  font-weight: bold;
-  line-height: 1.25;
-}
-.case-panel .evidence-wish figcaption {
-  align-self: center;
-  padding: 10px 0;
-  font:
-    italic 15px/1.3 Georgia,
-    serif;
+  font-weight: 700;
+  line-height: 19px;
 }
 .case-panel .case-options {
   display: grid;
@@ -906,6 +871,11 @@ main {
 .opt-chip .ui-icon {
   width: 12px;
   height: 12px;
+}
+.opt-chip.chip-risk {
+  background: #fbe9e5;
+  color: #9a3326;
+  font-weight: 700;
 }
 .opt-chip.chip-why {
   background: #fbe9e5;

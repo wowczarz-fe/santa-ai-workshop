@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=3c5ad2d-polish8" />
-    <link rel="stylesheet" href="paper.css?v=3c5ad2d-polish8" />
-    <link rel="stylesheet" href="polish.css?v=3c5ad2d-polish8" />
+    <link rel="stylesheet" href="style.css?v=review5" />
+    <link rel="stylesheet" href="paper.css?v=review5" />
+    <link rel="stylesheet" href="polish.css?v=review5" />
   </head>
   <body>
     <header>
@@ -62,9 +62,6 @@
         >
           <span class="goals-title" id="goalsTitle"></span>
         </div>
-        <button class="metric" data-help="budget">
-          <span>Budget left</span><strong id="budget"></strong>
-        </button>
         <div class="clock-box" data-info="clock" tabindex="0">
           <svg id="countdownRing" viewBox="0 0 40 40" aria-hidden="true">
             <circle cx="20" cy="20" r="16" />
@@ -77,26 +74,17 @@
             />
           </svg>
           <span>Until departure</span><strong id="clock"></strong
-          ><small id="pauseState"></small
-          ><button
-            class="info-button"
-            data-help="clock"
-            aria-label="About the clock"
-          >
-            i
-          </button>
+          ><small id="pauseState"></small>
         </div>
+        <button class="metric" id="money" data-help="budget">
+          <span>Money left</span><strong id="budget"></strong>
+        </button>
         <button id="pause" disabled>Pause</button
         ><button id="caseCue" class="case-cue" hidden>Decision waiting</button>
       </section>
       <div class="status-row">
-        <p id="status" role="status" aria-live="polite">
-          Drag an elf, or tap one then its destination.
-        </p>
-        <progress id="paceFill" max="1" value="0"></progress>
-        <button id="paceLabel" class="pace-label" data-help="pace"></button>
-        <button id="guidanceContinue" hidden>Continue playing</button
-        ><button
+        <p id="status" role="status" aria-live="polite"></p>
+        <button
           id="helpMove"
           data-help="movement"
           aria-label="How to move elves"
@@ -107,7 +95,7 @@
       <nav id="stationPicker" aria-label="Workshop stations">
         <button data-station-page="0" aria-pressed="true">Letters</button
         ><button data-station-page="1" aria-pressed="false">Toys</button
-        ><button data-station-page="2" aria-pressed="false">Checks</button
+        ><button data-station-page="2" aria-pressed="false">Checking</button
         ><button data-station-page="3" aria-pressed="false">
           Sleigh · cocoa
         </button>
@@ -116,7 +104,7 @@
         <section id="sleigh" class="station sleigh-column">
           <div class="column-heading">
             <span class="station-number">04</span>
-            <h2>SLEIGH <small id="runLabel"></small></h2>
+            <h2>SLEIGH</h2>
             <button
               class="info-button"
               data-help="sleigh"
@@ -140,7 +128,7 @@
             ><b id="arrivalLabel">Waiting for gifts</b
             ><span class="big-tag" id="arrivalBig" hidden>big</span>
           </div>
-          <button id="wrongDelivery" class="wrong-delivery" hidden>
+          <button id="wrongDelivery" class="wrong-delivery" data-empty>
             <span class="eyebrow">Last wrong gift</span
             ><span id="wrongToy" class="wrong-toy"></span><b id="wrongName"></b
             ><span class="big-tag" id="wrongBig" hidden>big</span
@@ -178,12 +166,11 @@
     </main>
     <dialog id="intro">
       <span class="eyebrow">Christmas Eve</span>
-      <h2>Make Christmas work.</h2>
-      <p>Santa uses AI to help the elves keep up.</p>
+      <h2>Find the balance.</h2>
       <p id="mission"></p>
       <p>
-        Move elves between the piles. Spend time and money checking where it
-        helps.
+        Check too little and wrong gifts go out. Check too much and the sleigh
+        leaves half full.
       </p>
 
       <!-- The look chooser is hidden: the polished look is the published one. ?look=paper still
@@ -211,12 +198,12 @@
       hidden
     >
       <div class="panel-head">
-        <span class="eyebrow">Walkthrough · clock paused</span>
+        <span class="eyebrow">Walkthrough</span>
       </div>
       <h3 id="tutorialTitle"></h3>
       <p id="tutorialText"></p>
       <div class="panel-actions">
-        <button id="continue" class="primary">Continue playing</button
+        <button id="continue">Not now</button
         ><button id="skipGuidance" class="link-button">Skip walkthrough</button>
       </div>
     </aside>
@@ -255,10 +242,6 @@
         <p id="caseProgressText"></p>
         <progress id="caseProgress" max="1" value="0"></progress>
       </div>
-      <div id="caseGuidance" hidden>
-        <small id="caseGuidanceText"></small
-        ><button id="caseContinue">Continue playing</button>
-      </div>
     </aside>
     <aside id="infoPopover" class="info-popover" role="tooltip" hidden>
       <b id="infoTitle"></b>
@@ -269,6 +252,7 @@
       class="break-dialog"
       tabindex="-1"
       aria-labelledby="breakTitle"
+      closedby="none"
     >
       <div class="break-hero">
         <div id="breakScene" class="break-scene" aria-hidden="true"></div>
@@ -284,45 +268,27 @@
         <span class="break-paused">Clock paused</span>
       </div>
       <div class="break-body">
-        <section class="next-cargo" aria-labelledby="nextCargoTitle">
+        <section class="break-result" aria-label="How it went">
+          <div id="breakGoals" class="goal-slots"></div>
+          <div id="breakLines" class="break-lines"></div>
+        </section>
+        <div class="break-choose">
           <span
             id="nextCargoIcon"
             class="next-cargo-icon"
             aria-hidden="true"
           ></span>
-          <div class="next-cargo-copy">
-            <span class="eyebrow">Next sleigh</span>
-            <h3 id="nextCargoTitle" tabindex="-1"></h3>
+          <div>
+            <h3 id="breakText" tabindex="-1"></h3>
             <p id="nextCargoText"></p>
           </div>
-          <strong id="nextCargoTarget" class="next-cargo-target"></strong>
-        </section>
-        <section class="break-result" aria-labelledby="breakResultTitle">
-          <div class="card-heading">
-            <h3 id="breakResultTitle"></h3>
-            <span id="breakCounts"></span>
-          </div>
-          <div id="breakGoals" class="goal-slots"></div>
-          <p class="break-note">
-            <span id="breakMissed"></span><span id="breakBonus"></span>
-          </p>
-        </section>
-        <div class="break-detail">
-          <section class="break-causes" aria-labelledby="breakCausesTitle">
-            <h3 id="breakCausesTitle">Where the wrong gifts came from</h3>
-            <ol id="breakCauses" class="cause-list"></ol>
-          </section>
-          <section
-            id="breakLast"
-            class="break-last"
-            aria-label="Last wrong gift"
-          >
-            <div id="breakSlips"></div>
-            <p id="breakMore"></p>
-          </section>
         </div>
-        <h3 id="breakText" class="break-choose"></h3>
         <div id="breakOptions" class="break-options"></div>
+        <details id="breakLast" class="break-detail">
+          <summary>All causes</summary>
+          <div id="breakSlips"></div>
+          <ol id="breakCauses" class="cause-list"></ol>
+        </details>
       </div>
     </dialog>
     <dialog id="report" class="end-screen" aria-labelledby="resultTitle">
@@ -331,20 +297,31 @@
         ><button id="closeReport">View workshop</button>
       </div>
       <div class="end-grid">
-        <section class="end-hero" aria-labelledby="resultTitle">
+        <section class="end-hero end-wide" aria-labelledby="resultTitle">
           <div id="endScene" class="end-scene" aria-hidden="true"></div>
           <div class="end-score">
             <strong id="endStars"></strong>
             <div class="end-score-copy">
               <h2 id="resultTitle"></h2>
-              <p><b id="endPoints"></b> <span id="personalBest"></span></p>
+              <p id="lessonText" class="end-lesson"></p>
+              <p class="end-points">
+                <b id="endPoints"></b> <span id="personalBest"></span>
+              </p>
             </div>
           </div>
-          <div id="endRuns" class="end-runs"></div>
+        </section>
+        <section
+          id="practices"
+          class="end-card end-wide"
+          hidden
+          aria-labelledby="practicesTitle"
+        >
+          <h3 id="practicesTitle">Real-world practices in this game</h3>
+          <div id="practiceTiles"></div>
         </section>
         <section
           id="assurance"
-          class="end-card dial-card"
+          class="end-card end-wide dial-card"
           hidden
           aria-labelledby="assuranceVerdict"
         >
@@ -357,53 +334,30 @@
           <div class="assurance-dial" role="img" id="assuranceDial"></div>
           <div class="assurance-costs">
             <div class="cost-under">
-              <span>Unchecked mistakes and late fixes</span
-              ><strong id="underCost"></strong><em>actual</em>
+              <span>Wrong gifts that skipped a check</span
+              ><strong id="underCost"></strong>
             </div>
             <div class="cost-over">
-              <span>Over-checking</span><strong id="overCost"></strong
+              <span>Extra checks</span><strong id="overCost"></strong
               ><em>estimate</em>
             </div>
           </div>
           <p id="assuranceText"></p>
         </section>
         <section
-          id="practices"
-          class="end-card end-wide"
-          hidden
-          aria-labelledby="practicesTitle"
+          id="endCausesBox"
+          class="end-card end-wide end-causes"
+          aria-labelledby="endCausesTitle"
         >
-          <h3 id="practicesTitle">What you just did, in the real world</h3>
-          <div id="practiceTiles"></div>
-          <div class="practices-foot">
-            <p>
-              Deciding how much assurance is worth it is what Frontier Economics
-              does
-            </p>
-            <a href="#article" class="article-link">Read the article</a>
-          </div>
+          <h3 id="endCausesTitle">Costliest causes</h3>
+          <ol id="endCauses" class="cause-list"></ol>
         </section>
-        <div class="end-stack">
-          <div id="resultSummary" class="end-tiles"></div>
-          <section class="end-card lesson">
-            <h3 id="lessonTitle"></h3>
-            <p id="lessonText"></p>
-          </section>
-          <section
-            id="endCausesBox"
-            class="end-card"
-            aria-labelledby="endCausesTitle"
-          >
-            <h3 id="endCausesTitle">Where the wrong gifts came from</h3>
-            <ol id="endCauses" class="cause-list"></ol>
-          </section>
-        </div>
-        <section class="end-card end-account" aria-labelledby="accountTitle">
-          <h3 id="accountTitle">The Christmas account</h3>
-          <table id="account"></table>
-          <p class="account-note">
-            Prevented losses estimate what caught mistakes would have cost.
-          </p>
+        <section
+          class="end-card end-wide end-account"
+          aria-labelledby="accountTitle"
+        >
+          <h3 id="accountTitle" class="visually-hidden">The money</h3>
+          <dl id="account" class="account-row"></dl>
         </section>
         <section
           id="checkingPaid"
@@ -412,21 +366,35 @@
           aria-labelledby="checkingPaidTitle"
         >
           <h3 id="checkingPaidTitle">Was checking worth it?</h3>
-          <div id="assuranceGroups" class="assurance-groups"></div>
-          <p id="noChecks"></p>
-          <details class="estimate-help">
-            <summary>How these estimates work</summary>
-            <p>
-              Without checks assumes every wrong toy made would have shipped. It
-              is not a simulated alternative policy. Prevented losses estimate
-              the cost of caught mistakes. Estimated overchecking combines
-              checking spend above estimated losses prevented with the estimated
-              value of gifts left waiting for checks. Underchecking counts wrong
-              gifts delivered without a check and their late recall or remake
-              costs. Mistakes missed by a checker who looked are included in
-              wrong gifts shipped, not in this underchecking cost.
+          <p id="checkingAnswer" class="checking-answer"></p>
+          <details class="checking-detail">
+            <summary>By kind of gift</summary>
+            <div id="assuranceGroups" class="assurance-groups"></div>
+            <p class="estimate-help">
+              Mistakes stopped: about what the wrong gifts caught would have
+              cost. Extra checks: checks that cost more than they stopped, and
+              gifts held up while every gift was checked.
             </p>
           </details>
+        </section>
+        <section class="end-wide" aria-label="The four runs">
+          <div id="endRuns" class="end-runs"></div>
+        </section>
+        <section class="end-card end-wide end-offer" aria-label="Frontier">
+          <p>
+            Deciding how much assurance is worth it is what Frontier Economics
+            does.
+          </p>
+          <div class="end-offer-links">
+            <a href="#article" class="article-link">Read the article</a>
+            <a
+              class="explore-link"
+              href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Data Science & AI at Frontier</a
+            >
+          </div>
         </section>
         <section
           class="end-card end-wide collection"
@@ -436,15 +404,6 @@
           <div id="blunderCollection"></div>
         </section>
       </div>
-      <p class="end-foot">
-        <a
-          class="explore-link"
-          href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Explore Data Science & AI at Frontier</a
-        >
-      </p>
       <div class="end-actions">
         <button id="replay" class="primary"></button
         ><button id="copyResult">Copy result</button>
@@ -468,10 +427,10 @@
     <div id="celebration" class="celebration" aria-hidden="true"></div>
     <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
-    <script src="workshop.js?v=3c5ad2d-polish8"></script>
-    <script src="paper-art.js?v=3c5ad2d-polish8"></script>
-    <script src="polish-art.js?v=3c5ad2d-polish8"></script>
-    <script src="shared-art.js?v=3c5ad2d-polish8"></script>
-    <script src="game.js?v=3c5ad2d-polish8"></script>
+    <script src="workshop.js?v=review5"></script>
+    <script src="paper-art.js?v=review5"></script>
+    <script src="polish-art.js?v=review5"></script>
+    <script src="shared-art.js?v=review5"></script>
+    <script src="game.js?v=review5"></script>
   </body>
 </html>

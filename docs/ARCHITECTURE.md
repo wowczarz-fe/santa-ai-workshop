@@ -423,7 +423,7 @@ for example `"Amir wrote back: a cuddly bat."` or
 { stars: 2, goals: [ ...three goals with their final figures... ],
   right: 145, wrong: 3, lost: 0,
   costs: { ai: 141, checking: 126, halfTime: 100, fixing: 76, mistakes: 215, prevented: 900, total: 658, limit: 850 },
-  headline: "A good Christmas.",
+  headline: "Careful, but slow.",
   lesson: { title: "Checking in the right places", text: "Checks went where mistakes were likeliest and dearest." },
   assurance: { ... }, checkingAnswer: "Yes: £126 of checks stopped about £900 of wrong gifts.",
   practices: [ ...five practices... ], causes: [ ...up to three... ],
@@ -438,13 +438,13 @@ for example `"Amir wrote back: a cuddly bat."` or
   final cost so far (the cost goal's figure); `prevented` an estimate of what the mistakes checking
   stopped would have cost; the page labels it as an estimate.
 - `headline` is a few words without figures and `lesson` `{ title, text }` the one lesson under
-  it. Both follow one comparison of the game's losses in its own money: "Fast, but wrong." when the
-  wrong gifts delivered cost most, "Careful, but slow." when gifts held back by checking did, "Too
-  slow for the letters." when other lost letters did, each only when its loss mattered (below);
-  "Too tired to keep up." replaces the second and third when tiredness took a quarter or more of
-  the working time at the station that held the line up. "Christmas, carefully delivered." is for
-  three stars, and "A good Christmas." for any other game where no loss mattered; its lesson then
-  names the largest loss as a tip.
+  it. The lesson names one loss, and only a loss that cost a goal: the sleigh fell short, tiredness
+  held it up, wrong gifts cost the Few mistakes goal or much of a broken cost limit, or the cost
+  limit broke. The headline names the same loss: "Careful, but slow." (short), "Too tired to keep
+  up." (tiredness), "Fast, but wrong." (wrong gifts on a full sleigh), "Too many wrong gifts." (wrong
+  gifts, sleigh short), "Wrong gifts cost too much." (wrong gifts within the allowed number but
+  over the cost limit) or "Over budget." (cost). "Christmas, carefully delivered." is for three
+  stars, and the lesson is then a tip.
 - `checkingAnswer` is one sentence answering "Was checking worth it?": yes or no with what the
   checks cost and about what they stopped. It follows the dial's verdict.
 - `blunders` is `[{ id, name, icon }]`: the absurd wrong toys this game produced, caught or not.
@@ -537,14 +537,16 @@ beforehand: a risky batch can happen to come out clean.
   headline, the dial and the lesson follow the largest loss that passes its gate. When the
   bottleneck is the largest, `verdict` is `"bottleneck"` and `text` names the gifts held back and
   the fix: rest the checkers with cocoa when `tired`, else move an elf to checking. When
-  over-checking is the largest, `verdict` is `"too much"`.
+  over-checking is the largest, `verdict` is `"too much"`. When checking stayed on a few all
+  game the verdict is never `"too much"`: the player checked as little as the game allows.
 - A group is `{ id, name, icon, parcels, wrongMade, checked, caught, shipped, checkCost, prevented, shippedCost, shippedUnchecked, shippedUncheckedCost, verdict, text }`
   for `id` `"everyday"`, `"big"` or `"unclear"` (the two unclear letters; one that is also big
   counts as big), for example
   `{ id: "big", name: "Big gifts", icon: "📦", parcels: 7, wrongMade: 6, checked: 6, caught: 5, shipped: 0, checkCost: 12, prevented: 500, shippedCost: 0, shippedUnchecked: 0, shippedUncheckedCost: 0, verdict: "paid", text: "Checking 6 big gifts cost £12 and stopped about £500 of wrong gifts." }`.
   `verdict` is `"left exposed"`, `"cost more than it saved"` or `"paid"`.
-- `end.lesson` agrees with the verdict: a lesson about how much was checked, or about the
-  bottleneck, takes its title from `assurance`.
+- `end.lesson` and the verdict agree: a "Too much checking" or "Too little checking" lesson puts the
+  needle on that side, and a "Checking in the right places" tip gives way to the verdict's own
+  title when the dial reads otherwise.
 
 ## Behaviour the page relies on
 

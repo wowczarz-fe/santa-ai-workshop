@@ -735,6 +735,63 @@ console.log(
     .map(([k, xs]) => `${k} ${xs.length}`)
     .join(", ")}`,
 );
+console.log(
+  `advice followed (first-timer): ${Object.entries(
+    Object.groupBy(
+      results.firstFollows.flatMap((r) => r.followed ?? []),
+      (x) => x,
+    ),
+  )
+    .map(([k, xs]) => `${k} ${xs.length}`)
+    .join(", ")}`,
+);
+// The end screen agrees with itself: the headline names the lesson's loss, a lesson about a loss
+// shows only when that loss cost a goal, the dial sits on the side a checking lesson names, and it
+// never reads too much checking when checking stayed on a few all game.
+const HEADLINES = {
+  slow: ["Careful, but slow."],
+  tired: ["Too tired to keep up."],
+  wrong: [
+    "Fast, but wrong.",
+    "Wrong gifts cost too much.",
+    "Too many wrong gifts.",
+  ],
+  cost: ["Over budget."],
+};
+const STAYED_ON_A_FEW = [
+  "byHandIdle",
+  "automateIdle",
+  "assistIdle",
+  "expertCheckFew",
+  "firstCheckFew",
+  "careless",
+];
+for (const [name, rs] of Object.entries(results))
+  for (const r of rs) {
+    const e = r.end;
+    // Too much checking either held the sleigh up or broke the cost limit.
+    const losses =
+      e.lesson.title === "Too much checking"
+        ? ["slow", "cost"]
+        : [LOSSES[e.lesson.title]];
+    const why = `${name}: "${e.headline}" over "${e.lesson.title}" (${e.stars} stars)`;
+    assert(losses[0], `lesson "${e.lesson.title}" names a loss`);
+    if (e.stars === 3) {
+      assert.strictEqual(e.headline, "Christmas, carefully delivered.", why);
+      continue;
+    }
+    const loss = losses.find((l) => HEADLINES[l].includes(e.headline));
+    assert(loss, why);
+    if (loss === "slow" || loss === "tired") assert(!r.met.full, why);
+    if (loss === "wrong") assert(!r.met.right || !r.met.cost, why);
+    if (loss === "cost") assert(!r.met.cost, why);
+    if (e.lesson.title === "Too much checking")
+      assert.strictEqual(e.assurance.verdict, "too much", why);
+    if (e.lesson.title === "Too little checking")
+      assert.strictEqual(e.assurance.verdict, "too little", why);
+    if (STAYED_ON_A_FEW.includes(name))
+      assert.notStrictEqual(e.assurance.verdict, "too much", why);
+  }
 for (const name of IDLE)
   for (const r of results[name])
     assert.strictEqual(

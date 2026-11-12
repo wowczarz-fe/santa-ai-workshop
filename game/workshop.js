@@ -161,6 +161,35 @@ const WRONG_CAUSES = {
 // Seconds Assist or risky checking must run before the end summary counts it as used, so one click
 // does not earn the practice.
 const USED_FOR = 10;
+// The loss each end lesson names: slow (the sleigh fell short), tired (tiredness held it up), wrong
+// (wrong gifts cost a goal), cost (the cost limit broke) or none (a tip after three stars). The
+// headline is chosen from the same loss, so the two always agree.
+const LOSSES = {
+  "By hand is careful but slow": "slow",
+  "Checking was the bottleneck": "slow",
+  "Too much checking": "slow",
+  "Letters piled up": "slow",
+  "Piles grew where nobody was working": "slow",
+  "Almost there": "slow",
+  "Tired checkers held up the line": "tired",
+  "Tired elves let letters pile up": "tired",
+  "Burnouts slowed the line": "tired",
+  "A decision waited too long": "wrong",
+  "Guesses went wrong": "wrong",
+  "Big gifts the AI got wrong": "wrong",
+  "A faulty update ran unchecked": "wrong",
+  "Checkers stopped looking": "wrong",
+  "Let through unchecked": "wrong",
+  "Tired elves slipped": "wrong",
+  "Too little checking": "wrong",
+  "The faulty update ran too long": "wrong",
+  "Tired checkers miss mistakes": "wrong",
+  "Too many wrong gifts": "wrong",
+  "Over the cost limit": "cost",
+  "Checking in the right places": "none",
+  "The faulty update, handled": "none",
+  "Santa leaves happy": "none",
+};
 // The lesson under the checking dial: what to do next time, so it never repeats the dial's figures.
 const CHECKING_ADVICE = {
   "too little":
@@ -2109,33 +2138,41 @@ class Workshop {
     costs.limit = COST_LIMIT;
     const goals = this.goals();
     const stars = goals.filter((g) => g.met).length;
-    // The headline, the dial and the lesson follow the largest loss that mattered; with none, the
-    // lesson still names the largest loss as a tip.
+    // The lesson names the loss that cost a goal; the headline names the same loss, and a lesson
+    // about how much was checked moves the dial to the same side.
     const biggest = this.biggestLoss(right, mistakes, true);
-    const assurance = this.assurance(biggest);
-    // Tiredness slowed the station that held the line up: the headline and lesson name it.
-    const worn =
-      (biggest === "held" && assurance.tired) ||
-      (biggest === "lost" && this.tiredAt(this.longestHolding()));
-    let lesson = this.lesson(
+    const { loss, ...lesson } = this.lesson(
       stars,
       right,
       costs,
       biggest ?? this.biggestLoss(right, mistakes),
     );
-    // A lesson about how much was checked takes its title from the assurance verdict, so the two
-    // always agree, and says what to do next time while the dial gives the figures.
+    const lean = {
+      "Too much checking": "too much",
+      "Too little checking": "too little",
+    }[lesson.title];
+    const assurance = this.assurance(biggest, lean);
+    // A checking lesson without words of its own takes the advice for its verdict; a tip that
+    // checking went in the right places gives way to what the dial found.
     const titles = {
       "too little": "Too little checking",
       "about right": "Checking in the right places",
       "too much": "Too much checking",
       bottleneck: "Checking was the bottleneck",
     };
-    if (Object.values(titles).includes(lesson.title))
-      lesson = {
+    const verdictOf = Object.fromEntries(
+      Object.entries(titles).map(([v, t]) => [t, v]),
+    );
+    if (!lesson.text && verdictOf[lesson.title])
+      lesson.text = CHECKING_ADVICE[verdictOf[lesson.title]];
+    if (
+      lesson.title === titles["about right"] &&
+      assurance.verdict !== "about right"
+    )
+      Object.assign(lesson, {
         title: titles[assurance.verdict],
         text: CHECKING_ADVICE[assurance.verdict],
-      };
+      });
     this.end = {
       stars,
       goals,
@@ -2143,19 +2180,7 @@ class Workshop {
       wrong: wrongGifts.length,
       lost: this.lost,
       costs,
-      headline:
-        stars === 3
-          ? "Christmas, carefully delivered."
-          : !biggest
-            ? "A good Christmas."
-            : worn
-              ? "Too tired to keep up."
-              : {
-                  wrong: "Fast, but wrong.",
-                  over: "Careful, but slow.",
-                  held: "Careful, but slow.",
-                  lost: "Too slow for the letters.",
-                }[biggest],
+      headline: this.headline(stars, loss, goals),
       lesson,
       assurance,
       checkingAnswer: this.checkingAnswer(assurance),
@@ -2164,6 +2189,23 @@ class Workshop {
       blunders: [...this.blunders.values()].map((b) => ({ ...b })),
       blunderTotal: BLUNDER_TOTAL,
     };
+  }
+
+  // A few words for the end, naming the same loss as the lesson.
+  headline(stars, loss, goals) {
+    if (stars === 3) return "Christmas, carefully delivered.";
+    const met = (id) => goals.find((g) => g.id === id).met;
+    return {
+      slow: "Careful, but slow.",
+      tired: "Too tired to keep up.",
+      wrong: met("full")
+        ? "Fast, but wrong."
+        : met("right")
+          ? "Wrong gifts cost too much."
+          : "Too many wrong gifts.",
+      cost: "Over budget.",
+      none: "Nearly there.",
+    }[loss];
   }
 
   // Whether tiredness took TIRED_SHARE or more of station s's working time this game.
@@ -2338,7 +2380,7 @@ class Workshop {
   //   verdict is "bottleneck" instead, whatever the position.
   // The texts tell how this game turned out, not whether a choice was wise beforehand: a risky batch
   // can happen to come out clean. Estimated amounts (what checks prevented) read "about".
-  assurance(biggest = null) {
+  assurance(biggest = null, lean = null) {
     const a = this.assure;
     const groups = GROUPS.map((g) => {
       const t = a.groups[g.id];
@@ -2400,10 +2442,16 @@ class Workshop {
     const at = lost ? 0.5 + (overCost / lost - 0.5) * weight : 0.5;
     // When gifts held back by checking every parcel were the game's largest loss the verdict is too
     // much, and the needle moves into that zone if the money alone left it short of it.
-    const position =
-      Math.round(
-        (biggest === "over" ? Math.max(at, ASSURANCE.much + 0.05) : at) * 100,
-      ) / 100;
+    // On a few checks all game the player checked as little as the game allows, so the needle stays
+    // out of the too-much zone; a lesson about checking too much or too little moves it to that side.
+    const lowest = !this.stats.checking[1] && !this.stats.checking[2];
+    let to =
+      biggest === "over" || lean === "too much"
+        ? Math.max(at, ASSURANCE.much + 0.05)
+        : at;
+    if (lean === "too little") to = Math.min(to, ASSURANCE.little - 0.05);
+    if (lowest) to = Math.min(to, ASSURANCE.much);
+    const position = Math.round(to * 100) / 100;
     const verdict =
       biggest === "held"
         ? "bottleneck"
@@ -2717,32 +2765,43 @@ class Workshop {
   // One lesson from what the player did, biggest cause first, in the terms of the end account.
   // biggest is the game's largest loss (biggestLoss): lost letters or gifts held at checking come
   // before any lesson about wrong gifts, so the lesson names what decided the game.
+  // The one lesson under the headline, with the loss it names (LOSSES): a lesson about a loss shows
+  // only when that loss cost a goal, so it never blames what went well. With three stars it is a tip.
   lesson(stars, right, costs, biggest = "wrong") {
     const st = this.stats;
     const d = this.duration;
     const missed = stars < 3;
+    const short = missed && right < TARGET;
+    const wrongCount = this.aboard.filter((x) => x.wrong).length;
+    const overLimit = costs.total > COST_LIMIT;
+    // Wrong gifts cost a goal: too many of them, or they made up a large part of a broken cost limit.
+    const wrongHurt =
+      missed &&
+      (wrongCount > WRONG_ALLOWED ||
+        (overLimit &&
+          costs.mistakes + this.assure.recallCost >= WRONG_SHARE * COST_LIMIT));
     const checkedShare = st.checked / Math.max(1, st.passed);
     const wrongGifts = this.aboard.filter((x) => x.wrong);
     const bigWrong = sum(
       wrongGifts.filter((x) => x.w.big).map((x) => this.price(x)),
     );
     const dear = costs.checking > costs.prevented;
-    const L = (title, text) => ({ title, text });
-    if (missed && st.ai[0] / (2 * d) >= 0.6 && right < TARGET)
+    const L = (title, text, loss = LOSSES[title]) => ({ title, text, loss });
+    if (short && st.ai[0] / (2 * d) >= 0.6)
       return L(
         "By hand is careful but slow",
         `Only ${right} right gifts from ${this.lastId} letters. Let the AI do some of the work, and check what it makes.`,
       );
     // Their words come from the assurance verdict, which follows the same loss.
-    if (missed && biggest === "held")
+    if (short && biggest === "held")
       return this.tiredAt(2)
         ? L(
             "Tired checkers held up the line",
             "Tired checkers slow down, then burn out for a long break.",
           )
         : L("Checking was the bottleneck", "");
-    if (missed && biggest === "over") return L("Too much checking", "");
-    if (missed && biggest === "lost") {
+    if (short && biggest === "over") return L("Too much checking", "");
+    if (short && biggest === "lost") {
       const longest = this.longestHolding();
       const where = STATION_NAMES[longest].toLowerCase();
       return this.tiredAt(longest)
@@ -2761,7 +2820,7 @@ class Workshop {
         .filter((x) => x.waitedOn && this.causeId(x) === "faulty")
         .map((x) => this.price(x)),
     );
-    if (missed && waited > 0 && waited * 2 >= costs.mistakes)
+    if (wrongHurt && waited > 0 && waited * 2 >= costs.mistakes)
       return L(
         "A decision waited too long",
         `While its decision waited, the faulty update's trains cost ${money(waited)} of the ${money(costs.mistakes)} in wrong gifts. Open a waiting decision as soon as it shows.`,
@@ -2805,42 +2864,47 @@ class Workshop {
       ],
     };
     if (
-      missed &&
+      wrongHurt &&
       top &&
       slips.length >= 4 &&
       costOf(top[1]) * 2 >= costOf(slips) &&
       byCause[top[0]]
     )
       return L(...byCause[top[0]]);
-    if (missed && st.checking[2] / d >= 0.3 && (dear || st.jammed >= 30))
+    if (
+      ((overLimit && dear) || (short && st.jammed >= 30)) &&
+      missed &&
+      st.checking[2] / d >= 0.3
+    )
       return L(
         "Too much checking",
-        dear
-          ? `Checking cost ${money(costs.checking)} but stopped mistakes worth only about ${money(costs.prevented)}, and the line waited on the checking pile for ${Math.round(st.jammed)} seconds. Check where a mistake is likely or dear, and let the rest through.`
+        overLimit && dear
+          ? `Checking cost ${money(costs.checking)} but stopped mistakes worth only about ${money(costs.prevented)}, and took the game over its cost limit. Check where a mistake is likely or dear, and let the rest through.`
           : `Checking every parcel kept the line waiting on the checking pile for ${Math.round(st.jammed)} seconds, so only ${right} right gifts made the sleigh. Check where a mistake is likely or dear, and let the rest through.`,
+        overLimit && dear ? "cost" : "slow",
       );
-    if (missed && checkedShare < 0.2 && costs.mistakes > costs.checking)
+    if (wrongHurt && checkedShare < 0.2 && costs.mistakes > costs.checking)
       return L(
         "Too little checking",
         `Wrong gifts cost ${money(costs.mistakes)}, far more than the ${money(costs.checking)} spent on checking; wrong big gifts alone cost ${money(bigWrong)}. The more the AI does, the more its work needs checking, most of all on the big gifts.`,
       );
-    if (missed && this.bypassed >= 15)
+    if (wrongHurt && this.bypassed >= 15)
       return L(
         "Let through unchecked",
         `You let ${this.bypassed} gifts skip the checking pile, and wrong gifts cost ${money(costs.mistakes)}. One more checker would have kept them checked.`,
       );
-    if (st.faulty >= 15)
+    if ((wrongHurt || !missed) && st.faulty >= 15)
       return L(
         "The faulty update ran too long",
         `The faulty update kept making full-sized trains for ${Math.round(st.faulty)} s after they were spotted. Roll it back as soon as it shows.`,
       );
-    if (missed && st.checkerBurnouts >= 2)
+    if (wrongHurt && st.checkerBurnouts >= 2)
       return L(
         "Tired checkers miss mistakes",
         `${st.checkerBurnouts} checkers burnt out, and tired ones let mistakes slip. Send elves for cocoa before they are worn out.`,
       );
     // Fires even with three stars when the checkers were never trained: those mistakes are in the bill.
-    if (!this.vig.trained && st.waved >= 2)
+    if ((wrongHurt || !missed) && !this.vig.trained && st.waved >= 2)
       return L(
         "Checkers stopped looking",
         `After long clean stretches the checkers skipped ${this.vig.skipped} checks and waved ${st.waved} wrong gifts through, costing ${money(st.wavedCost)}. Training keeps them sharp.`,
@@ -2860,19 +2924,29 @@ class Workshop {
         "Santa leaves happy",
         `${right} right gifts on time, within the cost limit. Checking cost ${money(costs.checking)} and stopped about ${money(costs.prevented)} of wrong gifts.`,
       );
-    if (costs.total > COST_LIMIT)
+    if (overLimit)
       return L(
         "Over the cost limit",
         `The game cost ${money(costs.total)}, wrong gifts included, against a limit of ${money(COST_LIMIT)}. Look at which line of the bill grew most.`,
       );
-    if (this.lost >= 15)
+    if (short && st.burnouts >= 3)
+      return L(
+        "Burnouts slowed the line",
+        `Elves burnt out ${times(st.burnouts)}, and each was off for ${BURNOUT_SECONDS} seconds. Send elves for cocoa when they turn red.`,
+      );
+    if (short && this.lost >= 15)
       return L(
         "Piles grew where nobody was working",
         `${this.lost} letters were lost when the letter pile overflowed. Move elves and AI help to whichever station has the biggest pile.`,
       );
+    if (short)
+      return L(
+        "Almost there",
+        "The workshop ran well but fell short. Use a little more AI where piles grow, and keep checks on the risky parcels.",
+      );
     return L(
-      "Almost there",
-      "The workshop ran well but fell short. Use a little more AI where piles grow, and keep checks on the risky parcels.",
+      "Too many wrong gifts",
+      `${plural(wrongCount, "wrong gift")} went aboard, more than the ${WRONG_ALLOWED} allowed. Check the risky ones, and rest the checkers before they tire.`,
     );
   }
 

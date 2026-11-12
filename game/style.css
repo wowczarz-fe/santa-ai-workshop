@@ -648,6 +648,7 @@ main {
 }
 /* A wrong gift lights up the control its line names */
 .control-row.mistake-hint,
+.crew.mistake-hint,
 #cocoa.mistake-hint {
   position: relative;
 }

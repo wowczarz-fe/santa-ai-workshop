@@ -397,6 +397,9 @@
     "ai:0": () => actionGroups.get("ai0"),
     "ai:1": () => actionGroups.get("ai1"),
     cocoa: () => $("cocoa"),
+    "elves:0": () => $("elves0"),
+    "elves:1": () => $("elves1"),
+    "elves:2": () => $("elves2"),
   };
   let mistakeHint = null;
   const hintLabel = make("span", "mistake-hint-label");
@@ -843,13 +846,11 @@
         make(
           "span",
           "attention-label",
-          view.vigilance.name
-            ? `Checkers ${view.vigilance.name}`
-            : {
-                sharp: "Checkers sharp",
-                drifting: "Checkers drifting",
-                closed: "Checkers not looking",
-              }[attention],
+          {
+            sharp: "Checkers sharp",
+            drifting: "Checkers trusting the AI",
+            closed: "Checkers not looking",
+          }[attention],
         ),
       );
     }
@@ -936,7 +937,7 @@
             ? 6
             : n.kind === "resolved"
               ? 3
-              : /wrong|fault|incident/.test(n.kind)
+              : /noticed|relaxed/.test(n.kind)
                 ? 4
                 : 1;
       say(n.text, priority);
@@ -990,6 +991,7 @@
     waved: "checks",
     faulty: "update",
     tired: "role-tired",
+    recalled: "rollback",
   };
   const optionIcons = {
     update: "update",
@@ -1144,7 +1146,7 @@
         breakLine(
           "break-line-cause",
           causeIcons[top.id] || "mistakes",
-          "Most wrong gifts: ",
+          report.wrong === 1 ? "The wrong gift: " : "Most wrong gifts: ",
           make("b", "", top.name),
         ),
       );
@@ -1250,6 +1252,14 @@
   function handleNews(news) {
     if (!started) return;
     if (news.kind === "loaded" && news.control) showMistakeHint(news);
+    // Elves starting to trust the AI: their station's crew is outlined with the line's action.
+    if (news.kind === "relaxed") {
+      const station = /^Checkers/.test(news.text)
+        ? 2
+        : view.ai.findIndex((level) => level === 1);
+      if (station >= 0)
+        showMistakeHint({ ...news, control: `elves:${station}` });
+    }
     if (news.kind === "loaded" && news.caseId != null)
       openedCases.delete(news.caseId);
     if (

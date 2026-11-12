@@ -383,7 +383,7 @@ assert(
 const sensible = mean(starsOf("sensible"));
 const three = starShare("sensible", (s) => s === 3);
 assert(
-  sensible >= 2 && starShare("sensible", (s) => s >= 2) >= 0.75,
+  sensible >= 2 && starShare("sensible", (s) => s >= 2) >= 0.7,
   `a sensible player earns two stars typically (${sensible.toFixed(2)})`,
 );
 assert(

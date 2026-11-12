@@ -400,54 +400,37 @@
       );
     }
   }
-  // A wrong gift lights up, for about three seconds, the control that would have stopped it.
-  // The training and update choices live on the break card, so their hint goes on the sleigh.
-  // The tag on the lit control; "" where the control's own label already says it.
-  const hintWords = {
-    ask: "",
-    checking: "Check the risky ones",
-    ai0: "Try Assist",
-    ai1: "Try Assist",
-    cocoa: "",
-    train: "Train or rest them",
-    update: "Test updates first",
-    vigilance: "Train or rest them",
+  // A wrong gift lights up, for a few seconds, the control its news line names. The tag on it is
+  // the line's last sentence up to any colon, so its words are the rules' own.
+  const hintTargets = {
+    checking: () => actionGroups.get("checking"),
+    "ai:0": () => actionGroups.get("ai0"),
+    "ai:1": () => actionGroups.get("ai1"),
+    cocoa: () => $("cocoa"),
   };
-  let mistakeHint = null,
-    pendingCause = null;
+  let mistakeHint = null;
   const hintLabel = make("span", "mistake-hint-label");
-  hintLabel.setAttribute("role", "status");
-  // A control already set the way its tag advises gets no tag: the gift was on its way before.
-  const alreadySet = {
-    ask: () => view.ask,
-    checking: () => view.checking >= 1,
-    ai0: () => view.ai[0] <= 1,
-    ai1: () => view.ai[1] <= 1,
-  };
-  function showMistakeHint(control) {
-    if (!(control in hintWords) || alreadySet[control]?.()) return;
-    mistakeHint = { control, until: performance.now() + 3000 };
-    setTimeout(paintMistakeHint, 3100);
+  const mistakeHintOn = () =>
+    !!mistakeHint &&
+    mistakeHint.until > performance.now() &&
+    !view.end &&
+    tourStep === null;
+  function showMistakeHint(news) {
+    if (!hintTargets[news.control]) return;
+    const action = (/([^.]+)\.\s*$/.exec(news.text)?.[1] ?? "")
+      .split(":")[0]
+      .trim();
+    mistakeHint = {
+      control: news.control,
+      words: /^Wrong gift/.test(action) ? "" : action,
+      until: performance.now() + 5000,
+    };
+    setTimeout(paintMistakeHint, 5100);
   }
   function paintMistakeHint() {
-    let target = null;
     // The tour's outline is the only one while the tour is up.
-    if (
-      mistakeHint &&
-      mistakeHint.until > performance.now() &&
-      !view.end &&
-      tourStep === null
-    ) {
-      const control = mistakeHint.control;
-      target =
-        control === "cocoa"
-          ? $("cocoa")
-          : control === "vigilance"
-            ? $("vigilance")
-            : actionGroups.get(control);
-      if (!target?.getClientRects().length) target = $("wrongDelivery");
-      if (!target.getClientRects().length) target = $("sleigh");
-    }
+    let target = mistakeHintOn() ? hintTargets[mistakeHint.control]() : null;
+    if (!target?.getClientRects().length) target = null;
     document
       .querySelectorAll(".mistake-hint")
       .forEach(
@@ -469,14 +452,8 @@
       return;
     }
     target.classList.add("mistake-hint");
-    // A lit control with its own label says it already; the sleigh's card or column needs the words.
-    const words =
-      hintWords[mistakeHint.control] ||
-      (target === $("wrongDelivery") || target === $("sleigh")
-        ? { ask: "Ask the child", cocoa: "Cocoa break" }[mistakeHint.control]
-        : "");
-    hintLabel.textContent = words;
-    if (!words) hintLabel.remove();
+    hintLabel.textContent = mistakeHint.words;
+    if (!mistakeHint.words) hintLabel.remove();
     else if (hintLabel.parentNode !== target) target.append(hintLabel);
   }
   // How sharp the checkers are, from the rules' vigilance state value.
@@ -486,7 +463,6 @@
       : /relax|drift/.test(state)
         ? "drifting"
         : "sharp";
-  let lastAttention = "sharp";
   const eyes = {
     sharp:
       '<svg class="ui-icon attention-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/></svg>',
@@ -539,7 +515,6 @@
     notice = null;
     rateChanges.clear();
     mistakeHint = null;
-    pendingCause = null;
     closeInfo();
     buildElves();
     $("walkthrough").checked = showTour;
@@ -610,6 +585,8 @@
   // What the player's last move did, from the view's own figures.
   function sayResult(words) {
     const now = performance.now();
+    // A wrong gift's line keeps its 4 seconds: it says what to do now.
+    if (notice?.priority > 5 && now - notice.since < 4000) return paint();
     notice = { text: words, priority: 5, since: now, until: now + 4000 };
     paint();
   }
@@ -892,8 +869,6 @@
       `Let through ${view.queues.check.parcels.length}`;
     const attention = attentionOf(view.vigilance.state);
     if ($("vigilance").dataset.attention !== attention) {
-      if (lastAttention === "sharp" && attention !== "sharp" && started)
-        showMistakeHint("vigilance");
       $("vigilance").dataset.attention = attention;
       $("vigilance").innerHTML = eyes[attention];
       $("vigilance").append(
@@ -910,14 +885,17 @@
         ),
       );
     }
-    lastAttention = attention;
     // The checkers' eye shows only once they stop looking properly.
     $("vigilance").hidden = attention === "sharp";
     $("vigilance").dataset.state = view.vigilance.state;
     // One outlined thing at a time: the control the tour points at, else the rules' focus, with
     // its reason as a tag on the outlined box. A tired elf gets its own card outlined.
     const walkTarget = tourStep === null ? null : tourSteps[tourStep].target();
-    const focus = started && !view.end && !walkTarget ? view.focus : null;
+    // A wrong gift's highlight takes the place of the focus outline while it shows.
+    const focus =
+      started && !view.end && !walkTarget && !mistakeHintOn()
+        ? view.focus
+        : null;
     const tiredElf =
       focus?.control === "cocoa"
         ? view.elves.findIndex((elf) => focus.text.includes(elf.name))
@@ -997,7 +975,7 @@
         n.kind === "checked" && n.check?.result !== "wrong"
           ? 0
           : n.kind === "loaded" && n.check?.result === "wrong"
-            ? 4
+            ? 6
             : n.kind === "resolved"
               ? 3
               : /wrong|fault|incident/.test(n.kind)
@@ -1020,12 +998,6 @@
     );
     paintCase();
     paintTour();
-    if (started && view.choice)
-      pendingCause = view.choice.report.causes?.[0]?.control ?? null;
-    else if (pendingCause) {
-      showMistakeHint(pendingCause);
-      pendingCause = null;
-    }
     paintChoice();
     paintEffects();
     paintMistakeHint();
@@ -1332,7 +1304,7 @@
   }
   function handleNews(news) {
     if (!started) return;
-    if (news.kind === "loaded" && news.control) showMistakeHint(news.control);
+    if (news.kind === "loaded" && news.control) showMistakeHint(news);
     if (news.kind === "loaded" && news.caseId != null)
       openedCases.delete(news.caseId);
     if (
@@ -2017,8 +1989,8 @@
         [
           "After a long run of clean gifts, checkers start waving gifts through unchecked.",
           view.vigilance.skipped
-            ? `${view.vigilance.skipped} checks skipped so far; train them at a break or rest them.`
-            : "Train them at a break, or rest them with cocoa.",
+            ? `${view.vigilance.skipped} checks skipped so far.`
+            : "",
         ],
       ],
     };

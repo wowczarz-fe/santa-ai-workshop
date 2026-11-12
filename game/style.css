@@ -734,7 +734,7 @@ main {
   border-radius: 2px;
   background: currentColor;
 }
-/* A wrong gift lights up the control that would have stopped it */
+/* A wrong gift lights up the control its line names */
 .control-row.mistake-hint,
 .wrong-delivery.mistake-hint,
 #cocoa.mistake-hint {
@@ -1108,6 +1108,9 @@ body[data-look] #vigilance {
   .mistake-hint {
     animation: none;
   }
+}
+body.reduce-motion .mistake-hint {
+  animation: none;
 }
 .queue-rate {
   align-self: end;

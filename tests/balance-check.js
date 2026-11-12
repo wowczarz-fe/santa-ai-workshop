@@ -431,6 +431,9 @@ function play(name, seed) {
     calls: [0, 0].map(() => ({ cards: 0, burnouts: 0, wrong: 0 })),
   };
   let lastNews = 0;
+  // Seconds the line has stood stopped, or a pile full, with nothing pointed at, and the longest such stretch.
+  let unhinted = 0;
+  r.unhinted = 0;
   const memo = { seed };
   const seen = new Set();
   for (let i = 0; !w.end; i++) {
@@ -449,6 +452,15 @@ function play(name, seed) {
         }
       }
       lastNews = v.news[0]?.id ?? lastNews;
+      const stuck =
+        !v.choice &&
+        !v.incident?.rollingBack &&
+        (v.stations.some((st) => st.blocked) ||
+          ["letters", "orders", "check", "pass"].some(
+            (id) => fill(v, id) >= 1,
+          ));
+      unhinted = stuck && !v.focus ? unhinted + 0.5 : 0;
+      r.unhinted = Math.max(r.unhinted, unhinted);
       if (v.case && !seen.has(v.case.id)) {
         seen.add(v.case.id);
         r.cards++;
@@ -580,6 +592,13 @@ console.log(
 assert(
   perElf >= 1.3 && perElf <= 2.7,
   `an elf never rested burns out about once a half (${perElf.toFixed(2)} a game)`,
+);
+// Whenever a first-timer's line stops or a pile fills, the page points at what would free it within
+// about 5 seconds.
+const unhinted = Math.max(...results.firstTimer.map((r) => r.unhinted));
+assert(
+  unhinted <= 5,
+  `a first-timer's line stood stopped ${unhinted} s with nothing pointed at`,
 );
 // What asks for a first-timer's attention in each half, the half-time card counted in both: no more
 // than about one thing every 10 seconds.

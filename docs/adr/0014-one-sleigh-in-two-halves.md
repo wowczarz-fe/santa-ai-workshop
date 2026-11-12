@@ -154,5 +154,11 @@ the sleigh is what a second game rewards, worth about one star (1.73 to 2.45).
 
 What asks for a first-timer's attention (decisions, burnouts and wrong-gift lines, plus the
 half-time card): about 4 things in the first half and 7 in the second, one every 11 seconds at
-the busiest, so the pace was left alone. ADR 0015's £700 and the example figures in
-`docs/ARCHITECTURE.md` predate this follow-up.
+the busiest, so the pace was left alone.
+
+The first-timer script showed that a full straight-through pile could stop the line for up to 20
+seconds with nothing pointed at, in 18 of 40 games. `focus` now puts a stopped line or a full pile
+first and names what would free it, with the values the page already handles: another elf at the
+station holding the rest up, the AI at a station worked by hand, or checking fewer while every gift
+is checked. With it the first-timer averages 1.65 stars (3/8/29/0) and the careless one 1.02
+(12/15/13/0); the figures above were taken before.

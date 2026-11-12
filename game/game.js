@@ -577,7 +577,7 @@
     observedRun = null;
     caughtSnapshot = null;
     $("celebration").replaceChildren();
-    $("milestoneToast").hidden = true;
+    hideToast();
     $("restartDialog").close();
     const url = new URL(location.href);
     if (fixedSeed !== null) url.searchParams.set("seed", fixedSeed);
@@ -1501,6 +1501,7 @@
     }
     closeInfo();
     if (!$("breakDialog").open) {
+      hideToast();
       $("breakDialog").showModal();
       $("breakText").focus({ preventScroll: true });
       $("breakDialog").scrollTop = 0;
@@ -1511,12 +1512,21 @@
       $("breakDeparture").classList.add("break-arrival");
     }
   }
+  // The milestone note goes when the break card or the end screen opens, so it never pokes out above them.
+  function hideToast() {
+    toastUntil = 0;
+    $("milestoneToast").hidden = true;
+  }
   function handleNews(news) {
     if (!started) return;
     if (news.kind === "loaded" && news.control) showMistakeHint(news.control);
     if (news.kind === "loaded" && news.caseId != null)
       openedCases.delete(news.caseId);
-    if (news.kind === "milestone") {
+    if (
+      news.kind === "milestone" &&
+      !$("breakDialog").open &&
+      !$("report").open
+    ) {
       iconText($("milestoneToast"), "gift", news.text);
       toastUntil = performance.now() + 3500;
       $("milestoneToast").hidden = false;
@@ -3121,6 +3131,7 @@
     paintBlunders(e);
     text("copyStatus", "");
     $("copyFallback").hidden = true;
+    hideToast();
     $("report").showModal();
     $("report").scrollTop = 0;
   }

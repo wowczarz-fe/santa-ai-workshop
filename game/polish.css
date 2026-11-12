@@ -1973,12 +1973,35 @@ body[data-look="polish"] .header-actions .header-icon {
     max-width: none;
   }
 }
+@media (min-width: 1000px) {
+  /* The milestone note sits in the header's empty middle, clear of the status line */
+  body[data-look="polish"] .milestone-toast {
+    top: 7px;
+  }
+}
 @media (max-width: 999px) {
   /* The milestone note rises from the foot of the screen, clear of the station tabs */
   body[data-look="polish"] .milestone-toast {
     top: auto;
     bottom: 16px;
   }
+}
+/* Snow passes behind the clock and the money: a blur behind their words and ring melts any flake there */
+body[data-look="polish"] .dashboard .clock-box > *,
+body[data-look="polish"] .dashboard #money > * {
+  border-radius: 6px;
+  backdrop-filter: blur(12px);
+}
+body[data-look="polish"] .dashboard .clock-box > span,
+body[data-look="polish"] .dashboard .clock-box > strong {
+  width: fit-content;
+}
+/* The blur reaches a little past the first and last letters, so no flake touches them */
+body[data-look="polish"] .dashboard .clock-box > span,
+body[data-look="polish"] .dashboard .clock-box > strong,
+body[data-look="polish"] .dashboard #money > * {
+  padding-inline: 5px;
+  margin-inline: -5px;
 }
 /* A control lit by a wrong gift shows that tag alone */
 body[data-look="polish"] .mistake-hint:has(> .mistake-hint-label) > .focus-tag {

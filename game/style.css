@@ -1022,13 +1022,6 @@ body[data-look] #vigilance {
 body.reduce-motion .mistake-hint {
   animation: none;
 }
-.queue-rate {
-  align-self: end;
-  font-size: 10px;
-  color: #3c6554;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
 .queue progress {
   grid-column: 1/-1;
   height: 3px;
@@ -1039,11 +1032,6 @@ body.reduce-motion .mistake-hint {
 }
 .queue.full {
   box-shadow: inset 3px 0 #ba6533;
-}
-.queue .rate-changed {
-  background: #ffe4a5;
-  color: #5b4314;
-  padding: 1px 3px;
 }
 progress {
   display: block;
@@ -2122,18 +2110,6 @@ dialog p {
 }
 .stack i:nth-child(n) {
   bottom: calc(var(--fill) * (100% - 20px) * var(--layer));
-}
-.queue.rate-changed .queue-rate {
-  font-size: 14px;
-  font-weight: bold;
-  background: #d2edd5;
-  border-radius: 3px;
-  padding: 3px;
-  color: #145d32;
-}
-.queue.rate-changed[data-delta="down"] .queue-rate {
-  background: #fff0ca;
-  color: #8c5410;
 }
 @media (max-width: 999px), (max-height: 699px) {
   .stack i:nth-child(n) {

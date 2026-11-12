@@ -248,10 +248,6 @@ main {
     18px Georgia,
     serif;
 }
-.queue-rate {
-  font-size: 9px;
-  line-height: 12px;
-}
 .queue-picture {
   height: 30px !important;
   grid-column: auto;
@@ -1117,11 +1113,6 @@ body[data-look="paper"] .queue-tag {
 body[data-look="paper"] .queue-picture {
   padding-left: 7px;
 }
-body[data-look="paper"] .queue-rate {
-  background: #f4ead3dc;
-  width: max-content;
-  padding: 0 3px;
-}
 #board .info-button {
   display: none;
 }
@@ -1729,8 +1720,7 @@ body[data-look="paper"] .small-action:disabled {
   color: var(--muted);
   opacity: 1;
 }
-body[data-look="paper"] .queue-name,
-body[data-look="paper"] .queue-rate {
+body[data-look="paper"] .queue-name {
   font-size: 11px;
   line-height: 13px;
 }

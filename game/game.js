@@ -56,8 +56,7 @@
   let lastWrong = null,
     lastArrival = null,
     notice = null,
-    newsSeen = new Set(),
-    rateChanges = new Map();
+    newsSeen = new Set();
   let infoAnchor = null,
     infoKey = null,
     infoPinned = false,
@@ -488,7 +487,6 @@
     lastArrival = null;
     newsSeen = new Set();
     notice = null;
-    rateChanges.clear();
     mistakeHint = null;
     closeInfo();
     buildElves();
@@ -517,20 +515,8 @@
   }
   function moveElf(destination) {
     if (selected === null || !started || view.end) return;
-    const before = game.view();
     if (game.move(selected, destination)) {
       view = game.view();
-      for (const id of Object.keys(view.queues)) {
-        if (
-          queueIds[before.elves[selected].station]?.includes(id) ||
-          queueIds[destination]?.includes(id)
-        )
-          rateChanges.set(id, {
-            before: before.queues[id].rate,
-            after: view.queues[id].rate,
-            until: performance.now() + 5000,
-          });
-      }
       const moved = selected,
         elf = view.elves[moved];
       selected = null;
@@ -646,20 +632,6 @@
         node.classList.toggle("blocked", !!q.blocked);
         node.classList.toggle("full", q.parcels.length >= q.limit);
         node.querySelector("progress").value = q.progress;
-        const change = rateChanges.get(id);
-        // A pile's own rate shows only while it flashes the change a move made.
-        node.querySelector(".queue-rate").hidden =
-          id === "pass" || !(change && change.until > performance.now());
-        node.querySelector(".queue-rate").textContent =
-          change && change.until > performance.now()
-            ? `${Math.round(change.after - change.before) > 0 ? "+" : ""}${Math.round(change.after - change.before)} a minute${Math.round(change.after - change.before) === 0 ? " unchanged" : ""}`
-            : `${Math.round(q.rate)} a minute`;
-        node.dataset.delta =
-          change && change.after < change.before ? "down" : "up";
-        node.classList.toggle(
-          "rate-changed",
-          !!change && change.until > performance.now(),
-        );
         const stack = node.querySelector(".stack");
         const signature = q.parcels
           .slice(-18)

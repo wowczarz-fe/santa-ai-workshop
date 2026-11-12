@@ -340,7 +340,7 @@ body[data-look="polish"] #piles1 {
 body[data-look="polish"] .queue {
   display: grid;
   grid-template-columns: 1fr auto;
-  grid-template-rows: 20px minmax(25px, 1fr) 11px 4px;
+  grid-template-rows: 20px minmax(25px, 1fr) 4px;
   min-height: 0;
   height: 100%;
   width: 100%;
@@ -383,15 +383,9 @@ body[data-look="polish"] .queue-picture {
   position: relative;
   overflow: hidden;
 }
-body[data-look="polish"] .queue-rate {
-  grid-column: 1/-1;
-  grid-row: 3;
-  font-size: 11px;
-  line-height: 11px;
-}
 body[data-look="polish"] .queue progress {
   grid-column: 1/-1;
-  grid-row: 4;
+  grid-row: 3;
   height: 4px;
   width: 100%;
   accent-color: var(--teal);
@@ -1419,7 +1413,7 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
     width: auto;
   }
   body[data-look="polish"] .queue {
-    grid-template-rows: 19px minmax(20px, 1fr) 10px 4px;
+    grid-template-rows: 19px minmax(20px, 1fr) 4px;
     padding: 5px 9px;
   }
   body[data-look="polish"] .queue-count {

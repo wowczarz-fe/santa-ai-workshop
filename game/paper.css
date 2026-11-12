@@ -357,16 +357,6 @@ main {
   height: 3px;
   margin: 0;
 }
-.elf-doing {
-  position: absolute;
-  right: 4px;
-  top: 14px;
-  font-size: 10px;
-}
-.elf-card > .info-button {
-  right: 0;
-  top: 1px;
-}
 .crew-hint {
   position: absolute;
   top: auto !important;
@@ -508,9 +498,6 @@ body[data-look="paper"] .dashboard .hud-slot[data-state="met"] .hud-star {
 }
 body[data-look="paper"] .elf[data-role="free"] .elf-task {
   color: #3b2a1e;
-}
-body[data-look="paper"] .elf[data-role="free"] .elf-doing {
-  color: #5a4632;
 }
 body[data-look="paper"] .dashboard .hud-preview {
   background: #d2a447;
@@ -858,9 +845,6 @@ dialog {
   font-size: 10px;
   line-height: 12px;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf-doing {
-  top: 52px;
-}
 .sleigh-total {
   background: var(--paper);
   padding: 7px 9px;
@@ -896,10 +880,6 @@ dialog {
   flex: none;
   font-size: 9px;
   line-height: 11px;
-}
-.elf-doing {
-  left: auto;
-  width: auto;
 }
 .paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf svg {
   height: 76px;
@@ -2343,7 +2323,7 @@ body[data-look="paper"]
 }
 body[data-look="paper"]
   :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4))
-  :is(.elf-task, .elf-doing, .elf-info, .rest-cue) {
+  :is(.elf-task, .rest-cue) {
   display: none;
 }
 body[data-look="paper"]

@@ -378,11 +378,6 @@ main {
 .queue-trend[data-trend="steady"] svg {
   transform: rotate(90deg);
 }
-.elf .elf-doing > svg.ui-icon {
-  width: 13px !important;
-  height: 13px !important;
-  display: block;
-}
 .small-action,
 .case-cue,
 .milestone-toast,
@@ -1055,9 +1050,6 @@ body[data-look] #vigilance {
   color: #6b776d;
   font-style: italic;
 }
-.elf[data-role="free"] .elf-doing {
-  color: #8a958c;
-}
 @media (prefers-reduced-motion: reduce) {
   .mistake-hint {
     animation: none;
@@ -1156,25 +1148,6 @@ progress {
   background: #d8ece4;
   border-color: var(--teal);
   box-shadow: 0 0 0 1px var(--teal);
-}
-.elf-info {
-  position: absolute;
-  right: -1px;
-  top: 0;
-  border-radius: 50%;
-  height: 16px;
-  min-height: 16px;
-  width: 16px;
-  padding: 0;
-  font-size: 9px;
-  opacity: 0.75;
-}
-.elf-doing {
-  position: absolute;
-  left: 2px;
-  top: 0;
-  font-size: 11px;
-  pointer-events: none;
 }
 .move-target {
   min-height: 27px;
@@ -1476,9 +1449,6 @@ progress {
 }
 .cocoa-strip .elf svg {
   height: 25px;
-}
-.cocoa-strip .elf-info {
-  top: 0;
 }
 footer {
   display: flex;
@@ -1856,15 +1826,9 @@ dialog p {
   .cocoa-strip .move-target {
     flex: 1;
   }
-  .elf-info,
   .info-button {
     width: 24px;
     min-height: 24px;
-  }
-  .elf-info {
-    font-size: 10px;
-    top: -4px;
-    right: -3px;
   }
   .elf-card {
     margin-right: 3px;
@@ -1953,12 +1917,6 @@ dialog p {
   }
   .elf-name {
     font-size: 8px;
-  }
-  .elf-info {
-    width: 13px;
-    min-height: 13px;
-    font-size: 8px;
-    right: -1px;
   }
   #controls2 {
     display: grid;
@@ -2087,12 +2045,9 @@ dialog p {
   scroll-behavior: auto !important;
 }
 @media (hover: hover) and (pointer: fine) {
-  .elf-info,
   .switch-choice > .info-button {
     opacity: 0;
   }
-  .elf-card:hover .elf-info,
-  .elf-card:focus-within .elf-info,
   .switch-choice:hover > .info-button,
   .switch-choice:focus-within > .info-button {
     opacity: 1;
@@ -2307,9 +2262,6 @@ dialog p {
   line-height: 9px;
   color: #4b6250;
   white-space: nowrap;
-}
-.elf[data-role="watching"] .elf-doing {
-  color: #2e675d;
 }
 .elf[data-role="watching"],
 .elf[data-role="idle"] {

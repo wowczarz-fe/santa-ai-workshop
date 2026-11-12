@@ -466,9 +466,7 @@
       b.draggable = true;
       b.dataset.elf = i;
       b.dataset.info = `elf:${i}`;
-      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><span class="elf-task"></span><span class="energy" aria-hidden="true"><i></i></span><span class="elf-doing" aria-hidden="true"></span>`;
-      const more = infoButton(`elf:${i}`, `About ${elf.name}`);
-      more.classList.add("elf-info");
+      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><span class="elf-task"></span><span class="energy" aria-hidden="true"><i></i></span>`;
       // On a phone the cocoa strip is a page away, so a selected elf can be sent from its card.
       const rest = make("button", "rest-button");
       rest.dataset.rest = i;
@@ -477,7 +475,7 @@
       const cue = make("span", "rest-cue");
       cue.innerHTML = icon("cocoa");
       cue.setAttribute("aria-hidden", "true");
-      wrap.append(b, more, rest, cue);
+      wrap.append(b, rest, cue);
       elfNodes.push(wrap);
     });
   }
@@ -700,28 +698,24 @@
         "aria-label",
         `${elf.name}, ${isFree(elf) ? "free to move" : isIdle(elf) ? "waiting for work" : elf.doing}, energy ${energy} of 100. Select to move.`,
       );
-      const role = isFree(elf)
-        ? ["role-idle", "free to move", "free"]
+      // The task word under the name says what the elf is doing.
+      const [task, role = task] = isFree(elf)
+        ? ["free to move", "free"]
         : isIdle(elf)
-          ? ["role-idle", "waiting", "waiting"]
+          ? ["waiting"]
           : elf.doing.includes("confirm")
-            ? ["role-confirming", "confirm"]
+            ? ["confirm"]
             : elf.station === 3 || elf.resting
-              ? ["role-resting", "resting"]
+              ? ["resting"]
               : elf.doing.includes("reading")
-                ? ["role-reading", "reading"]
+                ? ["reading"]
                 : elf.doing.includes("making")
-                  ? ["role-making", "making"]
+                  ? ["making"]
                   : elf.doing.includes("checking")
-                    ? ["role-checking", "checking"]
-                    : ["role-making", "working"];
-      const doing = b.querySelector(".elf-doing");
-      if (doing.dataset.icon !== role[0]) {
-        doing.dataset.icon = role[0];
-        doing.innerHTML = icon(role[0]);
-      }
-      b.querySelector(".elf-task").textContent = role[1];
-      b.dataset.role = role[2] || role[1];
+                    ? ["checking"]
+                    : ["working"];
+      b.querySelector(".elf-task").textContent = task;
+      b.dataset.role = role;
       b.querySelector(".elf-eyes").setAttribute(
         "href",
         "#" +
@@ -740,7 +734,7 @@
               confirm: "p-confirming",
               watching: "p-watching",
               resting: "p-resting",
-            }[role[1]] || "",
+            }[task] || "",
           ),
       );
     });

@@ -459,9 +459,7 @@ body[data-look="polish"] .paper-floor .crew {
   gap: 4px 3px;
   align-items: start;
 }
-body[data-look="polish"]
-  .crew:has(.elf-card:nth-child(4))
-  :is(.elf-task, .elf-doing, .elf-info) {
+body[data-look="polish"] .crew:has(.elf-card:nth-child(4)) .elf-task {
   display: none;
 }
 /* The ids outrank the large-card rules both looks share */
@@ -599,24 +597,6 @@ body[data-look="polish"]
   .elf-task {
   font-size: 11px;
   line-height: 12px;
-}
-body[data-look="polish"] .elf-doing {
-  background: #fff;
-  border: 1px solid #d4e0d6;
-  border-radius: 50%;
-  top: 0;
-  right: 0;
-  width: 22px;
-  height: 22px;
-  font-size: 11px;
-  display: grid;
-  place-items: center;
-}
-body[data-look="polish"]
-  .paper-floor
-  .crew:not(:has(.elf-card:nth-child(4)))
-  .elf-doing {
-  top: 0;
 }
 body[data-look="polish"] .elf .energy {
   bottom: 2px;
@@ -1024,13 +1004,6 @@ body[data-look="polish"] .paper-rate .station-bottleneck:empty {
 body[data-look="polish"] .station-bottleneck .ui-icon {
   width: 11px;
   height: 11px;
-}
-body[data-look="polish"] .elf-doing {
-  color: var(--teal);
-}
-body[data-look="polish"] .elf[data-role="resting"] .elf-doing,
-body[data-look="polish"] .elf.exhausted .elf-doing {
-  color: #8a5a1c;
 }
 body[data-look="polish"] #tour {
   width: 320px;

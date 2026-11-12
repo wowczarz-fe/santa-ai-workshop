@@ -167,22 +167,12 @@ main {
   flex-basis: 100%;
   flex-wrap: wrap;
 }
-.station-rate {
-  position: static;
-  font-size: 13px;
-  line-height: 15px;
-}
 .station-bottleneck {
   position: static;
   font-size: 10px;
   line-height: 12px;
   background: var(--red);
   color: white;
-}
-.capacity-label {
-  position: static;
-  font-size: 9px;
-  line-height: 11px;
 }
 .paper-scene {
   grid-row: 2;
@@ -1540,18 +1530,6 @@ body[data-look="paper"] .paper-rate {
   margin-left: auto;
   gap: 3px;
 }
-body[data-look="paper"] .station-rate {
-  padding: 2px 7px;
-  border: 1px solid #c9b48e;
-  border-radius: 3px;
-  background: #fbf6e9;
-  font-size: 11px;
-  line-height: 15px;
-  white-space: nowrap;
-}
-body[data-look="paper"] .capacity-label {
-  display: none;
-}
 /* The bottleneck tag sits on the heading's bottom edge, so the rate never moves */
 body[data-look="paper"] .paper-rate .station-bottleneck {
   position: absolute;
@@ -2325,13 +2303,6 @@ body[data-look="paper"] .sleigh-note {
 }
 body[data-look="paper"] main > footer {
   font-size: 11px;
-}
-/* Figures that change keep their room, so nothing beside them moves */
-body[data-look="paper"] .station-rate {
-  box-sizing: border-box;
-  min-width: 100px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 600px) {
   body[data-look="paper"] main .dashboard .clock-box > strong {

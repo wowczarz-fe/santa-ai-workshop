@@ -291,17 +291,6 @@ body[data-look="polish"] .paper-rate {
   margin-left: auto;
   gap: 3px;
 }
-body[data-look="polish"] .station-rate {
-  font-size: 11px;
-  border: 1px solid #cfddd3;
-  border-radius: 14px;
-  padding: 2px 6px;
-  background: white;
-  white-space: nowrap;
-}
-body[data-look="polish"] .capacity-label {
-  display: none;
-}
 body[data-look="polish"] .station-bottleneck {
   font-size: 9px;
   background: #bf9b45;

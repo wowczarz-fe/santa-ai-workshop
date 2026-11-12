@@ -150,7 +150,7 @@
     const station = make("section", "station");
     station.id = `station${s}`;
     station.dataset.destination = s;
-    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine">${Art.scene(s)}<strong class="station-rate" id="rate${s}"></strong><span class="station-bottleneck" id="bottleneck${s}"></span><span class="capacity-label">${["Reading", "Toy making", "Dispatch at current checking"][s]}</span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine">${Art.scene(s)}<span class="station-bottleneck" id="bottleneck${s}"></span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
     station
       .querySelector(".column-heading")
       .append(
@@ -228,11 +228,7 @@
     const station = $(`station${s}`),
       heading = station.querySelector(".column-heading");
     const rate = make("div", "paper-rate");
-    rate.append(
-      $(`rate${s}`),
-      $(`bottleneck${s}`),
-      station.querySelector(".capacity-label"),
-    );
+    rate.append($(`bottleneck${s}`));
     heading.append(rate);
     const scene = make("div", "paper-scene");
     scene.append(station.querySelector(".machine"), $(`piles${s}`));
@@ -622,11 +618,6 @@
     for (let s = 0; s < 3; s++) {
       const station = view.stations[s];
       text(`staff${s}`, `${station.working} working · ${station.idle} idle`);
-      const capacity = station.rate;
-      text(
-        `rate${s}`,
-        `${Math.round(capacity)} ${["read", "made", "checked"][s]}/min`,
-      );
       const bottleneck = $(`bottleneck${s}`),
         isSlowest = view.pace.slowest === s;
       if (bottleneck.childNodes.length !== (isSlowest ? 2 : 0)) {
@@ -1892,6 +1883,7 @@
             "Elves or the toy machine make the toys.",
             "Elves check gifts before the sleigh; AI never checks its own work.",
           ][s],
+          `${Math.round(v.rate)} ${["read", "made", "checked"][s]} a minute now.`,
           v.blocked
             ? `${cap(v.blocked)}.`
             : view.pace.slowest === s

@@ -44,7 +44,7 @@ function conditional(c) {
     case "aboard": {
       // Worth fetching back when leaving them costs more than the fetching, counting checker time at £1 a second.
       const bring = c.options.find((o) => o.id === "bringBack");
-      return num(fact(c, "Cost if left")) > bring.money + bring.seconds &&
+      return num(fact(c, "In your cost now")) > bring.money + bring.seconds &&
         left >= 30
         ? "bringBack"
         : "leave";
@@ -70,8 +70,7 @@ function chooseWell(ch, v) {
   const value = (o, label) =>
     o.facts.find((f) => f.label === label)?.value ?? "";
   const p = odds(value(by("update"), "Risk"));
-  const toCome = num(value(by("train"), "Gives"));
-  if (v.vigilance.state !== "careful" && toCome >= 30) return "train";
+  if (v.vigilance.state !== "careful") return "train";
   if (p <= 0.25 && v.ai[1] > 0) return "update";
   if (num(value(by("rest"), "Energy now")) < 45) return "rest";
   if (p < 0.75 && v.ai[1] > 0) return "tested";
@@ -445,6 +444,18 @@ function checkChoice(v, w) {
 // Every wrong gift's news line names one action open now, and nothing said during play points at
 // what only half-time sells.
 function checkNews(n) {
+  // A caught gift never reached the child, and a drift line waits for the first DRIFT_QUIET seconds
+  // and names what to do now.
+  if (n.kind === "checked" && /^Caught/.test(n.text))
+    assert(
+      !/ got /.test(n.text) && /remade/.test(n.text),
+      `a caught line says the child got it: ${n.text}`,
+    );
+  if (n.kind === "relaxed")
+    assert(
+      n.t >= DRIFT_QUIET && /rested elf/.test(n.text),
+      `drift line at ${n.t} s: ${n.text}`,
+    );
   if (n.kind === "loaded") {
     assert(
       CONTROLS_NAMED.includes(n.control),
@@ -504,6 +515,8 @@ function play(name, seed) {
   // Seconds the line has stood stopped, or a pile full, with nothing pointed at, and the longest such stretch.
   let unhinted = 0;
   r.unhinted = 0;
+  const idle = Array(8).fill(0);
+  r.idleBreak = 0;
   const memo = { seed };
   const seen = new Set();
   for (let i = 0; !w.end; i++) {
@@ -531,6 +544,12 @@ function play(name, seed) {
           ));
       unhinted = stuck && !v.focus ? unhinted + 0.5 : 0;
       r.unhinted = Math.max(r.unhinted, unhinted);
+      // Seconds an elf has sat on a break fully rested, the longest such wait.
+      v.elves.forEach((e, k) => {
+        idle[k] =
+          e.station === 3 && !e.resting && e.energy === 100 ? idle[k] + 0.5 : 0;
+      });
+      r.idleBreak = Math.max(r.idleBreak, ...idle);
       if (v.case && !seen.has(v.case.id)) {
         seen.add(v.case.id);
         r.cards++;
@@ -611,12 +630,21 @@ assert(
   firstThree <= 0.3,
   `a first-timer earns three stars in under 30% of games (${pc(firstThree)})`,
 );
-// Checking everything loses mainly through its cost, at either skill.
-for (const name of ["firstCheckAll", "expertCheckAll"])
-  assert(
-    1 - metShare(name, "cost") >= 0.6,
-    `${name} breaks the cost limit in most games (${pc(1 - metShare(name, "cost"))})`,
-  );
+// Checking everything loses through its cost for an expert. A first-timer's checkers, rested now
+// and then, look at every gift properly and hold the sleigh up, so it loses the cost or the Full
+// sleigh star.
+assert(
+  1 - metShare("expertCheckAll", "cost") >= 0.6,
+  `an expert checking everything breaks the cost limit in most games (${pc(1 - metShare("expertCheckAll", "cost"))})`,
+);
+assert(
+  shareOf(results.firstCheckAll, (r) => !r.met.cost || !r.met.full) >= 0.85,
+  "a first-timer checking everything loses the cost or the Full sleigh star",
+);
+warn(
+  1 - metShare("firstCheckAll", "cost") >= 0.6,
+  `a first-timer checking everything breaks the cost limit in most games (${pc(1 - metShare("firstCheckAll", "cost"))})`,
+);
 assert(
   starShare("firstCheckAll", (s) => s < 3) >= 0.85 &&
     starShare("firstCheckAll", (s) => s === 3) < 0.05,
@@ -791,6 +819,45 @@ for (const [name, rs] of Object.entries(results))
       assert.strictEqual(e.assurance.verdict, "too little", why);
     if (STAYED_ON_A_FEW.includes(name))
       assert.notStrictEqual(e.assurance.verdict, "too much", why);
+    assert(
+      losses.some((l) => VERDICTS[l].includes(e.assurance.verdict)),
+      `${why}: the dial reads ${e.assurance.verdict}`,
+    );
+  }
+// The end screen tells what the player did: a recall shows among the causes, and an action shows
+// as used only when it was done. No elf sits on a break fully rested.
+for (const [name, rs] of Object.entries(results))
+  for (const r of rs) {
+    const acts = Object.fromEntries(
+      r.end.practices.flatMap((p) => p.actions).map((a) => [a.id, a]),
+    );
+    const why = `${name}: ${JSON.stringify(Object.values(acts).map((a) => [a.id, a.used, a.figure]))}`;
+    assert.strictEqual(acts.tested.used, r.halfTime === "tested", why);
+    assert.strictEqual(
+      acts.rolledBack.used,
+      r.choices.includes("source:rollback"),
+      why,
+    );
+    assert.strictEqual(
+      acts.asked.used,
+      !/^asked 0 /.test(acts.asked.figure),
+      why,
+    );
+    for (const p of r.end.practices)
+      assert.strictEqual(
+        p.used,
+        p.actions.some((a) => a.used),
+        why,
+      );
+    if (r.choices.includes("aboard:bringBack"))
+      assert(
+        r.end.causes.some((c) => c.id === "recalled"),
+        `${name}: a recall shows as a cause`,
+      );
+    assert(
+      r.idleBreak <= COCOA_LEAST + 1,
+      `${name}: an elf sat rested on a break for ${r.idleBreak} s`,
+    );
   }
 for (const name of IDLE)
   for (const r of results[name])
@@ -851,12 +918,16 @@ assert(
   shareOf(dial("expertCheckFew"), (a) => a.verdict === "too little") >= 0.75,
   "checking a few reads too little",
 );
-assert(
-  shareOf(dial("expertCheckAll"), (a) =>
-    ["too much", "bottleneck"].includes(a.verdict),
-  ) >= 0.75,
-  "checking everything reads too much or a bottleneck",
-);
+// Checking everything never reads too little; it reads too much or a bottleneck unless wrong gifts
+// were its loss, when the dial follows them to "about right".
+for (const name of ["expertCheckAll", "firstCheckAll"])
+  assert(
+    dial(name).every((a) => a.verdict !== "too little") &&
+      shareOf(dial(name), (a) =>
+        ["too much", "bottleneck"].includes(a.verdict),
+      ) >= 0.5,
+    `${name} reads too much or a bottleneck in most games`,
+  );
 warn(
   shareOf(dial("expert"), (a) => a.verdict === "about right") >= 0.5,
   "the expert on the good strategy mostly reads about right",

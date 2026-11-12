@@ -493,7 +493,7 @@ const MOMENTS = {
     text: (w, x) =>
       x?.result === "wrong"
         ? "A wrong gift just went aboard unchecked. Choose which gifts the elves check."
-        : "Nothing checks gifts before they leave. Choose which gifts the elves check.",
+        : `Elves check only ${Math.round(w.checkShare() * 100)} in 100 gifts before they leave. Choose which gifts they check.`,
   },
   bypass: {
     control: "bypass",

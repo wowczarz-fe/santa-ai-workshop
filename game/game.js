@@ -39,6 +39,8 @@
   const queueIds = [["letters"], ["orders"], ["check", "pass", "rework"]];
   const stationNames = ["LETTERS", "TOYS", "CHECKING"];
   const miniPiles = { pass: "let-through", rework: "fixing" };
+  // The straight-through gifts wait for a checker to load them, so the counter says that.
+  const queueLabel = (q) => (q.id === "pass" ? "Waiting to load" : q.name);
   let game,
     view,
     started = false,
@@ -629,7 +631,7 @@
       for (const id of queueIds[s]) {
         const q = view.queues[id],
           node = $(`queue-${id}`);
-        node.querySelector(".queue-name").textContent = q.name;
+        node.querySelector(".queue-name").textContent = queueLabel(q);
         // A small counter shows the count alone; it turns red when its pile is full.
         node.querySelector(".queue-amount").textContent = miniPiles[id]
           ? String(q.parcels.length)
@@ -698,22 +700,17 @@
         "aria-label",
         `${elf.name}, ${isFree(elf) ? "free to move" : isIdle(elf) ? "waiting for work" : elf.doing}, energy ${energy} of 100. Select to move.`,
       );
-      // The task word under the name says what the elf is doing.
+      // The task word under the name is the first word of what the rules say the elf is doing
+      // ("reading", "loading", "remaking"); free, waiting and resting elves get their own word.
       const [task, role = task] = isFree(elf)
         ? ["free to move", "free"]
         : isIdle(elf)
           ? ["waiting"]
-          : elf.doing.includes("confirm")
-            ? ["confirm"]
-            : elf.station === 3 || elf.resting
+          : elf.resting
+            ? ["burnt out", "resting"]
+            : elf.station === 3
               ? ["resting"]
-              : elf.doing.includes("reading")
-                ? ["reading"]
-                : elf.doing.includes("making")
-                  ? ["making"]
-                  : elf.doing.includes("checking")
-                    ? ["checking"]
-                    : ["working"];
+              : [elf.doing.split(" ")[0] || "working"];
       b.querySelector(".elf-task").textContent = task;
       b.dataset.role = role;
       b.querySelector(".elf-eyes").setAttribute(
@@ -730,11 +727,11 @@
             {
               reading: "p-letter",
               making: "p-hammer",
+              remaking: "p-hammer",
               checking: "p-glass",
-              confirm: "p-confirming",
-              watching: "p-watching",
+              confirming: "p-confirming",
               resting: "p-resting",
-            }[task] || "",
+            }[role] || "",
           ),
       );
     });
@@ -1821,10 +1818,10 @@
     if (type === "queue") {
       const q = view.queues[parts[1]];
       return [
-        q.name,
+        queueLabel(q),
         [
           parts[1] === "pass"
-            ? "Gifts going to the sleigh without a check."
+            ? "Gifts not sent for a check, waiting for an elf here to load them onto the sleigh."
             : `${q.parcels.length} of ${q.limit} waiting, ${Math.round(q.rate)} a minute going out.`,
           q.blocked
             ? `${cap(q.blocked)}.`
@@ -1853,7 +1850,7 @@
           [
             "Elves read the letters, with or without AI.",
             "Elves or the toy machine make the toys.",
-            "Elves check gifts before the sleigh; AI never checks its own work.",
+            "Elves here check gifts, remake the caught ones and load the sleigh.",
           ][s],
           `${Math.round(v.rate)} ${["read", "made", "checked"][s]} a minute now.`,
           v.blocked

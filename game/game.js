@@ -384,8 +384,8 @@
       );
     }
   }
-  // A wrong gift lights up, for a few seconds, the control its news line names. The tag on it is
-  // the line's last sentence up to any colon, so its words are the rules' own.
+  // A wrong gift lights up, for a few seconds, the control its news line names, with the rules'
+  // words for what to do as its tag.
   const hintTargets = {
     checking: () => actionGroups.get("checking"),
     "ai:0": () => actionGroups.get("ai0"),
@@ -401,9 +401,10 @@
     tourStep === null;
   function showMistakeHint(news) {
     if (!hintTargets[news.control]) return;
-    const action = (/([^.]+)\.\s*$/.exec(news.text)?.[1] ?? "")
-      .split(":")[0]
-      .trim();
+    // The rules' short tag when they send one, else the line's last sentence up to any colon.
+    const action =
+      news.action ??
+      (/([^.]+)\.\s*$/.exec(news.text)?.[1] ?? "").split(":")[0].trim();
     mistakeHint = {
       control: news.control,
       words: /^Wrong gift/.test(action) ? "" : action,
@@ -1678,10 +1679,17 @@
     text("caseTitle", caseHeading(c));
     text("caseText", c.text);
     $("casePanel").dataset.kind = c.kind;
-    // The figure the decision turns on most, such as what the gift costs if wrong: the first of
-    // the rules' primary facts. The rest are behind the card's info button.
-    const stake = c.facts?.find((f) => f.primary);
-    text("caseFact", stake ? `${stake.label}: ${stake.value}` : "");
+    // The figure the decision turns on most, such as what the gift costs if wrong: the rules'
+    // stake when they send one, else the first primary fact. The rest are behind the info button.
+    const stake = c.stake ?? c.facts?.find((f) => f.primary);
+    text(
+      "caseFact",
+      !stake
+        ? ""
+        : typeof stake === "string"
+          ? stake
+          : `${stake.label}: ${stake.value}`,
+    );
     $("caseFact").hidden = !stake;
     // Options: large buttons with an icon, the label and chips for what each costs and does.
     const options = $("caseOptions");

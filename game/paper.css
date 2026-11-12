@@ -2569,3 +2569,33 @@ body[data-look="paper"] .station-rate {
     height: calc(100dvh - 250px);
   }
 }
+/* Short phones with Ask the child on: both letter piles show as tags alone, so neither rises
+   behind the heading */
+@media (max-width: 600px) and (max-height: 799px) {
+  body[data-look="paper"] #piles0:not(:has(.asking-off)) .queue {
+    grid-template-rows: 36px auto 3px;
+  }
+  body[data-look="paper"] #piles0:not(:has(.asking-off)) .queue-picture {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  /* Before the first run and after the last the footer shows, and the board makes room for it */
+  body[data-look="paper"] main:has(> footer:not([hidden])) .board {
+    height: calc(100dvh - 274px);
+  }
+}
+@media (max-width: 600px) {
+  body[data-look="paper"] main .board {
+    min-height: 460px;
+  }
+}
+@media (max-width: 380px) {
+  /* The title and the three header buttons fit the narrowest phones without a sideways nudge */
+  body[data-look="paper"] > header {
+    gap: 6px;
+  }
+  body[data-look="paper"] > header h1 {
+    font-size: 16px;
+  }
+}

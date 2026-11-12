@@ -132,6 +132,120 @@ const active =
     answer(w, v, m, policy);
   };
 
+// A scripted player's own sloppiness, drawn from its seed apart from the workshop's, so a game
+// replays the same.
+function sloppy(seed) {
+  let s = Math.imul(seed, 2654435761) >>> 0;
+  return () => {
+    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+const between = (m, lo, hi) => lo + m.r() * (hi - lo);
+
+// Rests an elf once its energy shows red, unless the player misses it this time (one time in four),
+// and sends it back to where it came from once it is fresh.
+function restsWhenRed(w, v, m) {
+  m.home ??= {};
+  m.missed ??= new Set();
+  v.elves.forEach((e, i) => {
+    if (e.station < 3 && e.mood === "tired" && !m.missed.has(i)) {
+      if (m.r() < 0.25) m.missed.add(i);
+      else if (w.move(i, 3)) m.home[i] = e.station;
+    }
+    if (e.mood !== "tired") m.missed.delete(i);
+    if (e.station === 3 && !e.resting && e.mood === "fresh")
+      w.move(i, m.home[i] ?? 2);
+  });
+}
+
+// Every so often moves one elf to the station the page points at, else the one a stopped station
+// waits for, else the one with the fullest pile; it takes the elf from where elves stand idle or the
+// pile is emptiest.
+function shuffle(w, v, m) {
+  m.shuffleAt ??= between(m, 15, 25);
+  if (v.t < m.shuffleAt) return;
+  const piles = [
+    fill(v, "letters"),
+    fill(v, "orders"),
+    Math.max(fill(v, "check"), fill(v, "pass")),
+  ];
+  const to =
+    v.focus?.control === "elves"
+      ? v.focus.station
+      : v.stations[1].blocked
+        ? 2
+        : v.stations[0].blocked
+          ? 1
+          : argmax(piles);
+  const spare = piles.map((p, s) =>
+    s !== to && v.stations[s].staff > 1 ? v.stations[s].idle - p : -9,
+  );
+  const from = argmax(spare);
+  if (spare[from] === -9 || piles[to] < 0.3) return;
+  m.shuffleAt = v.t + between(m, 15, 25);
+  const elf = v.elves.findIndex((e) => e.station === from && !e.resting);
+  if (v.stations[from].staff > 1 && elf >= 0) w.move(elf, to);
+}
+
+// Answers a decision 5 to 10 seconds after it shows, with a policy that may be a guess.
+function decideSlowly(w, v, m, policy) {
+  const c = v.case;
+  if (!c || c.resolving) return;
+  if (m.caseId !== c.id) {
+    m.caseId = c.id;
+    m.answerAt = v.t + between(m, 5, 10);
+  }
+  if (v.t < m.answerAt) return;
+  const wanted = policy(c, m);
+  const pick =
+    c.options.find((o) => o.id === wanted && o.available) ??
+    c.options.find((o) => o.available);
+  if (pick && w.resolve(c.id, pick.id))
+    (m.choices ??= []).push(`${key(c)}:${pick.id}`);
+}
+
+// Someone who did the tour and means well but is slow and imperfect: puts both stations on Assist
+// and checking on the risky ones some seconds in, looks at the screen only every 2 to 4 seconds,
+// turns reading up to Automate once letters pile up, moves an elf about every 20 seconds, rests
+// elves that show red but misses some, and answers decisions late, mostly asking, rolling back and
+// fetching back.
+const meansWell = (c, m) =>
+  m.r() < ({ unclear: 0.75, source: 0.75, aboard: 0.75 }[key(c)] ?? 0.5)
+    ? { unclear: "ask", source: "rollback", aboard: "bringBack" }[key(c)]
+    : { unclear: "guess", source: "keep", aboard: "leave" }[key(c)];
+const firstTimer =
+  ({ checking = 1, rest = true, policy = meansWell } = {}) =>
+  (w, v, m) => {
+    m.r ??= sloppy(m.seed);
+    m.lookAt ??= between(m, 2, 4);
+    if (v.t < m.lookAt) return;
+    m.lookAt = v.t + between(m, 2, 4);
+    m.aiAt ??= between(m, 4, 10);
+    m.checkAt ??= m.aiAt + between(m, 2, 8);
+    if (v.t >= m.aiAt && !m.aiSet) m.aiSet = w.setAi(0, 1) && w.setAi(1, 1);
+    if (v.t >= m.checkAt && !m.checkSet) m.checkSet = w.setChecking(checking);
+    // The tour said more AI is faster: once letters pile up, reading goes up to Automate.
+    m.raiseAt ??= between(m, 0.3, 0.6);
+    if (m.aiSet && fill(v, "letters") >= m.raiseAt) w.setAi(0, 2);
+    if (rest) restsWhenRed(w, v, m);
+    shuffle(w, v, m);
+    decideSlowly(w, v, m, policy);
+  };
+// Half-time without working anything out: a likely-sounding option, drawn by the player's seed.
+function pickOnAHunch(ch, v, m) {
+  const roll = m.r();
+  return roll < 0.3
+    ? "train"
+    : roll < 0.55
+      ? "rest"
+      : roll < 0.75
+        ? "tested"
+        : roll < 0.9
+          ? "update"
+          : "none";
+}
+
 // Players see only view() and call only the action methods.
 const players = {
   byHandIdle: () => {},
@@ -145,6 +259,17 @@ const players = {
   alwaysGuess: active({
     policy: (c) => (c.kind === "unclear" ? "guess" : conditional(c)),
   }),
+  firstTimer: firstTimer(),
+  // The same first-timer careless: checking left on a few, every unclear wish guessed and other
+  // decisions answered at random, and nobody rested.
+  careless: firstTimer({
+    checking: 0,
+    rest: false,
+    policy: (c, m) =>
+      c.kind === "unclear"
+        ? "guess"
+        : c.options[Math.floor(m.r() * c.options.length)].id,
+  }),
 };
 const IDLE = ["byHandIdle", "automateIdle", "assistIdle"];
 const HALF_TIME = {
@@ -154,6 +279,8 @@ const HALF_TIME = {
   checkFew: chooseWell,
   neverRests: chooseWell,
   alwaysGuess: chooseWell,
+  firstTimer: pickOnAHunch,
+  careless: pickOnAHunch,
 };
 
 // Nothing in view() may show what the player has not found out, and the shape holds.
@@ -300,9 +427,14 @@ function play(name, seed) {
     burnouts: [],
     firstBurnout: {},
     hash: crypto.createHash("sha1"),
+    // What asked for the player's attention in each half: decisions, burnouts and wrong-gift lines.
+    calls: [0, 0].map(() => ({ cards: 0, burnouts: 0, wrong: 0 })),
   };
   let lastNews = 0;
-  const memo = {};
+  // Seconds the line has stood stopped, or a pile full, with nothing pointed at, and the longest such stretch.
+  let unhinted = 0;
+  r.unhinted = 0;
+  const memo = { seed };
   const seen = new Set();
   for (let i = 0; !w.end; i++) {
     if (i % 5 === 0 || w.choice) {
@@ -312,16 +444,31 @@ function play(name, seed) {
       for (const n of v.news.filter((n) => n.id > lastNews).reverse()) {
         r.kinds.add(n.kind);
         checkNews(n);
+        if (n.kind === "loaded") r.calls[v.run.half - 1].wrong++;
         if (n.kind === "tired") {
+          r.calls[v.run.half - 1].burnouts++;
           r.burnouts.push(n.t);
           r.firstBurnout[n.elf] ??= n.t;
         }
       }
       lastNews = v.news[0]?.id ?? lastNews;
-      if (v.case && !seen.has(v.case.id)) (seen.add(v.case.id), r.cards++);
+      const stuck =
+        !v.choice &&
+        !v.incident?.rollingBack &&
+        (v.stations.some((st) => st.blocked) ||
+          ["letters", "orders", "check", "pass"].some(
+            (id) => fill(v, id) >= 1,
+          ));
+      unhinted = stuck && !v.focus ? unhinted + 0.5 : 0;
+      r.unhinted = Math.max(r.unhinted, unhinted);
+      if (v.case && !seen.has(v.case.id)) {
+        seen.add(v.case.id);
+        r.cards++;
+        r.calls[v.run.half - 1].cards++;
+      }
       if (v.choice) {
         checkChoice(v, w);
-        const pick = (HALF_TIME[name] ?? (() => "none"))(v.choice, v);
+        const pick = (HALF_TIME[name] ?? (() => "none"))(v.choice, v, memo);
         r.halfTime = pick;
         assert(w.choose(pick), `choose ${pick}`);
         continue;
@@ -364,7 +511,8 @@ for (const [name, rs] of Object.entries(results)) {
   );
 }
 
-// The balance targets of the one-sleigh game (ADR 0014).
+// The balance targets of the one-sleigh game (ADR 0014): lazy play loses, a first game earns one or
+// two stars, and a careful game two or three.
 const starShare = (name, test) => shareOf(starsOf(name), test);
 assert(
   starShare("automateIdle", (s) => s <= 1) >= 0.9,
@@ -383,12 +531,34 @@ assert(
 const sensible = mean(starsOf("sensible"));
 const three = starShare("sensible", (s) => s === 3);
 assert(
-  sensible >= 2 && starShare("sensible", (s) => s >= 2) >= 0.7,
-  `a sensible player earns two stars typically (${sensible.toFixed(2)})`,
+  starShare("sensible", (s) => s === 0) <= 0.05 &&
+    starShare("sensible", (s) => s >= 2) >= 0.8,
+  `a sensible player earns two stars or more in at least 80% of games (${sensible.toFixed(2)})`,
 );
 assert(
-  three >= 0.2 && three <= 0.55,
-  `a sensible player earns three stars in a quarter to a half of games (${Math.round(three * 100)}%)`,
+  three >= 0.35 && three <= 0.7,
+  `a sensible player earns three stars in about half of games (${Math.round(three * 100)}%)`,
+);
+// A first game played on the tour's advice, slowly and imperfectly, ends with a star or two; playing
+// well is worth about one more.
+const first = mean(starsOf("firstTimer"));
+const firstTwo = starShare("firstTimer", (s) => s >= 2);
+assert(
+  starShare("firstTimer", (s) => s === 0) < 0.1,
+  "a first-timer ends with no star in under one game in ten",
+);
+assert(
+  firstTwo >= 0.4 && firstTwo <= 0.85,
+  `a first-timer earns two stars or more in about half of games (${Math.round(firstTwo * 100)}%)`,
+);
+assert(
+  sensible - first >= 0.5 && sensible - first <= 1.3,
+  `playing well again is worth about one star (${first.toFixed(2)} to ${sensible.toFixed(2)})`,
+);
+assert(
+  starShare("careless", (s) => s <= 1) >= 0.6 &&
+    mean(starsOf("careless")) <= first - 0.4,
+  "a careless first-timer mostly ends with 0 or 1 star",
 );
 // Both ends lose, the middle wins.
 assert(
@@ -423,6 +593,26 @@ assert(
   perElf >= 1.3 && perElf <= 2.7,
   `an elf never rested burns out about once a half (${perElf.toFixed(2)} a game)`,
 );
+// Whenever a first-timer's line stops or a pile fills, the page points at what would free it within
+// about 5 seconds.
+const unhinted = Math.max(...results.firstTimer.map((r) => r.unhinted));
+assert(
+  unhinted <= 5,
+  `a first-timer's line stood stopped ${unhinted} s with nothing pointed at`,
+);
+// What asks for a first-timer's attention in each half, the half-time card counted in both: no more
+// than about one thing every 10 seconds.
+for (const half of [0, 1]) {
+  const calls = ["cards", "burnouts", "wrong"].map((k) =>
+    mean(results.firstTimer.map((r) => r.calls[half][k])),
+  );
+  const all = sum(calls) + 1;
+  const [cards, burnouts, wrong] = calls.map((n) => n.toFixed(1));
+  console.log(
+    `first-timer, half ${half + 1}: ${cards} decisions, ${burnouts} burnouts, ${wrong} wrong-gift lines and half-time, one every ${(HALF_SECONDS / all).toFixed(0)} s`,
+  );
+  assert(all <= HALF_SECONDS / 10, `half ${half + 1} asks too often`);
+}
 console.log(
   `half-time picks (sensible): ${Object.entries(
     Object.groupBy(results.sensible, (r) => r.halfTime),
@@ -470,11 +660,12 @@ for (const r of results.sensible) {
     assert.strictEqual(Object.keys(b).join(), "id,name,icon");
   assert(r.end.blunderTotal >= r.end.blunders.length);
 }
-assert.strictEqual(
-  play("sensible", 3).hash,
-  play("sensible", 3).hash,
-  "same seed and calls give the same game",
-);
+for (const name of ["sensible", "firstTimer"])
+  assert.strictEqual(
+    play(name, 3).hash,
+    play(name, 3).hash,
+    `${name}: same seed and calls give the same game`,
+  );
 // The unclear letters come from at least five children, Timmy among them.
 const children = new Set(
   SEEDS.flatMap((seed) => new Workshop({ seed }).unclear.map((u) => u.w.child)),

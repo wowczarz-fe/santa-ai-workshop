@@ -85,18 +85,19 @@ const SIGN_IF_GOOD = 0.3;
 const TEST_TOYS = 4;
 const ABOARD_AT = 5; // wrong gifts aboard that raise the one recall decision
 
-// One sleigh, filled over two halves with a pause between them. The target sits just below what a
-// careful player manages and well above what elves working by hand deliver.
+// One sleigh, filled over two halves with a pause between them. The target sits below what a careful
+// player manages (about 144), above what checking every gift gets through in most games, and out of
+// reach of a first game on Assist, so filling it is what a second game rewards.
 const HALF_SECONDS = 75;
 const DURATION = 2 * HALF_SECONDS;
 const CLOSE = DURATION - 15; // letters stop coming, so the last ones can still reach the sleigh
-const TARGET = 144;
+const TARGET = 130;
 // Three goals for the game, one star each (ADR 0014). full: the right gifts aboard reach the
 // target. right: at most WRONG_ALLOWED wrong gifts aboard. cost: the cost so far, wrong gifts
 // aboard at what they will cost included, stays within COST_LIMIT. The right and cost goals count
 // only once the sleigh holds GOALS_FROM of its target, so a near-empty sleigh earns nothing.
 const WRONG_ALLOWED = 3;
-const COST_LIMIT = 700;
+const COST_LIMIT = 740;
 const GOALS_FROM = 0.4;
 // Where a wrong gift that reached the sleigh came from, and the control that would have stopped it.
 // fix is the advice in parts, each with a test of whether the settings already follow it
@@ -1834,8 +1835,41 @@ class Workshop {
     return change >= 1 ? "growing" : change <= -1 ? "shrinking" : "steady";
   }
 
-  // The one thing that most needs the player now, in four words at most, or null.
+  // More hands or more AI at a station: the AI while its elves work by hand, else another elf.
+  helpAt(s) {
+    return s < 2 && this.ai[s] === 0 && this.staff(s).length >= 3
+      ? { station: s, control: `ai${s}`, text: "try the AI" }
+      : { station: s, control: "elves", text: "needs another elf" };
+  }
+
+  // When the line has stopped or a pile is full, the one control that would get it moving: the
+  // station furthest along that holds the rest up. Null while a rollback holds the toys.
+  unblock() {
+    const waiting = (s) =>
+      STATION_QUEUES[s].some((id) => id !== "rework" && this.q[id].length);
+    if (
+      this.full("check") ||
+      this.full("pass") ||
+      (!this.staff(2).length && waiting(2))
+    )
+      return this.checking === 2 && this.staff(2).length >= 3
+        ? { station: 2, control: "checking", text: "check fewer" }
+        : this.helpAt(2);
+    if (this.incident?.rollingBack) return null;
+    for (const s of [1, 0])
+      if (
+        this.full(STATION_QUEUES[s][0]) ||
+        (this.ai[s] < 2 && !this.staff(s).length && waiting(s))
+      )
+        return this.helpAt(s);
+    return null;
+  }
+
+  // The one thing that most needs the player now, in four words at most, or null. A stopped line
+  // comes first, since nothing else counts while it stands.
   focus() {
+    const stuck = this.unblock();
+    if (stuck) return stuck;
     const tired = this.elves
       .filter((e) => e.station < BREAK && e.tired >= 70)
       .sort((x, y) => y.tired - x.tired)[0];
@@ -1850,14 +1884,7 @@ class Workshop {
       (x, y) =>
         this.q[y].length / QUEUES[y].limit - this.q[x].length / QUEUES[x].limit,
     );
-    for (const id of piles) {
-      const s = QUEUES[id].station;
-      const lever = `ai${s}`;
-      const aiHelps = s < 2 && this.ai[s] === 0 && this.staff(s).length >= 3;
-      return aiHelps
-        ? { station: s, control: lever, text: "try the AI" }
-        : { station: s, control: "elves", text: "needs another elf" };
-    }
+    if (piles.length) return this.helpAt(QUEUES[piles[0]].station);
     const recentWrong = this.news.filter(
       (n) => n.kind === "loaded" && this.t - n.t <= 30,
     ).length;

@@ -1314,7 +1314,7 @@ body[data-look="paper"] #piles0 .stack {
   }
 }
 
-/* ==== Break card and end screen: paper look ====
+/* ==== Half-time card and end screen: paper look ====
    Same layout as style.css; cream paper on pine, serif headings, red primary. */
 body[data-look="paper"] #breakDialog,
 body[data-look="paper"] #report {
@@ -1464,7 +1464,7 @@ body[data-look="paper"] .slip-wish {
 body[data-look="paper"] .dial-word {
   fill: #14321f;
 }
-/* ==== End of break card and end screen: paper look ==== */
+/* ==== End of half-time card and end screen: paper look ==== */
 
 .look-choice[hidden] {
   display: none;

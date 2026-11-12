@@ -546,6 +546,7 @@
     $("report").close();
     $("breakDialog").close();
     lastChoice = null;
+    breakAnimated = false;
     observedRight = 0;
     caughtSnapshot = null;
     $("celebration").replaceChildren();
@@ -1038,7 +1039,7 @@
       showReport();
     }
   }
-  // Break card and end screen: drawings and small builders shared by both.
+  // Half-time card and end screen: drawings and small builders shared by both.
   const uiIcon = (name) => SharedArt.icon(name) || "";
   const iconNode = (name, cls) => {
     const node = make("span", cls);
@@ -1065,6 +1066,7 @@
     tested: "test",
     train: "train",
     rest: "rest",
+    none: "play",
   };
   // A toy drawn: the one a child wanted, or the wrong one the workshop made.
   const drawnToy = (name, wanted, cls) => {
@@ -1175,10 +1177,10 @@
     );
     if (!causes.length) list.append(make("li", "cause-none", none));
   }
-  // The break card: what the last run earned, at most two lines on why, then the choice.
+  // The half-time card: how the sleigh stands, at most two lines, what changes, then the choice.
   // A decision still waiting can be opened from here; the card steps aside until it is answered.
   let breakAside = false,
-    breakAnimated = null;
+    breakAnimated = false;
   function breakLine(cls, iconName, ...parts) {
     const line = make("p", `break-line ${cls}`);
     if (iconName) line.append(iconNode(iconName, "break-line-icon"));
@@ -1190,29 +1192,12 @@
   function paintBreakLines(choice) {
     const report = choice.report;
     const lines = [];
-    const top = report.causes[0];
-    const slip = report.slips[0];
-    // A short sleigh whose elves lost a quarter of their work or more to tiredness names that in the
-    // one line under the figures, in place of the wrong-gift cause; a waiting decision still comes first.
-    const full = report.goals.find((g) => g.id === "full");
-    const worn = !full?.met && (report.tired ?? 0) >= 25;
     if (choice.openCase) {
       const line = breakLine(
         "break-line-case",
         "ask",
-        "Decision still waiting: ",
+        "Decision waiting: ",
         make("b", "", choice.openCase.title),
-        // A short, tired sleigh keeps its reason on this one line, as a figure.
-        ...(worn
-          ? [
-              " · ",
-              make(
-                "b",
-                "break-line-figure",
-                `tired elves lost ${report.tired}%`,
-              ),
-            ]
-          : []),
       );
       if (view.case) {
         const open = make("button", "break-open-case", "Open it");
@@ -1221,10 +1206,11 @@
         line.append(open);
       }
       lines.push(line);
-    } else if (worn) {
-      const burnt = report.burnouts
-        ? ` · ${plural(report.burnouts, "burnout")}`
-        : "";
+    }
+    // Tiredness shows only when it cost a quarter of the work or burnt an elf out; else the
+    // biggest cause of the wrong gifts, as the goal above already counts them.
+    const top = report.causes?.[0];
+    if ((report.tired ?? 0) >= 25 || report.burnouts)
       lines.push(
         breakLine(
           "break-line-tired",
@@ -1232,77 +1218,20 @@
           make(
             "b",
             "break-line-figure",
-            `Tired elves lost ${report.tired}% of their work${burnt}`,
+            `Tired elves lost ${report.tired}% of their work${report.burnouts ? ` · ${plural(report.burnouts, "burnout")}` : ""}`,
           ),
-          " Send them for cocoa.",
         ),
       );
-    } else if (report.wrong && top) {
-      const cost = report.assurance.shippedCost;
-      const line = breakLine(
-        "break-line-cause",
-        "",
-        make(
-          "b",
-          "break-line-figure",
-          `${plural(report.wrong, "wrong gift")} · ${money(cost)}`,
-        ),
-        top.fix ? ` ${top.name}. ${top.fix}` : ` ${top.name}.`,
-      );
-      if (slip) {
-        const pair = make("span", "break-line-slip");
-        pair.append(
-          drawnToy(slip.wanted.name, true, "slip-mini"),
-          drawnToy(slip.made.name, false, "slip-mini slip-mini-made"),
-        );
-        pair.title = `Wanted ${slip.wanted.name}, got ${slip.made.name}`;
-        line.prepend(pair);
-      }
-      lines.push(line);
-    } else if (report.bonus) {
+    else if (report.wrong && top)
       lines.push(
         breakLine(
-          "break-line-bonus",
-          "star",
-          `+${report.bonus} clean-run bonus`,
+          "break-line-cause",
+          causeIcons[top.id] || "mistakes",
+          "Most wrong gifts: ",
+          make("b", "", top.name),
         ),
       );
-    }
     $("breakLines").replaceChildren(...lines);
-  }
-  function paintBreakDetail(report) {
-    const slip = report.slips[0];
-    $("breakLast").hidden = !report.wrong;
-    $("breakLast").open = false;
-    $("breakSlips").replaceChildren();
-    if (slip) {
-      const card = make("article", "delivery-slip");
-      const toys = make("div", "slip-toys");
-      const wanted = make("span", "slip-side");
-      wanted.append(
-        drawnToy(slip.wanted.name, true, "slip-art"),
-        make("small", "", "Wanted"),
-        make("b", "", slip.wanted.name),
-      );
-      const made = make("span", "slip-side slip-made");
-      made.append(
-        drawnToy(slip.made.name, false, "slip-art"),
-        make("small", "", "Got"),
-        make("b", "", slip.made.name),
-      );
-      toys.append(wanted, made);
-      card.append(
-        make("span", "eyebrow", `Costliest · ${money(slip.cost)}`),
-        toys,
-        make(
-          "p",
-          "slip-wish",
-          `"${slip.wish}" ${slip.cause.charAt(0).toUpperCase()}${slip.cause.slice(1)}.`,
-        ),
-      );
-      $("breakSlips").append(card);
-    }
-    paintCauses($("breakCauses"), report.causes, "");
   }
   function paintBreakOptions(choice) {
     $("breakOptions").replaceChildren();
@@ -1310,8 +1239,7 @@
     for (const option of choice.options) {
       const card = make("button", "upgrade-card");
       card.dataset.choose = option.id;
-      card.dataset.choiceId = choice.id;
-      card.dataset.kind = option.kind;
+      card.dataset.kind = option.id;
       const fact = (label) => option.facts.find((f) => f.label === label);
       const gives = fact("Gives");
       const costs = fact("Costs");
@@ -1320,15 +1248,15 @@
       const others = option.facts.filter(
         (f) => f !== gives && f !== costs && f !== risk && f !== stops,
       );
-      card.title = [
+      const more = [
         option.text,
         ...others.map((f) => `${f.label}: ${f.value}.`),
       ].join(" ");
       card.append(
-        iconNode(optionIcons[option.kind] || "gift", "upgrade-icon"),
+        iconNode(optionIcons[option.id] || "gift", "upgrade-icon"),
         make("strong", "", option.label),
+        make("span", "upgrade-gives", gives?.value ?? option.text),
       );
-      if (gives) card.append(make("span", "upgrade-gives", gives.value));
       const chips = make("span", "upgrade-chips");
       if (costs) {
         const chip = make("span", "upgrade-cost");
@@ -1351,7 +1279,10 @@
       card.append(chips);
       const wrap = make("div", "upgrade-wrap");
       wrap.append(card);
-      addMore(wrap, card.title, `More about ${option.label}`);
+      if (gives) {
+        card.title = more;
+        addMore(wrap, more, `More about ${option.label}`);
+      }
       $("breakOptions").append(wrap);
     }
   }
@@ -1368,34 +1299,17 @@
       breakAside = false;
       lastChoice = null;
     }
-    if (
-      lastChoice !== choice.id ||
-      $("breakLines").dataset.case !== String(choice.openCase?.id ?? "")
-    ) {
-      lastChoice = choice.id;
-      const report = choice.report;
-      const next = choice.next;
-      $("breakRun").replaceChildren(
-        iconNode("star", "break-run-star"),
-        `${view.score.stars} / ${view.score.best}`,
-      );
-      $("breakRun").setAttribute(
-        "aria-label",
-        `${view.score.stars} of ${view.score.best} stars so far`,
-      );
+    const caseKey = String(choice.openCase?.id ?? "");
+    if (lastChoice !== caseKey) {
+      lastChoice = caseKey;
       text("breakTitle", choice.title);
-      $("nextCargoIcon").innerHTML = uiIcon(`cargo-${next.cargo.id}`);
-      text(
-        "breakText",
-        `${choice.text} Next: ${next.cargo.name}, ${next.target} needed.`,
-      );
-      text("nextCargoText", next.cargo.text);
+      $("nextCargoIcon").innerHTML = uiIcon(`cargo-${choice.next.cargo.id}`);
+      text("breakText", choice.next.text);
+      text("nextCargoText", choice.text);
       $("breakGoals").replaceChildren(
-        ...report.goals.map((g) => goalSlot(g, report.goalsCountFrom)),
+        ...choice.report.goals.map((g) => goalSlot(g, view.run.goalsCountFrom)),
       );
-      $("breakLines").dataset.case = String(choice.openCase?.id ?? "");
       paintBreakLines(choice);
-      paintBreakDetail(report);
       paintBreakOptions(choice);
     }
     closeInfo();
@@ -1404,14 +1318,14 @@
       $("breakDialog").showModal();
       $("breakText").focus({ preventScroll: true });
       $("breakDialog").scrollTop = 0;
-      if (breakAnimated === choice.id) return;
-      breakAnimated = choice.id;
+      if (breakAnimated) return;
+      breakAnimated = true;
       $("breakDeparture").classList.remove("break-arrival");
       void $("breakDeparture").offsetWidth;
       $("breakDeparture").classList.add("break-arrival");
     }
   }
-  // The milestone note goes when the break card or the end screen opens, so it never pokes out above them.
+  // The milestone note goes when the half-time card or the end screen opens, so it never pokes out above them.
   function hideToast() {
     toastUntil = 0;
     $("milestoneToast").hidden = true;
@@ -2273,12 +2187,8 @@
       perform(() => game[a]());
       return;
     }
-    if (
-      target.dataset.choose &&
-      view.choice &&
-      String(view.choice.id) === target.dataset.choiceId
-    ) {
-      perform(() => game.choose(view.choice.id, target.dataset.choose));
+    if (target.dataset.choose && view.choice) {
+      perform(() => game.choose(target.dataset.choose));
       return;
     }
     if (target.dataset.resolve) {
@@ -2414,7 +2324,7 @@
     $("breakDialog").close();
     paint();
   });
-  // Escape closes the decision card; the break card then comes back.
+  // Escape closes the decision card; the half-time card then comes back.
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && breakAside) queueMicrotask(paint);
   });

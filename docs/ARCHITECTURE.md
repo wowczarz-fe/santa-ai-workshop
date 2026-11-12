@@ -108,8 +108,10 @@ The page reads only `view()`. Whether an unrevealed parcel is wrong is left out 
 - `end.headline` is the end screen's title, a few words without figures, and `end.lesson` the one
   lesson under it. Both follow one comparison of the game's losses in its own money (below):
   "Fast, but wrong." when the wrong gifts delivered cost most, "Careful, but slow." when gifts held
-  back by checking did, "Too slow for the letters." when other lost letters did, and "Christmas,
-  carefully delivered." for a rating of 3 or a game with no loss. "Too tired to keep up." replaces
+  back by checking did, and "Too slow for the letters." when other lost letters did, each only when
+  its loss mattered (below). "Christmas, carefully delivered." is for a rating of 3, and "A good
+  Christmas." for any other game where no loss mattered; its lesson then names the largest loss as
+  a tip. "Too tired to keep up." replaces
   the second and third when tiredness took a quarter or more (`TIRED_SHARE`) of the working time
   at the station that held the line up: checking for held gifts, the station that held gifts back
   longest for lost letters. The assurance verdict follows the same comparison, so the dial, the
@@ -176,8 +178,11 @@ beforehand: a risky batch can happen to come out clean.
   checked (a bottleneck); and other letters lost to a full pile. Held and lost gifts count only
   when the game fell short of its target. Gifts held back while only some parcels were checked
   count only when the smaller of their number and the gifts the game fell short by is 15% of the
-  target or more (`HELD_SHARE`): a gift held at one departure usually rides the next sleigh, so
-  checking cost the game at most its shortfall. When the bottleneck is the largest, `verdict` is
+  target or more (`LATE_SHARE`): a gift held at one departure usually rides the next sleigh, so
+  checking cost the game at most its shortfall. Lost letters pass the same gate. Wrong gifts count
+  when the mistakes goal was missed in two runs or more (`WRONG_RUNS`) or they cost 30% of the
+  whole budget or more (`WRONG_SHARE`). The headline, the dial and the lesson follow the largest
+  loss that passes its gate. When the bottleneck is the largest, `verdict` is
   `"bottleneck"` whatever `position` says, and `text` names the gifts held back and the fix: rest
   the checkers with cocoa when `tired`, else move an elf to checking.
   When over-checking is the largest, `verdict` is `"too much"` and `position` is moved into

@@ -55,7 +55,7 @@ held at one departure usually rides the next sleigh: the sensible player's held 
 70% of the target, while it fell short by 1 to 30%.
 
 - Held gifts now count only when the gifts they could have cost, the smaller of their number and
-  the shortfall, reach 15% of the target (`HELD_SHARE`). Otherwise the comparison falls through
+  the shortfall, reach 15% of the target (`LATE_SHARE`). Otherwise the comparison falls through
   to the next loss, and the dial reads from its position. The loss's amount is unchanged.
 - A gate on the raw held count at 10 or 15% changed nothing. Pricing held gifts at the capped
   count instead of gating them was rejected: wrong gifts then outweighed them in never-resting
@@ -81,11 +81,43 @@ Verdicts over 24 seeds, before and after (stars and points unchanged in every ga
 | Careful, never moves, asks (4.0)   | right 17, tired 7       | unchanged               | none                     |
 | Careful, never moves, no ask (3.8) | tired 17, right 7       | unchanged               | none                     |
 
-- Where the bottleneck no longer wins, the sensible player's headline becomes "Fast, but wrong." in
-  8 games and "Too slow for the letters." in 3, with lessons about the wrong gifts or lost letters.
+- Where the bottleneck no longer wins, the sensible player's headline became "Fast, but wrong." in
+  8 games and "Too slow for the letters." in 3; the next section gates those too.
 - The careful player who asks children and never moves an elf reads "about right" in 17 of 24
   games, before and after: its losses are letters lost while the asking station holds the line,
   and its headline is "Too tired to keep up." in 23.
-- The active Assist player reads "Too slow for the letters." in 13 of 24 games, 12 of them with 9
-  or more stars, from letters lost in games 2 to 8 gifts short. Lost letters are not gated by the shortfall; the
-  same rule would apply to them if that headline proves too harsh.
+- The active Assist player read "Too slow for the letters." in 13 of 24 games, 12 of them with 9
+  or more stars, from letters lost in games 2 to 8 gifts short.
+
+### Follow-up: every negative headline must be material
+
+The headline still scolded good play: 34 of the 66 games with 9 or more stars, over the same 24
+seeds and players, got a negative headline.
+
+- Lost letters pass the same gate as held gifts: the smaller of their number and the shortfall
+  must reach 15% of the target (`LATE_SHARE`). 10% left one more game of 9 or more stars negative.
+- Wrong gifts count when the mistakes goal was missed in two runs or more (`WRONG_RUNS`), or when
+  they cost 30% of the whole budget or more (`WRONG_SHARE`, £540). Two runs alone let three
+  checkFew games of 7 or 8 stars with £670 to £1,080 of wrong gifts read as good; budget shares of
+  20 or 25% alone turned 7 to 14 games of 9 or more stars negative. Wrong gifts in games of 9 or
+  more stars cost £0 to £1,136, £236 in the middle one, and only four reach £540.
+- The headline, the dial and the lesson follow the largest loss that passes its gate. With none,
+  the headline is "Christmas, carefully delivered." for a rating of 3 and otherwise "A good
+  Christmas.", and the lesson names the largest loss as a tip for next time. The dial changed in
+  none of the 264 games.
+
+Headlines over 24 seeds and the same 11 players, by stars (stars and points unchanged):
+
+| Stars            | Before                                                                                     | After                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| 9 or more (66)   | carefully delivered 32, too slow for the letters 16, fast but wrong 15, careful 2, tired 1 | carefully delivered 32, a good Christmas 29, fast but wrong 3, careful 2 |
+| 6 to 8 (69)      | fast but wrong 31, tired 19, careful 15, too slow for the letters 4                        | fast but wrong 22, tired 19, careful 15, a good Christmas 13             |
+| 5 or fewer (129) | tired 69, fast but wrong 36, careful 24                                                    | unchanged                                                                |
+
+- 61 of 66 games with 9 or more stars now get a positive headline; no game with 5 or fewer does.
+  The five left are three games with £548 to £1,136 of wrong gifts and two games 37 gifts short
+  while checking held gifts back.
+- neverRests reads "Too tired to keep up." in 23 of 24 (its game of 10 stars reads "A good
+  Christmas."), lazy Automate "Fast, but wrong." in 24, checkEverything "Careful, but slow." in 21
+  as before.
+- `tests/balance-check.js` output did not change.

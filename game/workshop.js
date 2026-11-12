@@ -253,9 +253,14 @@ const WRONG_PRICE = { everyday: 12, big: 100 };
 // For the end summary: what a gift that misses its sleigh while it waits to be checked is worth. The
 // child gets it late or not at all, so it counts as half a wrong everyday gift.
 const LATE_PRICE = WRONG_PRICE.everyday / 2;
-// Gifts held up at checking decide the end screen only when they cost at least this share of the
-// game's target, so a well-played game a few gifts short is not told checking held it back.
-const HELD_SHARE = 0.15;
+// Gifts held up at checking, or letters lost to a full pile, decide the end screen only when they
+// cost at least this share of the game's target, so a well-played game a few gifts short is not told
+// off for them.
+const LATE_SHARE = 0.15;
+// Wrong gifts decide the end headline only when the mistakes goal was missed in this many runs or
+// more, or they cost this share of the whole budget or more.
+const WRONG_RUNS = 2;
+const WRONG_SHARE = 0.3;
 // The kinds of parcel the end summary splits checking by. A gift that is both big and unclear counts
 // as big, because its mistake costs the big price.
 const GROUPS = [
@@ -2796,13 +2801,20 @@ class Workshop {
       : right >= this.target * 0.8 && wrongShare <= 0.2
         ? 2
         : 1;
-    const biggest = this.biggestLoss(right, mistakes);
+    // The headline, the dial and the lesson follow the largest loss that mattered; with none, the
+    // lesson still names the largest loss as a tip.
+    const biggest = this.biggestLoss(right, mistakes, true);
     const assurance = this.assurance(biggest);
     // Tiredness slowed the station that held the line up: the headline and lesson name it.
     const worn =
       (biggest === "held" && assurance.tired) ||
       (biggest === "lost" && this.tiredAt(this.longestHolding()));
-    let lesson = this.lesson(rating, right, costs, biggest);
+    let lesson = this.lesson(
+      rating,
+      right,
+      costs,
+      biggest ?? this.biggestLoss(right, mistakes),
+    );
     // A lesson about how much was checked takes its title from the assurance verdict, so the two
     // always agree, and says what to do next time while the dial gives the figures.
     const titles = {
@@ -2823,16 +2835,18 @@ class Workshop {
       rating,
       costs,
       headline:
-        rating === 3 || !biggest
+        rating === 3
           ? "Christmas, carefully delivered."
-          : worn
-            ? "Too tired to keep up."
-            : {
-                wrong: "Fast, but wrong.",
-                over: "Careful, but slow.",
-                held: "Careful, but slow.",
-                lost: "Too slow for the letters.",
-              }[biggest],
+          : !biggest
+            ? "A good Christmas."
+            : worn
+              ? "Too tired to keep up."
+              : {
+                  wrong: "Fast, but wrong.",
+                  over: "Careful, but slow.",
+                  held: "Careful, but slow.",
+                  lost: "Too slow for the letters.",
+                }[biggest],
       lesson,
       assurance,
       checkingAnswer: this.checkingAnswer(assurance),
@@ -2866,8 +2880,8 @@ class Workshop {
   // A gift held back is one waiting at checking when its sleigh left, or a letter lost while checking
   // was the station holding the line. Held and lost gifts count only when the sleigh fell short of
   // the target, because only then did they cost a gift, and held gifts only when the gifts they
-  // could have cost (no more than the shortfall) reach HELD_SHARE of the target. The headline, the
-  // lesson and the assurance dial all follow this one comparison.
+  // could have cost (no more than the shortfall) reach LATE_SHARE of the target. The headline, the
+  // lesson and the assurance dial all follow this one comparison, made with mattered set.
   // Whether tiredness took TIRED_SHARE or more of station s's working time this game.
   tiredAt(s) {
     return this.stats.tiredLost[s] >= TIRED_SHARE * this.stats.tiredWork[s];
@@ -2878,17 +2892,24 @@ class Workshop {
     return this.stats.holding.indexOf(Math.max(...this.stats.holding));
   }
 
-  biggestLoss(right, mistakes) {
+  // With mattered, only the losses that mattered: lost letters past the same gate as held gifts,
+  // and wrong gifts past WRONG_RUNS or WRONG_SHARE.
+  biggestLoss(right, mistakes, mattered = false) {
     const a = this.assure;
-    const late = (n) => (right < this.target ? n * LATE_PRICE : 0);
-    // A gift held at one departure usually rides the next sleigh, so checking cost the game at most
-    // the gifts it fell short by. Held gifts count only when that is HELD_SHARE of the target or more.
-    const held = Math.min(a.heldBy.some, Math.max(0, this.target - right));
+    const short = Math.max(0, this.target - right);
+    const late = (n) => n * LATE_PRICE * (short > 0);
+    // A gift held at one departure usually rides the next sleigh, and a lost letter costs a gift only
+    // while the game is short, so either cost the game at most the gifts it fell short by.
+    const enough = (n) => Math.min(n, short) >= LATE_SHARE * this.target;
+    const lost = this.lost - a.lostAtCheck;
+    const wrongMattered =
+      this.reports.filter((r) => !r.goals.find((g) => g.id === "right").met)
+        .length >= WRONG_RUNS || mistakes >= WRONG_SHARE * BUDGET;
     const loss = {
-      wrong: mistakes,
+      wrong: !mattered || wrongMattered ? mistakes : 0,
       over: late(a.heldBy.all),
-      held: held >= HELD_SHARE * this.target ? late(a.heldBy.some) : 0,
-      lost: late(this.lost - a.lostAtCheck),
+      held: enough(a.heldBy.some) ? late(a.heldBy.some) : 0,
+      lost: !mattered || enough(lost) ? late(lost) : 0,
     };
     const [id, amount] = Object.entries(loss).sort((p, q) => q[1] - p[1])[0];
     return amount > 0 ? id : null;

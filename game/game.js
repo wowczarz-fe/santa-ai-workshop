@@ -1673,17 +1673,16 @@
     text("caseTitle", caseHeading(c));
     text("caseText", c.text);
     $("casePanel").dataset.kind = c.kind;
-    // The figure the decision turns on most, such as what the gift costs if wrong: the rules'
-    // stake when they send one, else the first primary fact. The rest are behind the info button.
-    const stake = c.stake ?? c.facts?.find((f) => f.primary);
-    text(
-      "caseFact",
-      !stake
-        ? ""
-        : typeof stake === "string"
-          ? stake
-          : `${stake.label}: ${stake.value}`,
-    );
+    // The figure the decision turns on most: for an unclear wish what the gift costs if it comes
+    // out wrong (the rules' stake, in pounds), else the first primary fact. The rest are behind
+    // the info button.
+    const fact = c.facts?.find((f) => f.primary);
+    const stake = Number.isFinite(c.stake)
+      ? `${money(c.stake)} if wrong`
+      : fact
+        ? `${fact.label}: ${fact.value}`
+        : "";
+    text("caseFact", stake);
     $("caseFact").hidden = !stake;
     // Options: large buttons with an icon, the label and chips for what each costs and does.
     const options = $("caseOptions");

@@ -739,17 +739,17 @@
           ),
       );
     });
-    for (let station = 0; station < 4; station++)
+    // Four to six elves in one place stand in two rows of full cards, so the floor grows.
+    const crews = [0, 1, 2, 3].map(
+      (station) => view.elves.filter((elf) => elf.station === station).length,
+    );
+    crews.forEach((count, station) =>
       $(`elves${station}`).style.setProperty(
         "--crew-count",
-        Math.max(
-          1,
-          Math.min(
-            4,
-            view.elves.filter((elf) => elf.station === station).length,
-          ),
-        ),
-      );
+        Math.max(1, Math.min(4, count)),
+      ),
+    );
+    $("board").dataset.crowd = String(crews.some((n) => n >= 4 && n <= 6));
     for (let station = 0; station < 2; station++) {
       // Under the AI switch: what the setting means, or, once the machine works alone and
       // elves stand free, the move that helps.
@@ -765,6 +765,10 @@
             ],
       );
       $(`mode${station}`).classList.toggle("spare", spare > 0);
+      // A station the machine runs with no elf left says so on its empty floor.
+      $(`elves${station}`).dataset.alone =
+        view.ai[station] === 2 && !crews[station] ? "Machine works alone" : "";
+      if ($(`elves${station}`).dataset.alone) text(`mode${station}`, "");
     }
     document
       .querySelectorAll("[data-destination]")

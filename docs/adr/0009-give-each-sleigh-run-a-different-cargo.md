@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by 0014
 ---
 
 # 0009: Give each sleigh run a different cargo

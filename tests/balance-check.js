@@ -334,8 +334,11 @@ function checkView(v) {
   if (!v.case) return;
   assert.strictEqual(
     Object.keys(v.case).join(),
-    "id,kind,step,title,text,facts,evidence,affected,options,resolving",
+    "id,kind,step,title,text,facts,evidence,affected,options,resolving" +
+      (v.case.kind === "unclear" ? ",stake" : ""),
   );
+  if (v.case.kind === "unclear")
+    assert([WRONG_PRICE.everyday, WRONG_PRICE.big].includes(v.case.stake));
   assert(["unclear", "incident"].includes(v.case.kind), v.case.kind);
   const primary = v.case.facts.filter((f) => f.primary).length;
   assert(primary >= 1 && primary <= 3, `${key(v.case)} primary facts`);
@@ -397,6 +400,14 @@ function checkNews(n) {
       `wrong gift line names an action: ${n.text}`,
     );
     assert(n.cause in WRONG_CAUSES, `cause ${n.cause}`);
+    assert(
+      n.action && n.action.split(/\s+/).length <= 4,
+      `wrong gift action tag ${n.action}`,
+    );
+    assert(
+      !/by hand/i.test(n.text),
+      `advice sends a station by hand: ${n.text}`,
+    );
   }
   if (!["halftime", "chose", "trained", "departed"].includes(n.kind))
     assert(

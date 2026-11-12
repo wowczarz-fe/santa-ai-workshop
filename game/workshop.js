@@ -84,6 +84,7 @@ const SIGN_IF_FAULTY = 0.7;
 const SIGN_IF_GOOD = 0.3;
 const TEST_TOYS = 4;
 const ABOARD_AT = 5; // wrong gifts aboard that raise the one recall decision
+const WRONG_LINE_GAP = 20; // seconds before a wrong-gift line repeats the same advice
 
 // One sleigh, filled over two halves with a pause between them. The target sits below what a careful
 // player manages (about 144), above what checking every gift gets through in most games, and out of
@@ -1149,49 +1150,67 @@ class Workshop {
     this.reveal(x);
     this.aboard.push(x);
     if (!x.wrong) return;
-    const { control, text } = this.advice(x);
+    x.loadedAt = this.t;
+    const { control, text, action } = this.advice(x);
     const cause = this.causeId(x);
     const waiting = this.waitingCause(x);
     // Remembered for the end lesson: this gift went aboard while its decision waited.
     if (waiting) x.waitedOn = waiting.id;
-    this.say("loaded", `Wrong gift: ${this.mixUp(x)}. ${text}`, {
-      check: this.copy(x),
-      cause,
-      control,
-      ...(waiting ? { caseId: waiting.id } : {}),
-    });
+    // The same advice is not repeated within WRONG_LINE_GAP seconds: the gift still shows on the
+    // sleigh, and the player is not asked again for what they were just asked.
+    this.sayEvery(
+      WRONG_LINE_GAP,
+      `loaded:${action}`,
+      "loaded",
+      `Wrong gift: ${this.mixUp(x)}. ${text}`,
+      {
+        check: this.copy(x),
+        cause,
+        control,
+        action,
+        ...(waiting ? { caseId: waiting.id } : {}),
+      },
+    );
     this.sighting(x, "sleigh");
   }
 
-  // The one thing the player can do now that would have stopped a wrong gift like this one, as the
-  // control to highlight and a few words naming it. In order: check the risky ones when a risky gift
-  // went out unchecked; cocoa when a tired elf slipped; lower the AI one step at the station that
-  // made the mistake (by hand for a guess, since an elf confirming a guess cannot tell either); check
-  // all when an everyday gift went out unchecked; else rest the checkers, who miss more when tired.
+  // The one thing the player can do now that would have stopped a wrong gift like this one: the
+  // control to highlight, a line naming it and a short tag for the control. In order: check the
+  // risky ones when a risky gift went out unchecked; cocoa when a tired elf slipped; Automate one
+  // step down to Assist at the station that made it; check all for a while when a gift went out
+  // unchecked; else rest the checkers, who miss more when tired. It never sends a station back to
+  // working by hand: that costs more right gifts than the mistakes it saves.
   advice(x) {
     const checked = ["checked", "skipped"].includes(x.exit);
     const s = x.wrongAt;
     if (!checked && this.checking === 0 && this.needsCheck(x, 1))
-      return { control: "checking", text: "Check the risky ones." };
+      return {
+        control: "checking",
+        text: "Check the risky ones.",
+        action: "Check more",
+      };
     if (x.cause === "a tired elf")
-      return { control: "cocoa", text: "Send tired elves for cocoa." };
-    if (s !== null && this.ai[s] > 0) {
-      const where = STATION_NAMES[s].toLowerCase();
-      return this.ai[s] === 2 && !x.guessed
-        ? {
-            control: `ai:${s}`,
-            text: `Put ${where} on Assist: an elf confirms each.`,
-          }
-        : {
-            control: `ai:${s}`,
-            text: `Put ${where} by hand: slower, but fewer mistakes.`,
-          };
-    }
+      return {
+        control: "cocoa",
+        text: "Send tired elves for cocoa.",
+        action: "Rest tired elves",
+      };
+    if (s !== null && this.ai[s] === 2 && !x.guessed)
+      return {
+        control: `ai:${s}`,
+        text: `Put ${STATION_NAMES[s].toLowerCase()} on Assist: an elf confirms each.`,
+        action: "Drop to Assist",
+      };
     if (!checked && this.checking < 2)
-      return { control: "checking", text: "Check all for a while." };
+      return {
+        control: "checking",
+        text: "Check all for a while.",
+        action: "Check all for now",
+      };
     return {
       control: "cocoa",
       text: "Rest the checkers: tired ones miss more.",
+      action: "Rest the checkers",
     };
   }
 
@@ -1885,8 +1904,8 @@ class Workshop {
         this.q[y].length / QUEUES[y].limit - this.q[x].length / QUEUES[x].limit,
     );
     if (piles.length) return this.helpAt(QUEUES[piles[0]].station);
-    const recentWrong = this.news.filter(
-      (n) => n.kind === "loaded" && this.t - n.t <= 30,
+    const recentWrong = this.aboard.filter(
+      (x) => x.wrong && this.t - x.loadedAt <= 30,
     ).length;
     // Never "check more" while checking is the bottleneck: more checks would slow the line further.
     if (recentWrong >= 2 && this.checking === 0 && this.slowest !== 2)
@@ -2995,6 +3014,8 @@ class Workshop {
       affected: { count: affected.length, ids: affected.map((x) => x.id) },
       options: this.options(c),
       resolving: c.resolving && { ...c.resolving },
+      // An unclear letter: what a wrong guess costs once aboard, in pounds.
+      ...(c.kind === "unclear" ? { stake: this.price(c.parcels[0]) } : {}),
     };
   }
 

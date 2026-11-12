@@ -162,3 +162,71 @@ first and names what would free it, with the values the page already handles: an
 station holding the rest up, the AI at a station worked by hand, or checking fewer while every gift
 is checked. With it the first-timer averages 1.65 stars (3/8/29/0) and the careless one 1.02
 (12/15/13/0); the figures above were taken before.
+
+## Follow-up: strategies compared at the same skill
+
+Date: 2026-11-12
+
+The page developer played the real page with a reasonable strategy and reached 79 to 91 right
+gifts, far from 130: the Full sleigh, the first goal on screen, was out of a person's reach. It
+sat there only because an expertly played check-everything strategy would otherwise fill the
+sleigh, which compared strategies at different skill. The balance check now plays each strategy at
+two skills: an expert (the old sensible script) and a first-timer (the earlier script). The good
+strategy is reading on Automate, toys on Assist and the risky ones checked; the others check
+everything, check a few, put everything on Automate, never rest, or leave everything untouched.
+
+Changes:
+
+- Checking everything now loses through its cost. A gift sent for a check costs £4 (was £2), paid
+  as it joins the checking pile whether or not a checker then looks at it properly, so drifting
+  checkers no longer make checking everything cheap. The cost limit is £850 (was £740).
+- The Full sleigh target is 108 right gifts (was 130), where a first-timer on the good strategy
+  fills the sleigh in about four games in ten. The mistakes and cost goals count from 70% of it,
+  76 right gifts (was 40%), so a slow sleigh earns nothing for being cheap and clean; this is what
+  makes never resting cost a first-timer a star.
+- Elves tire more slowly: 0.65 a second at work (was 1.1), 0.1 more at checking (was 0.3) and 0.2
+  more under full piles (was 0.75). A first-timer who rests elves when they turn red sees 0.8
+  burnouts a game (was 3.6). A wrong-gift line no longer repeats the same advice within 20 seconds.
+- Wrong-gift advice never sends a station by hand: Automate steps down to Assist, a slip on Assist
+  points to checking, and cocoa when the elf was tired. A script that does what every line says
+  scores 2.00 stars against 1.98 for one that ignores them.
+- The end screen agrees with itself. The lesson names one loss, and only a loss that cost a goal;
+  the headline names the same loss; a lesson about checking too much or too little puts the dial on
+  that side; and the dial never reads too much checking when checking stayed on a few all game.
+  Before, an untouched by-hand game read "Too tired to keep up." over "By hand is careful but slow"
+  with the dial at "Too much checking", and a one-star game over the cost limit read "A good
+  Christmas.".
+- While the half-time card is up, `run` shows the first half over (half 1, 0 seconds left).
+  Unclear-wish decisions carry `stake` and wrong-gift lines `action`.
+
+Stars over 40 seeds, mean and share of games with 0/1/2/3 stars, then the share meeting Full
+sleigh, Few mistakes and Within budget, and right gifts aboard on average:
+
+| Player                     | Before | 0/1/2/3 %   | After | 0/1/2/3 %  | Full/Mistakes/Cost % | Right |
+| -------------------------- | ------ | ----------- | ----- | ---------- | -------------------- | ----- |
+| By hand, untouched         | 0.00   | 100/0/0/0   | 0.00  | 100/0/0/0  | 0/0/0                | 43    |
+| Automate, untouched        | 0.00   | 100/0/0/0   | 0.90  | 10/90/0/0  | 90/0/0               | 113   |
+| Assist, untouched          | 1.10   | 8/75/18/0   | 0.40  | 60/40/0/0  | 0/0/40               | 94    |
+| Expert, good strategy      | 2.45   | 0/15/25/60  | 2.30  | 0/25/20/55 | 100/65/65            | 146   |
+| Expert, check everything   | 1.48   | 20/25/43/13 | 1.63  | 0/43/53/5  | 100/57/5             | 133   |
+| Expert, check a few        | 1.02   | 5/88/8/0    | 1.10  | 0/90/10/0  | 100/5/5              | 138   |
+| Expert, all Automate       | 1.65   | 0/58/20/23  | 1.52  | 0/58/33/10 | 100/33/20            | 144   |
+| Expert, never resting      | 1.00   | 33/35/33/0  | 1.90  | 3/40/23/35 | 98/40/53             | 118   |
+| First-timer, good strategy | 1.65   | 8/20/73/0   | 1.98  | 8/15/50/28 | 38/78/83             | 104   |
+| First-timer, check all     | 1.32   | 20/28/53/0  | 1.07  | 25/43/33/0 | 30/48/30             | 100   |
+| First-timer, check a few   | 0.65   | 48/40/13/0  | 1.40  | 0/73/15/13 | 100/20/20            | 130   |
+| First-timer, all Automate  | 1.02   | 20/58/23/0  | 1.75  | 0/43/40/18 | 83/65/28             | 119   |
+| First-timer, never resting | 1.43   | 23/13/65/0  | 1.27  | 25/25/48/3 | 5/50/73              | 84    |
+| Careless first-timer       | 1.02   | 30/38/33/0  | 0.82  | 33/53/15/0 | 53/15/15             | 108   |
+
+Both extremes lose at both skills: checking everything breaks the cost limit in 70% of first-timer
+games and 95% of expert games, and checking a few loses the mistakes star in 80% and 95%. A
+first-timer's attention is asked for once every 28 seconds in the first half and every 16 in the
+second (decisions, burnouts, wrong-gift lines and the half-time card).
+
+Two targets were given up, because they pull the mistakes and cost lines in opposite directions: a
+first-timer on the good strategy earns three stars in 28% of games (asked 10 to 25%), and the
+expert in 55% (asked 60% or more). The first-timer rows were put first. Never resting costs a
+first-timer 0.7 of a star but an expert only 0.4, as an expert who never rests still fills the
+lower target. The expert is only 0.3 of a star ahead of a first-timer: the mistakes and cost goals
+are fixed amounts, and a faster sleigh carries more chances of both.

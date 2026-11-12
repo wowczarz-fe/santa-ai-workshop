@@ -1318,16 +1318,6 @@ body[data-look="polish"] .dashboard .hud-slot[data-state] .hud-bar {
   position: relative;
   overflow: visible;
 }
-body[data-look="polish"] .dashboard .hud-tick {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  left: calc(var(--tick, 0) * 100%);
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: #fff;
-}
 body[data-look="polish"] .dashboard .hud-slot[data-state="waiting"] .hud-star {
   background: transparent;
   color: #f0cf6c;
@@ -1346,9 +1336,6 @@ body[data-look="polish"] .dashboard .hud-figures small {
 body[data-look="polish"] .dashboard .hud-bar {
   background: #ffffff24;
   color: #8ed0d2;
-}
-body[data-look="polish"] .dashboard .hud-slot[data-goal="full"] .hud-bar {
-  color: #f0cf6c;
 }
 body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] {
   border-color: #ff8a7a99;

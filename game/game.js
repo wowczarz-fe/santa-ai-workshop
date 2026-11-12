@@ -363,10 +363,9 @@
     },
     { passive: true },
   );
-  // The three goals of the run under way, one star each.
+  // The goals of the run under way, one star each; the full-sleigh goal is on the sleigh itself.
   const goalSlots = {};
   for (const [id, art] of [
-    ["full", "gift"],
     ["right", "wrong-gift"],
     ["cost", "budget"],
   ]) {
@@ -374,7 +373,7 @@
     slot.dataset.goal = id;
     slot.dataset.help = `goal:${id}`;
     slot.dataset.info = `goal:${id}`;
-    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i>${id === "full" ? '<b class="hud-tick"></b>' : ""}</span>`;
+    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i></span>`;
     $("goals").append(slot);
     goalSlots[id] = slot;
   }
@@ -398,12 +397,7 @@
     goalSlots.right.classList.toggle("hud-previewing", after !== null);
     goalSlots.right.querySelector(".hud-preview").textContent =
       after !== null ? `${after} after recall` : "";
-    // From how many right gifts aboard the mistakes and spend stars count; marked on the sleigh bar.
     const from = view.run.goalsCountFrom;
-    const full = view.run.goals.find((g) => g.id === "full");
-    goalSlots.full
-      .querySelector(".hud-tick")
-      .style.setProperty("--tick", Math.min(1, from / Math.max(1, full.need)));
     for (const goal of view.run.goals) {
       const slot = goalSlots[goal.id];
       if (!slot) continue;
@@ -1570,11 +1564,34 @@
       setTimeout(() => sleigh.classList.remove("departing"), 1600);
     }
   }
+  // The sleigh count against its target, with the full-sleigh star and, on its bar, the mark from
+  // which the mistakes and spend stars count.
+  function paintSleighCount() {
+    const full = view.run.goals?.find((g) => g.id === "full"),
+      target = Math.max(1, view.run.target);
+    text("sleighTarget", `/ ${view.run.target}`);
+    $("sleighTotal").style.setProperty(
+      "--fill",
+      Math.min(1, view.sleigh.right / target),
+    );
+    $("sleighTotal").style.setProperty(
+      "--tick",
+      Math.min(1, (view.run.goalsCountFrom ?? 0) / target),
+    );
+    const met = String(!!full?.met);
+    if ($("sleighTotal").dataset.met !== met) {
+      $("sleighTotal").dataset.met = met;
+      $("sleighStar").innerHTML = icon(full?.met ? "star" : "star-empty");
+    }
+    $("sleighTotal").title = full
+      ? `${full.name}: ${full.met ? "star earned" : "no star yet"}`
+      : "";
+  }
   let giftBubble = null,
     giftBubbleCount = 0,
     giftBubbleTimer = 0;
   function paintEffects() {
-    text("sleighTarget", `of ${view.run.target} needed`);
+    paintSleighCount();
     const run = view.run?.number ?? 1;
     if (run !== observedRun) {
       observedRun = run;
@@ -1583,12 +1600,16 @@
     const gained = view.sleigh.right - observedRight;
     observedRight = view.sleigh.right;
     if (started && gained > 0 && !view.end) {
-      // One bubble beside the sleigh count (or in the Full sleigh tile when the sleigh is a page
-      // away) with a running count: gifts that land while it shows add to it and restart it.
+      // One bubble beside the sleigh count (or on the sleigh tab when the sleigh is a page away)
+      // with a running count: gifts that land while it shows add to it and restart it.
       const to = $("sleighRight").getBoundingClientRect(),
         column = $("sleigh").getBoundingClientRect();
       const visible = to.left >= 0 && to.right <= innerWidth;
-      const target = visible ? to : goalSlots.full.getBoundingClientRect();
+      const target = visible
+        ? to
+        : document
+            .querySelector('[data-station-page="3"]')
+            .getBoundingClientRect();
       let effect = giftBubble;
       if (
         effect?.isConnected &&
@@ -1608,7 +1629,7 @@
       iconText(effect, "gift", `+${giftBubbleCount}`);
       effect.classList.toggle("in-slot", !visible);
       effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? column.left + 12 : target.right - 52))}px`;
-      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? to.top - 6 : target.top + 4))}px`;
+      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? to.top - 6 : target.top - 14))}px`;
       effect.style.setProperty("--fly-x", "0px");
       effect.style.setProperty("--fly-y", visible ? "-14px" : "0px");
       giftBubbleTimer = setTimeout(() => effect.remove(), 1500);

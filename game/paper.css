@@ -594,9 +594,6 @@ body[data-look="paper"] .dashboard .hud-bar {
   background: #f4ead326;
   color: #9fc7a8;
 }
-body[data-look="paper"] .dashboard .hud-slot[data-goal="full"] .hud-bar {
-  color: #d2a447;
-}
 body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] {
   border-color: #e0707f;
   background: #a3263a66;
@@ -1587,16 +1584,6 @@ body[data-look="paper"] .dashboard .hud-slot[data-state] .hud-bar {
   display: block;
   position: relative;
   overflow: visible;
-}
-body[data-look="paper"] .dashboard .hud-tick {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  left: calc(var(--tick, 0) * 100%);
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--paper);
 }
 body[data-look="paper"] .dashboard .hud-name,
 body[data-look="paper"] .dashboard .hud-figures small,

@@ -538,13 +538,13 @@ main {
 .tutorial[data-control="ai1"] .panel-head {
   display: none;
 }
-/* Top bar: the three goals of the run under way, one star each */
+/* Top bar: the goals of the run under way, one star each */
 .dashboard .goals {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 640px;
+  max-width: 430px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: center;
   gap: 3px 8px;
 }
@@ -1442,6 +1442,59 @@ progress {
   display: block;
   font-size: 10px;
   margin-top: 3px;
+}
+/* The sleigh count: the full-sleigh star, gifts aboard against the target, and a bar marked where
+   the mistakes and spend stars start counting */
+.sleigh-total .sleigh-count {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  margin: 0;
+}
+.sleigh-total .sleigh-star {
+  align-self: center;
+  margin: 0;
+  color: #b88a1e;
+}
+.sleigh-total .sleigh-star .ui-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+.sleigh-total[data-met="false"] .sleigh-star {
+  color: #8a9a8e;
+}
+.sleigh-total #sleighTarget {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  color: var(--teal);
+}
+.sleigh-total .sleigh-bar {
+  position: relative;
+  height: 4px;
+  margin: 5px 0 0;
+  border-radius: 2px;
+  background: #d5ddd7;
+}
+.sleigh-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--fill, 0) * 100%);
+  border-radius: 2px;
+  background: #d9a636;
+}
+.sleigh-bar b {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: calc(var(--tick, 0) * 100%);
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ink);
 }
 .arrival {
   display: flex;

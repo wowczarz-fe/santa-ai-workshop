@@ -111,20 +111,6 @@
   // is waiting for work, so the player is not invited to pull checkers away.
   const isFree = (elf) =>
     isIdle(elf) && elf.station < 2 && view.ai[elf.station] === 2;
-  // FALLBACK, delete once view().elves carry energy and mood: both worked out from tiredness,
-  // which burns an elf out at 88, slows it from 30 and makes it slip from 50.
-  const energyFromTired = (elf) => ({
-    energy: Math.max(0, Math.round(100 - (elf.tired * 100) / 88)),
-    mood: elf.resting
-      ? "spent"
-      : elf.tired >= 55
-        ? "tired"
-        : elf.tired >= 30
-          ? "tiring"
-          : "fresh",
-  });
-  // An elf's energy, 100 fresh to 0 at burnout, and its mood: fresh, tiring, tired or spent.
-  const energyOf = (elf) => (elf.mood ? elf : energyFromTired(elf));
   const trendArrow =
     '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.5V2M2.5 5.5 6 2l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const starRow = (stars, of = 3) =>
@@ -829,7 +815,7 @@
         b = wrap.querySelector(".elf");
       if (wrap.parentNode !== $(`elves${elf.station}`))
         $(`elves${elf.station}`).append(wrap);
-      const { energy, mood } = energyOf(elf);
+      const { energy, mood } = elf;
       b.querySelector(".elf-name").textContent = elf.name;
       b.querySelector(".energy").style.setProperty("--energy", energy);
       b.dataset.mood = mood;
@@ -2171,7 +2157,7 @@
       return [
         e.name,
         [
-          `${cap(e.doing)}, energy ${energyOf(e).energy} of 100.`,
+          `${cap(e.doing)}, energy ${e.energy} of 100.`,
           e.resting ? "Back after this cocoa break." : "Drag to move.",
         ],
       ];

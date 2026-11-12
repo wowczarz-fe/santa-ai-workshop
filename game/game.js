@@ -883,7 +883,9 @@
       });
     focusTarget?.classList.add("needs-attention");
     walkTarget?.classList.add("walk-target");
-    focusTag.textContent = focus && tiredElf < 0 ? focus.text : "";
+    // While an elf is being moved, Move here takes the floor's corner and the tag waits.
+    focusTag.textContent =
+      focus && tiredElf < 0 && selected === null ? focus.text : "";
     if (focusTarget && tiredElf < 0) {
       if (focusTag.parentNode !== focusTarget) focusTarget.append(focusTag);
     } else focusTag.remove();

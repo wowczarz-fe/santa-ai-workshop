@@ -2187,8 +2187,8 @@ body[data-look="paper"]
   }
 }
 
-/* The milestone note: a paper slip in the header's empty middle on a desktop, rising from the foot
-   of the screen on a phone, clear of the status line and the station tabs */
+/* The milestone note: a paper slip in the header's empty middle on a desktop, over the header on
+   a phone, clear of the status line, the elves and the station tabs */
 body[data-look="paper"] .milestone-toast {
   border: 1px solid #bea47b;
   border-radius: 3px;
@@ -2203,8 +2203,8 @@ body[data-look="paper"] .milestone-toast {
 }
 @media (max-width: 999px) {
   body[data-look="paper"] .milestone-toast {
-    top: auto;
-    bottom: 16px;
+    top: 6px;
+    bottom: auto;
   }
 }
 body[data-look="paper"] .paper-rate .station-bottleneck {

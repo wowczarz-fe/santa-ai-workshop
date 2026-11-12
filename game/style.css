@@ -1020,6 +1020,7 @@ body[data-look] #vigilance {
   display: none;
 }
 .upgrade-wrap {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1029,8 +1030,17 @@ body[data-look] #vigilance {
   width: 100%;
   padding-right: 30px;
 }
+/* An option's longer words open over the foot of its own card, under its title, and scroll there
+   when they are long, so they never spill past the card */
 .upgrade-wrap > .more-text {
-  margin: 6px 2px 0;
+  position: absolute;
+  z-index: 1;
+  inset: 76px 2px 5px;
+  margin: 0;
+  padding: 6px 10px;
+  overflow: auto;
+  border-radius: 0 0 10px 10px;
+  background: var(--bc-card, #fff);
 }
 .elf[data-role="waiting"] .elf-task {
   color: inherit;
@@ -3635,7 +3645,8 @@ dialog p {
     grid-template-areas:
       "marks"
       "name"
-      "figure";
+      "figure"
+      "note";
     justify-items: center;
     row-gap: 1px;
     padding: 6px 4px;
@@ -3644,6 +3655,10 @@ dialog p {
   .goal-star svg {
     width: 20px;
     height: 20px;
+  }
+  .goal-note {
+    font-size: 10px;
+    line-height: 12px;
   }
   .goal-icon {
     width: 22px;

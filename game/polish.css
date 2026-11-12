@@ -1205,14 +1205,23 @@ body[data-look="polish"] #cocoa .cocoa-label > span {
   width: 22px;
   height: 22px;
 }
+/* The rules' cocoa hint is a chip in the strip's corner, like the other focus tags */
 body[data-look="polish"] #cocoa .cocoa-focus {
-  font-size: 12px;
-  font-weight: 700;
   position: absolute;
-  top: 6px;
+  top: 5px;
   right: 8px;
-  left: 120px;
-  text-align: right;
+  padding: 0 7px;
+  border: 1px solid #c99d39;
+  border-radius: 8px;
+  background: #fcf4dc;
+  color: #704a12;
+  font:
+    700 12px/16px Arial,
+    sans-serif;
+  white-space: nowrap;
+}
+body[data-look="polish"] #cocoa .cocoa-focus:empty {
+  display: none;
 }
 body[data-look="polish"] #cocoa .crew {
   min-height: 0;
@@ -1865,7 +1874,7 @@ body[data-look="polish"] #stationPicker button.destination-tab {
 /* A column whose control carries the rules' tag says that instead of Bottleneck, so the two never
    sit on each other */
 body[data-look="polish"]
-  .station:has(.focus-tag:not(:empty))
+  .station:has(.focus-tag:not(:empty), .mistake-hint-label)
   .station-bottleneck {
   visibility: hidden;
 }
@@ -1967,10 +1976,10 @@ body[data-look="polish"] .header-actions .header-icon {
   }
 }
 @media (max-width: 999px) {
-  /* The milestone note rises from the foot of the screen, clear of the station tabs */
+  /* The milestone note shows over the header, clear of the elves and the station tabs */
   body[data-look="polish"] .milestone-toast {
-    top: auto;
-    bottom: 16px;
+    top: 6px;
+    bottom: auto;
   }
 }
 /* Snow passes behind the clock: a blur behind its words and ring melts any flake there */

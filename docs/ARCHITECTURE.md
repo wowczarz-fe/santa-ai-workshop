@@ -454,7 +454,11 @@ for example `"Amir wrote back: a cuddly bat."` or
   over the cost limit) or "Over budget." (cost). "Christmas, carefully delivered." is for three
   stars, and the lesson is then a tip.
 - `checkingAnswer` is one sentence answering "Was checking worth it?": yes or no with what the
-  checks cost and about what they stopped. It follows the dial's verdict.
+  checks cost and about what they stopped, for example "Yes: £208 of checks stopped about £400 of
+  wrong gifts." It follows the dial's verdict: "too little" adds "and more checks on big gifts
+  would have paid too" (or, after a no, "; checks on big gifts would have paid"), "too much"
+  after a yes reads "Yes overall: ..., but the checks on everyday gifts cost more than they saved",
+  and a bottleneck reads "Not as run: ..., but the pile held back 23 gifts."
 - `blunders` is `[{ id, name, icon }]`: the absurd wrong toys this game produced, caught or not.
   `blunderTotal` is how many different ones exist, so the page can keep a collection across games.
 
@@ -486,18 +490,20 @@ the wrong gifts it accounts for, `control` is what would have stopped them, and 
 sentence saying how, leaving out any part the settings already follow (`""` when they follow all
 of it). The end screen and the half-time card may mention half-time options.
 
-| `id`      | Wrong gifts from                              | `control`  |
-| --------- | --------------------------------------------- | ---------- |
-| `guessed` | unclear wishes the reader guessed             | `ask`      |
-| `big`     | AI slips on big gifts that went out unchecked | `checking` |
-| `misread` | AI misreadings of everyday letters            | `ai:0`     |
-| `misMade` | AI slips making everyday toys                 | `ai:1`     |
-| `waved`   | checkers who skipped or missed them           | `train`    |
-| `faulty`  | the faulty update                             | `update`   |
-| `tired`   | tired elves working by hand                   | `cocoa`    |
+| `id`       | Wrong gifts from                              | `control`  |
+| ---------- | --------------------------------------------- | ---------- |
+| `guessed`  | unclear wishes the reader guessed             | `ask`      |
+| `big`      | AI slips on big gifts that went out unchecked | `checking` |
+| `misread`  | AI misreadings of everyday letters            | `ai:0`     |
+| `misMade`  | AI slips making everyday toys                 | `ai:1`     |
+| `waved`    | checkers who skipped or missed them           | `train`    |
+| `faulty`   | the faulty update                             | `update`   |
+| `tired`    | tired elves working by hand                   | `cocoa`    |
+| `recalled` | wrong gifts brought back off the sleigh       | `checking` |
 
 A gift that went past a checker counts under `waved` whatever made it wrong, and one from the
-faulty update under `faulty`.
+faulty update under `faulty`. A recall is a cause of its own: `wrong` is the gifts brought back
+and `cost` what bringing them back cost; it always shows among the three.
 
 ### The assurance summary
 
@@ -510,8 +516,8 @@ beforehand: a risky batch can happen to come out clean.
 | `verdict`                | string  | `"about right"`              | `"too little"`, `"about right"`, `"too much"` or `"bottleneck"`                         |
 | `position`               | number  | `0.61`                       | 0 to 1 for a dial: 0 far too little, 0.5 about right, 1 far too much                    |
 | `thresholds`             | object  | `{ little: 0.1, much: 0.8 }` | The positions where the verdict changes, for drawing the dial's zones                   |
-| `underCost`              | number  | `0`                          | £ lost to under-checking (below)                                                        |
-| `overCost`               | number  | `10`                         | £ lost to over-checking (below); partly an estimate                                     |
+| `underCost`              | number  | `0`                          | Lost to too few checks (estimate, below); show it under that name                       |
+| `overCost`               | number  | `10`                         | Spent on extra checks (estimate, below); show it under that name                        |
 | `wrongMade`              | number  | `16`                         | Wrong toys the workshop made in the whole game                                          |
 | `caught`, `prevented`    | number  | `5`, `500`                   | Wrong toys stopped before the sleigh, and about what they would have cost (an estimate) |
 | `shipped`, `shippedCost` | number  | `6`, `72`                    | Wrong gifts that reached children, checked or not, and what they cost                   |
@@ -520,7 +526,7 @@ beforehand: a risky batch can happen to come out clean.
 | `spent`                  | number  | `22`                         | £ on checking and training                                                              |
 | `groups`                 | array   | see below                    | One row per kind of gift                                                                |
 | `noChecks`               | object  | `{ wrong: 16, cost: 720 }`   | Every wrong toy made, and about what they would have cost had none been checked         |
-| `text`                   | string  |                              | Two short sentences: the verdict with its figures                                       |
+| `text`                   | string  |                              | One sentence: the verdict with the two estimates                                        |
 
 - `underCost` is the avoidable part of the wrong gifts that reached children without a check
   (never sent for one, or let through by the player), plus the recalls of such gifts. For each
@@ -547,11 +553,21 @@ beforehand: a risky batch can happen to come out clean.
   the fix: rest the checkers with cocoa when `tired`, else move an elf to checking. When
   over-checking is the largest, `verdict` is `"too much"`. When checking stayed on a few all
   game the verdict is never `"too much"`: the player checked as little as the game allows.
+- The verdict always fits the loss the headline and lesson name: wrong gifts can read "too little"
+  or "about right"; a short sleigh "about right", "too much" or "bottleneck"; tiredness "about
+  right" or "bottleneck"; a broken cost limit "about right" or "too much". Any other reading is held
+  at the edge of "about right". After three stars any verdict can show.
+- The one figure for what wrong gifts cost is `costs.mistakes` (the wrong gifts aboard at
+  departure, the same as in `cost.spent`). `underCost` and `overCost` are estimates of something
+  else and are named so: "Lost to too few checks (estimate)" and "Spent on extra checks
+  (estimate)". `text` reads, for example, "Too little checking: about £664 lost to too few checks,
+  against about £44 on extra checks."
 - A group is `{ id, name, icon, parcels, wrongMade, checked, caught, shipped, checkCost, prevented, shippedCost, shippedUnchecked, shippedUncheckedCost, verdict, text }`
   for `id` `"everyday"`, `"big"` or `"unclear"` (the two unclear letters; one that is also big
   counts as big), for example
   `{ id: "big", name: "Big gifts", icon: "📦", parcels: 7, wrongMade: 6, checked: 6, caught: 5, shipped: 0, checkCost: 12, prevented: 500, shippedCost: 0, shippedUnchecked: 0, shippedUncheckedCost: 0, verdict: "paid", text: "Checking 6 big gifts cost £12 and stopped about £500 of wrong gifts." }`.
-  `verdict` is `"left exposed"`, `"cost more than it saved"` or `"paid"`.
+  `verdict` is `"left exposed"`, `"cost more than it saved"` or `"paid"`. The unclear wishes'
+  `text` counts asking: "1 of 2 asked; no wrong ones." or "0 of 2 asked; 1 wrong one cost £12.".
 - `end.lesson` and the verdict agree: a "Too much checking" or "Too little checking" lesson puts the
   needle on that side, and a "Checking in the right places" tip gives way to the verdict's own
   title when the dial reads otherwise.

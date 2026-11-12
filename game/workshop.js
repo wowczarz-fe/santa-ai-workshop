@@ -146,6 +146,16 @@ const WRONG_CAUSES = {
       ["rest them with cocoa", () => false],
     ],
   },
+  recalled: {
+    name: "Wrong gifts brought back off the sleigh",
+    control: "checking",
+    fix: [
+      [
+        "check the risky ones, so fewer need fetching back",
+        (w) => w.checking >= 1,
+      ],
+    ],
+  },
   faulty: {
     name: "The faulty update",
     control: "update",
@@ -191,6 +201,15 @@ const LOSSES = {
   "Checking in the right places": "none",
   "The faulty update, handled": "none",
   "Santa leaves happy": "none",
+};
+// The dial verdicts that fit each loss: wrong gifts can read too little checking, a slow or costly
+// game too much, a held-up line a bottleneck; "about right" fits any of them.
+const VERDICTS = {
+  slow: ["about right", "too much", "bottleneck"],
+  tired: ["about right", "bottleneck"],
+  wrong: ["about right", "too little"],
+  cost: ["about right", "too much"],
+  none: ["about right", "too little", "too much", "bottleneck"],
 };
 // The lesson under the checking dial: what to do next time, so it never repeats the dial's figures.
 const CHECKING_ADVICE = {
@@ -472,6 +491,7 @@ class Workshop {
     this.cases = [];
     this.lastCaseId = 0;
     this.aboardRaised = false;
+    this.recalled = { count: 0, cost: 0 }; // wrong gifts brought back off the sleigh, and what it cost
     this.undecided = 0; // unclear letters still waiting for a decision when the sleigh left
     this.testResult = null; // "passed" or "failed" once a tested update has been tried
     this.recent = [];
@@ -1681,6 +1701,8 @@ class Workshop {
           this.toRework(x, recallSeconds(n), job);
         });
         this.pay("fixing", recallPrice(list) - n * PRICE.remake);
+        this.recalled.count += n;
+        this.recalled.cost += recallPrice(list);
         this.say(
           "recalled",
           `${plural(n, "wrong gift")} brought back to be remade.`,
@@ -2188,7 +2210,11 @@ class Workshop {
       "Too much checking": "too much",
       "Too little checking": "too little",
     }[lesson.title];
-    const assurance = this.assurance(biggest, lean);
+    const assurance = this.assurance(
+      biggest,
+      lean,
+      stars === 3 ? "none" : loss,
+    );
     // A checking lesson without words of its own takes the advice for its verdict; a tip that
     // checking went in the right places gives way to what the dial found.
     const titles = {
@@ -2338,7 +2364,7 @@ class Workshop {
             ? `the test ${this.testResult}`
             : this.lastInstallAt === null
               ? "no update installed"
-              : "installed untested",
+              : "not tested: installed straight away",
         ),
         act(
           "rolledBack",
@@ -2362,21 +2388,21 @@ class Workshop {
           "rested",
           "Gave the elves a cocoa break",
           u.cocoa > 0 || u.restAll,
-          `${plural(u.cocoa, "cocoa break")}, ${plural(st.burnouts, "burnout")}`,
+          `${plural(u.cocoa, "cocoa break")}${u.restAll ? " and cocoa for everyone" : ""}, ${plural(st.burnouts, "burnout")}`,
         ),
       ]),
     ];
   }
 
-  // One sentence answering "Was checking worth it?" from the assurance figures. Its "but" follows the
-  // dial's verdict, so the two never disagree: only "too little" asks for more checks, only "too
-  // much" names checks that did not pay, and a bottleneck names the gifts the pile held back.
+  // One sentence answering "Was checking worth it?" from the assurance figures. Its second half
+  // follows the dial's verdict, so the two never disagree: only "too little" asks for more checks,
+  // only "too much" names checks that did not pay, and a bottleneck names the gifts the pile held back.
   checkingAnswer(a) {
     const checked = sum(a.groups.map((g) => g.checked));
     const checkCost = sum(a.groups.map((g) => g.checkCost));
     const unchecked = sum(a.groups.map((g) => g.shippedUncheckedCost));
     if (!checked)
-      return `Nothing was checked; wrong gifts that skipped a check cost ${money(unchecked)}.`;
+      return `No: nothing was checked, and the wrong gifts that went out unchecked cost ${money(unchecked)}.`;
     const paid = a.prevented >= checkCost;
     const exposed = a.groups
       .filter((g) => g.verdict === "left exposed")
@@ -2386,15 +2412,14 @@ class Workshop {
     );
     if (a.verdict === "bottleneck")
       return `Not as run: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts, but the pile held back ${plural(a.held, "gift")}.`;
-    const but =
-      a.verdict === "too little" && exposed
-        ? `, but more checks on ${exposed.name.toLowerCase()} would have paid`
-        : a.verdict === "too much" && wasted
-          ? `, though not on ${wasted.name.toLowerCase()}`
-          : "";
-    return paid
-      ? `Yes: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts${but}.`
-      : `No: ${money(checkCost)} of checks stopped only about ${money(a.prevented)} of wrong gifts${but}.`;
+    const stopped = `${money(checkCost)} of checks stopped ${paid ? "" : "only "}about ${money(a.prevented)} of wrong gifts`;
+    if (a.verdict === "too little" && exposed)
+      return paid
+        ? `Yes: ${stopped}, and more checks on ${exposed.name.toLowerCase()} would have paid too.`
+        : `No: ${stopped}; checks on ${exposed.name.toLowerCase()} would have paid.`;
+    if (a.verdict === "too much" && wasted && paid)
+      return `Yes overall: ${stopped}, but the checks on ${wasted.name.toLowerCase()} cost more than they saved.`;
+    return `${paid ? "Yes" : "No"}: ${stopped}.`;
   }
 
   // Whether checking was too little, about right or too much, in the game's own money.
@@ -2417,8 +2442,10 @@ class Workshop {
   //   verdict is "bottleneck" instead, whatever the position.
   // The texts tell how this game turned out, not whether a choice was wise beforehand: a risky batch
   // can happen to come out clean. Estimated amounts (what checks prevented) read "about".
-  assurance(biggest = null, lean = null) {
+  assurance(biggest = null, lean = null, loss = "none") {
     const a = this.assure;
+    const letters = this.used.asked + this.used.guessed + this.undecided;
+    const guessedWrong = this.aboard.filter((x) => x.wrong && x.guessed);
     const groups = GROUPS.map((g) => {
       const t = a.groups[g.id];
       const unchecked = t.parcels - t.checked;
@@ -2434,13 +2461,16 @@ class Workshop {
       const stopped = t.prevented
         ? `about ${money(t.prevented)} of wrong gifts`
         : "no wrong gifts";
-      const text = {
-        paid: t.checked
-          ? `Checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${stopped}.`
-          : `No ${kind} were checked; their wrong ones cost ${money(t.shippedUncheckedCost)}.`,
-        "cost more than it saved": `Checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${t.prevented ? "only " : ""}${stopped}.`,
-        "left exposed": `Wrong ${kind} that skipped a check cost ${money(t.shippedUncheckedCost)}, more than the ${money(unchecked * PRICE.check)} that checking the other ${unchecked} would have cost.`,
-      }[verdict];
+      const text =
+        g.id === "unclear"
+          ? `${this.used.asked} of ${letters} asked; ${guessedWrong.length ? `${plural(guessedWrong.length, "wrong one")} cost ${money(sum(guessedWrong.map((x) => this.price(x))))}` : "no wrong ones"}.`
+          : {
+              paid: t.checked
+                ? `Checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${stopped}.`
+                : `No ${kind} were checked; their wrong ones cost ${money(t.shippedUncheckedCost)}.`,
+              "cost more than it saved": `Checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${t.prevented ? "only " : ""}${stopped}.`,
+              "left exposed": `Wrong ${kind} that skipped a check cost ${money(t.shippedUncheckedCost)}, more than the ${money(unchecked * PRICE.check)} that checking the other ${unchecked} would have cost.`,
+            }[verdict];
       const { wrongMadeCost, ...shown } = t;
       return {
         id: g.id,
@@ -2488,26 +2518,30 @@ class Workshop {
         : at;
     if (lean === "too little") to = Math.min(to, ASSURANCE.little - 0.05);
     if (lowest) to = Math.min(to, ASSURANCE.much);
+    // The dial reads a verdict that belongs to the same loss as the headline and the lesson; any
+    // other reading is held at the edge of "about right".
+    const allowed = VERDICTS[loss];
+    const zone = (x) =>
+      x < ASSURANCE.little
+        ? "too little"
+        : x > ASSURANCE.much
+          ? "too much"
+          : "about right";
+    if (!allowed.includes(zone(Math.round(to * 100) / 100)))
+      to = Math.min(Math.max(to, ASSURANCE.little), ASSURANCE.much);
     const position = Math.round(to * 100) / 100;
     const verdict =
-      biggest === "held"
+      biggest === "held" && allowed.includes("bottleneck")
         ? "bottleneck"
-        : position < ASSURANCE.little
-          ? "too little"
-          : position > ASSURANCE.much
-            ? "too much"
-            : "about right";
-    const under = money(underCost);
-    const over = a.heldBy.all ? `about ${money(overCost)}` : money(overCost);
-    const extra = a.heldBy.all
-      ? "extra checks and the gifts they held back"
-      : "extra checks";
+        : zone(position);
+    const under = `about ${money(underCost)} lost to too few checks`;
+    const over = `about ${money(overCost)} on extra checks${a.heldBy.all ? " and the gifts they held back" : ""}`;
     const held = a.heldBy.all + a.heldBy.some;
     const tired = verdict === "bottleneck" && this.tiredAt(2);
     const text = {
-      "too little": `Too little checking. Wrong gifts that skipped a check cost ${under}, ${extra} only ${over}.`,
-      "about right": `Checking was about right. Wrong gifts that skipped a check cost ${under}, ${extra} ${over}.`,
-      "too much": `Too much checking. ${extra[0].toUpperCase() + extra.slice(1)} cost ${over}, wrong gifts that skipped a check ${under}.`,
+      "too little": `Too little checking: ${under}, against ${over}.`,
+      "about right": `Checking was about right: ${under}, and ${over}.`,
+      "too much": `Too much checking: ${over}, against ${under}.`,
       bottleneck: tired
         ? `Tired checkers held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh: rest them with cocoa before they burn out.`
         : `Checking held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh: move an elf to checking when its pile fills.`,
@@ -2606,19 +2640,30 @@ class Workshop {
     return left ? left[0].toUpperCase() + left.slice(1) + "." : "";
   }
 
-  // Up to three causes of the wrong gifts given, dearest first.
+  // Up to three causes of the wrong gifts given, dearest first. Wrong gifts brought back off the
+  // sleigh are a cause of their own, at what fetching them back cost.
   causes(list) {
-    return Object.entries(Object.groupBy(list, (x) => this.causeId(x)))
-      .map(([id, xs]) => ({
-        id,
-        name: WRONG_CAUSES[id].name,
-        wrong: xs.length,
-        cost: sum(xs.map((x) => this.price(x))),
-        control: WRONG_CAUSES[id].control,
-        fix: this.causeFix(id),
-      }))
+    const cause = (id, wrong, cost) => ({
+      id,
+      name: WRONG_CAUSES[id].name,
+      wrong,
+      cost,
+      control: WRONG_CAUSES[id].control,
+      fix: this.causeFix(id),
+    });
+    const recalled = this.recalled.count
+      ? [cause("recalled", this.recalled.count, this.recalled.cost)]
+      : [];
+    const top = Object.entries(Object.groupBy(list, (x) => this.causeId(x)))
+      .map(([id, xs]) =>
+        cause(id, xs.length, sum(xs.map((x) => this.price(x)))),
+      )
+      .concat(recalled)
       .sort((p, q) => q.cost - p.cost || q.wrong - p.wrong)
       .slice(0, 3);
+    // A recall always shows: it is what fixing the mistakes cost.
+    if (recalled.length && !top.includes(recalled[0])) top[2] = recalled[0];
+    return top;
   }
 
   // What let a wrong gift reach a child: how it went past dispatch, or else how it was made wrong.

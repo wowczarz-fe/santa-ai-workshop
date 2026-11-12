@@ -813,14 +813,46 @@ for (const [name, rs] of Object.entries(results))
       assert.strictEqual(e.assurance.verdict, "too little", why);
     if (STAYED_ON_A_FEW.includes(name))
       assert.notStrictEqual(e.assurance.verdict, "too much", why);
+    assert(
+      losses.some((l) => VERDICTS[l].includes(e.assurance.verdict)),
+      `${why}: the dial reads ${e.assurance.verdict}`,
+    );
   }
-// No elf sits on a break fully rested.
+// The end screen tells what the player did: a recall shows among the causes, and an action shows
+// as used only when it was done. No elf sits on a break fully rested.
 for (const [name, rs] of Object.entries(results))
-  for (const r of rs)
+  for (const r of rs) {
+    const acts = Object.fromEntries(
+      r.end.practices.flatMap((p) => p.actions).map((a) => [a.id, a]),
+    );
+    const why = `${name}: ${JSON.stringify(Object.values(acts).map((a) => [a.id, a.used, a.figure]))}`;
+    assert.strictEqual(acts.tested.used, r.halfTime === "tested", why);
+    assert.strictEqual(
+      acts.rolledBack.used,
+      r.choices.includes("source:rollback"),
+      why,
+    );
+    assert.strictEqual(
+      acts.asked.used,
+      !/^asked 0 /.test(acts.asked.figure),
+      why,
+    );
+    for (const p of r.end.practices)
+      assert.strictEqual(
+        p.used,
+        p.actions.some((a) => a.used),
+        why,
+      );
+    if (r.choices.includes("aboard:bringBack"))
+      assert(
+        r.end.causes.some((c) => c.id === "recalled"),
+        `${name}: a recall shows as a cause`,
+      );
     assert(
       r.idleBreak <= COCOA_LEAST + 1,
       `${name}: an elf sat rested on a break for ${r.idleBreak} s`,
     );
+  }
 for (const name of IDLE)
   for (const r of results[name])
     assert.strictEqual(
@@ -880,12 +912,16 @@ assert(
   shareOf(dial("expertCheckFew"), (a) => a.verdict === "too little") >= 0.75,
   "checking a few reads too little",
 );
-assert(
-  shareOf(dial("expertCheckAll"), (a) =>
-    ["too much", "bottleneck"].includes(a.verdict),
-  ) >= 0.75,
-  "checking everything reads too much or a bottleneck",
-);
+// Checking everything never reads too little; it reads too much or a bottleneck unless wrong gifts
+// were its loss, when the dial follows them to "about right".
+for (const name of ["expertCheckAll", "firstCheckAll"])
+  assert(
+    dial(name).every((a) => a.verdict !== "too little") &&
+      shareOf(dial(name), (a) =>
+        ["too much", "bottleneck"].includes(a.verdict),
+      ) >= 0.5,
+    `${name} reads too much or a bottleneck in most games`,
+  );
 warn(
   shareOf(dial("expert"), (a) => a.verdict === "about right") >= 0.5,
   "the expert on the good strategy mostly reads about right",

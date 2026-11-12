@@ -1225,16 +1225,28 @@ progress {
   font-size: 9px;
   line-height: 12px;
 }
-.elf progress {
+/* Energy drains green, then amber, then red; the face changes with it */
+.elf .energy {
+  display: block;
   height: 3px;
   margin-top: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: #d5ddd7;
   pointer-events: none;
 }
-.elf.tired progress {
-  accent-color: #d58231;
+.elf .energy i {
+  display: block;
+  height: 100%;
+  width: calc(var(--energy, 100) * 1%);
+  background: #3b9d67;
 }
-.elf.exhausted progress {
-  accent-color: var(--red);
+.elf[data-mood="tiring"] .energy i {
+  background: #d58231;
+}
+.elf[data-mood="tired"] .energy i,
+.elf[data-mood="spent"] .energy i {
+  background: var(--red);
 }
 .elf.selected {
   background: #d8ece4;

@@ -541,7 +541,8 @@ body[data-look="polish"] .elf:hover:not(:disabled) {
   background: #e7f0e780;
   border-color: #c7d7ca;
 }
-body[data-look="polish"] .elf.tired {
+body[data-look="polish"] .elf[data-mood="tired"],
+body[data-look="polish"] .elf[data-mood="spent"] {
   background: #ffede8;
   border-color: #e4afa3;
 }
@@ -612,12 +613,11 @@ body[data-look="polish"]
   .elf-doing {
   top: 0;
 }
-body[data-look="polish"] .elf progress {
+body[data-look="polish"] .elf .energy {
   bottom: 2px;
   height: 4px;
   left: 25%;
   width: 50%;
-  accent-color: #3b9d67;
 }
 body[data-look="polish"] .crew-hint {
   top: 3px !important;

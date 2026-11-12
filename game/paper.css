@@ -365,7 +365,7 @@ main {
   line-height: 9px;
   color: #2b1c14;
 }
-.elf progress {
+.elf .energy {
   position: absolute;
   bottom: 0;
   left: 18%;

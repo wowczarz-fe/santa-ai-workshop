@@ -113,6 +113,20 @@
   // is waiting for work, so the player is not invited to pull checkers away.
   const isFree = (elf) =>
     isIdle(elf) && elf.station < 2 && view.ai[elf.station] === 2;
+  // FALLBACK, delete once view().elves carry energy and mood: both worked out from tiredness,
+  // which burns an elf out at 88, slows it from 30 and makes it slip from 50.
+  const energyFromTired = (elf) => ({
+    energy: Math.max(0, Math.round(100 - (elf.tired * 100) / 88)),
+    mood: elf.resting
+      ? "spent"
+      : elf.tired >= 55
+        ? "tired"
+        : elf.tired >= 30
+          ? "tiring"
+          : "fresh",
+  });
+  // An elf's energy, 100 fresh to 0 at burnout, and its mood: fresh, tiring, tired or spent.
+  const energyOf = (elf) => (elf.mood ? elf : energyFromTired(elf));
   const trendArrow =
     '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.5V2M2.5 5.5 6 2l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const starRow = (stars, of = 3) =>
@@ -531,7 +545,7 @@
       b.draggable = true;
       b.dataset.elf = i;
       b.dataset.info = `elf:${i}`;
-      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><span class="elf-task"></span><progress class="fatigue" max="100" value="0"></progress><span class="elf-doing" aria-hidden="true"></span>`;
+      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><span class="elf-task"></span><span class="energy" aria-hidden="true"><i></i></span><span class="elf-doing" aria-hidden="true"></span>`;
       const more = infoButton(`elf:${i}`, `About ${elf.name}`);
       more.classList.add("elf-info");
       // On a phone the cocoa strip is a page away, so a selected elf can be sent from its card.
@@ -842,17 +856,18 @@
         b = wrap.querySelector(".elf");
       if (wrap.parentNode !== $(`elves${elf.station}`))
         $(`elves${elf.station}`).append(wrap);
+      const { energy, mood } = energyOf(elf);
       b.querySelector(".elf-name").textContent = elf.name;
-      b.querySelector("progress").value = elf.tired;
+      b.querySelector(".energy").style.setProperty("--energy", energy);
+      b.dataset.mood = mood;
       b.classList.toggle("selected", selected === i);
       wrap.querySelector(".rest-button").hidden =
         selected !== i || elf.station === 3 || innerWidth >= 1000;
-      b.classList.toggle("tired", elf.tired >= 60);
       b.classList.toggle("exhausted", elf.resting);
       b.disabled = !started || !!view.end || elf.resting;
       b.setAttribute(
         "aria-label",
-        `${elf.name}, ${isFree(elf) ? "free to move" : isIdle(elf) ? "waiting for work" : elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
+        `${elf.name}, ${isFree(elf) ? "free to move" : isIdle(elf) ? "waiting for work" : elf.doing}, energy ${energy} of 100. Select to move.`,
       );
       const role = elf.doing.includes("asking")
         ? ["role-asking", "asking"]
@@ -880,7 +895,10 @@
       b.dataset.role = role[2] || role[1];
       b.querySelector(".elf-eyes").setAttribute(
         "href",
-        "#" + artSymbol(elf.tired >= 55 ? "eyes-tired" : "eyes"),
+        "#" +
+          artSymbol(
+            { fresh: "eyes", tiring: "eyes-drowsy" }[mood] || "eyes-tired",
+          ),
       );
       b.querySelector(".elf-prop").setAttribute(
         "href",
@@ -2196,7 +2214,7 @@
       return [
         e.name,
         [
-          `${cap(e.doing)}, tiredness ${Math.round(e.tired)} of 100.`,
+          `${cap(e.doing)}, energy ${energyOf(e).energy} of 100.`,
           e.resting ? "Back after this cocoa break." : "Drag to move.",
         ],
       ];

@@ -1518,23 +1518,27 @@
   const tourSteps = [
     {
       title: "Elves",
-      text: "Move elves to whichever station has work piling up.",
+      text: () =>
+        "Move elves where work piles up. Tired elves slip: send them for cocoa.",
       target: () => $("elves0"),
     },
     {
       title: "AI switch",
-      text: "By hand, Assist, Automate: more AI is faster, and makes more mistakes.",
+      text: () =>
+        "By hand, Assist, Automate: more AI is faster, and makes more mistakes.",
       target: () => actionGroups.get("ai0"),
     },
     {
       title: "Checking",
-      text: "Checks catch mistakes but cost time and money. Bigger stakes, more checks.",
+      text: () =>
+        "Checks catch mistakes but cost time and money. Bigger stakes, more checks.",
       target: () => actionGroups.get("checking"),
     },
     {
-      title: "Cocoa",
-      text: "Tired elves slow and slip. Rest them before their energy runs out.",
-      target: () => $("cocoa"),
+      title: "Sleigh",
+      text: () =>
+        `Fill it with ${view.run.target} right gifts. The mistakes and cost stars count once ${view.run.goalsCountFrom} are aboard.`,
+      target: () => $("sleighTotal"),
     },
   ];
   function showTourStep(step) {
@@ -1543,7 +1547,7 @@
     const { title, text: words, target } = tourSteps[step];
     text("tourCount", `Clock stopped · ${step + 1} of ${tourSteps.length}`);
     text("tourTitle", title);
-    text("tourText", words);
+    text("tourText", words());
     text("tourNext", step === tourSteps.length - 1 ? "Start" : "Next");
     // On a phone the control may be a page or a scroll away: bring it into view first.
     const anchor = target(),
@@ -1561,11 +1565,12 @@
     paint();
     $("tour").focus({ preventScroll: true });
   }
+  // The clock starts and the keyboard lands on Pause.
   function endTour() {
     tourStep = null;
     $("board").scrollLeft = 0;
     paint();
-    document.activeElement?.blur();
+    $("pause").focus({ preventScroll: true });
   }
   function nextTourStep() {
     if (tourStep === tourSteps.length - 1) endTour();

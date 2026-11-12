@@ -237,7 +237,7 @@ body[data-look="polish"] #paceLabel {
 body[data-look="polish"] .board {
   height: calc(100dvh - 212px);
   min-height: 535px;
-  grid-template-rows: 52px 107px minmax(175px, 1fr) 0 147px;
+  grid-template-rows: 52px 107px minmax(175px, 1fr) 0 165px;
   padding: 0;
   gap: 10px;
   background: transparent;
@@ -450,6 +450,11 @@ body[data-look="polish"] .paper-floor {
   border-top: 1px solid #e2e8df;
   padding: 5px 6px;
 }
+/* The elves stand on the floor at the foot of the column */
+body[data-look="polish"] .station .paper-floor .crew {
+  height: 100%;
+  align-content: end;
+}
 /* The elf cards say who works and who is free, so the crew counts are not repeated above them */
 body[data-look="polish"] .crew-heading {
   display: none;
@@ -458,24 +463,92 @@ body[data-look="polish"] .crew-heading span {
   color: #68766b;
   font-size: 9px;
 }
+/* Up to three elves stand large; four or more become compact cards in a grid of four: face, name
+   and energy bar, with the task word and badges left out so nothing runs into anything */
 body[data-look="polish"] .paper-floor .crew {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: 60px;
-  gap: 1px 2px;
+  grid-auto-rows: 72px;
+  gap: 4px 3px;
   align-items: start;
 }
-body[data-look="polish"] .paper-floor .crew:not(:has(.elf-card:nth-child(5))) {
+body[data-look="polish"]
+  .crew:has(.elf-card:nth-child(4))
+  :is(.elf-task, .elf-doing, .elf-info) {
+  display: none;
+}
+/* The ids outrank the large-card rules both looks share */
+body[data-look="polish"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)) {
+  grid-auto-rows: 72px;
+  align-items: start;
+}
+body[data-look="polish"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4))
+  .elf {
+  height: 72px;
+}
+body[data-look="polish"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4))
+  .elf
+  svg {
+  width: 38px;
+  height: 46px;
+}
+body[data-look="polish"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4))
+  .elf-name {
+  font-size: 11px;
+  line-height: 12px;
+}
+/* The cocoa strip shares its room with its label, so two rows there are a little smaller */
+body[data-look="polish"] #cocoa #elves3:has(.elf-card:nth-child(5)) {
+  grid-auto-rows: 62px;
+  gap: 2px 3px;
+}
+body[data-look="polish"] #cocoa #elves3:has(.elf-card:nth-child(5)) .elf {
+  height: 62px;
+  min-height: 62px;
+  padding-bottom: 7px;
+}
+body[data-look="polish"] #cocoa #elves3:has(.elf-card:nth-child(5)) .elf svg {
+  width: 31px;
+  height: 37px;
+}
+body[data-look="polish"] .paper-floor .crew:not(:has(.elf-card:nth-child(4))) {
   grid-template-columns: repeat(var(--crew-count, 3), minmax(0, 1fr));
   grid-auto-rows: 118px;
   align-items: end;
+}
+/* At a station, up to three elves stand tall on the floor */
+body[data-look="polish"]
+  .station
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(4))) {
+  grid-auto-rows: 146px;
+}
+body[data-look="polish"]
+  .station
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(4)))
+  .elf {
+  height: 146px;
+}
+body[data-look="polish"]
+  .station
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(4)))
+  .elf
+  svg {
+  width: 76px;
+  height: 101px;
 }
 body[data-look="polish"] .elf {
   border: 1px solid transparent;
   border-radius: 9px;
   background: transparent;
-  height: 60px;
-  min-height: 60px;
-  padding: 0 2px 9px;
+  height: 72px;
+  min-height: 72px;
+  padding: 2px 2px 9px;
 }
 body[data-look="polish"] .elf:hover:not(:disabled) {
   background: #e7f0e780;
@@ -488,33 +561,37 @@ body[data-look="polish"] .elf[data-mood="spent"] {
 }
 body[data-look="polish"] .elf svg,
 body[data-look="polish"] #cocoa .elf svg {
-  width: 30px;
-  height: 36px;
+  width: 32px;
+  height: 39px;
   filter: none;
 }
 body[data-look="polish"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(.elf-card:nth-child(4)))
   .elf {
   height: 118px;
 }
 body[data-look="polish"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(.elf-card:nth-child(4)))
   .elf
   svg,
 body[data-look="polish"]
   #cocoa
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(.elf-card:nth-child(4)))
   .elf
   svg {
   width: 62px;
   height: 83px;
 }
 body[data-look="polish"] .elf-name {
+  max-width: 100%;
+  overflow: hidden;
   font:
-    700 10px/11px Arial,
+    700 11px/12px Arial,
     sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 body[data-look="polish"] .elf-task {
   font:
@@ -523,14 +600,14 @@ body[data-look="polish"] .elf-task {
 }
 body[data-look="polish"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(.elf-card:nth-child(4)))
   .elf-name {
   font-size: 12px;
   line-height: 13px;
 }
 body[data-look="polish"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(.elf-card:nth-child(4)))
   .elf-task {
   font-size: 11px;
   line-height: 12px;
@@ -549,7 +626,7 @@ body[data-look="polish"] .elf-doing {
 }
 body[data-look="polish"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(.elf-card:nth-child(4)))
   .elf-doing {
   top: 0;
 }
@@ -883,7 +960,7 @@ body[data-look="polish"] #cocoa:has(.elf-card) {
   position: relative;
   grid-row: 5;
   inset: auto;
-  height: 147px;
+  height: 165px;
 }
 body[data-look="polish"] .sleigh-column:has(#cocoa .elf-card) .controls {
   grid-row: 3;
@@ -1091,10 +1168,10 @@ body[data-look="polish"] #cocoa .cocoa-focus {
 body[data-look="polish"] #cocoa .crew {
   min-height: 0;
   height: 100%;
-  grid-auto-rows: 60px;
+  grid-auto-rows: 72px;
   align-items: start;
 }
-body[data-look="polish"] #cocoa .crew:not(:has(.elf-card:nth-child(5))) {
+body[data-look="polish"] #cocoa .crew:not(:has(.elf-card:nth-child(4))) {
   grid-auto-rows: 118px;
   align-items: end;
 }
@@ -1324,7 +1401,7 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
     height: calc(100dvh - 280px);
     min-height: 520px;
     grid-template-columns: repeat(4, calc(100vw - 28px));
-    grid-template-rows: 51px 108px minmax(130px, 1fr) 0 145px;
+    grid-template-rows: 51px 108px minmax(130px, 1fr) 0 160px;
     gap: 8px;
     padding: 0;
     overflow-x: auto;
@@ -1363,24 +1440,32 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
     font-size: 12px;
   }
   body[data-look="polish"]
+    .station
     .paper-floor
-    .crew:not(:has(.elf-card:nth-child(5)))
-    .elf
-    svg {
-    height: 79px;
-    width: 59px;
+    .crew:not(:has(.elf-card:nth-child(4))) {
+    grid-auto-rows: 140px;
   }
   body[data-look="polish"]
+    .station
     .paper-floor
-    .crew:not(:has(.elf-card:nth-child(5)))
+    .crew:not(:has(.elf-card:nth-child(4)))
+    .elf
+    svg {
+    height: 96px;
+    width: 72px;
+  }
+  body[data-look="polish"]
+    .station
+    .paper-floor
+    .crew:not(:has(.elf-card:nth-child(4)))
     .elf {
-    height: 115px;
+    height: 140px;
   }
   body[data-look="polish"] .sleigh-column .controls {
     grid-row: 5;
   }
   body[data-look="polish"] #cocoa:has(.elf-card) {
-    height: 145px;
+    height: 160px;
   }
   body[data-look="polish"] #casePanel {
     background: #fff;
@@ -1502,7 +1587,7 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"]:has(#caseCue:not([hidden])) main .board {
     height: calc(100dvh - 274px);
     min-height: 480px;
-    grid-template-rows: 51px auto minmax(120px, 1fr) 0 145px;
+    grid-template-rows: 51px auto minmax(120px, 1fr) 0 160px;
     padding-right: 12px;
   }
   body[data-look="polish"] main [data-control="checking"] .switch {
@@ -1572,7 +1657,7 @@ body[data-look="polish"] .sleigh-column > * {
   }
 }
 body[data-look="polish"] .board {
-  grid-template-rows: 52px 123px minmax(175px, 1fr) 0 147px;
+  grid-template-rows: 52px 123px minmax(175px, 1fr) 0 165px;
 }
 body[data-look="polish"] #controls2 {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -1637,7 +1722,7 @@ body[data-look="polish"] .arrival {
 }
 @media (max-width: 999px) {
   body[data-look="polish"] .board {
-    grid-template-rows: 51px 123px minmax(130px, 1fr) 0 145px;
+    grid-template-rows: 51px 123px minmax(130px, 1fr) 0 160px;
   }
 }
 

@@ -2599,3 +2599,19 @@ body[data-look="paper"] .station-rate {
     font-size: 16px;
   }
 }
+@media (max-width: 380px) {
+  /* The clock line keeps room for the whole Decide button */
+  body[data-look="paper"] main .dashboard {
+    column-gap: 6px;
+  }
+  body[data-look="paper"] main .dashboard #money {
+    min-width: 54px;
+  }
+  body[data-look="paper"] main .dashboard #pause {
+    min-width: 64px;
+    padding: 0 8px;
+  }
+  body[data-look="paper"] main .dashboard .case-cue {
+    padding: 0 10px 0 8px;
+  }
+}

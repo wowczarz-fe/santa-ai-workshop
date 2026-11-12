@@ -230,3 +230,31 @@ expert in 55% (asked 60% or more). The first-timer rows were put first. Never re
 first-timer 0.7 of a star but an expert only 0.4, as an expert who never rests still fills the
 lower target. The expert is only 0.3 of a star ahead of a first-timer: the mistakes and cost goals
 are fixed amounts, and a faster sleigh carries more chances of both.
+
+## Follow-up: drift that can be fixed during play
+
+Date: 2026-11-12
+
+A first-timer playtest found the drift lines arriving 9 seconds in, in words a newcomer could not
+read, naming nothing that could be done before half-time. The user ruled that drift gets an action
+open during play.
+
+- Each elf now keeps its own trust in the AI, and a station drifts by the average of its elves. A
+  cocoa break, a burnout or a move to another station starts an elf's trust afresh, so swapping in
+  a rested elf pulls a drifting station back; training at half-time stays the lasting cure. The
+  line says what is happening and what to do ("Checkers are trusting the AI and skipping checks.
+  Swap in a rested elf.") and never comes in the first 20 seconds.
+- A clean AI draft now adds a whole clean gift to each confirmer's trust (was half). Drift used to
+  be one count shared by both Assist stations; per station it built up half as fast, and a
+  first-timer checking a few lost the mistakes star in only 40% of games.
+- An elf on cocoa walks back to the station it came from once fully rested, at least 3 seconds
+  after sitting down. This was chosen over a "send them back" hint and an end cause because it
+  removes the problem: no elf is left on a break.
+
+The goal lines are unchanged. Rows that moved by more than 0.2 of a star: the first-timer checking
+everything rose from 1.07 to 1.50 (its checkers, rested now and then, look at every gift properly,
+which is slower and holds the sleigh up: it fills it in no game, but breaks the cost limit in only
+32%), and the expert who never rests fell from 1.90 to 1.57. The first-timer on the good strategy
+rose from 1.98 to 2.15 (three stars in 30%), and the expert fell from 2.30 to 2.20 (55%). Checking
+everything still loses a star in every first-timer game, now through the held-up sleigh more than
+the cost; the check that it breaks the cost limit in most games is kept for the expert only.

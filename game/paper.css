@@ -587,18 +587,6 @@ body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
 .sleigh-total span {
   font-size: 10px;
 }
-.arrival {
-  position: absolute;
-  left: 8px;
-  bottom: 7px;
-  background: #f4ead3ef;
-  padding: 3px;
-  font-size: 10px;
-  max-width: 95%;
-}
-.arrival-icon {
-  font-size: 18px;
-}
 #cocoa {
   display: block;
   gap: 0;
@@ -654,9 +642,6 @@ body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
 .wrong-delivery b,
 .wrong-delivery > span:last-child {
   font-size: 10px;
-}
-.recent-gifts {
-  display: none;
 }
 .sleigh-note {
   font-size: 10px;
@@ -982,10 +967,6 @@ dialog {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.arrival-icon .paper-toy {
-  width: 29px;
-  height: 24px;
 }
 .wrong-toy .paper-toy {
   width: 42px;
@@ -1800,28 +1781,6 @@ body[data-look="paper"] .sleigh-total span {
   font-size: 11px;
   line-height: 13px;
 }
-body[data-look="paper"] .arrival {
-  top: 128px;
-  bottom: auto;
-  left: 8px;
-  box-sizing: border-box;
-  width: 112px;
-  max-width: none;
-  min-height: 44px;
-  padding: 4px 6px;
-  gap: 5px;
-  border: 1px solid #bea47b;
-  background: #fbf6e9;
-  box-shadow: 1px 2px 3px #2b1c1433;
-  font-size: 11px;
-  line-height: 13px;
-}
-body[data-look="paper"] .arrival b {
-  font-size: 11px;
-}
-body[data-look="paper"] .arrival-icon {
-  flex: none;
-}
 /* The gift bubble lands beside the count card, not on it */
 body[data-look="paper"] .gift-flight:not(.in-slot) {
   margin-left: 116px;
@@ -1835,9 +1794,6 @@ body[data-look="paper"] .gift-flight:not(.in-slot) {
 body[data-look="paper"] .wrong-delivery {
   box-sizing: border-box;
   min-height: 72px;
-}
-body[data-look="paper"] .wrong-delivery[data-empty] {
-  visibility: hidden;
 }
 body[data-look="paper"] .wrong-delivery .eyebrow,
 body[data-look="paper"] .wrong-delivery b,
@@ -2175,8 +2131,7 @@ body[data-look="paper"] .paper-sleigh-scene {
   box-sizing: border-box;
 }
 body[data-look="paper"] .paper-sleigh-scene > .cargo-badge,
-body[data-look="paper"] .paper-sleigh-scene > .sleigh-total,
-body[data-look="paper"] .paper-sleigh-scene > .arrival {
+body[data-look="paper"] .paper-sleigh-scene > .sleigh-total {
   position: relative;
   inset: auto;
   flex: none;
@@ -2189,9 +2144,6 @@ body[data-look="paper"] .paper-sleigh-scene > .arrival {
   body[data-look="paper"] .sleigh-total strong {
     font-size: 26px;
     line-height: 28px;
-  }
-  body[data-look="paper"] .arrival {
-    min-height: 38px;
   }
 }
 
@@ -2222,8 +2174,7 @@ body[data-look="paper"]
 /* Short phones: the count card lies on its side, so the three cards fit the shorter scene */
 @media (max-width: 600px) and (max-height: 799px) {
   body[data-look="paper"] .paper-sleigh-scene > .cargo-badge,
-  body[data-look="paper"] .paper-sleigh-scene > .sleigh-total,
-  body[data-look="paper"] .paper-sleigh-scene > .arrival {
+  body[data-look="paper"] .paper-sleigh-scene > .sleigh-total {
     width: 146px;
   }
   body[data-look="paper"] .paper-sleigh-scene .sleigh-art {

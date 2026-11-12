@@ -1400,24 +1400,6 @@ progress {
   border-radius: 1px;
   background: var(--ink);
 }
-.arrival {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: white;
-  border: 1px solid var(--line);
-  padding: 6px;
-  min-height: 48px;
-}
-.arrival-icon {
-  font-size: 29px;
-}
-.arrival b {
-  font-size: 11px;
-}
-.arrival.new {
-  animation: arrive 0.65s ease-out;
-}
 @keyframes arrive {
   from {
     transform: translateX(-15px);
@@ -1449,22 +1431,6 @@ progress {
 }
 .wrong-delivery > span:last-child {
   font-size: 10px;
-}
-.recent-gifts {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.recent-gifts button {
-  font-size: 20px;
-  padding: 3px;
-  min-height: 30px;
-  width: 32px;
-}
-.recent-gifts .wrong {
-  background: #ffdccc;
-  border-color: #c44d38;
 }
 .sleigh-note {
   font-size: 10px;

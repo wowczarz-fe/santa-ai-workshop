@@ -55,7 +55,6 @@
     showTour = localStorage.getItem("workshop-walkthrough-finished") !== "yes";
   } catch {}
   let lastWrong = null,
-    lastArrival = null,
     notice = null,
     newsSeen = new Set();
   let infoAnchor = null,
@@ -267,19 +266,17 @@
   sleighScene.append(
     sleigh.querySelector(".sleigh-art"),
     sleigh.querySelector(".sleigh-total"),
-    $("arrival"),
   );
   const sleighBelt = make("div", "paper-belt");
   sleighBelt.setAttribute("aria-hidden", "true");
   const sleighControls = make("div", "controls paper-sleigh-controls");
-  sleighControls.append($("wrongDelivery"), $("recentGifts"), $("sleighNote"));
+  sleighControls.append($("wrongDelivery"), $("sleighNote"));
   sleigh.append(sleighScene, sleighBelt, $("cocoa"), sleighControls);
   $("cocoa").classList.add("paper-floor");
   $("cocoa").querySelector(".cocoa-label > span").innerHTML =
     Art !== PaperArt
       ? Art.icon("mug")
       : '<svg viewBox="0 0 80 80" aria-hidden="true"><use href="#mug"/></svg>';
-  $("arrivalIcon").innerHTML = icon("gift");
   $("stationPicker").addEventListener("click", (event) => {
     const button = event.target.closest("[data-station-page]");
     if (!button) return;
@@ -497,7 +494,6 @@
     openedCases.clear();
     ended = false;
     lastWrong = null;
-    lastArrival = null;
     newsSeen = new Set();
     notice = null;
     mistakeHint = null;
@@ -893,24 +889,12 @@
         ),
       );
 
-    const arrivals = view.sleigh.parcels;
-    const newest = arrivals.at(-1);
-    if (newest && newest.id !== lastArrival) {
-      lastArrival = newest.id;
-      $("arrivalIcon").innerHTML = newest.made
-        ? toyArt(newest.made.name)
-        : icon("gift");
-      text(
-        "arrivalLabel",
-        newest.result === "wrong" ? "Wrong gift aboard" : "Gift loaded",
-      );
-      $("arrival").classList.toggle("wrong", newest.result === "wrong");
-      $("arrivalBig").hidden = !newest.big;
-    }
-    const wrong = arrivals.filter((p) => p.result === "wrong").at(-1);
+    const wrong = view.sleigh.parcels
+      .filter((p) => p.result === "wrong")
+      .at(-1);
     if (wrong) lastWrong = wrong;
-    // The wrong-gift card keeps its place from the start, so the sleigh never shrinks.
-    $("wrongDelivery").toggleAttribute("data-empty", !lastWrong);
+    // The wrong-gift card shows once there is a wrong gift aboard.
+    $("wrongDelivery").hidden = !lastWrong;
     if (lastWrong) {
       if ($("wrongToy").dataset.toy !== lastWrong.made.name) {
         $("wrongToy").dataset.toy = lastWrong.made.name;
@@ -1759,9 +1743,7 @@
   function caseAnchor(c) {
     if (c.step === "source") return $("station1").querySelector(".machine");
     if (c.step === "aboard")
-      return $("wrongDelivery").hasAttribute("data-empty")
-        ? $("sleighRight")
-        : $("wrongDelivery");
+      return $("wrongDelivery").hidden ? $("sleighRight") : $("wrongDelivery");
     if (c.kind === "unclear") return $("queue-letters");
     return $("queue-check");
   }

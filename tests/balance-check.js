@@ -357,6 +357,10 @@ function checkView(v) {
 // Half-time: the rules stand still and the card carries the report, the next half and the options.
 function checkChoice(v, w) {
   const ch = v.choice;
+  assert(
+    v.run.half === 1 && v.run.halfLeft === 0 && v.run.cargo.id === "everyday",
+    "half-time shows the first half over",
+  );
   assert.strictEqual(
     Object.keys(ch).join(),
     "title,text,report,next,options,openCase",

@@ -176,8 +176,9 @@ example
 example
 `{ half: 1, halves: 2, halfLeft: 35, leavesIn: 110, aboard: 36, target: 130, cargo: { id: "everyday", name: "Everyday gifts", icon: "🎁", text: "A wrong gift costs £12, a big one £100." }, goals: [...], goalsCountFrom: 52 }`.
 
-- `half`: 1 or 2. `halves`: 2. `halfLeft`: whole seconds left in the half under way (0 at
-  half-time). `leavesIn`: whole seconds until the sleigh leaves at the end of the game.
+- `half`: 1 or 2. `halves`: 2. `halfLeft`: whole seconds left in the half under way. While the
+  half-time card is up (`choice` set) the first half is over and the second has not begun: `half`
+  is 1, `halfLeft` 0 and `cargo` the first half's, until the player chooses. `leavesIn`: whole seconds until the sleigh leaves at the end of the game.
 - `aboard`: right gifts on the sleigh, the figure the Full sleigh star counts. Show the sleigh
   count once, from here.
 - `cargo`: the half's cargo `{ id, name, icon, text }`: `"everyday"` ("Everyday gifts") in the

@@ -3008,6 +3008,7 @@ class Workshop {
     const inc = this.incident;
     const v = this.vigilance();
     const ch = this.choice;
+    const shownHalf = ch ? 1 : this.half;
     const copyGoals = (goals) => goals.map((g) => ({ ...g }));
     const copyCauses = (causes) => causes.map((c) => ({ ...c }));
     return {
@@ -3069,14 +3070,17 @@ class Workshop {
         })),
         openCase: this.openCaseView(),
       },
+      // While the half-time card is up the first half is over but the second has not started.
       run: {
-        half: this.half,
+        half: shownHalf,
         halves: 2,
-        halfLeft: Math.max(0, Math.round(this.half * HALF_SECONDS - this.t)),
+        halfLeft: ch
+          ? 0
+          : Math.max(0, Math.round(this.half * HALF_SECONDS - this.t)),
         leavesIn: Math.max(0, Math.round(this.duration - this.t)),
         aboard: this.rightSoFar(),
         target: TARGET,
-        cargo: this.cargoView(),
+        cargo: this.cargoView(shownHalf),
         goals: this.goals(),
         goalsCountFrom: this.goalsCountFrom(),
       },

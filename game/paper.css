@@ -509,13 +509,33 @@ body[data-look="paper"] .dashboard .hud-name {
 body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] {
   border-color: #d2a447;
 }
+/* A goal that does not count yet: a dashed star, and the line saying from when it counts in
+   place of its bar */
 body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] .hud-star {
   background: transparent;
   color: #e7bd5c;
-  box-shadow: inset 0 0 0 1.5px #d2a44799;
+  outline: 1.5px dashed #d2a44799;
+  outline-offset: -1.5px;
 }
-body[data-look="paper"] .dashboard .hud-note,
-body[data-look="paper"] .dashboard .goals-note {
+body[data-look="paper"]
+  .dashboard
+  .hud-slot[data-state="waiting"]
+  .hud-star
+  svg {
+  stroke-dasharray: 2.6 1.9;
+}
+body[data-look="paper"]
+  .dashboard
+  .hud-slot[data-state="waiting"][data-goal]
+  .hud-bar {
+  display: none;
+}
+body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] .hud-note {
+  display: block;
+  margin: 0;
+  line-height: 8px;
+}
+body[data-look="paper"] .dashboard .hud-note {
   color: #e7bd5c;
 }
 body[data-look="paper"] .dashboard .hud-figures b {
@@ -1355,8 +1375,7 @@ body[data-look="paper"] .dashboard .hud-slot {
   grid-template-rows: 14px 28px 8px;
   border-style: solid;
 }
-body[data-look="paper"] .dashboard .hud-slot .hud-note,
-body[data-look="paper"] .dashboard .goals-note {
+body[data-look="paper"] .dashboard .hud-slot .hud-note {
   display: none;
 }
 body[data-look="paper"] .dashboard .hud-slot[data-state] .hud-bar {
@@ -1760,6 +1779,10 @@ body[data-look="paper"] .sleigh-total strong {
 body[data-look="paper"] .sleigh-total span {
   font-size: 11px;
   line-height: 13px;
+}
+/* Room under the bar for the number on its tick */
+body[data-look="paper"] .sleigh-total .sleigh-bar {
+  margin-bottom: 11px;
 }
 /* The gift bubble lands beside the count card, not on it */
 body[data-look="paper"] .gift-flight:not(.in-slot) {

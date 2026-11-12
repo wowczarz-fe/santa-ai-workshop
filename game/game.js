@@ -328,7 +328,7 @@
     slot.dataset.goal = id;
     slot.dataset.help = `goal:${id}`;
     slot.dataset.info = `goal:${id}`;
-    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i></span>`;
+    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i></span><span class="hud-note"></span>`;
     $("goals").append(slot);
     goalSlots[id] = slot;
   }
@@ -380,6 +380,9 @@
       slot
         .querySelector(".hud-bar i")
         .style.setProperty("--fill", Math.min(1, now / Math.max(1, need)));
+      // A goal inside its limit that does not count yet says from when it counts.
+      slot.querySelector(".hud-note").textContent =
+        state === "waiting" ? `Counts from ${from} gifts aboard` : "";
       slot.setAttribute(
         "aria-label",
         `${name}: ${figure(now)} of ${figure(need)}, ${{ met: "star earned so far", waiting: `counts from ${from} right gifts`, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
@@ -1028,6 +1031,11 @@
       make("b", "goal-name", goal.name),
       make("strong", "goal-figure", goalFigure(goal)),
     );
+    // Inside its limit but not counted: the sleigh holds fewer gifts than the goal counts from.
+    if (goal.waiting && countsFrom)
+      slot.append(
+        make("small", "goal-note", `Counts from ${countsFrom} gifts aboard`),
+      );
     // Within its limit but never counted: the sleigh stayed under the share where this goal starts.
     const why =
       goal.waiting && countsFrom
@@ -1267,6 +1275,8 @@
       "--tick",
       Math.min(1, (view.run.goalsCountFrom ?? 0) / target),
     );
+    // The tick marks where the mistakes and cost stars start to count.
+    text("sleighTick", view.run.goalsCountFrom ?? "");
     const met = String(!!full?.met);
     if ($("sleighTotal").dataset.met !== met) {
       $("sleighTotal").dataset.met = met;

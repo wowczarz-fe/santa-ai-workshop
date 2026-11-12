@@ -610,9 +610,6 @@ main {
 .dashboard .hud-slot[data-state="waiting"] {
   border-style: dashed;
 }
-.dashboard .goals-note {
-  display: none;
-}
 @media (max-width: 600px) {
   .dashboard .hud-slot {
     column-gap: 5px;
@@ -640,13 +637,6 @@ main {
   }
   .dashboard .hud-slot .hud-figures small {
     font-size: 10px;
-  }
-  .dashboard .goals-note {
-    display: block;
-    grid-column: 1 / -1;
-    font-size: 10px;
-    line-height: 12px;
-    min-height: 12px;
   }
 }
 .dashboard .hud-bar i {
@@ -1363,15 +1353,24 @@ progress {
   border-radius: 2px;
   background: #d9a636;
 }
+/* The tick where the mistakes and cost stars start to count, with that number under it */
 .sleigh-bar b {
   position: absolute;
   top: -3px;
   bottom: -3px;
   left: calc(var(--tick, 0) * 100%);
+  display: flex;
+  justify-content: center;
   width: 2px;
   margin-left: -1px;
+  padding-top: 11px;
   border-radius: 1px;
   background: var(--ink);
+  font:
+    700 9px/10px Arial,
+    sans-serif;
+  color: var(--ink);
+  white-space: nowrap;
 }
 @keyframes arrive {
   from {
@@ -2509,7 +2508,8 @@ dialog p {
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
     "marks name"
-    "marks figure";
+    "marks figure"
+    "marks note";
   column-gap: 10px;
   align-items: center;
   padding: 7px 12px;
@@ -2568,6 +2568,16 @@ dialog p {
 }
 .goal-slot[data-waiting="true"] .goal-star {
   opacity: 0.75;
+}
+/* A goal that does not count yet: a dashed star and the line saying from when it counts */
+.goal-slot[data-waiting="true"] .goal-star svg {
+  stroke-dasharray: 2.6 1.9;
+}
+.goal-note {
+  grid-area: note;
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--bc-gold-ink);
 }
 .goal-slot[data-waiting="true"] .goal-figure {
   color: var(--bc-muted);

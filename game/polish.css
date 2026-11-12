@@ -1218,8 +1218,7 @@ body[data-look="polish"] .dashboard .hud-slot {
   grid-template-rows: 14px 26px 8px;
   border-style: solid;
 }
-body[data-look="polish"] .dashboard .hud-slot .hud-note,
-body[data-look="polish"] .dashboard .goals-note {
+body[data-look="polish"] .dashboard .hud-slot .hud-note {
   display: none;
 }
 body[data-look="polish"] .dashboard .hud-slot[data-state] .hud-bar {
@@ -1227,13 +1226,30 @@ body[data-look="polish"] .dashboard .hud-slot[data-state] .hud-bar {
   position: relative;
   overflow: visible;
 }
+/* A goal that does not count yet: a dashed star, and the line saying from when it counts in
+   place of its bar */
 body[data-look="polish"] .dashboard .hud-slot[data-state="waiting"] .hud-star {
   background: transparent;
   color: #f0cf6c;
-  box-shadow: inset 0 0 0 1.5px #f0cf6c80;
+  outline: 1.5px dashed #f0cf6c99;
+  outline-offset: -1.5px;
 }
-body[data-look="polish"] .dashboard .hud-note,
-body[data-look="polish"] .dashboard .goals-note {
+body[data-look="polish"]
+  .dashboard
+  .hud-slot[data-state="waiting"]
+  .hud-star
+  svg {
+  stroke-dasharray: 2.6 1.9;
+}
+body[data-look="polish"] .dashboard .hud-slot[data-state="waiting"] .hud-bar {
+  display: none;
+}
+body[data-look="polish"] .dashboard .hud-slot[data-state="waiting"] .hud-note {
+  display: block;
+  margin: 0;
+  line-height: 8px;
+}
+body[data-look="polish"] .dashboard .hud-note {
   color: #f0cf6c;
 }
 body[data-look="polish"] .dashboard .hud-figures b {
@@ -1268,16 +1284,6 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"] main .dashboard {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
     padding-bottom: 24px;
-  }
-  body[data-look="polish"] .dashboard .goals-note {
-    justify-self: start;
-    max-width: 100%;
-    padding: 0 5px;
-    border-radius: 4px;
-    background: #183f43;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 }
 @media (max-width: 999px) {

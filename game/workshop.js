@@ -253,6 +253,9 @@ const WRONG_PRICE = { everyday: 12, big: 100 };
 // For the end summary: what a gift that misses its sleigh while it waits to be checked is worth. The
 // child gets it late or not at all, so it counts as half a wrong everyday gift.
 const LATE_PRICE = WRONG_PRICE.everyday / 2;
+// Gifts held up at checking decide the end screen only when they cost at least this share of the
+// game's target, so a well-played game a few gifts short is not told checking held it back.
+const HELD_SHARE = 0.15;
 // The kinds of parcel the end summary splits checking by. A gift that is both big and unclear counts
 // as big, because its mistake costs the big price.
 const GROUPS = [
@@ -2862,8 +2865,9 @@ class Workshop {
   //   lost: LATE_PRICE for each other letter lost to a full pile.
   // A gift held back is one waiting at checking when its sleigh left, or a letter lost while checking
   // was the station holding the line. Held and lost gifts count only when the sleigh fell short of
-  // the target, because only then did they cost a gift. The headline, the lesson and the assurance
-  // dial all follow this one comparison.
+  // the target, because only then did they cost a gift, and held gifts only when the gifts they
+  // could have cost (no more than the shortfall) reach HELD_SHARE of the target. The headline, the
+  // lesson and the assurance dial all follow this one comparison.
   // Whether tiredness took TIRED_SHARE or more of station s's working time this game.
   tiredAt(s) {
     return this.stats.tiredLost[s] >= TIRED_SHARE * this.stats.tiredWork[s];
@@ -2877,10 +2881,13 @@ class Workshop {
   biggestLoss(right, mistakes) {
     const a = this.assure;
     const late = (n) => (right < this.target ? n * LATE_PRICE : 0);
+    // A gift held at one departure usually rides the next sleigh, so checking cost the game at most
+    // the gifts it fell short by. Held gifts count only when that is HELD_SHARE of the target or more.
+    const held = Math.min(a.heldBy.some, Math.max(0, this.target - right));
     const loss = {
       wrong: mistakes,
       over: late(a.heldBy.all),
-      held: late(a.heldBy.some),
+      held: held >= HELD_SHARE * this.target ? late(a.heldBy.some) : 0,
       lost: late(this.lost - a.lostAtCheck),
     };
     const [id, amount] = Object.entries(loss).sort((p, q) => q[1] - p[1])[0];

@@ -174,7 +174,10 @@ beforehand: a risky batch can happen to come out clean.
 - The game's losses are compared once, in pounds: the wrong gifts delivered; gifts held back by
   checking every parcel (over-checking); gifts held back by checking while only some parcels were
   checked (a bottleneck); and other letters lost to a full pile. Held and lost gifts count only
-  when the game fell short of its target. When the bottleneck is the largest, `verdict` is
+  when the game fell short of its target. Gifts held back while only some parcels were checked
+  count only when the smaller of their number and the gifts the game fell short by is 15% of the
+  target or more (`HELD_SHARE`): a gift held at one departure usually rides the next sleigh, so
+  checking cost the game at most its shortfall. When the bottleneck is the largest, `verdict` is
   `"bottleneck"` whatever `position` says, and `text` names the gifts held back and the fix: rest
   the checkers with cocoa when `tired`, else move an elf to checking.
   When over-checking is the largest, `verdict` is `"too much"` and `position` is moved into

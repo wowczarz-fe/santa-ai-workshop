@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by 0014
 ---
 
 # 0005: Four sleigh runs with one choice between them

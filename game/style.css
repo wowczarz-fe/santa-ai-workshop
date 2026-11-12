@@ -2263,10 +2263,6 @@ dialog p {
   color: #4b6250;
   white-space: nowrap;
 }
-.elf[data-role="watching"],
-.elf[data-role="idle"] {
-  animation: none;
-}
 .mode-caption {
   font-size: 9px;
   color: #4b6250;

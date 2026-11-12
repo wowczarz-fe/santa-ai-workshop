@@ -98,11 +98,11 @@
     node.innerHTML = icon(name);
     node.append(make("span", "", value));
   };
-  // Free: nothing to do, or watching an automated machine (the rules may call it plain idle).
+  // Free: nothing to do at its station, often because the AI runs it alone.
   const isIdle = (elf) =>
     elf.station < 3 &&
     !elf.resting &&
-    (/watch/.test(elf.doing) || /^(nothing to do|idle|free)/.test(elf.doing));
+    /^(nothing to do|idle|free)/.test(elf.doing);
   // Free to move: idle at a reading or toy station the AI runs alone. Anywhere else an idle elf
   // is waiting for work, so the player is not invited to pull checkers away.
   const isFree = (elf) =>
@@ -2092,9 +2092,11 @@
       // A double-click must not land on whatever sits under the closed panel.
       ignoreClicksUntil = performance.now() + 400;
       const c = view.case,
-        option = c.options.find((o) => o.id === target.dataset.resolve);
+        option = c?.options.find((o) => o.id === target.dataset.resolve);
       // The card closes on an answer; the cue counts down an answer that takes time.
       caseOpen = false;
+      // The decision may have gone while its card was still drawn (half-time came up over it).
+      if (!option) return paint();
       perform(() => game.resolve(c.id, option.id));
       // Asking takes time and says nothing until the answer comes back, so the line says so now.
       if (view.case?.resolving && c.evidence[0]?.child)

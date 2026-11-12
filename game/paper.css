@@ -1925,7 +1925,7 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
   }
   body[data-look="paper"] #stationPicker {
     height: 40px;
-    margin: 0 0 6px;
+    margin: 6px 0;
   }
   body[data-look="paper"] #stationPicker button {
     min-height: 40px;
@@ -2256,18 +2256,18 @@ body[data-look="paper"] main > footer {
   /* The footer hides during play, so the board takes its room */
   body[data-look="paper"] main .board,
   body[data-look="paper"]:has(#caseCue:not([hidden])) main .board {
-    height: calc(100dvh - 256px);
+    height: calc(100dvh - 262px);
   }
 }
 @media (max-width: 999px) {
   /* Before the game and after it the footer shows, and the board makes room for it */
   body[data-look="paper"] main:has(> footer:not([hidden])) .board {
-    height: calc(100dvh - 280px);
+    height: calc(100dvh - 286px);
   }
 }
 @media (max-width: 999px) {
   body[data-look="paper"] main .board {
-    min-height: 460px;
+    min-height: 454px;
   }
 }
 @media (max-width: 380px) {
@@ -2443,7 +2443,7 @@ body[data-look="paper"] #piles2 .queue-name {
 }
 /* The gift bubble on the sleigh tab sits on the tab's edge, clear of the status line above */
 body[data-look="paper"] .gift-flight.in-slot {
-  margin-top: 10px;
+  margin-top: 6px;
   background: #fbf6e9;
   color: #2c6a43;
   border: 1px solid #bea47b;

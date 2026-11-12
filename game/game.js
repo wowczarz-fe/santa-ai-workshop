@@ -129,30 +129,6 @@
     buttonHost.append(button);
     textHost.append(more);
   }
-  // A paragraph showing its first sentence, with a button that shows the whole of it.
-  function addExpand(paragraph, short, full, label) {
-    paragraph.moreButton?.remove();
-    paragraph.textContent = short;
-    if (!full || full === short) return;
-    const button = make("button", "info-button more-toggle", "i");
-    button.type = "button";
-    button.setAttribute("aria-label", label);
-    button.setAttribute("aria-expanded", "false");
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const open = button.getAttribute("aria-expanded") !== "true";
-      paragraph.textContent = open ? full : short;
-      button.setAttribute("aria-expanded", String(open));
-    });
-    paragraph.after(button);
-    paragraph.moreButton = button;
-  }
-  const revealedToy = (toy, cls) => {
-    const node = make("span", cls);
-    node.innerHTML = toyArt(toy.name);
-    node.append(make("span", "", toy.name));
-    return node;
-  };
   const infoButton = (key, label = "More information") => {
     const b = make("button", "info-button", "i");
     b.dataset.help = key;

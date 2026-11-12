@@ -73,7 +73,6 @@
     ignoreClicksUntil = 0;
   let lastChoice = null,
     observedRight = 0,
-    observedRun = null,
     caughtSnapshot = null,
     caughtUntil = 0,
     toastUntil = 0;
@@ -113,8 +112,6 @@
     isIdle(elf) && elf.station < 2 && view.ai[elf.station] === 2;
   const trendArrow =
     '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.5V2M2.5 5.5 6 2l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const starRow = (stars, of = 3) =>
-    icon("star", "on").repeat(stars) + icon("star-empty").repeat(of - stars);
   // A small "i" button that shows or hides longer words in place: works with touch and keyboard.
   // buttonHost gets the button, textHost the words (hidden until asked for).
   function addMore(buttonHost, words, label, textHost = buttonHost) {
@@ -295,7 +292,6 @@
   sleighScene.append(
     sleigh.querySelector(".sleigh-art"),
     sleigh.querySelector(".sleigh-total"),
-    $("runStars"),
     $("arrival"),
   );
   const sleighBelt = make("div", "paper-belt");
@@ -347,7 +343,8 @@
     },
     { passive: true },
   );
-  // The goals of the run under way, one star each; the full-sleigh goal is on the sleigh itself.
+  // The mistakes and cost goals, one star each; the full-sleigh goal is on the sleigh itself. The
+  // cost goal is the game's one money figure, the cost so far against its limit.
   const goalSlots = {};
   for (const [id, art] of [
     ["right", "wrong-gift"],
@@ -362,10 +359,6 @@
     goalSlots[id] = slot;
   }
   function paintGoals() {
-    text(
-      "goalsTitle",
-      `Sleigh ${view.run.number} of ${view.run.of}: a star for each goal`,
-    );
     // While a recall card is open, the wrong-gift goal previews the count after the recall.
     const c = view.case;
     const recall =
@@ -385,10 +378,14 @@
     for (const goal of view.run.goals) {
       const slot = goalSlots[goal.id];
       if (!slot) continue;
-      const figure = (n) => (goal.id === "cost" ? money(n) : String(n));
-      slot.querySelector(".hud-name > span").textContent = goal.name;
-      slot.querySelector(".hud-figures b").textContent = figure(goal.now);
-      slot.querySelector(".hud-need").textContent = ` / ${figure(goal.need)}`;
+      const cost = goal.id === "cost";
+      const figure = (n) => (cost ? money(n) : String(n));
+      const now = cost ? (view.cost?.spent ?? goal.now) : goal.now,
+        need = cost ? (view.cost?.limit ?? goal.need) : goal.need;
+      const name = cost ? "Cost so far" : goal.name;
+      slot.querySelector(".hud-name > span").textContent = name;
+      slot.querySelector(".hud-figures b").textContent = figure(now);
+      slot.querySelector(".hud-need").textContent = ` / ${figure(need)}`;
       slot.querySelector(".hud-unit").textContent =
         goal.id === "right" ? " wrong" : "";
       // met: lit star; waiting: inside the limit but the sleigh is not full enough yet;
@@ -408,13 +405,10 @@
       }
       slot
         .querySelector(".hud-bar i")
-        .style.setProperty(
-          "--fill",
-          Math.min(1, goal.now / Math.max(1, goal.need)),
-        );
+        .style.setProperty("--fill", Math.min(1, now / Math.max(1, need)));
       slot.setAttribute(
         "aria-label",
-        `${goal.name}: ${figure(goal.now)} of ${figure(goal.need)}, ${{ met: "star earned so far", waiting: `counts from ${from} right gifts`, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
+        `${name}: ${figure(now)} of ${figure(need)}, ${{ met: "star earned so far", waiting: `counts from ${from} right gifts`, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
       );
     }
   }
@@ -566,7 +560,6 @@
     $("breakDialog").close();
     lastChoice = null;
     observedRight = 0;
-    observedRun = null;
     caughtSnapshot = null;
     $("celebration").replaceChildren();
     hideToast();
@@ -574,7 +567,6 @@
     const url = new URL(location.href);
     if (fixedSeed !== null) url.searchParams.set("seed", fixedSeed);
     else url.searchParams.delete("seed");
-    url.searchParams.delete("version");
     history.replaceState(null, "", url);
     paint();
     $("board").scrollLeft = 0;
@@ -638,81 +630,45 @@
   function paint() {
     view = game.view();
     paintGoals();
-    text("budget", money(view.budget.left));
-    const allowance = view.run.goals?.find((g) => g.id === "cost")?.need;
-    $("money").classList.toggle("low", view.budget.left < (allowance ?? 0));
-    if ($("cargoBadge").dataset.cargo !== view.run.cargo.id) {
-      $("cargoBadge").dataset.cargo = view.run.cargo.id;
-      iconText(
-        $("cargoBadge"),
-        `cargo-${view.run.cargo.id}`,
-        view.run.cargo.name,
-      );
-    }
-    $("cargoBadge").setAttribute(
-      "aria-label",
-      `${view.run.cargo.name}. About this cargo.`,
-    );
-    const runStars = (view.run?.stars || []).join();
-    if ($("runStars").dataset.value !== runStars) {
-      $("runStars").dataset.value = runStars;
-      $("runStars").innerHTML = (view.run?.stars || [])
-        .map(
-          (stars, i) =>
-            `<span class="run-star-set" aria-label="Sleigh ${i + 1}: ${stars} stars"><b>${i + 1}</b>${starRow(stars)}</span>`,
-        )
-        .join("");
-    }
-    const doors = $("adventRuns");
-    if (doors.children.length !== view.run.of) {
-      doors.replaceChildren(
-        ...Array.from({ length: view.run.of }, (_, i) => {
-          const door = make("div", "run-door");
-          door.append(
-            make("span", "door-number", i + 1),
-            make("span", "door-stars"),
-          );
-          return door;
-        }),
-      );
-    }
-    [...doors.children].forEach((door, i) => {
-      const stars = view.run.stars[i];
-      door.dataset.state =
-        stars !== undefined
-          ? "done"
-          : i + 1 === view.run.number
-            ? "current"
-            : "later";
-      const doorStars = door.querySelector(".door-stars");
-      if (doorStars.dataset.value !== String(stars)) {
-        doorStars.dataset.value = String(stars);
-        doorStars.innerHTML = stars === undefined ? "" : starRow(stars);
-      }
-      door.setAttribute(
+    const cargo = view.run.cargo;
+    if (cargo && $("cargoBadge").dataset.cargo !== cargo.id) {
+      $("cargoBadge").dataset.cargo = cargo.id;
+      iconText($("cargoBadge"), `cargo-${cargo.id}`, cargo.name);
+      $("cargoBadge").setAttribute(
         "aria-label",
-        `Sleigh ${i + 1}${stars === undefined ? (i + 1 === view.run.number ? ", current" : ", upcoming") : `, ${stars} stars`}`,
+        `${cargo.name}. About this cargo.`,
       );
-    });
+    }
+    // The clock counts down the half under way; its label says which half.
+    const halves = view.run.halves ?? 1,
+      halfLength = view.duration / halves;
+    const left = Math.ceil(view.run.halfLeft ?? view.run.leavesIn ?? 0);
     $("countdownRing").style.setProperty(
       "--remaining",
-      Math.max(0, view.run.leavesIn / (view.duration / view.run.of)),
+      Math.max(0, Math.min(1, left / halfLength)),
     );
-    const left = Math.ceil(view.run?.leavesIn ?? view.duration - view.t);
     text(
       "clock",
       `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`,
     );
     text(
+      "halfLabel",
+      view.choice
+        ? "Half-time"
+        : halves > 1
+          ? `${["1st", "2nd"][view.run.half - 1] ?? view.run.half} half`
+          : "",
+    );
+    text(
       "mission",
-      `Elves and AI must deliver ${view.target} right gifts${view.run ? ` on ${view.run.of} sleighs` : ""} in ${Math.round(view.duration / 60)} minutes.`,
+      `Elves and AI must fill Santa's sleigh with ${view.run.target} right gifts in ${halves === 2 ? "two" : halves} halves of ${Math.round(halfLength)} seconds.`,
     );
     $("pause").disabled = !started || !!view.end || tourStep !== null;
     document.querySelector("main > footer").hidden = started && !view.end;
     text("pause", manualPaused ? "Resume" : "Pause");
     text(
       "pauseState",
-      // One word: the Pause button, the card or the break already says why.
+      // One word: the Pause button, the card or half-time already says why.
       started &&
         !view.end &&
         (manualPaused || view.choice || tourStep !== null || document.hidden)
@@ -1022,7 +978,7 @@
             focusColumn === (page === 3 ? $("sleigh") : $(`station${page}`)),
         ),
       );
-    text("sleighRight", view.sleigh.right);
+
     const arrivals = view.sleigh.parcels;
     const newest = arrivals.at(-1);
     if (newest && newest.id !== lastArrival) {
@@ -1524,11 +1480,10 @@
   function paintSleighCount() {
     const full = view.run.goals?.find((g) => g.id === "full"),
       target = Math.max(1, view.run.target);
+    const aboard = view.run.aboard ?? view.sleigh.right;
+    text("sleighRight", aboard);
     text("sleighTarget", `/ ${view.run.target}`);
-    $("sleighTotal").style.setProperty(
-      "--fill",
-      Math.min(1, view.sleigh.right / target),
-    );
+    $("sleighTotal").style.setProperty("--fill", Math.min(1, aboard / target));
     $("sleighTotal").style.setProperty(
       "--tick",
       Math.min(1, (view.run.goalsCountFrom ?? 0) / target),
@@ -1547,13 +1502,9 @@
     giftBubbleTimer = 0;
   function paintEffects() {
     paintSleighCount();
-    const run = view.run?.number ?? 1;
-    if (run !== observedRun) {
-      observedRun = run;
-      observedRight = 0;
-    }
-    const gained = view.sleigh.right - observedRight;
-    observedRight = view.sleigh.right;
+    const aboard = view.run.aboard ?? view.sleigh.right;
+    const gained = aboard - observedRight;
+    observedRight = aboard;
     if (started && gained > 0 && !view.end) {
       // One bubble beside the sleigh count (or on the sleigh tab when the sleigh is a page away)
       // with a running count: gifts that land while it shows add to it and restart it.
@@ -2080,7 +2031,7 @@
         view.run.cargo.name,
         [
           view.run.cargo.text,
-          `This sleigh needs ${view.run.target} right gifts.`,
+          `The sleigh needs ${view.run.target} right gifts.`,
         ],
       ];
     if (key === "caughtToy" && caughtSnapshot)
@@ -2107,12 +2058,15 @@
       type = parts[0];
     if (type === "goal") {
       const goal = view.run.goals.find((g) => g.id === parts[1]);
+      const cost = goal.id === "cost";
       return [
-        goal.name,
+        cost ? "Cost so far" : goal.name,
         [
-          `${cap(goal.text)}.`,
-          `Stars for mistakes and spend count once ${view.run.goalsCountFrom} right gifts are aboard.`,
-        ],
+          cost
+            ? "AI, checks, fixes, the half-time change and wrong gifts aboard all add to it."
+            : "",
+          `${cap(goal.text)}. The star counts once ${view.run.goalsCountFrom} right gifts are aboard.`,
+        ].filter(Boolean),
       ];
     }
     if (type === "ai") {
@@ -2206,12 +2160,12 @@
     }
     const fixed = {
       clock: [
-        "Until departure",
+        "The clock",
         [
-          "The sleigh leaves at zero. Pause and the walkthrough stop the clock.",
+          `Two halves of ${Math.round(view.duration / (view.run.halves ?? 1))} s. At half-time the clock stops and you pick one change; the sleigh leaves at the end of the second.`,
+          "Pause and the walkthrough stop it too.",
         ],
       ],
-      budget: ["Budget", ["Elves, AI, checks and fixes all cost money."]],
       movement: [
         "Moving elves",
         [

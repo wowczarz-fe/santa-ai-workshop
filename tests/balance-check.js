@@ -70,8 +70,7 @@ function chooseWell(ch, v) {
   const value = (o, label) =>
     o.facts.find((f) => f.label === label)?.value ?? "";
   const p = odds(value(by("update"), "Risk"));
-  const toCome = num(value(by("train"), "Gives"));
-  if (v.vigilance.state !== "careful" && toCome >= 30) return "train";
+  if (v.vigilance.state !== "careful") return "train";
   if (p <= 0.25 && v.ai[1] > 0) return "update";
   if (num(value(by("rest"), "Energy now")) < 45) return "rest";
   if (p < 0.75 && v.ai[1] > 0) return "tested";
@@ -445,6 +444,12 @@ function checkChoice(v, w) {
 // Every wrong gift's news line names one action open now, and nothing said during play points at
 // what only half-time sells.
 function checkNews(n) {
+  // A drift line waits for the first DRIFT_QUIET seconds and names what to do now.
+  if (n.kind === "relaxed")
+    assert(
+      n.t >= DRIFT_QUIET && /rested elf/.test(n.text),
+      `drift line at ${n.t} s: ${n.text}`,
+    );
   if (n.kind === "loaded") {
     assert(
       CONTROLS_NAMED.includes(n.control),
@@ -504,6 +509,8 @@ function play(name, seed) {
   // Seconds the line has stood stopped, or a pile full, with nothing pointed at, and the longest such stretch.
   let unhinted = 0;
   r.unhinted = 0;
+  const idle = Array(8).fill(0);
+  r.idleBreak = 0;
   const memo = { seed };
   const seen = new Set();
   for (let i = 0; !w.end; i++) {
@@ -531,6 +538,12 @@ function play(name, seed) {
           ));
       unhinted = stuck && !v.focus ? unhinted + 0.5 : 0;
       r.unhinted = Math.max(r.unhinted, unhinted);
+      // Seconds an elf has sat on a break fully rested, the longest such wait.
+      v.elves.forEach((e, k) => {
+        idle[k] =
+          e.station === 3 && !e.resting && e.energy === 100 ? idle[k] + 0.5 : 0;
+      });
+      r.idleBreak = Math.max(r.idleBreak, ...idle);
       if (v.case && !seen.has(v.case.id)) {
         seen.add(v.case.id);
         r.cards++;
@@ -611,12 +624,21 @@ assert(
   firstThree <= 0.3,
   `a first-timer earns three stars in under 30% of games (${pc(firstThree)})`,
 );
-// Checking everything loses mainly through its cost, at either skill.
-for (const name of ["firstCheckAll", "expertCheckAll"])
-  assert(
-    1 - metShare(name, "cost") >= 0.6,
-    `${name} breaks the cost limit in most games (${pc(1 - metShare(name, "cost"))})`,
-  );
+// Checking everything loses through its cost for an expert. A first-timer's checkers, rested now
+// and then, look at every gift properly and hold the sleigh up, so it loses the cost or the Full
+// sleigh star.
+assert(
+  1 - metShare("expertCheckAll", "cost") >= 0.6,
+  `an expert checking everything breaks the cost limit in most games (${pc(1 - metShare("expertCheckAll", "cost"))})`,
+);
+assert(
+  shareOf(results.firstCheckAll, (r) => !r.met.cost || !r.met.full) >= 0.85,
+  "a first-timer checking everything loses the cost or the Full sleigh star",
+);
+warn(
+  1 - metShare("firstCheckAll", "cost") >= 0.6,
+  `a first-timer checking everything breaks the cost limit in most games (${pc(1 - metShare("firstCheckAll", "cost"))})`,
+);
 assert(
   starShare("firstCheckAll", (s) => s < 3) >= 0.85 &&
     starShare("firstCheckAll", (s) => s === 3) < 0.05,
@@ -792,6 +814,13 @@ for (const [name, rs] of Object.entries(results))
     if (STAYED_ON_A_FEW.includes(name))
       assert.notStrictEqual(e.assurance.verdict, "too much", why);
   }
+// No elf sits on a break fully rested.
+for (const [name, rs] of Object.entries(results))
+  for (const r of rs)
+    assert(
+      r.idleBreak <= COCOA_LEAST + 1,
+      `${name}: an elf sat rested on a break for ${r.idleBreak} s`,
+    );
 for (const name of IDLE)
   for (const r of results[name])
     assert.strictEqual(

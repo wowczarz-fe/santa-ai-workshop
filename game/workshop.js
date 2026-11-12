@@ -70,9 +70,9 @@ const CHECK_CATCH = 0.9;
 const CHECK_CATCH_UNCLEAR = 0.3;
 const UNSURE_IF_WRONG = 0.7;
 const CATCH_SHARPENS = 5; // clean parcels a caught mistake takes off the elves' run
-// An elf confirming a clean AI draft on Assist adds this much to its own clean run: it sees every
-// draft, a checker only some, so each one counts for less.
-const CONFIRM_TRUST = 0.5;
+// A clean AI draft adds this much to the trust of each elf confirming drafts at that station, as a
+// clean checked gift does for a checker.
+const CONFIRM_TRUST = 1;
 const UNSURE_IF_RIGHT = 0.06;
 const SAMPLE = 0.08; // share of parcels "a few" sends to the checking pile
 const NOTICE_AFTER = 4; // faulty trains seen by checkers or on the sleigh before anyone says so
@@ -84,6 +84,8 @@ const SIGN_IF_FAULTY = 0.7;
 const SIGN_IF_GOOD = 0.3;
 const TEST_TOYS = 4;
 const ABOARD_AT = 5; // wrong gifts aboard that raise the one recall decision
+const DRIFT_QUIET = 20; // seconds at the start with no line about elves trusting the AI
+const COCOA_LEAST = 3; // seconds a cocoa break lasts at least, however rested the elf
 const WRONG_LINE_GAP = 20; // seconds before a wrong-gift line repeats the same advice
 
 // One sleigh, filled over two halves with a pause between them. The target sits where a first-time
@@ -432,6 +434,10 @@ class Workshop {
       station: i < 3 ? 0 : i < 6 ? 1 : 2,
       home: 0,
       tired: Math.round(2 + 18 * this.rng()), // elves start a little apart, so they do not all tire at once
+      // How far this elf has come to trust the AI's work, in clean AI gifts it has seen at its
+      // station. A cocoa break or a move to another station starts it afresh.
+      trust: 0,
+      breakAt: 0,
       rest: 0,
       doing: "",
     }));
@@ -442,9 +448,10 @@ class Workshop {
     this.ai = [0, 0];
     this.checking = 0;
     this.bypassed = 0;
-    // How far the elves have come to trust the AI: checkers from the clean AI gifts they check,
-    // elves on Assist from the clean drafts they confirm. Training resets both for good.
-    this.vig = { cleanRun: 0, confirmRun: 0, skipped: 0, trained: false };
+    // Checks skipped by relaxed checkers, and whether training at half-time keeps every elf sharp for
+    // good. How far each elf trusts the AI is its own (`trust`).
+    this.vig = { skipped: 0, trained: false };
+    this.driftSaid = { relaxed: false, relaxedConfirm: false };
     this.machineSpeed = 1;
     this.update = this.planUpdate();
     // One unclear letter in each half: two different children, each at a time drawn in its half.
@@ -792,7 +799,22 @@ class Workshop {
     return null;
   }
 
-  vigilance(run = this.vig.cleanRun) {
+  // The trust of the elves at a station, on average: one fresh elf among drifting ones pulls the
+  // station some way back towards looking properly.
+  trustAt(s) {
+    const team = this.staff(s);
+    return team.length ? sum(team.map((e) => e.trust)) / team.length : 0;
+  }
+
+  // The station on Assist whose confirmers trust the AI most, as a run of clean drafts.
+  confirmRun() {
+    return Math.max(
+      0,
+      ...[0, 1].filter((s) => this.ai[s] === 1).map((s) => this.trustAt(s)),
+    );
+  }
+
+  vigilance(run = this.trustAt(2)) {
     if (this.vig.trained) return VIGILANCE[0];
     return VIGILANCE.findLast((v) => run >= v.from);
   }
@@ -804,7 +826,7 @@ class Workshop {
   confirmCatch(s) {
     return (
       Math.max(0, CONFIRM_CATCH - this.slipAt(s) * TIRED_MISSES) *
-      (1 - this.vigilance(this.vig.confirmRun).trust)
+      (1 - this.vigilance(this.trustAt(s)).trust)
     );
   }
 
@@ -880,6 +902,7 @@ class Workshop {
       for (const pool of ["elf", "ai"]) this.run(s, pool, dt);
     this.assignWork();
     this.elvesTick(dt);
+    this.noteDrift();
     this.watchPiles(dt);
     this.track(dt);
     if (this.t >= this.duration - 1e-9) this.depart();
@@ -965,7 +988,7 @@ class Workshop {
       const draftWrong = x.roll.read < (x.w.big ? RISK.aiReadBig : RISK.aiRead);
       const confirmed =
         level === 1 && draftWrong && x.roll.confirm < this.confirmCatch(0);
-      if (level === 1) this.confirmed(draftWrong, confirmed);
+      if (level === 1) this.confirmed(draftWrong, confirmed, 0);
       if (draftWrong && !confirmed)
         this.wentWrong(
           x,
@@ -994,7 +1017,8 @@ class Workshop {
         faulty || x.roll.make < (x.w.big ? RISK.aiMakeBig : RISK.aiMake);
       const confirmed =
         level === 1 && draftWrong && x.roll.confirm < this.confirmCatch(1);
-      if (level === 1) this.confirmed(draftWrong, confirmed);
+      if (level === 1) this.confirmed(draftWrong, confirmed, 1);
+      if (faulty) this.incident.trains++;
       if (confirmed && faulty) this.notice("watcher");
       if (confirmed) faulty = false;
       slip = draftWrong && !confirmed;
@@ -1027,7 +1051,6 @@ class Workshop {
       x.byAi &&
       x.roll.unsure <
         (x.wrong && !faulty && !x.guessed ? UNSURE_IF_WRONG : UNSURE_IF_RIGHT);
-    if (faulty) this.incident.trains++;
     this.recent = [...this.recent.slice(-49), x];
     x.route = this.needsCheck(x) ? "check" : "pass";
     this.q[x.route].push(x);
@@ -1086,41 +1109,46 @@ class Workshop {
 
   // Checkers who keep finding the AI's gifts right start to trust it.
   cleanParcel() {
-    const before = this.vigilance().state;
-    this.vig.cleanRun++;
-    if (before === "careful" && this.vigilance().state !== "careful")
-      this.sayEvery(
-        20,
-        "relaxed",
-        "relaxed",
-        `Checkers drifting after ${this.vig.cleanRun} clean AI gifts: some go unchecked.`,
-      );
+    for (const e of this.staff(2)) e.trust++;
   }
 
   // A caught mistake sharpens the checkers for a while; it does not wipe out a long clean stretch.
   sharpen() {
-    this.vig.cleanRun = Math.max(0, this.vig.cleanRun - CATCH_SHARPENS);
+    for (const e of this.staff(2))
+      e.trust = Math.max(0, e.trust - CATCH_SHARPENS);
   }
 
-  // An elf on Assist looked at an AI draft. Clean drafts build the same trust in the elves who
-  // confirm them; a caught one sharpens them.
-  confirmed(draftWrong, caught) {
-    const before = this.vigilance(this.vig.confirmRun).state;
-    this.vig.confirmRun = draftWrong
-      ? caught
-        ? Math.max(0, this.vig.confirmRun - CATCH_SHARPENS)
-        : this.vig.confirmRun
-      : this.vig.confirmRun + CONFIRM_TRUST;
-    if (
-      before === "careful" &&
-      this.vigilance(this.vig.confirmRun).state !== "careful"
-    )
-      this.sayEvery(
-        20,
-        "relaxedConfirm",
-        "relaxed",
-        "Elves on Assist drifting: they start to wave the AI's drafts through.",
-      );
+  // An elf on Assist at station s looked at an AI draft. Clean drafts build the same trust in the
+  // elves who confirm them; a caught one sharpens them.
+  confirmed(draftWrong, caught, s) {
+    for (const e of this.staff(s))
+      e.trust = draftWrong
+        ? caught
+          ? Math.max(0, e.trust - CATCH_SHARPENS)
+          : e.trust
+        : e.trust + CONFIRM_TRUST;
+  }
+
+  // Says once when checkers, or elves on Assist, start trusting the AI, and what to do about it now;
+  // quiet for the first DRIFT_QUIET seconds, and again once they look properly.
+  noteDrift() {
+    const lines = {
+      relaxed: [
+        this.trustAt(2),
+        "Checkers are trusting the AI and skipping checks. Swap in a rested elf.",
+      ],
+      relaxedConfirm: [
+        this.confirmRun(),
+        "Elves on Assist are trusting the AI's drafts and missing mistakes. Swap in a rested elf.",
+      ],
+    };
+    for (const [key, [run, text]] of Object.entries(lines)) {
+      if (this.vigilance(run).state === "careful") this.driftSaid[key] = false;
+      else if (!this.driftSaid[key] && this.t >= DRIFT_QUIET) {
+        this.driftSaid[key] = true;
+        this.sayEvery(20, key, "relaxed", text);
+      }
+    }
   }
 
   caught(x) {
@@ -1736,6 +1764,9 @@ class Workshop {
         );
         if (e.rest > 0 && (e.rest = countDown(e.rest, dt)) === 0)
           e.station = e.home;
+        // A cocoa break ends by itself once the elf is fully rested, so nobody is left on a break.
+        else if (!e.rest && !e.tired && this.t - e.breakAt >= COCOA_LEAST)
+          e.station = e.home;
         return;
       }
       const s = e.station;
@@ -1750,7 +1781,13 @@ class Workshop {
       const gain = e.doing === "nothing to do" ? -0.12 : effort;
       e.tired = Math.min(100, Math.max(0, e.tired + dt * gain));
       if (e.tired < BURNOUT_AT) return;
-      Object.assign(e, { home: s, station: BREAK, rest: BURNOUT_SECONDS });
+      Object.assign(e, {
+        home: s,
+        station: BREAK,
+        rest: BURNOUT_SECONDS,
+        trust: 0,
+        breakAt: this.t,
+      });
       this.stats.burnouts++;
       if (s === 2) this.stats.checkerBurnouts++;
       this.say("tired", `${e.name} burnt out: off for a long cocoa break.`, {
@@ -2637,7 +2674,6 @@ class Workshop {
     const pct = Math.round(u.promise * 100);
     const signs = `It changes ${u.bigChange ? "a large" : "a small"} part of the machine; the supplier tested it ${u.briefTesting ? "briefly" : "thoroughly"}.`;
     const state = this.vigilance().name;
-    const toCome = this.aiParcelsToCome();
     const tired = this.elves.map((e) => e.tired);
     const average = Math.round(sum(tired) / tired.length);
     return [
@@ -2664,14 +2700,12 @@ class Workshop {
       {
         id: "train",
         label: "Train the checkers",
-        text: `Checkers ${state}, elves on Assist ${this.vigilance(this.vig.confirmRun).name}: ${plural(this.vig.skipped, "check")} skipped so far. Trained, they stop deferring to the AI.`,
+        text:
+          this.vigilance().state === "careful"
+            ? "Your checkers still check AI gifts properly. Training keeps them checking properly for the rest of the night."
+            : `Your checkers have started skipping AI gifts that looked fine (${this.vig.skipped} skipped so far). Training keeps them checking properly for the rest of the night.`,
         facts: [
-          fact(
-            "Gives",
-            toCome
-              ? `sharp checks on about ${toCome} AI gifts`
-              : "sharp checks once the AI helps",
-          ),
+          fact("Gives", "Checkers stop trusting the AI blindly"),
           fact("Checkers now", state),
           costs("train"),
         ],
@@ -2962,8 +2996,14 @@ class Workshop {
       e.station === station
     )
       return false;
+    // A rested elf, or one new to a station, looks at the AI's work properly again.
+    e.trust = 0;
+    if (station === BREAK) {
+      if (e.station < BREAK) e.home = e.station;
+      e.breakAt = this.t;
+      this.used.cocoa++;
+    }
     e.station = station;
-    if (station === BREAK) this.used.cocoa++;
     this.assignWork();
     this.did();
     return true;
@@ -3012,12 +3052,6 @@ class Workshop {
     }
     this.did();
     return true;
-  }
-
-  // AI-made parcels still to come at the current pace, which is what training pays back on.
-  aiParcelsToCome() {
-    if (!this.ai.some((l) => l > 0)) return 0;
-    return Math.round(Math.min(...this.rates()) * Math.max(0, CLOSE - this.t));
   }
 
   // Why a control cannot be used now, or null when it can.
@@ -3150,8 +3184,8 @@ class Workshop {
       vigilance: {
         state: v.state,
         name: v.name,
-        cleanRun: this.vig.cleanRun,
-        confirming: this.vigilance(this.vig.confirmRun).name,
+        cleanRun: Math.round(this.trustAt(2)),
+        confirming: this.vigilance(this.confirmRun()).name,
         secondsPerCheck: Math.round(this.secondsPerCheck() * 10) / 10,
         skipped: this.vig.skipped,
         trained: this.vig.trained,

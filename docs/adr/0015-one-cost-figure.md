@@ -31,9 +31,10 @@ stated figure, and nothing ever unaffordable (rework brief, ruling 3).
   gift, twice that for a big one, a rollback £65) and wrong gifts aboard (£12, or £100 for a big
   gift). Asking a child costs time only.
 - Elves' wages are removed. They were the same in every game and hid the costs the player decides.
-- The limit is £700. A sensible game costs £630 on average (AI £141, checks £126, half-time £73,
-  fixing £76, wrong gifts £215) and meets it in 68% of games; checking everything costs £739 and
-  meets it in half; Automate left alone costs about £2,900.
+- The limit is £740 (first £700, raised in the follow-up to ADR 0014 so first-time players and
+  careful ones both have room). A sensible game costs £630 on average (AI £141, checks £126,
+  half-time £73, fixing £76, wrong gifts £215) and meets it in 80% of games; checking everything
+  costs £739 and meets it in 55%; Automate left alone costs about £2,900.
 - Removed: the £1,800 budget, money left, the per-run allowance, the "money ran out" news item and
   lesson, every "out of money" reason on an option, the "Spent more than Santa had" lesson (now
   "Over the cost limit") and the end screen's `costs.people` and `costs.budget`.

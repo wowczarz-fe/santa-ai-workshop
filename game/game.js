@@ -1610,12 +1610,8 @@
   // Chips for an option: what it does (the first part of its scope without a figure, as the figures
   // get chips of their own), what it does to the goals, money, time, risk, or why it is shut.
   function optionChips(c, o) {
-    const recall = recallCount(c, o);
     const parts = o.scope.split(/;\s*/).filter((part) => part !== o.goal);
-    const does =
-      recall !== null
-        ? `${plural(recall, "wrong gift")} off the sleigh`
-        : (parts.find((part) => !/\d/.test(part)) ?? parts[0]);
+    const does = parts.find((part) => !/\d/.test(part)) ?? parts[0];
     const chips = [];
     if (!o.available && o.why && !c.resolving)
       chips.push(["chip-why", "", o.why]);
@@ -1627,7 +1623,9 @@
           /lost/.test(part) ? "star-empty" : "star",
           part,
         ]);
-    if (o.money) chips.push(["chip-money", "budget", money(o.money)]);
+    // A price the rules' words already give (a recall's "costs £395 instead of ...") is not repeated.
+    if (o.money && !does.includes(money(o.money)))
+      chips.push(["chip-money", "budget", money(o.money)]);
     if (o.seconds)
       chips.push([
         "chip-time",

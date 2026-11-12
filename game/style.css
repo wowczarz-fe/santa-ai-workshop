@@ -1169,6 +1169,36 @@ progress {
   align-items: center;
   gap: 4px;
 }
+.control-row[hidden] {
+  display: none;
+}
+/* Skip checks: only while the To check pile is full, with a chip for the risk it takes */
+.bypass-risk {
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: #fbe9e5;
+  color: #9a3326;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  white-space: nowrap;
+}
+body[data-look] #controls2:has(#vigilance[hidden]) [data-control="bypass"] {
+  grid-column: 1 / -1;
+}
+[data-action="bypass"] {
+  min-width: 0;
+}
+.bypass-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-action="bypass"][data-armed="true"] {
+  border-color: #c64235;
+  background: #fff3f0;
+}
 .control-row .control-label {
   font-size: 10px;
   flex: 1;

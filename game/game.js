@@ -66,7 +66,8 @@
     suppressClick = { elf: null, until: 0 },
     nativeDragElf = null;
   let openedCases = new Set(),
-    ignoreClicksUntil = 0;
+    ignoreClicksUntil = 0,
+    bypassArmedUntil = 0;
   let lastChoice = null,
     observedRight = 0,
     caughtSnapshot = null,
@@ -223,13 +224,13 @@
       }
       sw.dataset.kind = "checking";
       addGroup("checking", sw);
-      for (const key of ["bypass"]) {
-        const b = make("button", "small-action");
-        b.innerHTML = `${icon("let-through")}<span class="bypass-label">Let through</span>`;
-        b.dataset.action = key;
-        b.dataset.info = `action:${key}`;
-        addGroup(key, b);
-      }
+      // Skipping checks shows only while the To check pile is full, with how many big gifts it
+      // would send out unchecked.
+      const b = make("button", "small-action");
+      b.innerHTML = `${icon("let-through")}<span class="bypass-label"></span><span class="bypass-risk"></span>`;
+      b.dataset.action = "bypass";
+      b.dataset.info = "action:bypass";
+      addGroup("bypass", b);
       const vigilance = make("button", "vigilance");
       vigilance.id = "vigilance";
       vigilance.dataset.help = "vigilance";
@@ -815,8 +816,21 @@
           String(view.checking === Number(b.dataset.checking)),
         ),
       );
-    document.querySelector('[data-action="bypass"] .bypass-label').textContent =
-      `Let through ${view.queues.check.parcels.length}`;
+    const checkPile = view.queues.check,
+      skippable = checkPile.parcels.length,
+      bigSkipped = checkPile.parcels.filter((p) => p.big).length;
+    actionGroups.get("bypass").hidden =
+      !started || !!view.end || skippable < checkPile.limit;
+    if (actionGroups.get("bypass").hidden) bypassArmedUntil = 0;
+    const skip = document.querySelector('[data-action="bypass"]');
+    skip.dataset.armed = String(bypassArmedUntil > performance.now());
+    skip.querySelector(".bypass-label").textContent =
+      bypassArmedUntil > performance.now()
+        ? `Tap again to skip ${skippable}`
+        : `Skip ${skippable} checks`;
+    skip.querySelector(".bypass-risk").textContent = bigSkipped
+      ? `${bigSkipped} big`
+      : "unchecked";
     const attention = attentionOf(view.vigilance.state);
     if ($("vigilance").dataset.attention !== attention) {
       $("vigilance").dataset.attention = attention;
@@ -1817,7 +1831,7 @@
       const a = view.actions[parts[1]];
       return [
         {
-          bypass: "Let through",
+          bypass: "Skip checks",
           ai0: "AI at reading",
           ai1: "AI at toy-making",
           checking: "How much to check",
@@ -2086,9 +2100,19 @@
       sayResult(`Checking ${lever.per100} in 100 gifts.`);
       return;
     }
-    if (target.dataset.action) {
-      const a = target.dataset.action;
-      perform(() => game[a]());
+    if (target.dataset.action === "bypass") {
+      // On touch the first tap says what skipping does; a second tap within 4 s does it.
+      const touch = performance.now() < recentTouchUntil;
+      if (touch && bypassArmedUntil < performance.now()) {
+        bypassArmedUntil = performance.now() + 4000;
+        openInfo(target, "action:bypass", true);
+        setTimeout(paint, 4100);
+        paint();
+        return;
+      }
+      bypassArmedUntil = 0;
+      closeInfo();
+      perform(() => game.bypass());
       return;
     }
     if (target.dataset.choose && view.choice) {

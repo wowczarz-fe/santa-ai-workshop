@@ -1829,3 +1829,158 @@ body[data-look="polish"] .dashboard .hud-slot:hover:not(:disabled) {
 body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] {
   background: linear-gradient(#c6423533, #c6423533), #1e4d50;
 }
+
+/* One attention colour for what the rules or a wrong gift point at, so gold stays the decision cue's
+   own and red stays a wrong gift's */
+body[data-look="polish"] {
+  --attention: #2f6fa0;
+  --attention-soft: #a9c8e0;
+  --attention-paper: #eaf2f9;
+}
+body[data-look="polish"] .needs-attention,
+body[data-look="polish"] .walk-target {
+  outline-color: var(--attention);
+  animation-name: attention-pulse;
+}
+body[data-look="polish"] .mistake-hint {
+  outline: 2px solid var(--attention);
+  animation-name: attention-pulse;
+}
+@keyframes attention-pulse {
+  50% {
+    outline-color: var(--attention-soft);
+  }
+}
+body[data-look="polish"] .focus-tag,
+body[data-look="polish"] .mistake-hint-label {
+  border: 1px solid var(--attention);
+  background: var(--attention-paper);
+  color: var(--attention);
+  box-shadow: none;
+}
+body[data-look="polish"] .station.destination .paper-floor,
+body[data-look="polish"] #cocoa.destination {
+  box-shadow: inset 0 0 0 3px var(--attention);
+}
+body[data-look="polish"] #stationPicker .mistake-hint-tab,
+body[data-look="polish"] #stationPicker button.focus-tab {
+  box-shadow: inset 0 -4px 0 var(--attention);
+}
+body[data-look="polish"] #stationPicker button.destination-tab {
+  outline-color: var(--attention);
+}
+/* A column whose control carries the rules' tag says that instead of Bottleneck, so the two never
+   sit on each other */
+body[data-look="polish"]
+  .station:has(.focus-tag:not(:empty))
+  .station-bottleneck {
+  visibility: hidden;
+}
+
+/* The caught slip sits over the foot of the To check pile, drawn above the pile below it */
+body[data-look="polish"] #feedback2 {
+  z-index: 8;
+}
+body[data-look="polish"] #feedback2 .caught-toy {
+  min-height: 0;
+  padding: 1px 8px;
+  line-height: 18px;
+}
+body[data-look="polish"] #feedback2 .caught-toy .paper-toy {
+  width: 26px;
+  height: 20px;
+}
+/* The last-wrong-gift card keeps its full height while empty, so the sleigh never shrinks when the
+   first wrong gift lands */
+body[data-look="polish"] .wrong-delivery {
+  box-sizing: border-box;
+  min-height: 69px;
+}
+
+/* Text never below 11px on the play screen */
+body[data-look="polish"] .dashboard .clock-box > span,
+body[data-look="polish"] .dashboard #money span,
+body[data-look="polish"] .ask-toggle .toggle-state,
+body[data-look="polish"] #controls2 [data-control="bypass"] button,
+body[data-look="polish"] main .dashboard .hud-slot .hud-need {
+  font-size: 11px;
+}
+body[data-look="polish"] .header-actions .header-icon {
+  display: none;
+}
+@media (max-width: 600px) {
+  /* Header buttons: icons alone, 40px square, the words kept for screen readers and the tooltip */
+  body[data-look="polish"] .header-actions {
+    gap: 4px;
+  }
+  body[data-look="polish"] .header-actions button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+  body[data-look="polish"] .header-actions .header-icon {
+    display: grid;
+  }
+  body[data-look="polish"] .header-actions .ui-icon {
+    width: 20px;
+    height: 20px;
+  }
+  body[data-look="polish"] main .dashboard #pause {
+    font-size: 11px;
+  }
+  body[data-look="polish"] .header-actions .header-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* The clock shares the ring's and Pause's centre line; the Paused word hangs below the digits
+     (its grid area is the clock's column) */
+  body[data-look="polish"] main .dashboard .clock-box {
+    position: relative;
+  }
+  body[data-look="polish"] main .dashboard #countdownRing {
+    grid-row: 1;
+  }
+  body[data-look="polish"] main .dashboard #pauseState {
+    position: absolute;
+    z-index: 2;
+    top: calc(100% - 2px);
+    left: 0;
+    right: auto;
+    width: max-content;
+    padding: 0 5px;
+    border-radius: 4px;
+    background: #173f43;
+    text-align: left;
+  }
+  body[data-look="polish"] main .dashboard #money {
+    min-height: 40px;
+    min-width: 44px;
+  }
+}
+@media (max-width: 600px) {
+  /* The decision sheet sits centred with an equal gutter on each side */
+  body[data-look="polish"] #casePanel.case-panel {
+    left: 12px !important;
+    right: 12px !important;
+    width: auto;
+    max-width: none;
+  }
+}
+@media (max-width: 999px) {
+  /* The milestone note rises from the foot of the screen, clear of the station tabs */
+  body[data-look="polish"] .milestone-toast {
+    top: auto;
+    bottom: 16px;
+  }
+}
+/* A control lit by a wrong gift shows that tag alone */
+body[data-look="polish"] .mistake-hint:has(> .mistake-hint-label) > .focus-tag {
+  display: none;
+}

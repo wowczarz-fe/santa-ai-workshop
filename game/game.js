@@ -428,12 +428,13 @@
   }
   // A wrong gift lights up, for about three seconds, the control that would have stopped it.
   // The training and update choices live on the break card, so their hint goes on the sleigh.
+  // The tag on the lit control; "" where the control's own label already says it.
   const hintWords = {
-    ask: "Ask the child",
+    ask: "",
     checking: "Check the risky ones",
     ai0: "Try Assist",
     ai1: "Try Assist",
-    cocoa: "Cocoa break",
+    cocoa: "",
     train: "Train or rest them",
     update: "Test updates first",
     vigilance: "Train or rest them",
@@ -450,7 +451,7 @@
     ai1: () => view.ai[1] <= 1,
   };
   function showMistakeHint(control) {
-    if (!hintWords[control] || alreadySet[control]?.()) return;
+    if (!(control in hintWords) || alreadySet[control]?.()) return;
     mistakeHint = { control, until: performance.now() + 3000 };
     setTimeout(paintMistakeHint, 3100);
   }
@@ -494,8 +495,15 @@
       return;
     }
     target.classList.add("mistake-hint");
-    hintLabel.textContent = hintWords[mistakeHint.control];
-    if (hintLabel.parentNode !== target) target.append(hintLabel);
+    // A lit control with its own label says it already; the sleigh's card or column needs the words.
+    const words =
+      hintWords[mistakeHint.control] ||
+      (target === $("wrongDelivery") || target === $("sleigh")
+        ? { ask: "Ask the child", cocoa: "Cocoa break" }[mistakeHint.control]
+        : "");
+    hintLabel.textContent = words;
+    if (!words) hintLabel.remove();
+    else if (hintLabel.parentNode !== target) target.append(hintLabel);
   }
   // How sharp the checkers are, from the rules' vigilance state value.
   const attentionOf = (state) =>
@@ -1100,7 +1108,7 @@
     text(
       "status",
       selected !== null
-        ? `${view.elves[selected].name}: ${narrow ? "tap a lit station tab, then Move here" : "drag or tap to a lit station"}.`
+        ? `${view.elves[selected].name}: ${!narrow ? "drag or tap to a lit station" : view.elves[selected].station < 3 ? "tap Rest, or a lit station tab then Move here" : "tap a lit station tab, then Move here"}.`
         : started && view.moment
           ? ""
           : notice && notice.until > performance.now()
@@ -1186,6 +1194,16 @@
   // The end hero keeps its sleigh but no snow: dots there read as smudges on the figures.
   $("endScene").innerHTML = `<span class="end-sleigh">${sleighArt()}</span>`;
   $("replay").innerHTML = `${uiIcon("restart")}<span>Play again</span>`;
+  // Header buttons carry an icon too: a phone shows the icon alone, at a full-sized tap target.
+  for (const [id, icon] of [
+    ["guidanceToggle", "walkthrough"],
+    ["restart", "restart"],
+  ]) {
+    const words = $(id).textContent.trim();
+    $(id).innerHTML =
+      `<span class="header-icon">${uiIcon(icon)}</span><span class="header-word">${words}</span>`;
+    $(id).title = words;
+  }
   function goalSlot(goal, countsFrom) {
     const slot = make("div", "goal-slot");
     slot.dataset.goal = goal.id;
@@ -1513,6 +1531,9 @@
       setTimeout(() => sleigh.classList.remove("departing"), 1600);
     }
   }
+  let giftBubble = null,
+    giftBubbleCount = 0,
+    giftBubbleTimer = 0;
   function paintEffects() {
     text("sleighTarget", `of ${view.run.target} needed`);
     const run = view.run?.number ?? 1;
@@ -1523,23 +1544,35 @@
     const gained = view.sleigh.right - observedRight;
     observedRight = view.sleigh.right;
     if (started && gained > 0 && !view.end) {
-      const effect = make("span", "gift-flight");
-      iconText(effect, "gift", `+${gained}`);
-      // The bubbles rise beside the sleigh count, stacked, inside the sleigh column.
+      // One bubble beside the sleigh count (or in the Full sleigh tile when the sleigh is a page
+      // away) with a running count: gifts that land while it shows add to it and restart it.
       const to = $("sleighRight").getBoundingClientRect(),
         column = $("sleigh").getBoundingClientRect();
       const visible = to.left >= 0 && to.right <= innerWidth;
       const target = visible ? to : goalSlots.full.getBoundingClientRect();
-      while ($("celebration").children.length >= 3)
-        $("celebration").firstChild.remove();
-      const stack = $("celebration").children.length;
+      let effect = giftBubble;
+      if (
+        effect?.isConnected &&
+        effect.classList.contains("in-slot") === !visible
+      ) {
+        giftBubbleCount += gained;
+        effect.style.animation = "none";
+        void effect.offsetWidth;
+        effect.style.animation = "";
+        clearTimeout(giftBubbleTimer);
+      } else {
+        effect?.remove();
+        effect = giftBubble = make("span", "gift-flight");
+        giftBubbleCount = gained;
+        $("celebration").append(effect);
+      }
+      iconText(effect, "gift", `+${giftBubbleCount}`);
       effect.classList.toggle("in-slot", !visible);
       effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? column.left + 12 : target.right - 52))}px`;
-      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? to.top - 6 + stack * 30 : target.top + 4))}px`;
+      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? to.top - 6 : target.top + 4))}px`;
       effect.style.setProperty("--fly-x", "0px");
       effect.style.setProperty("--fly-y", visible ? "-14px" : "0px");
-      $("celebration").append(effect);
-      setTimeout(() => effect.remove(), 1500);
+      giftBubbleTimer = setTimeout(() => effect.remove(), 1500);
     }
     if (toastUntil < performance.now()) $("milestoneToast").hidden = true;
     let caught = $("caughtToy");
@@ -1551,10 +1584,11 @@
       $("feedback2").append(caught);
     }
     caught.hidden = !caughtSnapshot || performance.now() > caughtUntil;
-    // The caught toy shows just under the pile it was caught from, clear of the checking dial.
+    // The caught toy shows inside the foot of the pile it was caught from, above the pile below it
+    // and clear of the checking dial.
     if (!caught.hidden)
       $("feedback2").style.top =
-        `${$("queue-check").getBoundingClientRect().bottom - ($("feedback2").offsetParent?.getBoundingClientRect().top ?? 0) - 10}px`;
+        `${$("queue-check").getBoundingClientRect().bottom - ($("feedback2").offsetParent?.getBoundingClientRect().top ?? 0) - caught.offsetHeight - 4}px`;
     if (caughtSnapshot && caught.dataset.toy !== caughtSnapshot.made.name) {
       caught.dataset.toy = caughtSnapshot.made.name;
       caught.replaceChildren(make("b", "", "Caught!"));

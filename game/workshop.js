@@ -2591,9 +2591,11 @@ class Workshop {
     const recentWrong = this.news.filter(
       (n) => n.kind === "loaded" && this.t - n.t <= 30,
     ).length;
+    // Never "check more" while checking is the bottleneck: more checks would slow the line further.
     if (
       recentWrong >= 2 &&
       this.checking === 0 &&
+      this.slowest !== 2 &&
       this.unlocked.has("checking")
     )
       return { station: 2, control: "checking", text: "check more" };

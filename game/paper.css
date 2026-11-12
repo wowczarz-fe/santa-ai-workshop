@@ -1477,3 +1477,914 @@ body[data-look="paper"] .dial-word {
 .look-choice[hidden] {
   display: none;
 }
+
+/* ==== Play screen, review pass: the paper look brought level with the polished one ====
+   Every rule here is scoped to the paper look. Colours: gold is the decision cue's alone; ink
+   blue marks what needs the player (walkthrough targets, the rules' tags, keyboard focus); red
+   stays a wrong gift's. */
+body[data-look="paper"] {
+  --attention: #2c4f8a;
+  --attention-soft: #9fb4d8;
+  --attention-paper: #e8edf5;
+  --attention-light: #a9c4ef;
+  --muted: #5e4a36;
+}
+
+/* Keyboard focus: ink blue on paper, pale blue on the pine banner */
+body[data-look="paper"] button:focus-visible,
+body[data-look="paper"] a:focus-visible,
+body[data-look="paper"] [tabindex]:focus-visible {
+  outline: 3px solid var(--attention);
+  outline-offset: 2px;
+}
+body[data-look="paper"] > header :focus-visible,
+body[data-look="paper"] .dashboard :focus-visible,
+body[data-look="paper"] .dashboard:focus-visible,
+body[data-look="paper"] .status-row :focus-visible {
+  outline-color: var(--attention-light);
+}
+
+/* Header: words on a desktop, 40px icon buttons on a phone */
+body[data-look="paper"] .header-actions .header-icon {
+  display: none;
+}
+body[data-look="paper"] .header-actions button {
+  min-height: 32px;
+  font-size: 12px;
+}
+
+/* Money left: small and muted beside the clock, red below one run's allowance */
+body[data-look="paper"] .dashboard #money {
+  min-width: 0;
+  align-self: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  text-align: left;
+}
+body[data-look="paper"] .dashboard #money strong,
+body[data-look="paper"] .dashboard #money #budget {
+  font-size: 19px;
+  line-height: 23px;
+  color: #e3d7bb;
+}
+body[data-look="paper"] .dashboard #money span {
+  font-size: 11px;
+  color: #d4c6a7;
+}
+body[data-look="paper"] .dashboard #money.low strong {
+  color: #ff9aa6;
+}
+/* Why the clock stopped: a line the clock box always keeps, so the clock never moves */
+body[data-look="paper"] .dashboard .clock-box > span {
+  font-size: 11px;
+}
+body[data-look="paper"] .dashboard #pauseState {
+  display: block;
+  height: 13px;
+  line-height: 13px;
+  color: #e7bd5c;
+  font-size: 11px;
+  font-weight: bold;
+}
+body[data-look="paper"] .dashboard #pauseState:empty {
+  visibility: hidden;
+}
+@media (min-width: 1000px) {
+  body[data-look="paper"] .dashboard {
+    height: 72px;
+    gap: 18px;
+  }
+  body[data-look="paper"] .dashboard .clock-box {
+    margin-left: 44px;
+  }
+  body[data-look="paper"] #countdownRing {
+    top: 16px;
+  }
+  body[data-look="paper"] #clock {
+    line-height: 34px;
+  }
+}
+
+/* Goals: no notes under the tiles; a tick on the Full sleigh bar marks where stars start to count */
+body[data-look="paper"] .dashboard .goals-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+body[data-look="paper"] .dashboard .hud-slot {
+  grid-template-rows: 14px 28px 8px;
+  border-style: solid;
+}
+body[data-look="paper"] .dashboard .hud-slot .hud-note,
+body[data-look="paper"] .dashboard .goals-note {
+  display: none;
+}
+body[data-look="paper"] .dashboard .hud-slot[data-state] .hud-bar {
+  display: block;
+  position: relative;
+  overflow: visible;
+}
+body[data-look="paper"] .dashboard .hud-tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: calc(var(--tick, 0) * 100%);
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--paper);
+}
+body[data-look="paper"] .dashboard .hud-name,
+body[data-look="paper"] .dashboard .hud-figures small,
+body[data-look="paper"] main .dashboard .hud-slot .hud-need {
+  font-size: 11px;
+}
+body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] {
+  border-color: #d4c6a740;
+}
+
+/* The decision cue: the one gold thing on the screen, pulsing until its decision is opened */
+body[data-look="paper"] .dashboard .case-cue {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  max-width: 290px;
+  padding: 0 14px 0 11px;
+  gap: 0;
+  border: 2px solid #f6d98a;
+  border-radius: 6px;
+  background: #e2b34f;
+  color: #2b1c14;
+  font:
+    bold 14px Arial,
+    sans-serif;
+  white-space: nowrap;
+  align-self: center;
+  box-shadow: 2px 3px 0 #0a1f17;
+}
+body[data-look="paper"] .dashboard .case-cue:hover:not(:disabled) {
+  background: #ecc364;
+}
+body[data-look="paper"] .dashboard .case-cue span,
+body[data-look="paper"] .dashboard .case-cue b {
+  display: inline;
+  color: inherit;
+  font-size: inherit;
+}
+body[data-look="paper"] .dashboard .case-cue .cue-icon {
+  margin-right: 7px;
+}
+body[data-look="paper"] .dashboard .case-cue .cue-icon .ui-icon,
+body[data-look="paper"] .dashboard .case-cue .cue-icon svg {
+  display: block;
+  width: 19px;
+  height: 19px;
+}
+body[data-look="paper"] .dashboard .case-cue .cue-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: normal;
+}
+body[data-look="paper"] .dashboard .case-cue .cue-count {
+  margin-left: 7px;
+  min-width: 21px;
+  height: 21px;
+  border-radius: 11px;
+  background: #2b1c14;
+  color: #f2cf73;
+  font-size: 12px;
+  line-height: 21px;
+  text-align: center;
+}
+body[data-look="paper"] .dashboard .case-cue[data-pulse="true"] {
+  animation: paper-cue-pulse 1.4s ease-out infinite;
+}
+@keyframes paper-cue-pulse {
+  0% {
+    box-shadow:
+      2px 3px 0 #0a1f17,
+      0 0 0 0 #f2cf73dd;
+  }
+  100% {
+    box-shadow:
+      2px 3px 0 #0a1f17,
+      0 0 0 12px #f2cf7300;
+  }
+}
+body[data-look="paper"] .dashboard .case-cue[data-resolving="true"] {
+  border-color: #f4ead355;
+  background: #f4ead31a;
+  color: var(--paper);
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-look="paper"] .dashboard .case-cue[data-pulse="true"] {
+    animation: none;
+  }
+}
+body.reduce-motion[data-look="paper"] .dashboard .case-cue[data-pulse="true"] {
+  animation: none;
+}
+
+/* Gold belongs to the cue: the current door is marked in paper, a waiting goal in cream */
+body[data-look="paper"] .run-door[data-state="current"] {
+  outline-color: var(--paper);
+}
+
+/* Status line: one line, its i button beside it */
+body[data-look="paper"] .status-row {
+  height: 32px;
+  min-height: 32px;
+}
+body[data-look="paper"] #status {
+  font-size: 12px;
+}
+
+/* Column headings: number, name, i and rate on one line in all four columns */
+body[data-look="paper"] .column-heading {
+  position: relative;
+  flex-wrap: nowrap;
+  padding: 16px 10px 6px 12px;
+}
+body[data-look="paper"] .column-heading h2 {
+  white-space: nowrap;
+  min-width: 0;
+}
+body[data-look="paper"] .paper-rate {
+  flex: none;
+  flex-basis: auto;
+  margin-left: auto;
+  gap: 3px;
+}
+body[data-look="paper"] .station-rate {
+  padding: 2px 7px;
+  border: 1px solid #c9b48e;
+  border-radius: 3px;
+  background: #fbf6e9;
+  font-size: 11px;
+  line-height: 15px;
+  white-space: nowrap;
+}
+body[data-look="paper"] .capacity-label {
+  display: none;
+}
+/* The bottleneck tag sits on the heading's bottom edge, so the rate never moves */
+body[data-look="paper"] .paper-rate .station-bottleneck {
+  position: absolute;
+  right: 10px;
+  bottom: -9px;
+  z-index: 4;
+  gap: 3px;
+  padding: 0 6px 0 4px;
+  border-radius: 2px;
+  font-size: 11px;
+  line-height: 16px;
+}
+body[data-look="paper"] .paper-rate .station-bottleneck:empty {
+  display: none;
+}
+body[data-look="paper"]
+  .station:has(.focus-tag:not(:empty))
+  .station-bottleneck {
+  visibility: hidden;
+}
+body[data-look="paper"] .station.behind .column-heading {
+  background: #f2e2bd;
+}
+
+/* What needs the player: an ink-blue outline that pulses, with its reason as a tag on the edge */
+body[data-look="paper"] .needs-attention,
+body[data-look="paper"] .walk-target {
+  position: relative;
+  outline: 3px solid var(--attention);
+  outline-offset: 2px;
+  border-radius: 5px;
+  animation: paper-attention-pulse 1.6s ease-in-out infinite;
+}
+body[data-look="paper"] .needs-attention {
+  animation-iteration-count: 3;
+}
+@keyframes paper-attention-pulse {
+  50% {
+    outline-color: var(--attention-soft);
+  }
+}
+body[data-look="paper"] .mistake-hint {
+  outline: 3px solid var(--attention);
+  animation-name: paper-attention-pulse;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-look="paper"] .needs-attention,
+  body[data-look="paper"] .walk-target,
+  body[data-look="paper"] .mistake-hint {
+    animation: none;
+  }
+}
+body.reduce-motion[data-look="paper"] .needs-attention,
+body.reduce-motion[data-look="paper"] .walk-target,
+body.reduce-motion[data-look="paper"] .mistake-hint {
+  animation: none;
+}
+body[data-look="paper"] .focus-tag,
+body[data-look="paper"] .mistake-hint-label {
+  position: absolute;
+  top: -10px;
+  right: 10px;
+  left: auto;
+  z-index: 6;
+  padding: 0 7px;
+  border: 1px solid var(--attention);
+  border-radius: 3px;
+  background: var(--attention-paper);
+  color: var(--attention);
+  font:
+    bold 12px/16px Arial,
+    sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: none;
+}
+body[data-look="paper"] .focus-tag:empty {
+  display: none;
+}
+body[data-look="paper"] .mistake-hint:has(> .mistake-hint-label) > .focus-tag {
+  display: none;
+}
+body[data-look="paper"] .station.destination .paper-floor,
+body[data-look="paper"] #cocoa.destination {
+  box-shadow: inset 0 0 0 3px var(--attention);
+}
+body[data-look="paper"] #stationPicker .mistake-hint-tab,
+body[data-look="paper"] #stationPicker button.focus-tab {
+  box-shadow: inset 0 -4px 0 var(--attention-light);
+}
+body[data-look="paper"] #stationPicker button.destination-tab {
+  outline: 3px solid var(--attention-light);
+  outline-offset: -3px;
+}
+
+/* The elf cards say who works and who is free, so the crew counts are not repeated above them */
+body[data-look="paper"] .crew-heading {
+  display: none;
+}
+body[data-look="paper"] .crew-hint {
+  top: 4px !important;
+  bottom: auto;
+  left: auto;
+  right: 6px;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 16px;
+}
+body[data-look="paper"] .crew-hint:empty {
+  display: none;
+}
+/* A tired elf: its card outlined with a cup, no extra words */
+body[data-look="paper"] .elf-card .rest-cue {
+  display: none;
+}
+body[data-look="paper"] .elf-card.needs-rest .rest-cue {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--red);
+  color: var(--paper);
+}
+body[data-look="paper"] .elf-card .rest-cue .ui-icon,
+body[data-look="paper"] .elf-card .rest-cue svg {
+  width: 15px;
+  height: 15px;
+}
+/* On a phone a selected elf goes for cocoa from its own card */
+body[data-look="paper"] .rest-button {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid #b59b72;
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--red);
+  font-size: 13px;
+  font-weight: bold;
+}
+body[data-look="paper"] .rest-button .ui-icon {
+  width: 18px;
+  height: 18px;
+}
+body[data-look="paper"] .elf-name,
+body[data-look="paper"] .elf-task,
+body[data-look="paper"]
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(5)))
+  .elf-name,
+body[data-look="paper"]
+  .paper-floor
+  .crew:not(:has(.elf-card:nth-child(5)))
+  .elf-task {
+  font-size: 11px;
+  line-height: 13px;
+}
+
+/* Legibility: muted text dark enough for its background, nothing under 11px */
+body[data-look="paper"] .station-number {
+  color: #73542a;
+}
+body[data-look="paper"] .paper-floor {
+  background: linear-gradient(#c79a68, #bf8f5c);
+}
+body[data-look="paper"] .elf-task,
+body[data-look="paper"] .elf[data-role="free"] .elf-task {
+  color: var(--ink);
+}
+body[data-look="paper"] .ask-toggle .toggle-state {
+  color: var(--muted);
+  font-size: 11px;
+}
+body[data-look="paper"] .mode-caption {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--muted);
+}
+body[data-look="paper"] .mode-caption.spare {
+  color: var(--attention);
+  font-weight: bold;
+}
+body[data-look="paper"] .small-action,
+body[data-look="paper"] #controls2 [data-control="bypass"] button,
+body[data-look="paper"] .vigilance {
+  font-size: 11px;
+}
+body[data-look="paper"] .small-action:disabled {
+  color: var(--muted);
+  opacity: 1;
+}
+body[data-look="paper"] .queue-name,
+body[data-look="paper"] .queue-rate {
+  font-size: 11px;
+  line-height: 13px;
+}
+
+/* Piles: paper tags of one width, names given two lines where three piles share a column, so
+   every count sits on one line and no tag runs into the next */
+body[data-look="paper"] .queue-tag {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  padding: 4px 7px;
+}
+body[data-look="paper"] #piles1,
+body[data-look="paper"] #piles0 {
+  width: 112px;
+}
+body[data-look="paper"] #piles2 {
+  left: 6px;
+  right: 6px;
+  gap: 4px;
+}
+body[data-look="paper"] #piles2 .queue-name {
+  min-height: 26px;
+}
+body[data-look="paper"] #station0 .paper-scene .machine > svg,
+body[data-look="paper"] #station1 .paper-scene .machine > svg {
+  left: 120px;
+  width: calc(100% - 120px);
+}
+
+/* Sleigh: the cargo, the count and the last gift as one column of paper cards on the left, the
+   picture beside them */
+body[data-look="paper"] .paper-sleigh-scene .sleigh-art {
+  left: 128px;
+}
+body[data-look="paper"] .paper-sleigh-scene .cargo-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 112px;
+  min-height: 24px;
+  padding: 0 7px;
+  border: 1px solid #bea47b;
+  border-radius: 2px;
+  background: #fbf6e9;
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: bold;
+  box-shadow: 1px 2px 3px #2b1c1433;
+}
+body[data-look="paper"] .sleigh-total {
+  top: 38px;
+  left: 8px;
+  box-sizing: border-box;
+  width: 112px;
+  max-width: none;
+  padding: 5px 6px 6px;
+  text-align: center;
+}
+body[data-look="paper"] .sleigh-total strong {
+  font-size: 30px;
+  line-height: 32px;
+}
+body[data-look="paper"] .sleigh-total span {
+  font-size: 11px;
+  line-height: 13px;
+}
+body[data-look="paper"] .arrival {
+  top: 128px;
+  bottom: auto;
+  left: 8px;
+  box-sizing: border-box;
+  width: 112px;
+  max-width: none;
+  min-height: 44px;
+  padding: 4px 6px;
+  gap: 5px;
+  border: 1px solid #bea47b;
+  background: #fbf6e9;
+  box-shadow: 1px 2px 3px #2b1c1433;
+  font-size: 11px;
+  line-height: 13px;
+}
+body[data-look="paper"] .arrival b {
+  font-size: 11px;
+}
+body[data-look="paper"] .arrival-icon {
+  flex: none;
+}
+/* The gift bubble lands beside the count card, not on it */
+body[data-look="paper"] .gift-flight:not(.in-slot) {
+  margin-left: 116px;
+  background: #fbf6e9;
+  color: #2c6a43;
+  border: 1px solid #bea47b;
+  border-radius: 3px;
+}
+/* Finished runs' stars: the doors show them on a desktop */
+@media (min-width: 1000px) {
+  body[data-look="paper"] #runStars {
+    display: none;
+  }
+}
+
+/* The last-wrong-gift card keeps its full height while empty, so nothing moves when the first
+   wrong gift lands */
+body[data-look="paper"] .wrong-delivery {
+  box-sizing: border-box;
+  min-height: 72px;
+}
+body[data-look="paper"] .wrong-delivery[data-empty] {
+  visibility: hidden;
+}
+body[data-look="paper"] .wrong-delivery .eyebrow,
+body[data-look="paper"] .wrong-delivery b,
+body[data-look="paper"] .wrong-delivery > span:last-child {
+  font-size: 11px;
+}
+
+/* Board rows on a desktop: a one-line heading leaves the scene more room */
+@media (min-width: 1000px) {
+  body[data-look="paper"] .board {
+    grid-template-rows: 54px minmax(155px, 1fr) 25px 160px 133px;
+  }
+}
+
+/* Phone play screen: icon header, a two-row scoreboard, a one-line status, the whole station in
+   view */
+@media (max-width: 600px) {
+  body[data-look="paper"] > header {
+    height: 54px;
+    padding: 7px 9px;
+    gap: 8px;
+  }
+  body[data-look="paper"] > header h1 {
+    font-size: 17px;
+    white-space: nowrap;
+  }
+  body[data-look="paper"] .wordmark {
+    width: 64px;
+    padding: 4px 6px;
+  }
+  body[data-look="paper"] .header-actions {
+    gap: 4px;
+    margin-left: auto;
+  }
+  body[data-look="paper"] .header-actions button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+  body[data-look="paper"] .header-actions .header-icon {
+    display: grid;
+  }
+  body[data-look="paper"] .header-actions .ui-icon {
+    width: 20px;
+    height: 20px;
+  }
+  body[data-look="paper"] .header-actions .header-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  body[data-look="paper"] main {
+    padding: 0 8px;
+  }
+  body[data-look="paper"] main .dashboard {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px 10px;
+    height: auto;
+    min-height: 0;
+    padding: 4px 2px 8px;
+  }
+  body[data-look="paper"] main .dashboard .goals {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  body[data-look="paper"] main .dashboard .clock-box {
+    position: relative;
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: auto auto;
+    column-gap: 7px;
+  }
+  body[data-look="paper"] main .dashboard .clock-box > span {
+    display: none;
+  }
+  body[data-look="paper"] main .dashboard #countdownRing {
+    grid-row: 1;
+  }
+  body[data-look="paper"] main .dashboard .clock-box > strong {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 26px;
+    line-height: 28px;
+  }
+  /* The Paused word hangs below the digits, so the line never grows */
+  body[data-look="paper"] main .dashboard #pauseState {
+    position: absolute;
+    z-index: 2;
+    top: calc(100% - 1px);
+    left: 0;
+    width: max-content;
+    padding: 0 5px;
+    border-radius: 3px;
+    background: #15332a;
+  }
+  body[data-look="paper"] main .dashboard #money {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 40px;
+    min-width: 44px;
+  }
+  body[data-look="paper"] main .dashboard #money strong {
+    font-size: 17px;
+    line-height: 20px;
+  }
+  body[data-look="paper"] main .dashboard .case-cue {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+    width: auto;
+    max-width: 100%;
+    height: 40px;
+  }
+  body[data-look="paper"] main .dashboard .case-cue .cue-name {
+    display: none;
+  }
+  body[data-look="paper"] main .dashboard #pause {
+    grid-column: 4;
+    grid-row: 2;
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+  body[data-look="paper"] .dashboard .hud-slot {
+    position: relative;
+    grid-template-rows: 14px 22px 8px;
+  }
+  body[data-look="paper"] .dashboard .hud-slot .hud-figures b {
+    font-size: 20px;
+    line-height: 22px;
+  }
+  body[data-look="paper"] .dashboard .hud-slot .hud-figures small {
+    font-size: 11px;
+  }
+  body[data-look="paper"] .dashboard .hud-slot .hud-preview {
+    display: block;
+    position: absolute;
+    top: -7px;
+    right: 4px;
+    margin: 0;
+    font-size: 11px;
+  }
+  body[data-look="paper"] .dashboard .hud-slot .hud-preview:empty {
+    display: none;
+  }
+  body[data-look="paper"] .status-row {
+    height: 24px;
+    min-height: 24px;
+    padding: 0;
+    flex-wrap: nowrap;
+  }
+  body[data-look="paper"] #status {
+    flex-basis: auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+  body[data-look="paper"] #helpMove {
+    display: none;
+  }
+  body[data-look="paper"] #stationPicker {
+    height: 40px;
+    margin: 0 0 6px;
+  }
+  body[data-look="paper"] #stationPicker button {
+    min-height: 40px;
+    font-size: 12px;
+  }
+  body[data-look="paper"] main .board,
+  body[data-look="paper"]:has(#caseCue:not([hidden])) main .board {
+    height: calc(100dvh - 262px);
+    min-height: 470px;
+    grid-template-columns: repeat(4, calc(100vw - 28px));
+    grid-template-rows: 48px minmax(120px, 1fr) 16px 136px auto;
+    padding: 0 12px 0 0;
+    gap: 0 8px;
+    border-radius: 6px;
+    background: transparent;
+    box-shadow: none;
+  }
+  body[data-look="paper"] .board > .station {
+    background: var(--paper);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  body[data-look="paper"] .column-heading {
+    padding: 14px 10px 4px;
+  }
+  body[data-look="paper"] .paper-floor {
+    padding: 4px 6px;
+  }
+  body[data-look="paper"] .paper-floor .crew:not(:has(.elf-card:nth-child(5))) {
+    grid-auto-rows: 126px;
+  }
+  body[data-look="paper"]
+    .paper-floor
+    .crew:not(:has(.elf-card:nth-child(5)))
+    .elf {
+    height: 124px;
+  }
+  body[data-look="paper"]
+    .paper-floor
+    .crew:not(:has(.elf-card:nth-child(5)))
+    .elf
+    svg {
+    height: 86px;
+    width: 66px;
+  }
+  body[data-look="paper"] .controls {
+    padding: 8px 10px 10px;
+  }
+  body[data-look="paper"] .switch-button {
+    min-height: 44px;
+    height: 46px;
+  }
+  body[data-look="paper"] .small-action,
+  body[data-look="paper"] #controls2 [data-control="bypass"] button,
+  body[data-look="paper"] #controls2 .vigilance,
+  body[data-look="paper"] .ask-toggle {
+    min-height: 40px;
+  }
+  body[data-look="paper"] .move-target {
+    min-height: 44px;
+  }
+  body[data-look="paper"] .paper-scene .queue-piles {
+    width: auto;
+  }
+  body[data-look="paper"] #piles0,
+  body[data-look="paper"] #piles1 {
+    right: auto;
+    width: 118px;
+  }
+  body[data-look="paper"] #piles2 {
+    right: 6px;
+    width: auto;
+  }
+  body[data-look="paper"] .paper-scene .machine > svg {
+    left: 0;
+    width: 100%;
+  }
+  body[data-look="paper"] #station0 .paper-scene .machine > svg,
+  body[data-look="paper"] #station1 .paper-scene .machine > svg {
+    left: 126px;
+    width: calc(100% - 126px);
+  }
+  body[data-look="paper"] .queue.asking-off {
+    display: none;
+  }
+  body[data-look="paper"] .column-heading .info-button,
+  body[data-look="paper"] .cocoa-label .info-button {
+    position: relative;
+  }
+  body[data-look="paper"] .column-heading .info-button::after,
+  body[data-look="paper"] .cocoa-label .info-button::after {
+    content: "";
+    position: absolute;
+    inset: -11px;
+  }
+  body[data-look="paper"] #casePanel.case-panel {
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: none;
+  }
+}
+
+/* Small labels: 11px at least */
+body[data-look="paper"] .eyebrow {
+  font-size: 11px;
+}
+body[data-look="paper"] #cocoa .cocoa-focus {
+  top: 6px;
+  right: 8px;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--red);
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 18px;
+}
+body[data-look="paper"] #cocoa .cocoa-focus:empty {
+  display: none;
+}
+/* The walkthrough card wears the colour of the control it points at */
+body[data-look="paper"] #tutorial {
+  border-color: var(--attention);
+}
+/* Gold is the decision cue's: the open station tab is marked in red and cream */
+@media (max-width: 999px) {
+  body[data-look="paper"] #stationPicker button[aria-pressed="true"] {
+    border-color: #7a1a2a;
+    box-shadow: inset 0 -3px #7a1a2a;
+  }
+}
+
+/* Decision chips: what an option does to the run's goals */
+body[data-look="paper"] .opt-chip.chip-goal {
+  font-weight: bold;
+}
+body[data-look="paper"] .opt-chip.chip-goal-saved {
+  background: #dde6c8;
+  color: #2c5a37;
+}
+body[data-look="paper"] .opt-chip.chip-goal-lost {
+  background: #f2d7cd;
+  color: #8f1f31;
+}
+
+/* End screen: the firm's link sits on its light card; focus rings on the pine stay light */
+body[data-look="paper"] #report .end-offer .explore-link {
+  color: var(--bc-accent-deep);
+}
+body[data-look="paper"] #report .end-top :focus-visible,
+body[data-look="paper"] #report .end-actions :focus-visible {
+  outline-color: var(--attention-light);
+}
+
+/* The chosen setting's drawing reads on its pine ground */
+body[data-look="paper"] .switch-button[aria-pressed="true"] {
+  --ic: #f4ead3;
+}
+/* Pause and Resume take the same room, so the cue beside them never moves */
+body[data-look="paper"] .dashboard #pause {
+  min-width: 78px;
+}

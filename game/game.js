@@ -71,11 +71,14 @@
     caughtSnapshot = null,
     caughtUntil = 0,
     toastUntil = 0;
-  let personalBest = null,
+  // The best stars out of 3. The old best, in points and stars out of 12, is dropped.
+  let bestStars = null,
     collectedBlunders = [];
   try {
-    const saved = JSON.parse(localStorage.getItem("workshop-personal-best"));
-    if (saved && Number.isFinite(saved.points)) personalBest = saved;
+    localStorage.removeItem("workshop-personal-best");
+    const saved = Number(localStorage.getItem("workshop-best-stars"));
+    if (localStorage.getItem("workshop-best-stars") !== null && saved >= 0)
+      bestStars = saved;
     const collection = JSON.parse(localStorage.getItem("workshop-blunders"));
     if (Array.isArray(collection))
       collectedBlunders = collection.filter(
@@ -1105,24 +1108,6 @@
     );
     slot.setAttribute("role", "group");
     return slot;
-  }
-  // The three goals of a finished run as small lit or unlit stars, for the end screen.
-  function goalMarks(goals) {
-    const row = make("div", "goal-mini");
-    for (const goal of goals) {
-      const mark = make("span", "goal-mini-mark");
-      mark.innerHTML = uiIcon(goal.met ? "star" : "star-empty");
-      mark.dataset.met = String(goal.met);
-      mark.dataset.waiting = String(Boolean(goal.waiting));
-      mark.title = `${goal.name}: ${goalFigure(goal)}${goal.met ? ", star earned" : ""}`;
-      row.append(mark);
-    }
-    row.setAttribute(
-      "aria-label",
-      goals.map((g) => `${g.name} ${g.met ? "earned" : "missed"}`).join(", "),
-    );
-    row.setAttribute("role", "img");
-    return row;
   }
   function paintCauses(list, causes, none) {
     list.replaceChildren(
@@ -2304,9 +2289,8 @@
     const end = view.end;
     const link = new URL(location.href);
     link.searchParams.set("seed", seed);
-    link.searchParams.delete("version");
     const verdict = end.assurance?.verdict;
-    const result = `Santa's AI Workshop: ${end.points} points, ${end.stars}/${view.score.best} stars. ${end.right} right gifts, ${end.wrong} wrong.${verdict ? ` Checking: ${verdict}.` : ""} ${link.href}`;
+    const result = `Santa's AI Workshop: ${end.stars}/3 stars. ${end.right} right gifts, ${end.wrong} wrong.${verdict ? ` Checking: ${verdict}.` : ""} ${link.href}`;
     try {
       await navigator.clipboard.writeText(result);
       text("copyStatus", "Result copied.");
@@ -2617,94 +2601,37 @@
       $("checkingPaid").querySelector("details").open = false;
       paintGroups(a);
     }
-    $("practices").hidden = !end.used;
-    $("practiceTiles").replaceChildren();
-    if (!end.used) return;
-    for (const [icon, practice, actions] of [
-      [
-        "human-in-loop",
-        "Human in the loop",
-        [["assist", "Elves confirmed the AI's drafts"]],
-      ],
-      [
-        "risk-check",
-        "Risk-based checking",
-        [
-          [
-            "risky",
-            "Checked the risky ones, where a wrong gift costs Santa most trust",
-          ],
-        ],
-      ],
-      [
-        "escalate",
-        "Ask a person when unsure",
-        [["asked", "Asked the child about an unclear wish"]],
-      ],
-      [
-        "test-release",
-        "Test before release, keep a way back",
-        [
-          ["tested", "Tested the update first"],
-          ["rolledBack", "Rolled back a faulty update"],
-        ],
-      ],
-      [
-        "oversight",
-        "Keep human oversight sharp",
-        [
-          ["trained", "Trained the checkers not to just defer to AI"],
-          ["rested", "Gave the elves a cocoa break"],
-        ],
-      ],
-    ]) {
-      const used = actions.some(([flag]) => end.used[flag]);
-      const tile = make("article", "practice-tile");
-      tile.dataset.used = String(used);
-      const top = make("div", "practice-top");
-      const badge = make("span", "practice-badge");
-      badge.innerHTML = used ? tickSVG : "";
-      badge.append(used ? "Used" : "Not used");
-      top.append(iconNode(icon, "practice-icon"), badge);
-      tile.append(top, make("h4", "practice-name", practice));
-      for (const [flag, label] of actions) {
-        const action = make("p", "practice-action", label);
-        action.dataset.used = String(end.used[flag]);
-        action.dataset.practice = flag;
-        tile.append(action);
-      }
-      tile.setAttribute(
-        "aria-label",
-        `${practice}: ${actions.map(([flag, label]) => `${label}, ${end.used[flag] ? "used" : "not used"}`).join("; ")}`,
-      );
-      $("practiceTiles").append(tile);
-    }
+    // One tile per practice, each line with the player's own figure so it ties back to the game.
+    const practices = end.practices || [];
+    $("practices").hidden = !practices.length;
+    $("practiceTiles").replaceChildren(
+      ...practices.map((practice) => {
+        const tile = make("article", "practice-tile");
+        tile.dataset.used = String(practice.used);
+        const top = make("div", "practice-top");
+        const badge = make("span", "practice-badge");
+        badge.innerHTML = practice.used ? tickSVG : "";
+        badge.append(practice.used ? "Used" : "Not used");
+        top.append(iconNode(practice.id, "practice-icon"), badge);
+        tile.append(top, make("h4", "practice-name", practice.name));
+        for (const action of practice.actions) {
+          const line = make("p", "practice-action", action.label);
+          line.dataset.used = String(action.used);
+          line.append(make("span", "practice-figure", action.figure));
+          tile.append(line);
+        }
+        if (practice.note)
+          tile.append(make("p", "practice-note", practice.note));
+        tile.setAttribute(
+          "aria-label",
+          `${practice.name}: ${practice.actions.map((a) => `${a.label}, ${a.used ? "used" : "not used"}, ${a.figure}`).join("; ")}${practice.note ? `. ${practice.note}` : ""}`,
+        );
+        return tile;
+      }),
+    );
   }
   const tickSVG =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  function paintRuns(e) {
-    $("endRuns").replaceChildren();
-    for (const run of e.runs || []) {
-      const card = make("article", "run-report");
-      card.dataset.stars = run.stars;
-      const head = make("div", "run-head");
-      head.append(
-        iconNode(`cargo-${run.cargo.id}`, "run-cargo-icon"),
-        make("b", "", `Run ${run.run}`),
-        make("span", "run-cargo", run.cargo.name),
-      );
-      const row = make("div", "run-row");
-      row.append(
-        goalMarks(run.goals || []),
-        make("p", "", `${run.right}/${run.target} right · ${run.wrong} wrong`),
-      );
-      card.append(head, row);
-      if (run.missedBy) card.title = run.missedBy;
-      if (run.bonus)
-        card.append(make("small", "run-bonus", `+${run.bonus} bonus`));
-      $("endRuns").append(card);
-    }
-  }
   function paintBlunders(e) {
     text(
       "collectionTitle",
@@ -2735,33 +2662,27 @@
       $("blunderCollection").append(locked);
     }
   }
-  // The money as one row of figures: what was spent, then what the wrong gifts cost and what
-  // checking stopped, under the same names as the dial and the bars.
+  // The money as one row of figures: what each part cost, adding up to the cost so far against its
+  // limit, then what checking stopped, under the same names as the dial and the bars.
   function paintAccount(e) {
-    const spent =
-      e.costs.people + e.costs.ai + e.costs.checking + e.costs.fixing;
+    const c = e.costs;
     $("account").replaceChildren();
     for (const [icon, label, value, cls] of [
-      ["people", "People", money(e.costs.people), ""],
-      ["ai", "AI", money(e.costs.ai), ""],
-      ["checks", "Spent on checks", money(e.costs.checking), ""],
-      ["fixing", "Fixing", money(e.costs.fixing), ""],
+      ["ai", "AI", money(c.ai), ""],
+      ["checks", "Spent on checks", money(c.checking), ""],
+      ["pause", "Half-time", money(c.halfTime ?? 0), ""],
+      ["fixing", "Fixing", money(c.fixing), ""],
+      ["mistakes", "Wrong gifts", money(c.mistakes), "account-loss"],
       [
         "budget",
-        "Spent",
-        `${money(spent)} of ${money(e.costs.budget)}`,
+        "Cost",
+        `${money(c.total)} of ${money(c.limit)}`,
         "account-total",
-      ],
-      [
-        "mistakes",
-        "Wrong gifts that went out",
-        money(e.costs.mistakes),
-        "account-loss",
       ],
       [
         "prevented",
         "Mistakes stopped (estimate)",
-        money(e.costs.prevented),
+        money(c.prevented),
         "account-saved",
       ],
     ]) {
@@ -2777,7 +2698,7 @@
     "A decision waited too long": "faulty",
     "A faulty update ran unchecked": "faulty",
     "The faulty update ran too long": "faulty",
-    "The AI guessed unclear wishes": "guessed",
+    "Guesses went wrong": "guessed",
     "Big gifts the AI got wrong": "big",
     "Checkers stopped looking": "waved",
     "Tired elves slipped": "tired",
@@ -2785,47 +2706,33 @@
   function showReport() {
     const e = view.end;
     paintAssurance(e);
-    const hadPreviousGame = personalBest !== null;
-    const canCelebrate = hadPreviousGame && e.points >= 0;
-    const newBest =
-      Number.isFinite(e.points) &&
-      (!personalBest || e.points > personalBest.points);
-    const newStars =
-      Number.isFinite(e.stars) &&
-      (!personalBest || e.stars > personalBest.stars);
-    if (Number.isFinite(e.points))
-      personalBest = {
-        points: newBest ? e.points : personalBest.points,
-        stars: newStars ? e.stars : personalBest.stars,
-      };
+    const hadPreviousGame = bestStars !== null;
+    const newBest = hadPreviousGame && e.stars > bestStars;
+    bestStars = Math.max(bestStars ?? 0, e.stars);
     const collection = new Map(
       collectedBlunders.map((item) => [item.id, item]),
     );
     for (const item of e.blunders || []) collection.set(item.id, item);
     collectedBlunders = [...collection.values()];
     try {
-      if (personalBest)
-        localStorage.setItem(
-          "workshop-personal-best",
-          JSON.stringify(personalBest),
-        );
+      localStorage.setItem("workshop-best-stars", String(bestStars));
       localStorage.setItem(
         "workshop-blunders",
         JSON.stringify(collectedBlunders),
       );
     } catch {}
-    text("endPoints", Number.isFinite(e.points) ? `${e.points} points` : "");
-    $("endStars").replaceChildren();
-    if (e.stars !== undefined)
-      $("endStars").append(
-        make("span", "end-stars-number", e.stars),
-        make("small", "", ` / ${view.score.best}`),
-        make("span", "end-stars-label", "stars"),
-      );
+    $("endStars").replaceChildren(
+      make("span", "end-stars-number", e.stars),
+      make("small", "", " / 3"),
+      make("span", "end-stars-label", "stars"),
+    );
+    $("endGoals").replaceChildren(
+      ...(e.goals || []).map((g) => goalSlot(g, view.run.goalsCountFrom)),
+    );
     text(
       "personalBest",
-      hadPreviousGame && personalBest
-        ? `${canCelebrate && newBest ? "New best score! " : ""}${canCelebrate && newStars ? "New best stars! " : ""}Best: ${personalBest.points} points, ${personalBest.stars} stars`
+      hadPreviousGame
+        ? `${newBest ? "New best! " : ""}Best: ${bestStars} of 3 stars`
         : "",
     );
     text("resultTitle", e.headline);
@@ -2850,7 +2757,6 @@
     );
     told?.querySelector(".cause-fix")?.remove();
     paintAccount(e);
-    paintRuns(e);
     paintBlunders(e);
     text("copyStatus", "");
     $("copyFallback").hidden = true;

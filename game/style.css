@@ -2753,6 +2753,7 @@ dialog p {
   gap: 8px;
 }
 .goal-slot {
+  color: var(--bc-ink);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
@@ -3840,6 +3841,18 @@ dialog p {
 #report .practice-action[data-used="true"] {
   font-weight: 700;
 }
+/* The player's own figure under each action, and the one line on trust */
+#report .practice-figure {
+  display: block;
+  font-weight: normal;
+  opacity: 0.85;
+}
+#report .practice-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  font-style: italic;
+}
 .practice-tile[data-used="true"] .practice-action[data-used="false"] {
   opacity: 0.7;
 }
@@ -4195,11 +4208,12 @@ dialog p {
     justify-self: start;
   }
   #report .practice-name,
-  #report .practice-action {
+  #report .practice-action,
+  #report .practice-note {
     grid-column: 2;
     margin: 0;
   }
-  /* A practice not used is one short row on a phone: icon, name and badge. */
+  /* A practice not used is smaller on a phone, and still shows the player's figures. */
   .practice-tile[data-used="false"] {
     padding: 8px 12px;
   }

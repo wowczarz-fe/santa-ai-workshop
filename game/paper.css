@@ -1856,17 +1856,19 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     position: relative;
     grid-column: 1 / 3;
     grid-row: 2;
-    grid-template-columns: auto auto auto;
+    grid-template-columns: auto auto;
     column-gap: 7px;
   }
-  /* Which half: a small word after the digits */
+  /* Which half: a small word under the digits, which leaves the decision cue room for its title */
   body[data-look="paper"] main .dashboard .clock-box > span {
-    grid-column: 3;
-    grid-row: 1;
-    align-self: center;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    font-size: 10px;
+    line-height: 11px;
   }
   body[data-look="paper"] main .dashboard #countdownRing {
-    grid-row: 1;
+    grid-row: 1 / 3;
   }
   body[data-look="paper"] main .dashboard .clock-box > strong {
     grid-column: 2;
@@ -1888,13 +1890,27 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
   body[data-look="paper"] main .dashboard .case-cue {
     grid-column: 3;
     grid-row: 2;
-    justify-self: end;
+    justify-self: stretch;
     width: auto;
     max-width: 100%;
     height: 40px;
+    container-type: inline-size;
   }
+  /* The decision's title shows beside Decide whenever the cue is wide enough for it */
   body[data-look="paper"] main .dashboard .case-cue .cue-name {
     display: none;
+  }
+  @container (min-width: 150px) {
+    body[data-look="paper"]
+      main
+      .dashboard
+      .case-cue
+      :is(.cue-verb, .cue-name) {
+      font-size: 12.5px;
+    }
+    body[data-look="paper"] main .dashboard .case-cue .cue-name {
+      display: inline;
+    }
   }
   body[data-look="paper"] main .dashboard #pause {
     grid-column: 4;

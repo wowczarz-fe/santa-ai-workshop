@@ -1558,16 +1558,16 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"] main .dashboard .clock-box {
     grid-column: 1 / 3;
     grid-row: 2;
-    grid-template-columns: auto auto auto;
+    grid-template-columns: auto auto;
     column-gap: 6px;
   }
-  /* Which half: a small word after the digits */
+  /* Which half: a small word under the digits, which leaves the decision cue room for its title */
   body[data-look="polish"] main .dashboard .clock-box > span {
-    grid-column: 3;
-    grid-row: 1;
-    align-self: center;
-    font-size: 11px;
-    line-height: 13px;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    font-size: 10px;
+    line-height: 11px;
   }
   body[data-look="polish"] main .dashboard .clock-box > strong {
     grid-column: 2;
@@ -1585,12 +1585,19 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"] main .dashboard .case-cue {
     grid-column: 3;
     grid-row: 2;
-    justify-self: end;
+    justify-self: stretch;
     height: 40px;
     max-width: 100%;
+    container-type: inline-size;
   }
+  /* The decision's title shows beside Decide whenever the cue is wide enough for it */
   body[data-look="polish"] main .dashboard .case-cue .cue-name {
     display: none;
+  }
+  @container (min-width: 170px) {
+    body[data-look="polish"] main .dashboard .case-cue .cue-name {
+      display: inline;
+    }
   }
   body[data-look="polish"] main .dashboard #pause {
     grid-column: 4;
@@ -1945,7 +1952,7 @@ body[data-look="polish"] .header-actions .header-icon {
     position: relative;
   }
   body[data-look="polish"] main .dashboard #countdownRing {
-    grid-row: 1;
+    grid-row: 1 / 3;
   }
   body[data-look="polish"] main .dashboard #pauseState {
     position: absolute;

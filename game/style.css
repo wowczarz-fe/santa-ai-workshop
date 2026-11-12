@@ -464,6 +464,72 @@ main {
   align-content: center;
   gap: 3px 8px;
 }
+/* On a desktop the sleigh shows its own count, so the gifts slot is for phones and tablets, where
+   the slots carry a short word each */
+@media (min-width: 1000px) {
+  .dashboard .hud-slot[data-goal="full"] {
+    display: none;
+  }
+}
+@media (max-width: 999px) {
+  .dashboard .goals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .dashboard .hud-slot .hud-name > span[data-short] {
+    display: inline;
+    font-size: 0;
+  }
+  .dashboard .hud-slot .hud-name > span[data-short]::after {
+    content: attr(data-short);
+    font-size: 11px;
+  }
+}
+/* Marks on the phone's station tabs: where the game points, a tired elf, elves on cocoa */
+#stationPicker button {
+  position: relative;
+}
+.tab-marks {
+  position: absolute;
+  top: -6px;
+  right: 3px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+}
+.tab-marks [hidden] {
+  display: none;
+}
+.tab-focus,
+.tab-tired {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+}
+.tab-focus {
+  background: #2f6fa8;
+}
+.tab-tired {
+  background: #c64235;
+}
+.tab-cocoa {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #8a5a1c;
+  color: #fff;
+  font:
+    700 10px/15px Arial,
+    sans-serif;
+}
+.tab-cocoa .ui-icon {
+  width: 11px;
+  height: 11px;
+}
 /* Top-bar goal slots use hud-* names, apart from the half-time card's goal-* names */
 .dashboard .hud-slot {
   display: grid;

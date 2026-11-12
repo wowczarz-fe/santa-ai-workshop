@@ -318,21 +318,36 @@
     },
     { passive: true },
   );
-  // The mistakes and cost goals, one star each; the full-sleigh goal is on the sleigh itself. The
-  // cost goal is the game's one money figure, the cost so far against its limit.
+  // The mistakes and cost goals, one star each; on a desktop the full-sleigh goal is on the sleigh
+  // itself, and a phone or tablet shows it here too, as the sleigh is a tab away. The cost goal is
+  // the game's one money figure, the cost so far against its limit. Each has a short word for
+  // narrow screens.
   const goalSlots = {};
-  for (const [id, art] of [
-    ["right", "wrong-gift"],
-    ["cost", "budget"],
+  for (const [id, art, short] of [
+    ["full", "gift", "Gifts"],
+    ["right", "wrong-gift", "Mistakes"],
+    ["cost", "budget", "Cost"],
   ]) {
     const slot = make("button", "hud-slot");
     slot.dataset.goal = id;
+    slot.dataset.short = short;
     slot.dataset.help = `goal:${id}`;
     slot.dataset.info = `goal:${id}`;
     slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i></span><span class="hud-note"></span>`;
     $("goals").append(slot);
+    slot.querySelector(".hud-name > span").dataset.short = short;
     goalSlots[id] = slot;
   }
+  // Marks on the phone's station tabs: the outlined control or the rules' focus, a tired elf,
+  // and on the sleigh tab a cup with the elves on cocoa.
+  $("stationPicker")
+    .querySelectorAll("[data-station-page]")
+    .forEach((tab) =>
+      tab.insertAdjacentHTML(
+        "beforeend",
+        `<span class="tab-marks" aria-hidden="true"><i class="tab-focus" hidden></i><i class="tab-tired" hidden></i><span class="tab-cocoa" hidden>${icon("cocoa")}<b></b></span></span>`,
+      ),
+    );
   function paintGoals() {
     // While a recall card is open, the wrong-gift goal previews the count after the recall.
     const c = view.case;
@@ -355,7 +370,11 @@
       if (!slot) continue;
       const cost = goal.id === "cost";
       const figure = (n) => (cost ? money(n) : String(n));
-      const now = cost ? (view.cost?.spent ?? goal.now) : goal.now,
+      const now = cost
+          ? (view.cost?.spent ?? goal.now)
+          : goal.id === "full"
+            ? (view.run.aboard ?? goal.now)
+            : goal.now,
         need = cost ? (view.cost?.limit ?? goal.need) : goal.need;
       const name = cost ? "Cost so far" : goal.name;
       slot.querySelector(".hud-name > span").textContent = name;
@@ -383,7 +402,9 @@
         .style.setProperty("--fill", Math.min(1, now / Math.max(1, need)));
       // A goal inside its limit that does not count yet says from when it counts.
       slot.querySelector(".hud-note").textContent =
-        state === "waiting" ? `Counts from ${from} gifts aboard` : "";
+        state === "waiting"
+          ? `Counts from ${from}${innerWidth < 1000 ? "" : " gifts aboard"}`
+          : "";
       slot.setAttribute(
         "aria-label",
         `${name}: ${figure(now)} of ${figure(need)}, ${{ met: "star earned so far", waiting: `counts from ${from} right gifts`, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
@@ -450,6 +471,40 @@
     if (!mistakeHint.words) hintLabel.remove();
     else if (hintLabel.parentNode !== target) target.append(hintLabel);
   }
+  // The phone's station tabs say what is happening a page away: a dot where the game points, a
+  // red dot where an elf at work is tired, and a cup with the number of elves on cocoa.
+  function paintTabMarks() {
+    $("stationPicker")
+      .querySelectorAll("[data-station-page]")
+      .forEach((tab) => {
+        const page = Number(tab.dataset.stationPage);
+        tab.querySelector(".tab-focus").hidden = !(
+          tab.classList.contains("focus-tab") ||
+          tab.classList.contains("mistake-hint-tab")
+        );
+        tab.querySelector(".tab-tired").hidden = !view.elves.some(
+          (elf) =>
+            elf.station === page && page < 3 && /tired|spent/.test(elf.mood),
+        );
+        const resting = page === 3 ? crewSize(3) : 0;
+        const cup = tab.querySelector(".tab-cocoa");
+        cup.hidden = !resting;
+        cup.querySelector("b").textContent = resting || "";
+        tab.setAttribute(
+          "aria-label",
+          [
+            tab.firstChild.textContent.trim(),
+            tab.querySelector(".tab-focus").hidden ? "" : "needs you",
+            tab.querySelector(".tab-tired").hidden ? "" : "a tired elf",
+            resting ? `${resting} on cocoa` : "",
+          ]
+            .filter(Boolean)
+            .join(", "),
+        );
+      });
+  }
+  const crewSize = (station) =>
+    view.elves.filter((elf) => elf.station === station).length;
   // How sharp the checkers are, from the rules' vigilance state value.
   const attentionOf = (state) =>
     /wav|not look|asleep/.test(state)
@@ -960,6 +1015,7 @@
     paintChoice();
     paintEffects();
     paintMistakeHint();
+    paintTabMarks();
     if (infoKey && infoAnchor?.isConnected) renderInfo();
     if (view.end && !ended) {
       ended = true;
@@ -1353,7 +1409,7 @@
       }
       iconText(effect, "gift", `+${giftBubbleCount}`);
       effect.classList.toggle("in-slot", !visible);
-      effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? column.left + 12 : target.right - 52))}px`;
+      effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? column.left + 12 : target.left + 4))}px`;
       effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? to.top - 6 : target.top - 14))}px`;
       effect.style.setProperty("--fly-x", "0px");
       effect.style.setProperty("--fly-y", visible ? "-14px" : "0px");
@@ -1828,6 +1884,11 @@
     if (type === "goal") {
       const goal = view.run.goals.find((g) => g.id === parts[1]);
       const cost = goal.id === "cost";
+      if (goal.id === "full")
+        return [
+          goal.name,
+          [`${cap(goal.text)} aboard when the sleigh leaves.`],
+        ];
       return [
         cost ? "Cost so far" : goal.name,
         [

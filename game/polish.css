@@ -2001,3 +2001,35 @@ body[data-look="polish"] .dashboard .clock-box > strong {
 body[data-look="polish"] .mistake-hint:has(> .mistake-hint-label) > .focus-tag {
   display: none;
 }
+/* Between a phone and a desktop the half-time choices sit four to a row with Carry on below, so
+   no chip runs past its card */
+@media (min-width: 761px) and (max-width: 999px) {
+  body[data-look="polish"] .break-options {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  body[data-look="polish"] .upgrade-wrap:has(> [data-choose="none"]) {
+    grid-column: 1 / -1;
+  }
+  body[data-look="polish"] #breakDialog .upgrade-card[data-choose="none"] {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 0 10px;
+  }
+  body[data-look="polish"]
+    #breakDialog
+    .upgrade-card[data-choose="none"]
+    .upgrade-icon {
+    grid-row: 1 / 3;
+  }
+  body[data-look="polish"]
+    #breakDialog
+    .upgrade-card[data-choose="none"]
+    .upgrade-chips {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    margin: 0;
+    padding: 0;
+  }
+}

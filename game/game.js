@@ -2911,7 +2911,12 @@
       [
         "risk-check",
         "Risk-based checking",
-        [["risky", "Checked the risky ones"]],
+        [
+          [
+            "risky",
+            "Checked the risky ones, where a wrong gift costs Santa most trust",
+          ],
+        ],
       ],
       [
         "escalate",
@@ -2930,7 +2935,7 @@
         "oversight",
         "Keep human oversight sharp",
         [
-          ["trained", "Trained the checkers"],
+          ["trained", "Trained the checkers not to just defer to AI"],
           ["rested", "Gave the elves a cocoa break"],
         ],
       ],

@@ -1688,13 +1688,17 @@
   function optionChips(c, o) {
     const parts = (o.scope || "")
       .split(/;\s*/)
-      .filter((part) => part && part !== o.goal);
+      .filter((part) => part && part !== o.goal)
+      .filter(
+        (part) =>
+          !(Number.isFinite(o.extra) && /£|costs?|nothing more/i.test(part)) &&
+          !(o.seconds && /^checkers busy /i.test(part)),
+      );
     const does = parts.find((part) => !/\d/.test(part)) ?? parts[0] ?? "";
     const chips = [];
     if (!o.available && o.why && !c.resolving)
       chips.push(["chip-why", "", o.why]);
-    if (does && !(Number.isFinite(o.extra) && /£|costs?/.test(does)))
-      chips.push(["chip-does", "", does]);
+    if (does) chips.push(["chip-does", "", does]);
     if (o.goal)
       for (const part of o.goal.split(/,\s*/))
         chips.push([
@@ -1718,7 +1722,7 @@
         "clock",
         o.seconds > view.run.leavesIn
           ? "longer than the time left"
-          : `${o.seconds} s`,
+          : `${/checkers busy/i.test(o.scope || "") ? "Checkers " : ""}${o.seconds} s`,
       ]);
     if (o.risk)
       chips.push([

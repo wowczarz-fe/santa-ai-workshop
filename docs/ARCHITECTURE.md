@@ -50,10 +50,10 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
 - One unclear letter arrives in each half, at a seeded time 12 to 40 seconds into the half, from
   a pool of ten children and wishes (Timmy's little train among them). It raises a decision at once
   (below). All other letters are clear.
-- Three goals, one star each, for the whole game: `full` (Full sleigh, 147 right gifts aboard),
+- Three goals, one star each, for the whole game: `full` (Full sleigh, 145 right gifts aboard),
   `right` (Few mistakes, at most 2 wrong gifts aboard) and `cost` (Within budget, some of the
   £900 budget left when the sleigh leaves). `right` and `cost` count only once the sleigh holds
-  103 right gifts (`goalsCountFrom`), so a slow sleigh earns nothing for being cheap and clean.
+  102 right gifts (`goalsCountFrom`), so a slow sleigh earns nothing for being cheap and clean.
 - There is one money figure, the cost so far (`cost.spent`), counted against a budget of £900
   (`cost.limit`). It counts up: the AI's running cost, checks, the half-time purchase, fixes
   (remakes, recalls, a rollback) and what the wrong gifts aboard will cost. The moment it reaches
@@ -66,7 +66,7 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
 
 ## What `view()` returns
 
-The target (147), the budget (£900) and `goalsCountFrom` (103) here are examples from the current
+The target (145), the budget (£900) and `goalsCountFrom` (102) here are examples from the current
 balance; the page reads them from `view()`.
 
 The page reads only `view()`. Whether an unrevealed parcel is wrong is left out of it. Money is in
@@ -76,7 +76,7 @@ pounds, rounded to whole pounds unless said otherwise. Times are seconds.
 | -------------- | -------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `t`            | number                           | `40.0000000001`                                      | Seconds played, unrounded                                                                                        |
 | `duration`     | number                           | `150`                                                | Seconds in the whole game                                                                                        |
-| `target`       | number                           | `147`                                                | Right gifts the sleigh needs for the Full sleigh star                                                            |
+| `target`       | number                           | `145`                                                | Right gifts the sleigh needs for the Full sleigh star                                                            |
 | `elves`        | array of elf                     | see below                                            | The eight elves, always in the same order                                                                        |
 | `ai`           | `[number, number]`               | `[2, 1]`                                             | AI level at reading and at toy making: 0 by hand, 1 Assist, 2 Automate                                           |
 | `checking`     | number                           | `1`                                                  | 0 a few, 1 the risky ones, 2 all                                                                                 |
@@ -206,7 +206,7 @@ example
 
 `run` is `{ half, halves, halfLeft, leavesIn, aboard, target, cargo, goals, goalsCountFrom }`, for
 example
-`{ half: 1, halves: 2, halfLeft: 35, leavesIn: 110, aboard: 36, target: 147, cargo: { id: "everyday", name: "Everyday gifts", icon: "🎁", text: "The AI matches a fresh elf here. A wrong one costs £12." }, goals: [...], goalsCountFrom: 102 }`.
+`{ half: 1, halves: 2, halfLeft: 35, leavesIn: 110, aboard: 36, target: 145, cargo: { id: "everyday", name: "Everyday gifts", icon: "🎁", text: "The AI matches a fresh elf here. A wrong one costs £12." }, goals: [...], goalsCountFrom: 102 }`.
 
 - `half`: 1 or 2. `halves`: 2. `halfLeft`: whole seconds left in the half under way. While the
   half-time card is up (`choice` set) the first half is over and the second has not begun: `half`
@@ -220,7 +220,7 @@ example
 
   | `id`    | `name`          | `now`                         | `need` | `text`                                            |
   | ------- | --------------- | ----------------------------- | ------ | ------------------------------------------------- |
-  | `full`  | `Full sleigh`   | right gifts aboard            | 147    | `147 right gifts`                                 |
+  | `full`  | `Full sleigh`   | right gifts aboard            | 145    | `145 right gifts`                                 |
   | `right` | `Few mistakes`  | wrong gifts aboard            | 2      | `at most 2 wrong gifts`                           |
   | `cost`  | `Within budget` | cost so far (as `cost.spent`) | 900    | `some of the £900 budget left, wrong gifts count` |
 
@@ -228,7 +228,7 @@ example
   `right` or `cost` goal whose figures are within its limit while the sleigh holds fewer than
   `goalsCountFrom` right gifts, so the star is not earned yet; `full` never waits.
 
-- `goalsCountFrom`: 103, the right gifts aboard from which the `right` and `cost` goals count.
+- `goalsCountFrom`: 102, the right gifts aboard from which the `right` and `cost` goals count.
 
 ### Cost
 
@@ -441,7 +441,7 @@ count and price. Its cause and cost also remain in the account.
 
 ```
 { title: "Half-time", text: "Pick one change before you carry on, or none.",
-  report: { aboard: 78, wrong: 0, target: 147, cost: 140, limit: 900, tired: 2, burnouts: 0,
+  report: { aboard: 78, wrong: 0, target: 145, cost: 140, limit: 900, tired: 2, burnouts: 0,
             goals: [ ...three goals as in run.goals... ], causes: [ ...up to three causes... ] },
   next: { cargo: { id: "big", name: "Big gifts", icon: "📦", text: "The AI gets many of these wrong, and each costs £100." },
           text: "Big gifts come next. The AI gets many of these wrong, and each costs £100." },

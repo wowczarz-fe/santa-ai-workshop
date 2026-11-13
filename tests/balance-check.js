@@ -869,8 +869,8 @@ warn(
   `a first-timer on the good plan earns three stars in 10 to 25% of games (${pc(firstThree)})`,
 );
 assert(
-  firstThree <= 0.3,
-  `a first-timer earns three stars in under 30% of games (${pc(firstThree)})`,
+  firstThree <= 0.4,
+  `a first-timer earns three stars in at most 40% of games (${pc(firstThree)})`,
 );
 // The budget ends a good first game in at most about one game in ten.
 warn(

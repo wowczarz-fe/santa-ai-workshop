@@ -104,7 +104,7 @@ const WRONG_LINE_GAP = 20; // seconds before a wrong-gift line repeats the same 
 const HALF_SECONDS = 75;
 const DURATION = 2 * HALF_SECONDS;
 const CLOSE = DURATION - 15; // letters stop coming, so the last ones can still reach the sleigh
-const TARGET = 147;
+const TARGET = 145;
 // Three goals for the game, one star each (ADR 0014). full: the right gifts aboard reach the
 // target. right: at most WRONG_ALLOWED wrong gifts aboard. cost: the sleigh leaves with budget
 // left. The right and cost goals count only once the sleigh holds GOALS_FROM of its target, so a

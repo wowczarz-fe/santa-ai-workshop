@@ -561,7 +561,9 @@ beforehand: a risky batch can happen to come out clean.
 | `position`               | number  | `0.61`                       | 0 to 1 for a dial: 0 far too little, 0.5 about right, 1 far too much                    |
 | `thresholds`             | object  | `{ little: 0.1, much: 0.8 }` | The positions where the verdict changes, for drawing the dial's zones                   |
 | `underCost`              | number  | `0`                          | Lost to too few checks (estimate, below); show it under that name                       |
-| `overCost`               | number  | `10`                         | Spent on extra checks (estimate, below); show it under that name                        |
+| `overCost`               | number  | `10`                         | Lost to too many checks (estimate, below): `overChecks` plus `overHeld`                 |
+| `overChecks`             | number  | `10`                         | The part on checks that cost more than they stopped; never more than `costs.checking`   |
+| `overHeld`               | number  | `0`                          | The part on gifts held back while every gift was checked, £6 each                       |
 | `wrongMade`              | number  | `16`                         | Wrong toys the workshop made in the whole game                                          |
 | `caught`, `prevented`    | number  | `5`, `500`                   | Wrong toys stopped before the sleigh, and about what they would have cost (an estimate) |
 | `shipped`, `shippedCost` | number  | `6`, `72`                    | Wrong gifts that reached children, checked or not, and what they cost                   |
@@ -606,9 +608,10 @@ beforehand: a risky batch can happen to come out clean.
   goal to too many wrong gifts it never reads "too much". The words follow the dial instead.
 - The one figure for what wrong gifts cost is `costs.mistakes` (the wrong gifts aboard at
   departure, the same as in `cost.spent`). `underCost` and `overCost` are estimates of something
-  else and are named so: "Lost to too few checks (estimate)" and "Spent on extra checks
+  else and are named so: "Lost to too few checks (estimate)" and "Lost to too many checks
   (estimate)". `text` reads, for example, "Too little checking: about £664 lost to too few checks,
-  against about £44 on extra checks."
+  against about £44 lost to too many checks." Under the too-many figure the page may show its parts,
+  for example "£176 extra checks, £498 gifts held up", from `overChecks` and `overHeld`.
 - A group is `{ id, name, icon, parcels, wrongMade, checked, caught, shipped, checkCost, prevented, shippedCost, shippedUnchecked, shippedUncheckedCost, verdict, text }`
   for `id` `"everyday"`, `"big"` or `"unclear"` (the two unclear letters; one that is also big
   counts as big), for example

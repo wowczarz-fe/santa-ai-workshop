@@ -2563,7 +2563,7 @@ class Workshop {
       const how = [
         waved &&
           `trusting checkers waved ${plural(waved, "wrong gift")} through`,
-        missed && `tired ones missed ${missed}`,
+        missed && `tired ones missed ${plural(missed, "wrong gift")}`,
       ]
         .filter(Boolean)
         .join(" and ")
@@ -2659,13 +2659,15 @@ class Workshop {
     // Checks waved through by trusting checkers were paid for but not done: checking not done
     // properly, not too much of it.
     const doneCost = (id) => a.groups[id].checkCost - a.wavedCost[id];
-    const overCost =
-      sum(
-        Object.keys(a.groups)
-          .filter((id) => doneCost(id) > a.groups[id].prevented)
-          .map(doneCost),
-      ) +
-      a.heldBy.all * LATE_PRICE;
+    // Lost to too many checks, in two parts: checks that cost more than they stopped, and gifts held
+    // back while every gift was checked.
+    const overChecks = sum(
+      Object.keys(a.groups)
+        .filter((id) => doneCost(id) > a.groups[id].prevented)
+        .map(doneCost),
+    );
+    const overHeld = a.heldBy.all * LATE_PRICE;
+    const overCost = overChecks + overHeld;
     const lost = underCost + overCost;
     const weight =
       lost /
@@ -2697,7 +2699,7 @@ class Workshop {
             ? "too much"
             : "about right";
     const under = `about ${money(underCost)} lost to too few checks`;
-    const over = `about ${money(overCost)} on extra checks${a.heldBy.all ? " and the gifts they held back" : ""}`;
+    const over = `about ${money(overCost)} lost to too many checks`;
     const held = a.heldBy.all + a.heldBy.some;
     const tired = verdict === "bottleneck" && this.tiredAt(2);
     const text = {
@@ -2714,6 +2716,8 @@ class Workshop {
       thresholds: { little: ASSURANCE.little, much: ASSURANCE.much },
       underCost: Math.round(underCost),
       overCost: Math.round(overCost),
+      overChecks: Math.round(overChecks),
+      overHeld: Math.round(overHeld),
       wrongMade: total("wrongMade"),
       caught: total("caught"),
       prevented: Math.round(total("prevented")),

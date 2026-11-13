@@ -876,6 +876,12 @@ for (const [name, rs] of Object.entries(results))
     const why = `${name}: "${e.headline}" over "${e.lesson.title}" (${e.stars} stars), dial ${a.verdict} (${a.underCost} lost to too few checks, ${a.overCost} on extra checks): ${e.checkingAnswer}`;
     assert(losses[0], `lesson "${e.lesson.title}" names a loss`);
     assert(ANSWERS[a.verdict].test(e.checkingAnswer), why);
+    // Lost to too many checks is its two parts, and the checks part is no more than checking cost.
+    assert(
+      Math.abs(a.overCost - a.overChecks - a.overHeld) <= 1 &&
+        a.overChecks <= e.costs.checking,
+      why,
+    );
     const clear = (x, y) => x >= ASSURANCE.clear * y && x >= ASSURANCE.floor;
     if (a.verdict !== "bottleneck" && e.stars < 3) {
       if (clear(a.underCost, a.overCost))

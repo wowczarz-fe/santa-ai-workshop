@@ -13,3 +13,16 @@ body[data-look="paper"] .queue-picture {
 body[data-look="paper"] #queue-check .queue-tag {
   transform: translateY(-66px);
 }
+body[data-look="paper"] #queue-orders .queue-picture {
+  visibility: visible;
+  padding: 0;
+}
+body[data-look="paper"] #queue-orders .stack {
+  display: none;
+}
+.orders-heap {
+  display: block;
+  width: 112px;
+  height: 65px;
+  overflow: visible;
+}

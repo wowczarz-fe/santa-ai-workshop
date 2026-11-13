@@ -37,7 +37,6 @@
     );
   }
   const queueIds = [["letters"], ["orders"], ["check", "pass", "rework"]];
-  const stationNames = ["LETTERS", "TOYS", "CHECKING"];
   const miniPiles = { pass: "let-through", rework: "fixing" };
   let game,
     view,
@@ -151,12 +150,8 @@
     const station = make("section", "station");
     station.id = `station${s}`;
     station.dataset.destination = s;
-    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine">${Art.scene(s)}<span class="station-bottleneck" id="bottleneck${s}"></span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
-    station
-      .querySelector(".column-heading")
-      .append(
-        infoButton(`station:${s}`, `About ${stationNames[s].toLowerCase()}`),
-      );
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2></h2></div><div class="machine">${Art.scene(s)}<span class="station-bottleneck" id="bottleneck${s}"></span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station.querySelector(".column-heading").append(infoButton(`station:${s}`));
     $("board").insertBefore(station, $("sleigh"));
     // One pile per station; at checking the straight-through and remake piles are two small
     // counters under it.
@@ -430,14 +425,22 @@
     const action =
       news.action ??
       (/([^.]+)\.\s*$/.exec(news.text)?.[1] ?? "").split(":")[0].trim();
-    // A tag that names an elf ("Swap Pip") outlines that elf's card; "ask" has no control yet.
+    // A tag that names an elf ("Swap Pip") outlines that elf's card; "Swap an elf" outlines the
+    // crew of the station its line names; "ask" has no control yet.
     const elf = view.elves.findIndex((e) =>
       new RegExp(`\\b${e.name}\\b`).test(action),
     );
-    if (elf < 0 && !hintTargets[news.control]) return;
+    const crew =
+      /^Swap an elf/.test(action) && elf < 0
+        ? /checkers/.test(news.text)
+          ? 2
+          : view.stations.findIndex((st) => news.text.includes(`at ${st.name}`))
+        : -1;
+    if (elf < 0 && crew < 0 && !hintTargets[news.control]) return;
     mistakeHint = {
       control: news.control,
       elf,
+      crew,
       words: /^Wrong gift/.test(action) ? "" : action,
       until: performance.now() + 5000,
     };
@@ -449,7 +452,9 @@
       ? null
       : mistakeHint.elf >= 0
         ? elfNodes[mistakeHint.elf]
-        : hintTargets[mistakeHint.control]();
+        : mistakeHint.crew >= 0
+          ? $(`elves${mistakeHint.crew}`)
+          : hintTargets[mistakeHint.control]();
     if (!target?.getClientRects().length) target = null;
     document
       .querySelectorAll(".mistake-hint")
@@ -548,10 +553,28 @@
       elfNodes.push(wrap);
     });
   }
+  // The station names come from the rules, so headings, tabs and the rules' lines use one word.
+  function nameStations() {
+    for (let s = 0; s < 3; s++) {
+      const name = view.stations[s].name ?? "";
+      const station = $(`station${s}`);
+      station.querySelector("h2").textContent = name.toUpperCase();
+      station
+        .querySelector(".column-heading .info-button")
+        .setAttribute("aria-label", `About ${name}`);
+      const tab = $("stationPicker").querySelector(
+        `[data-station-page="${s}"]`,
+      );
+      if (tab.firstChild?.nodeType === Node.TEXT_NODE)
+        tab.firstChild.textContent = name;
+      else tab.prepend(name);
+    }
+  }
   function reset(showIntro = true, freshSeed = true) {
     if (freshSeed) seed = nextSeed();
     game = new Workshop({ seed });
     view = game.view();
+    nameStations();
     started = false;
     manualPaused = false;
     restartOpen = false;
@@ -629,7 +652,7 @@
     paint();
   }
   const perMinute = (s) =>
-    `${["Letters", "Toys", "Checking"][s]}: ${Math.round(view.stations[s].rate)} a minute`;
+    `${view.stations[s].name}: ${Math.round(view.stations[s].rate)} a minute`;
   function paint() {
     view = game.view();
     paintGoals();
@@ -1934,8 +1957,8 @@
       return [
         {
           bypass: "Skip checks",
-          ai0: "AI at Letters",
-          ai1: "AI at Toys",
+          ai0: `AI at ${view.stations[0].name}`,
+          ai1: `AI at ${view.stations[1].name}`,
           checking: "How much to check",
         }[parts[1]],
         [a.why ? `${cap(a.why)}.` : "", `${cap(a.cost)}.`].filter(Boolean),
@@ -1971,7 +1994,7 @@
       const s = Number(parts[1]),
         v = view.stations[s];
       return [
-        stationNames[s],
+        v.name,
         [
           [
             "Elves read the letters, with or without AI.",
@@ -2196,7 +2219,7 @@
       perform(() => game.setAi(s, l));
       if (view.ai[s] === l)
         sayResult(
-          `${["Letters", "Toys"][s]} on ${["By hand", "Assist", "Automate"][l]}: ${Math.round(view.stations[s].rate)} a minute.`,
+          `${view.stations[s].name} on ${["By hand", "Assist", "Automate"][l]}: ${Math.round(view.stations[s].rate)} a minute.`,
         );
       return;
     }

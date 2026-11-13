@@ -2067,3 +2067,30 @@ body[data-look="polish"] .mistake-hint:has(> .mistake-hint-label) > .focus-tag {
     padding: 0;
   }
 }
+/* Tablets: the clock, the decision cue and Pause share one row under the goals, two stations stand
+   side by side, and the whole play screen fits the height */
+@media (min-width: 601px) and (max-width: 999px) {
+  body[data-look="polish"] main .dashboard {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  body[data-look="polish"] main .dashboard .clock-box {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  body[data-look="polish"] main .dashboard .case-cue {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: center;
+  }
+  body[data-look="polish"] main .dashboard #pause {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  /* Two stations side by side, as in paper; the tabs still jump to each */
+  body[data-look="polish"] main .board,
+  body[data-look="polish"]:has(#caseCue:not([hidden])) main .board {
+    height: calc(100dvh - 316px);
+    grid-template-columns: repeat(4, calc(50vw - 18px));
+  }
+}

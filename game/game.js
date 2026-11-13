@@ -2706,6 +2706,14 @@
       text("assuranceVerdict", heading);
       text("underCost", money(a.underCost));
       text("overCost", money(a.overCost));
+      // How the loss to too many checks splits, only when gifts were held up as well.
+      text(
+        "overSplit",
+        a.overHeld > 0
+          ? `${money(a.overChecks ?? 0)} extra checks, ${money(a.overHeld)} gifts held up`
+          : "",
+      );
+      $("overSplit").hidden = !(a.overHeld > 0);
       // The two figures above already say how much each side cost; only a bottleneck needs words.
       text("assuranceText", a.verdict === "bottleneck" ? a.text : "");
       $("assuranceText").hidden = a.verdict !== "bottleneck";

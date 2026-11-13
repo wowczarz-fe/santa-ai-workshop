@@ -1447,7 +1447,12 @@
       iconText(effect, "gift", `+${giftBubbleCount}`);
       effect.classList.toggle("in-slot", !visible);
       effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? column.left + 12 : target.left + 4))}px`;
-      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? to.top - 6 : target.top - 14))}px`;
+      const top = visible
+        ? look === "paper"
+          ? $("sleighTotal").getBoundingClientRect().top
+          : to.top - 6
+        : target.top - 14;
+      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, top))}px`;
       effect.style.setProperty("--fly-x", "0px");
       effect.style.setProperty("--fly-y", visible ? "-14px" : "0px");
       giftBubbleTimer = setTimeout(() => effect.remove(), 1500);

@@ -4017,7 +4017,7 @@ body[data-look] .header-actions #helpMove {
 }
 
 @media (max-width: 600px) {
-  body[data-look] > header h1 {
+  body[data-look] > header h1:first-of-type {
     min-width: 0;
     max-width: 110px;
     white-space: normal;

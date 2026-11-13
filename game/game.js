@@ -1643,7 +1643,7 @@
     {
       title: "AI switch",
       text: () =>
-        "By hand, Assist, Automate: more AI is faster, and makes more mistakes.",
+        "By hand, Assist, Automate: more AI is faster, but makes more mistakes.",
       target: () => actionGroups.get("ai0"),
     },
     {

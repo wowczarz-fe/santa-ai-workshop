@@ -45,8 +45,10 @@ button {
   background: var(--paper);
   border-color: #b59b72;
 }
-button:hover:not(:disabled) {
-  background: #e9d9b6;
+@media (hover: hover) {
+  button:hover:not(:disabled):not([aria-pressed="true"]) {
+    background: #e9d9b6;
+  }
 }
 button[aria-pressed="true"] {
   background: #e5d3aa;
@@ -64,7 +66,6 @@ main {
   height: 64px;
   gap: 22px;
 }
-.dashboard .metric,
 .dashboard .goal,
 .dashboard .clock-box {
   background: transparent;
@@ -75,7 +76,6 @@ main {
   color: var(--paper);
   font-family: Georgia, serif;
 }
-.dashboard .metric span,
 .dashboard .goal > span,
 .clock-box > span {
   color: #d4c6a7;
@@ -169,22 +169,12 @@ main {
   flex-basis: 100%;
   flex-wrap: wrap;
 }
-.station-rate {
-  position: static;
-  font-size: 13px;
-  line-height: 15px;
-}
 .station-bottleneck {
   position: static;
   font-size: 10px;
   line-height: 12px;
   background: var(--red);
   color: white;
-}
-.capacity-label {
-  position: static;
-  font-size: 9px;
-  line-height: 11px;
 }
 .paper-scene {
   grid-row: 2;
@@ -259,10 +249,6 @@ main {
   font:
     18px Georgia,
     serif;
-}
-.queue-rate {
-  font-size: 9px;
-  line-height: 12px;
 }
 .queue-picture {
   height: 30px !important;
@@ -365,23 +351,13 @@ main {
   line-height: 9px;
   color: #2b1c14;
 }
-.elf progress {
+.elf .energy {
   position: absolute;
   bottom: 0;
   left: 18%;
   width: 64%;
   height: 3px;
   margin: 0;
-}
-.elf-doing {
-  position: absolute;
-  right: 4px;
-  top: 14px;
-  font-size: 10px;
-}
-.elf-card > .info-button {
-  right: 0;
-  top: 1px;
 }
 .crew-hint {
   position: absolute;
@@ -461,43 +437,11 @@ main {
   font-size: 10px;
   min-height: 22px;
 }
-body[data-look="paper"] .ask-toggle {
-  min-height: 30px;
-  border: 1px solid #b59b72;
-  border-radius: 4px;
-  background: var(--paper);
-  color: var(--ink);
-  box-shadow: 1px 2px 0 #2b1c1422;
-}
-body[data-look="paper"] .ask-toggle .ui-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--red);
-}
-body[data-look="paper"] .ask-toggle .toggle-track {
-  border-radius: 3px;
-  background: #cbb68f;
-  box-shadow: inset 0 1px 2px #2b1c1440;
-}
-body[data-look="paper"] .ask-toggle .toggle-knob {
-  border-radius: 2px;
-  background: var(--paper);
-}
-body[data-look="paper"] .ask-toggle[aria-pressed="true"] {
-  background: #e5d3aa;
-  border-color: var(--teal);
-}
-body[data-look="paper"] .ask-toggle[aria-pressed="true"] .toggle-track {
-  background: var(--teal);
-}
-body[data-look="paper"] .ask-toggle[aria-pressed="true"] .toggle-state {
-  color: var(--teal);
-}
 body[data-look="paper"] .station-bottleneck .ui-icon {
   width: 11px;
   height: 11px;
 }
-body[data-look="paper"] #tutorial {
+body[data-look="paper"] #tour {
   width: 320px;
   padding: 14px 16px 12px;
   background: var(--paper);
@@ -507,22 +451,22 @@ body[data-look="paper"] #tutorial {
     3px 4px 0 #2b1c1430,
     0 10px 24px #14251a55;
 }
-body[data-look="paper"] #tutorial h3 {
+body[data-look="paper"] #tour h3 {
   margin: 4px 0;
   color: var(--teal);
   font:
     bold 18px/1.25 Georgia,
     serif;
 }
-body[data-look="paper"] #tutorial p {
+body[data-look="paper"] #tour p {
   margin: 0;
   font-size: 13px;
   line-height: 1.45;
 }
-body[data-look="paper"] #tutorial .panel-actions {
+body[data-look="paper"] #tour .panel-actions {
   margin-top: 12px;
 }
-body[data-look="paper"] #tutorial #continue {
+body[data-look="paper"] #tour #tourNext {
   min-height: 32px;
   padding: 7px 14px;
   border: 0;
@@ -531,7 +475,7 @@ body[data-look="paper"] #tutorial #continue {
   font-size: 12px;
   font-weight: bold;
 }
-body[data-look="paper"] #tutorial .link-button {
+body[data-look="paper"] #tour .link-button {
   background: none;
   color: #705132;
   font-size: 11px;
@@ -542,8 +486,10 @@ body[data-look="paper"] .dashboard .hud-slot {
   background: #f4ead314;
   color: var(--paper);
 }
-body[data-look="paper"] .dashboard .hud-slot:hover:not(:disabled) {
-  background: #f4ead326;
+@media (hover: hover) {
+  body[data-look="paper"] .dashboard .hud-slot:hover:not(:disabled) {
+    background: #f4ead326;
+  }
 }
 body[data-look="paper"] .dashboard .hud-star {
   background: #00000033;
@@ -554,14 +500,8 @@ body[data-look="paper"] .dashboard .hud-slot[data-state="met"] .hud-star {
   color: #e7bd5c;
   box-shadow: 0 0 0 1.5px #d2a447;
 }
-body[data-look="paper"] .dashboard .goals-title {
-  color: #d4c6a7;
-}
 body[data-look="paper"] .elf[data-role="free"] .elf-task {
   color: #3b2a1e;
-}
-body[data-look="paper"] .elf[data-role="free"] .elf-doing {
-  color: #5a4632;
 }
 body[data-look="paper"] .dashboard .hud-preview {
   background: #d2a447;
@@ -573,14 +513,19 @@ body[data-look="paper"] .dashboard .hud-name {
 body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] {
   border-color: #d2a447;
 }
+/* A goal that does not count yet: a dashed star; it turns gold once the goal counts */
 body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] .hud-star {
   background: transparent;
   color: #e7bd5c;
-  box-shadow: inset 0 0 0 1.5px #d2a44799;
+  outline: 1.5px dashed #d2a44799;
+  outline-offset: -1.5px;
 }
-body[data-look="paper"] .dashboard .hud-note,
-body[data-look="paper"] .dashboard .goals-note {
-  color: #e7bd5c;
+body[data-look="paper"]
+  .dashboard
+  .hud-slot[data-state="waiting"]
+  .hud-star
+  svg {
+  stroke-dasharray: 2.6 1.9;
 }
 body[data-look="paper"] .dashboard .hud-figures b {
   color: var(--paper);
@@ -594,20 +539,12 @@ body[data-look="paper"] .dashboard .hud-bar {
   background: #f4ead326;
   color: #9fc7a8;
 }
-body[data-look="paper"] .dashboard .hud-slot[data-goal="full"] .hud-bar {
-  color: #d2a447;
-}
 body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] {
   border-color: #e0707f;
   background: #a3263a66;
 }
 body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   color: #ff9aa6;
-}
-@media (min-width: 1000px) {
-  body[data-look="paper"] .dashboard .goals-title {
-    display: none;
-  }
 }
 @media (max-width: 999px) {
   body[data-look="paper"] .dashboard .goals {
@@ -645,24 +582,6 @@ body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
 }
 .sleigh-total span {
   font-size: 10px;
-}
-.run-stars {
-  position: absolute;
-  left: 10px;
-  top: 80px;
-  font-size: 12px;
-}
-.arrival {
-  position: absolute;
-  left: 8px;
-  bottom: 7px;
-  background: #f4ead3ef;
-  padding: 3px;
-  font-size: 10px;
-  max-width: 95%;
-}
-.arrival-icon {
-  font-size: 18px;
 }
 #cocoa {
   display: block;
@@ -719,9 +638,6 @@ body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
 .wrong-delivery b,
 .wrong-delivery > span:last-child {
   font-size: 10px;
-}
-.recent-gifts {
-  display: none;
 }
 .sleigh-note {
   font-size: 10px;
@@ -794,10 +710,6 @@ dialog {
     min-width: 90px;
     flex: 1;
   }
-  .dashboard .metric {
-    min-width: 44px;
-    padding: 0;
-  }
   .dashboard strong {
     font-size: 20px;
   }
@@ -812,9 +724,6 @@ dialog {
     font-size: 10px;
     padding: 3px;
   }
-  .score-metric {
-    display: none;
-  }
   .status-row {
     height: 52px;
     flex-wrap: wrap;
@@ -828,11 +737,6 @@ dialog {
   }
   #paceLabel {
     font-size: 10px;
-  }
-  #guidanceContinue {
-    font-size: 10px;
-    min-height: 24px;
-    padding: 3px;
   }
   #stationPicker {
     display: grid;
@@ -931,27 +835,24 @@ dialog {
   right: auto;
   width: 110px;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) {
   grid-auto-rows: 112px;
   align-items: end;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) .elf {
   height: 108px;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf svg {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) .elf svg {
   height: 80px;
   width: 57px;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf-name {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) .elf-name {
   font-size: 11px;
   line-height: 13px;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf-task {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) .elf-task {
   font-size: 10px;
   line-height: 12px;
-}
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf-doing {
-  top: 52px;
 }
 .sleigh-total {
   background: var(--paper);
@@ -989,17 +890,13 @@ dialog {
   font-size: 9px;
   line-height: 11px;
 }
-.elf-doing {
-  left: auto;
-  width: auto;
-}
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf svg {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) .elf svg {
   height: 76px;
 }
 #cocoa .elf svg {
   height: 38px;
 }
-#cocoa .crew:not(:has(.elf-card:nth-child(5))) .elf svg {
+#cocoa .crew:not(:has(:nth-child(5 of .elf-card))) .elf svg {
   height: 76px;
 }
 @media (max-width: 999px) {
@@ -1055,21 +952,10 @@ dialog {
   vertical-align: middle;
   flex: none;
 }
-.toy-evidence,
-.slip-toy,
 .blunder {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.toy-evidence .paper-toy,
-.slip-toy .paper-toy {
-  width: 74px;
-  height: 59px;
-}
-.arrival-icon .paper-toy {
-  width: 29px;
-  height: 24px;
 }
 .wrong-toy .paper-toy {
   width: 42px;
@@ -1151,72 +1037,24 @@ dialog {
 #wrongBadge.has-wrong span {
   color: var(--paper);
 }
-#adventRuns {
-  display: flex;
-  gap: 7px;
-  flex: none;
-}
-.run-door {
-  position: relative;
-  width: 36px;
-  height: 42px;
-  background: #a3263a;
-  border: 3px solid #f4ead3;
-  box-shadow: 0 2px 3px #0004;
-  border-radius: 3px;
-  color: #f4ead3;
-  display: grid;
-  place-items: center;
-}
-.door-number {
-  font:
-    21px Georgia,
-    serif;
-}
-.door-stars {
-  font-size: 10px;
-  color: #d2a447;
-  position: absolute;
-  bottom: 1px;
-}
-.run-door[data-state="current"] {
-  background: #2f6a4e;
-  outline: 2px solid #d2a447;
-}
-.run-door[data-state="done"] {
-  background: #f4ead3;
-  color: #2b1c14;
-}
-.run-door[data-state="done"]::before {
-  content: "";
-  position: absolute;
-  left: -10px;
-  top: 0;
-  bottom: 0;
-  width: 9px;
-  background: #7a1a2a;
-  transform: skewY(-10deg);
-}
-.run-door[data-state="done"] .door-number {
-  font-size: 13px;
-  align-self: start;
-}
 body[data-look="paper"] .dashboard strong {
   font-size: 29px;
 }
-body[data-look="paper"] .paper-floor .crew:not(:has(.elf-card:nth-child(5))) {
+body[data-look="paper"]
+  .paper-floor
+  .crew:not(:has(:nth-child(5 of .elf-card))) {
   grid-template-columns: repeat(var(--crew-count, 4), minmax(0, 1fr));
   grid-auto-rows: 130px;
 }
 body[data-look="paper"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(:nth-child(5 of .elf-card)))
   .elf {
   height: 128px;
 }
 body[data-look="paper"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(:nth-child(5 of .elf-card)))
   .elf
   svg {
   height: 98px;
@@ -1247,11 +1085,6 @@ body[data-look="paper"] .queue-tag {
 body[data-look="paper"] .queue-picture {
   padding-left: 7px;
 }
-body[data-look="paper"] .queue-rate {
-  background: #f4ead3dc;
-  width: max-content;
-  padding: 0 3px;
-}
 #board .info-button {
   display: none;
 }
@@ -1274,9 +1107,6 @@ body[data-look="paper"] #cocoa:has(.elf-card) .cocoa-label > span {
   width: 25px;
 }
 @media (max-width: 999px) {
-  #adventRuns {
-    display: none;
-  }
   #countdownRing {
     position: static;
     width: 26px;
@@ -1311,7 +1141,6 @@ body[data-look="paper"] #piles0 .stack {
     font-size: 38px;
   }
   body[data-look="paper"] #wrong,
-  body[data-look="paper"] #budget,
   body[data-look="paper"] #clock {
     font-size: 34px;
   }
@@ -1322,7 +1151,7 @@ body[data-look="paper"] #piles0 .stack {
   }
 }
 
-/* ==== Break card and end screen: paper look ====
+/* ==== Half-time card and end screen: paper look ====
    Same layout as style.css; cream paper on pine, serif headings, red primary. */
 body[data-look="paper"] #breakDialog,
 body[data-look="paper"] #report {
@@ -1419,9 +1248,6 @@ body[data-look="paper"] #report {
   --bc-hero2: #fbf6e9;
   --bc-hero-ink: #1e4434;
   --bc-hero-muted: #6e5a44;
-  --bc-run-bg: #ece0c2;
-  --bc-mini-off: #c4ae84;
-  --bc-mini-on: #c58f1c;
   --bc-snow: #d8c49c;
   --bc-sleigh: #a3263a;
   background: #15332a;
@@ -1430,11 +1256,7 @@ body[data-look="paper"] .end-hero {
   border: 1px solid #c9b48e;
   box-shadow: 0 2px 0 #c9b48e;
 }
-body[data-look="paper"] #report .end-score-copy p,
-body[data-look="paper"] #endPoints {
-  color: var(--bc-ink);
-}
-body[data-look="paper"] .run-report p {
+body[data-look="paper"] #report .end-score-copy p {
   color: var(--bc-ink);
 }
 body[data-look="paper"] #report .end-top .eyebrow {
@@ -1465,14 +1287,10 @@ body[data-look="paper"] #report .blunder {
   border-color: #d8c49c;
   background: #f4ead3;
 }
-body[data-look="paper"] .slip-wish {
-  font-family: Georgia, serif;
-  color: #26407a;
-}
 body[data-look="paper"] .dial-word {
   fill: #14321f;
 }
-/* ==== End of break card and end screen: paper look ==== */
+/* ==== End of half-time card and end screen: paper look ==== */
 
 .look-choice[hidden] {
   display: none;
@@ -1513,28 +1331,6 @@ body[data-look="paper"] .header-actions button {
   font-size: 12px;
 }
 
-/* Money left: small and muted beside the clock, red below one run's allowance */
-body[data-look="paper"] .dashboard #money {
-  min-width: 0;
-  align-self: center;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  text-align: left;
-}
-body[data-look="paper"] .dashboard #money strong,
-body[data-look="paper"] .dashboard #money #budget {
-  font-size: 19px;
-  line-height: 23px;
-  color: #e3d7bb;
-}
-body[data-look="paper"] .dashboard #money span {
-  font-size: 11px;
-  color: #d4c6a7;
-}
-body[data-look="paper"] .dashboard #money.low strong {
-  color: #ff9aa6;
-}
 /* Why the clock stopped: a line the clock box always keeps, so the clock never moves */
 body[data-look="paper"] .dashboard .clock-box > span {
   font-size: 11px;
@@ -1566,37 +1362,14 @@ body[data-look="paper"] .dashboard #pauseState:empty {
   }
 }
 
-/* Goals: no notes under the tiles; a tick on the Full sleigh bar marks where stars start to count */
-body[data-look="paper"] .dashboard .goals-title {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 body[data-look="paper"] .dashboard .hud-slot {
   grid-template-rows: 14px 28px 8px;
   border-style: solid;
-}
-body[data-look="paper"] .dashboard .hud-slot .hud-note,
-body[data-look="paper"] .dashboard .goals-note {
-  display: none;
 }
 body[data-look="paper"] .dashboard .hud-slot[data-state] .hud-bar {
   display: block;
   position: relative;
   overflow: visible;
-}
-body[data-look="paper"] .dashboard .hud-tick {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  left: calc(var(--tick, 0) * 100%);
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--paper);
 }
 body[data-look="paper"] .dashboard .hud-name,
 body[data-look="paper"] .dashboard .hud-figures small,
@@ -1626,8 +1399,10 @@ body[data-look="paper"] .dashboard .case-cue {
   align-self: center;
   box-shadow: 2px 3px 0 #0a1f17;
 }
-body[data-look="paper"] .dashboard .case-cue:hover:not(:disabled) {
-  background: #ecc364;
+@media (hover: hover) {
+  body[data-look="paper"] .dashboard .case-cue:hover:not(:disabled) {
+    background: #ecc364;
+  }
 }
 body[data-look="paper"] .dashboard .case-cue span,
 body[data-look="paper"] .dashboard .case-cue b {
@@ -1691,11 +1466,6 @@ body.reduce-motion[data-look="paper"] .dashboard .case-cue[data-pulse="true"] {
   animation: none;
 }
 
-/* Gold belongs to the cue: the current door is marked in paper, a waiting goal in cream */
-body[data-look="paper"] .run-door[data-state="current"] {
-  outline-color: var(--paper);
-}
-
 /* Status line: one line, its i button beside it */
 body[data-look="paper"] .status-row {
   height: 32px;
@@ -1720,18 +1490,6 @@ body[data-look="paper"] .paper-rate {
   flex-basis: auto;
   margin-left: auto;
   gap: 3px;
-}
-body[data-look="paper"] .station-rate {
-  padding: 2px 7px;
-  border: 1px solid #c9b48e;
-  border-radius: 3px;
-  background: #fbf6e9;
-  font-size: 11px;
-  line-height: 15px;
-  white-space: nowrap;
-}
-body[data-look="paper"] .capacity-label {
-  display: none;
 }
 /* The bottleneck tag sits on the heading's bottom edge, so the rate never moves */
 body[data-look="paper"] .paper-rate .station-bottleneck {
@@ -1849,6 +1607,18 @@ body[data-look="paper"] .crew-hint:empty {
 body[data-look="paper"] .elf-card .rest-cue {
   display: none;
 }
+/* The elf the rules want swapped out: a dashed gold outline while the banner names it */
+body[data-look="paper"] .elf-card.swap-elf {
+  outline: 2px dashed #d2a447;
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+body[data-look="paper"] .elf-card .swap-tag {
+  border: 1px solid #d2a447;
+  border-radius: 3px;
+  background: #f3e2b4;
+  color: #7a5514;
+}
 body[data-look="paper"] .elf-card.needs-rest .rest-cue {
   position: absolute;
   top: 0;
@@ -1893,11 +1663,11 @@ body[data-look="paper"] .elf-name,
 body[data-look="paper"] .elf-task,
 body[data-look="paper"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(:nth-child(5 of .elf-card)))
   .elf-name,
 body[data-look="paper"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(:nth-child(5 of .elf-card)))
   .elf-task {
   font-size: 11px;
   line-height: 13px;
@@ -1914,10 +1684,6 @@ body[data-look="paper"] .elf-task,
 body[data-look="paper"] .elf[data-role="free"] .elf-task {
   color: var(--ink);
 }
-body[data-look="paper"] .ask-toggle .toggle-state {
-  color: var(--muted);
-  font-size: 11px;
-}
 body[data-look="paper"] .mode-caption {
   font-size: 11px;
   line-height: 14px;
@@ -1928,7 +1694,6 @@ body[data-look="paper"] .mode-caption.spare {
   font-weight: bold;
 }
 body[data-look="paper"] .small-action,
-body[data-look="paper"] #controls2 [data-control="bypass"] button,
 body[data-look="paper"] .vigilance {
   font-size: 11px;
 }
@@ -1936,8 +1701,7 @@ body[data-look="paper"] .small-action:disabled {
   color: var(--muted);
   opacity: 1;
 }
-body[data-look="paper"] .queue-name,
-body[data-look="paper"] .queue-rate {
+body[data-look="paper"] .queue-name {
   font-size: 11px;
   line-height: 13px;
 }
@@ -1961,6 +1725,16 @@ body[data-look="paper"] #piles2 {
 }
 body[data-look="paper"] #piles2 .queue-name {
   min-height: 26px;
+}
+body[data-look="paper"] #piles2 .mini-piles {
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+body[data-look="paper"] #piles2 .queue.queue-mini {
+  border: 1px solid #b59b72;
+  background: var(--paper, #f4ead3);
+  box-shadow: 1px 2px 2px #2b1c1429;
 }
 body[data-look="paper"] #station0 .paper-scene .machine > svg,
 body[data-look="paper"] #station1 .paper-scene .machine > svg {
@@ -2007,51 +1781,19 @@ body[data-look="paper"] .sleigh-total span {
   font-size: 11px;
   line-height: 13px;
 }
-body[data-look="paper"] .arrival {
-  top: 128px;
-  bottom: auto;
-  left: 8px;
-  box-sizing: border-box;
-  width: 112px;
-  max-width: none;
-  min-height: 44px;
-  padding: 4px 6px;
-  gap: 5px;
-  border: 1px solid #bea47b;
-  background: #fbf6e9;
-  box-shadow: 1px 2px 3px #2b1c1433;
-  font-size: 11px;
-  line-height: 13px;
-}
-body[data-look="paper"] .arrival b {
-  font-size: 11px;
-}
-body[data-look="paper"] .arrival-icon {
-  flex: none;
-}
 /* The gift bubble lands beside the count card, not on it */
 body[data-look="paper"] .gift-flight:not(.in-slot) {
-  margin-left: 116px;
+  margin-left: 156px;
   background: #fbf6e9;
   color: #2c6a43;
   border: 1px solid #bea47b;
   border-radius: 3px;
 }
-/* Finished runs' stars: the doors show them on a desktop */
-@media (min-width: 1000px) {
-  body[data-look="paper"] #runStars {
-    display: none;
-  }
-}
-
 /* The last-wrong-gift card keeps its full height while empty, so nothing moves when the first
    wrong gift lands */
 body[data-look="paper"] .wrong-delivery {
   box-sizing: border-box;
   min-height: 72px;
-}
-body[data-look="paper"] .wrong-delivery[data-empty] {
-  visibility: hidden;
 }
 body[data-look="paper"] .wrong-delivery .eyebrow,
 body[data-look="paper"] .wrong-delivery b,
@@ -2066,9 +1808,9 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
   }
 }
 
-/* Phone play screen: icon header, a two-row scoreboard, a one-line status, the whole station in
-   view */
-@media (max-width: 600px) {
+/* Phone and tablet play screen: a two-row scoreboard, a one-line status, one station at a time
+   with the whole station in view; on a phone the header buttons are icons */
+@media (max-width: 999px) {
   body[data-look="paper"] > header {
     height: 54px;
     padding: 7px 9px;
@@ -2087,27 +1829,9 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     margin-left: auto;
   }
   body[data-look="paper"] .header-actions button {
-    display: grid;
-    place-items: center;
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-    padding: 0;
-  }
-  body[data-look="paper"] .header-actions .header-icon {
-    display: grid;
-  }
-  body[data-look="paper"] .header-actions .ui-icon {
-    width: 20px;
-    height: 20px;
-  }
-  body[data-look="paper"] .header-actions .header-word {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 12px;
   }
   body[data-look="paper"] main {
     padding: 0 8px;
@@ -2127,16 +1851,17 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
   }
   body[data-look="paper"] main .dashboard .clock-box {
     position: relative;
-    grid-column: 1;
+    grid-column: 1 / 3;
     grid-row: 2;
     grid-template-columns: auto auto;
     column-gap: 7px;
   }
+  /* On a phone the digits stand alone, which leaves the decision cue room for its title */
   body[data-look="paper"] main .dashboard .clock-box > span {
     display: none;
   }
   body[data-look="paper"] main .dashboard #countdownRing {
-    grid-row: 1;
+    grid-row: 1 / 3;
   }
   body[data-look="paper"] main .dashboard .clock-box > strong {
     grid-column: 2;
@@ -2155,26 +1880,30 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     border-radius: 3px;
     background: #15332a;
   }
-  body[data-look="paper"] main .dashboard #money {
-    grid-column: 2;
-    grid-row: 2;
-    min-height: 40px;
-    min-width: 44px;
-  }
-  body[data-look="paper"] main .dashboard #money strong {
-    font-size: 17px;
-    line-height: 20px;
-  }
   body[data-look="paper"] main .dashboard .case-cue {
     grid-column: 3;
     grid-row: 2;
-    justify-self: end;
+    justify-self: stretch;
     width: auto;
     max-width: 100%;
     height: 40px;
+    container-type: inline-size;
   }
+  /* The decision's title shows beside Decide whenever the cue is wide enough for it */
   body[data-look="paper"] main .dashboard .case-cue .cue-name {
     display: none;
+  }
+  @container (min-width: 150px) {
+    body[data-look="paper"]
+      main
+      .dashboard
+      .case-cue
+      :is(.cue-verb, .cue-name) {
+      font-size: 12.5px;
+    }
+    body[data-look="paper"] main .dashboard .case-cue .cue-name {
+      display: inline;
+    }
   }
   body[data-look="paper"] main .dashboard #pause {
     grid-column: 4;
@@ -2205,26 +1934,30 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
   body[data-look="paper"] .dashboard .hud-slot .hud-preview:empty {
     display: none;
   }
+  /* Two lines, so a wrong gift's line keeps the action at its end */
   body[data-look="paper"] .status-row {
-    height: 24px;
-    min-height: 24px;
+    height: 30px;
+    min-height: 30px;
     padding: 0;
     flex-wrap: nowrap;
   }
   body[data-look="paper"] #status {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     flex-basis: auto;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
     font-size: 11px;
+    line-height: 14px;
   }
   body[data-look="paper"] #helpMove {
     display: none;
   }
   body[data-look="paper"] #stationPicker {
     height: 40px;
-    margin: 0 0 6px;
+    margin: 6px 0;
   }
   body[data-look="paper"] #stationPicker button {
     min-height: 40px;
@@ -2253,18 +1986,20 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
   body[data-look="paper"] .paper-floor {
     padding: 4px 6px;
   }
-  body[data-look="paper"] .paper-floor .crew:not(:has(.elf-card:nth-child(5))) {
+  body[data-look="paper"]
+    .paper-floor
+    .crew:not(:has(:nth-child(5 of .elf-card))) {
     grid-auto-rows: 126px;
   }
   body[data-look="paper"]
     .paper-floor
-    .crew:not(:has(.elf-card:nth-child(5)))
+    .crew:not(:has(:nth-child(5 of .elf-card)))
     .elf {
     height: 124px;
   }
   body[data-look="paper"]
     .paper-floor
-    .crew:not(:has(.elf-card:nth-child(5)))
+    .crew:not(:has(:nth-child(5 of .elf-card)))
     .elf
     svg {
     height: 86px;
@@ -2278,9 +2013,7 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     height: 46px;
   }
   body[data-look="paper"] .small-action,
-  body[data-look="paper"] #controls2 [data-control="bypass"] button,
-  body[data-look="paper"] #controls2 .vigilance,
-  body[data-look="paper"] .ask-toggle {
+  body[data-look="paper"] #controls2 .vigilance {
     min-height: 40px;
   }
   body[data-look="paper"] .move-target {
@@ -2307,9 +2040,6 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     left: 126px;
     width: calc(100% - 126px);
   }
-  body[data-look="paper"] .queue.asking-off {
-    display: none;
-  }
   body[data-look="paper"] .column-heading .info-button,
   body[data-look="paper"] .cocoa-label .info-button {
     position: relative;
@@ -2325,6 +2055,32 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     right: 12px !important;
     width: auto !important;
     max-width: none;
+  }
+}
+
+@media (max-width: 600px) {
+  body[data-look="paper"] .header-actions button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+  body[data-look="paper"] .header-actions .header-icon {
+    display: grid;
+  }
+  body[data-look="paper"] .header-actions .ui-icon {
+    width: 20px;
+    height: 20px;
+  }
+  body[data-look="paper"] .header-actions .header-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 
@@ -2346,8 +2102,8 @@ body[data-look="paper"] #cocoa .cocoa-focus {
 body[data-look="paper"] #cocoa .cocoa-focus:empty {
   display: none;
 }
-/* The walkthrough card wears the colour of the control it points at */
-body[data-look="paper"] #tutorial {
+/* The tour card wears the colour of the control it points at */
+body[data-look="paper"] #tour {
   border-color: var(--attention);
 }
 /* Gold is the decision cue's: the open station tab is marked in red and cream */
@@ -2358,7 +2114,7 @@ body[data-look="paper"] #tutorial {
   }
 }
 
-/* Decision chips: what an option does to the run's goals */
+/* Decision chips: what an option does to the goals */
 body[data-look="paper"] .opt-chip.chip-goal {
   font-weight: bold;
 }
@@ -2400,21 +2156,11 @@ body[data-look="paper"] .paper-sleigh-scene {
   box-sizing: border-box;
 }
 body[data-look="paper"] .paper-sleigh-scene > .cargo-badge,
-body[data-look="paper"] .paper-sleigh-scene > .sleigh-total,
-body[data-look="paper"] .paper-sleigh-scene > .arrival,
-body[data-look="paper"] .paper-sleigh-scene > .run-stars {
+body[data-look="paper"] .paper-sleigh-scene > .sleigh-total {
   position: relative;
   inset: auto;
   flex: none;
   margin: 0;
-}
-body[data-look="paper"] .paper-sleigh-scene > .run-stars {
-  box-sizing: border-box;
-  width: 112px;
-  padding: 2px 6px;
-  border: 1px solid #bea47b;
-  background: #fbf6e9;
-  font-size: 11px;
 }
 @media (max-width: 600px) {
   body[data-look="paper"] .sleigh-total {
@@ -2424,21 +2170,21 @@ body[data-look="paper"] .paper-sleigh-scene > .run-stars {
     font-size: 26px;
     line-height: 28px;
   }
-  body[data-look="paper"] .arrival {
-    min-height: 38px;
-  }
 }
 
 /* An elf on a cocoa break fits the floor beneath its label */
-body[data-look="paper"] #cocoa .crew:not(:has(.elf-card:nth-child(5))) {
+body[data-look="paper"] #cocoa .crew:not(:has(:nth-child(5 of .elf-card))) {
   grid-auto-rows: 104px;
 }
-body[data-look="paper"] #cocoa .crew:not(:has(.elf-card:nth-child(5))) .elf {
+body[data-look="paper"]
+  #cocoa
+  .crew:not(:has(:nth-child(5 of .elf-card)))
+  .elf {
   height: 102px;
 }
 body[data-look="paper"]
   #cocoa
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(:nth-child(5 of .elf-card)))
   .elf
   svg {
   height: 70px;
@@ -2453,39 +2199,9 @@ body[data-look="paper"]
     white-space: nowrap;
   }
 }
-body[data-look="paper"] .paper-sleigh-scene > .run-stars:empty {
-  display: none;
-}
-/* Short phones: the count card lies on its side, so the three cards fit the shorter scene */
-@media (max-width: 600px) and (max-height: 799px) {
-  body[data-look="paper"] .paper-sleigh-scene > .cargo-badge,
-  body[data-look="paper"] .paper-sleigh-scene > .sleigh-total,
-  body[data-look="paper"] .paper-sleigh-scene > .arrival,
-  body[data-look="paper"] .paper-sleigh-scene > .run-stars {
-    width: 146px;
-  }
-  body[data-look="paper"] .paper-sleigh-scene .sleigh-art {
-    left: 158px;
-  }
-  body[data-look="paper"] .paper-sleigh-scene > .sleigh-total {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    column-gap: 7px;
-    align-items: center;
-    text-align: left;
-  }
-  body[data-look="paper"] .sleigh-total strong {
-    grid-row: 1 / 3;
-  }
-}
-@media (max-width: 600px) and (max-height: 799px) {
-  body[data-look="paper"] .gift-flight:not(.in-slot) {
-    margin-left: 146px;
-  }
-}
 
-/* The milestone note: a paper slip in the header's empty middle on a desktop, rising from the foot
-   of the screen on a phone, clear of the status line and the station tabs */
+/* The milestone note: a paper slip in the header's empty middle on a desktop, over the header on
+   a phone, clear of the status line, the elves and the station tabs */
 body[data-look="paper"] .milestone-toast {
   border: 1px solid #bea47b;
   border-radius: 3px;
@@ -2500,8 +2216,8 @@ body[data-look="paper"] .milestone-toast {
 }
 @media (max-width: 999px) {
   body[data-look="paper"] .milestone-toast {
-    top: auto;
-    bottom: 16px;
+    top: 6px;
+    bottom: auto;
   }
 }
 body[data-look="paper"] .paper-rate .station-bottleneck {
@@ -2542,52 +2258,27 @@ body[data-look="paper"] .sleigh-note {
 body[data-look="paper"] main > footer {
   font-size: 11px;
 }
-/* Figures that change keep their room, so nothing beside them moves */
-body[data-look="paper"] .station-rate {
-  box-sizing: border-box;
-  min-width: 100px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-@media (min-width: 1000px) {
-  body[data-look="paper"] .dashboard #money {
-    min-width: 72px;
-  }
-}
-@media (max-width: 600px) {
+@media (max-width: 999px) {
   body[data-look="paper"] main .dashboard .clock-box > strong {
     min-width: 58px;
   }
-  body[data-look="paper"] main .dashboard #money {
-    min-width: 62px;
-  }
 }
-@media (max-width: 600px) {
+@media (max-width: 999px) {
   /* The footer hides during play, so the board takes its room */
   body[data-look="paper"] main .board,
   body[data-look="paper"]:has(#caseCue:not([hidden])) main .board {
-    height: calc(100dvh - 250px);
+    height: calc(100dvh - 262px);
   }
 }
-/* Short phones with Ask the child on: both letter piles show as tags alone, so neither rises
-   behind the heading */
-@media (max-width: 600px) and (max-height: 799px) {
-  body[data-look="paper"] #piles0:not(:has(.asking-off)) .queue {
-    grid-template-rows: 36px auto 3px;
-  }
-  body[data-look="paper"] #piles0:not(:has(.asking-off)) .queue-picture {
-    display: none;
-  }
-}
-@media (max-width: 600px) {
-  /* Before the first run and after the last the footer shows, and the board makes room for it */
+@media (max-width: 999px) {
+  /* Before the game and after it the footer shows, and the board makes room for it */
   body[data-look="paper"] main:has(> footer:not([hidden])) .board {
-    height: calc(100dvh - 274px);
+    height: calc(100dvh - 286px);
   }
 }
-@media (max-width: 600px) {
+@media (max-width: 999px) {
   body[data-look="paper"] main .board {
-    min-height: 460px;
+    min-height: 454px;
   }
 }
 @media (max-width: 380px) {
@@ -2604,14 +2295,583 @@ body[data-look="paper"] .station-rate {
   body[data-look="paper"] main .dashboard {
     column-gap: 6px;
   }
-  body[data-look="paper"] main .dashboard #money {
-    min-width: 54px;
-  }
   body[data-look="paper"] main .dashboard #pause {
     min-width: 64px;
     padding: 0 8px;
   }
   body[data-look="paper"] main .dashboard .case-cue {
     padding: 0 10px 0 8px;
+  }
+}
+
+/* ==== One-sleigh pass: crowds, checking piles, tablet ==== */
+
+/* The crew fills the floor, so an outline on an empty station frames the whole floor */
+body[data-look="paper"] .station .paper-floor .crew {
+  box-sizing: border-box;
+  height: 100%;
+  align-content: end;
+}
+body[data-look="paper"] .paper-floor .move-target {
+  font-size: 12px;
+}
+body[data-look="paper"] .elf.selected {
+  background: #f4ead3e6;
+  border-color: var(--attention);
+  box-shadow: 0 0 0 2px var(--attention);
+}
+
+/* Seven or eight elves at one place: compact paper cards in a grid of four, each with face, name
+   and energy bar; the task word and badges are left out so nothing runs into anything. The ids
+   outrank the large-card rules. */
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card)) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 70px;
+  gap: 4px;
+  align-items: start;
+  align-content: end;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
+  :is(.elf-task, .rest-cue) {
+  display: none;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
+  .elf {
+  box-sizing: border-box;
+  height: 70px;
+  min-height: 70px;
+  padding: 3px 2px 9px;
+  border: 1px solid #bea47b;
+  border-radius: 3px;
+  background: #f4ead3e6;
+  box-shadow: 1px 2px 2px #2b1c1429;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
+  .elf[data-mood="tired"],
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
+  .elf[data-mood="spent"] {
+  border-color: #c98a7c;
+  background: #f2d7cde6;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
+  .elf.selected {
+  border-color: var(--attention);
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
+  .elf
+  svg {
+  width: 36px;
+  height: 44px;
+  max-width: 100%;
+  margin-top: -1px;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
+  .elf-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
+  .elf
+  .energy {
+  bottom: 4px;
+  left: 18%;
+  width: 64%;
+  height: 4px;
+}
+/* Every energy bar has a light track with a dark edge, so it reads on cream cards and on the
+   brown floor alike */
+body[data-look="paper"] .elf .energy {
+  background: #f4ead3;
+  box-shadow: 0 0 0 1px #2b1c1459;
+}
+/* The cocoa floor shares its room with its label, so its cards are a little shorter */
+body[data-look="paper"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) {
+  grid-auto-rows: 60px;
+  gap: 3px 4px;
+}
+body[data-look="paper"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) .elf {
+  height: 60px;
+  min-height: 60px;
+  padding-bottom: 8px;
+}
+body[data-look="paper"]
+  #cocoa
+  #elves3:has(:nth-child(7 of .elf-card))
+  .elf
+  svg {
+  width: 30px;
+  height: 36px;
+  margin-top: 0;
+}
+@media (max-width: 999px) {
+  body[data-look="paper"]
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card)) {
+    grid-auto-rows: 62px;
+  }
+  body[data-look="paper"]
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card))
+    .elf {
+    height: 62px;
+    min-height: 62px;
+    padding-bottom: 8px;
+  }
+  body[data-look="paper"]
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card))
+    .elf
+    svg {
+    width: 32px;
+    height: 39px;
+    margin-top: -1px;
+  }
+  body[data-look="paper"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) {
+    grid-auto-rows: 52px;
+    gap: 2px 4px;
+  }
+  body[data-look="paper"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) .elf {
+    height: 52px;
+    min-height: 52px;
+    padding: 1px 2px 9px;
+  }
+  body[data-look="paper"]
+    #cocoa
+    #elves3:has(:nth-child(7 of .elf-card))
+    .elf
+    svg {
+    width: 24px;
+    height: 28px;
+    margin-top: 0;
+  }
+}
+
+/* Checking: the To check pile as wide as the other stations' piles, its two counters beside it */
+body[data-look="paper"] #piles2 > .queue:not(.queue-mini) {
+  flex: 0 0 112px;
+}
+body[data-look="paper"] #piles2 .mini-piles {
+  flex: 0 0 150px;
+  margin-left: auto;
+}
+body[data-look="paper"] #piles2 .queue-name {
+  min-height: 0;
+}
+/* The gift bubble on the sleigh tab sits on the tab's edge, clear of the status line above */
+body[data-look="paper"] .gift-flight.in-slot {
+  margin-top: 6px;
+  background: #fbf6e9;
+  color: #2c6a43;
+  border: 1px solid #bea47b;
+  border-radius: 3px;
+}
+/* Four to six elves at one place: two rows of paper cards that keep the task word and a readable
+   energy bar, four standing two by two. The floor grows for them (.board[data-crowd]). */
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  ) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 108px;
+  gap: 4px;
+  align-items: start;
+  align-content: end;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(5 of .elf-card))
+  ) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  .elf {
+  box-sizing: border-box;
+  height: 108px;
+  min-height: 108px;
+  padding: 3px 2px 11px;
+  border: 1px solid #bea47b;
+  border-radius: 3px;
+  background: #f4ead3e6;
+  box-shadow: 1px 2px 2px #2b1c1429;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  .elf[data-mood="tired"],
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  .elf[data-mood="spent"] {
+  border-color: #c98a7c;
+  background: #f2d7cde6;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  .elf.selected {
+  border-color: var(--attention);
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  .elf
+  svg {
+  width: 50px;
+  height: 62px;
+  max-width: 100%;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  :is(.elf-name, .elf-task) {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  .elf
+  .energy {
+  bottom: 4px;
+  left: 18%;
+  width: 64%;
+  height: 5px;
+}
+body[data-look="paper"]
+  #cocoa
+  #elves3:has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  ) {
+  grid-auto-rows: 100px;
+}
+body[data-look="paper"]
+  #cocoa
+  #elves3:has(:nth-child(4 of .elf-card)):not(:has(:nth-child(7 of .elf-card)))
+  .elf {
+  height: 100px;
+  min-height: 100px;
+}
+body[data-look="paper"]
+  #cocoa
+  #elves3:has(:nth-child(4 of .elf-card)):not(:has(:nth-child(7 of .elf-card)))
+  .elf
+  svg {
+  width: 44px;
+  height: 54px;
+}
+@media (min-width: 1000px) {
+  body[data-look="paper"] .board[data-crowd="true"] {
+    grid-template-rows: 54px minmax(120px, 1fr) 25px 244px 133px;
+  }
+}
+@media (max-width: 999px) {
+  body[data-look="paper"] main .board[data-crowd="true"],
+  body[data-look="paper"]:has(#caseCue:not([hidden]))
+    main
+    .board[data-crowd="true"] {
+    grid-template-rows: 48px minmax(100px, 1fr) 16px 236px auto;
+  }
+}
+/* An empty station the machine runs alone says so on its floor */
+body[data-look="paper"]
+  .station
+  .crew:not(:has(.elf-card))[data-alone]:not([data-alone=""])::before {
+  content: attr(data-alone);
+  grid-column: 1 / -1;
+  align-self: center;
+  justify-self: center;
+  padding: 3px 10px;
+  border: 1px solid #b59b72;
+  border-radius: 3px;
+  background: var(--paper, #f4ead3);
+  color: #2b1c14;
+  font-size: 12px;
+  font-weight: 700;
+}
+/* The cocoa floor stacks its label over its elves, so the elves end where the floor ends */
+body[data-look="paper"] #cocoa {
+  display: flex;
+  flex-direction: column;
+}
+body[data-look="paper"] #cocoa .cocoa-label {
+  flex: none;
+  align-self: flex-start;
+}
+body[data-look="paper"] #cocoa #elves3 {
+  flex: 1 1 0;
+  height: auto;
+  min-height: 0;
+  align-content: end;
+}
+
+/* Tablets: two stations side by side, the tabs still jump to each */
+@media (min-width: 601px) and (max-width: 999px) {
+  body[data-look="paper"] main .board,
+  body[data-look="paper"]:has(#caseCue:not([hidden])) main .board {
+    grid-template-columns: repeat(4, calc(50vw - 18px));
+  }
+}
+/* Between a phone and a desktop the half-time choices sit four to a row with Carry on below, so
+   no chip runs past its card */
+@media (min-width: 761px) and (max-width: 999px) {
+  body[data-look="paper"] .break-options {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  body[data-look="paper"] .upgrade-wrap:has(> [data-choose="none"]) {
+    grid-column: 1 / -1;
+  }
+  body[data-look="paper"] #breakDialog .upgrade-card[data-choose="none"] {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 0 10px;
+  }
+  body[data-look="paper"]
+    #breakDialog
+    .upgrade-card[data-choose="none"]
+    .upgrade-icon {
+    grid-row: 1 / 3;
+  }
+  body[data-look="paper"]
+    #breakDialog
+    .upgrade-card[data-choose="none"]
+    .upgrade-chips {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* The cargo belongs to the same card as its count and target. */
+body[data-look="paper"] .sleigh-total {
+  width: 148px;
+}
+body[data-look="paper"] .sleigh-total .sleigh-count {
+  gap: 5px;
+}
+body[data-look="paper"] .sleigh-total #sleighTarget {
+  font-size: 17px;
+}
+body[data-look="paper"] .sleigh-total .sleigh-bar {
+  margin-bottom: 4px;
+}
+body[data-look="paper"] .sleigh-total .cargo-badge {
+  position: static;
+  width: 100%;
+  min-height: 22px;
+  margin: 5px 0 0;
+  padding: 2px 0 0;
+  border: 0;
+  border-top: 1px solid #bea47b;
+  box-shadow: none;
+  background: transparent;
+  justify-content: center;
+}
+
+/* The piles and counts show the work waiting at each station. */
+body[data-look="paper"] .queue > progress {
+  display: none;
+}
+
+/* Keep the score labels and figures on shared baselines. */
+body[data-look="paper"] .dashboard .hud-name .ui-icon {
+  order: 1;
+}
+@media (min-width: 1000px) {
+  body[data-look="paper"] .dashboard .clock-box {
+    display: grid;
+    grid-template-rows: 14px 28px 8px;
+    align-items: center;
+    box-sizing: border-box;
+    height: 61px;
+    padding: 5px 0 6px;
+  }
+  body[data-look="paper"] .dashboard #clockLabel {
+    line-height: 14px;
+  }
+  body[data-look="paper"] .dashboard #clock {
+    position: relative;
+    top: -2px;
+    font-size: 30px;
+    line-height: 26px;
+  }
+  body[data-look="paper"] .dashboard #pauseState {
+    height: 10px;
+    line-height: 10px;
+  }
+  body[data-look="paper"] .board[data-crowd="true"] {
+    grid-template-rows: 54px minmax(176px, 1fr) 25px 210px 133px;
+  }
+}
+
+/* The destination is the crew floor, with a strip kept inside its edges. */
+body[data-look="paper"] .station.destination {
+  outline: none;
+}
+body[data-look="paper"] .paper-floor .move-target {
+  left: 6px;
+  right: 6px;
+  width: auto;
+  top: 0;
+  box-sizing: border-box;
+}
+body[data-look="paper"] .elf-card .swap-tag {
+  top: -8px;
+  right: auto;
+  left: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  ) {
+  grid-auto-rows: 90px;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  .elf {
+  height: 90px;
+  min-height: 90px;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  .elf
+  svg {
+  height: 46px;
+  width: 40px;
+}
+body[data-look="paper"] .gift-flight:not(.in-slot) {
+  margin-top: 0;
+  border-radius: 0;
+  transform: none;
+  animation: paper-count-arrival 1.3s ease-out forwards;
+}
+@media (max-width: 999px) {
+  body[data-look="paper"] .milestone-toast {
+    position: absolute;
+    top: 0;
+    right: 28px;
+    bottom: auto;
+    left: 0;
+    width: auto;
+    max-width: none;
+    min-height: 30px;
+    padding: 2px 7px;
+    transform: none;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 16px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  body[data-look="paper"] .station.destination .paper-floor .crew {
+    padding-top: 44px;
+    box-sizing: border-box;
+  }
+  body[data-look="paper"]
+    .station.destination
+    .paper-floor
+    .crew:not(:has(:nth-child(4 of .elf-card))) {
+    grid-auto-rows: 108px;
+  }
+  body[data-look="paper"]
+    .station.destination
+    .paper-floor
+    .crew:not(:has(:nth-child(4 of .elf-card)))
+    .elf {
+    height: 108px;
+    min-height: 108px;
+  }
+  body[data-look="paper"]
+    .station.destination
+    .paper-floor
+    .crew:not(:has(:nth-child(4 of .elf-card)))
+    .elf
+    svg {
+    height: 66px;
+    width: 52px;
+  }
+  body[data-look="paper"] main .board[data-crowd="true"],
+  body[data-look="paper"]:has(#caseCue:not([hidden]))
+    main
+    .board[data-crowd="true"] {
+    grid-template-rows: 48px minmax(176px, 1fr) 16px 236px auto;
+  }
+}
+
+@media (max-width: 999px) {
+  body[data-look="paper"] main .board:not([data-crowd="true"]),
+  body[data-look="paper"]:has(#caseCue:not([hidden]))
+    main
+    .board:not([data-crowd="true"]) {
+    grid-template-rows: 48px minmax(176px, 1fr) 16px 160px auto;
+  }
+}
+
+@media (max-width: 999px) {
+  body[data-look="paper"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card)) {
+    grid-auto-rows: 52px;
+  }
+  body[data-look="paper"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card))
+    .elf {
+    height: 52px;
+    min-height: 52px;
+  }
+  body[data-look="paper"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card))
+    .elf
+    svg {
+    height: 28px;
+    width: 24px;
+  }
+}
+
+body[data-look="paper"] .status-row {
+  position: relative;
+}
+
+@keyframes paper-count-arrival {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 1;
   }
 }

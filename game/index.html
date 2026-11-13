@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Santa’s AI Workshop · Frontier Economics</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="style.css?v=review6" />
-    <link rel="stylesheet" href="paper.css?v=review6" />
-    <link rel="stylesheet" href="polish.css?v=review6" />
+    <link rel="stylesheet" href="style.css?v=takeover9" />
+    <link rel="stylesheet" href="paper.css?v=takeover9" />
+    <link rel="stylesheet" href="polish.css?v=takeover9" />
+    <link rel="stylesheet" href="station-flow.css?v=takeover9" />
   </head>
   <body>
     <header>
@@ -33,7 +34,6 @@
         </svg>
       </div>
       <h1>Santa’s AI Workshop</h1>
-      <div id="adventRuns" aria-label="Sleigh departures"></div>
       <div class="header-actions">
         <button id="guidanceToggle">Walkthrough</button
         ><button id="restart">Restart</button
@@ -58,10 +58,8 @@
           id="goals"
           class="goals"
           role="group"
-          aria-label="This sleigh run: one star for each goal"
-        >
-          <span class="goals-title" id="goalsTitle"></span>
-        </div>
+          aria-label="One star for each goal"
+        ></div>
         <div class="clock-box" data-info="clock" tabindex="0">
           <svg id="countdownRing" viewBox="0 0 40 40" aria-hidden="true">
             <circle cx="20" cy="20" r="16" />
@@ -73,16 +71,19 @@
               pathLength="1"
             />
           </svg>
-          <span>Until departure</span><strong id="clock"></strong
-          ><small id="pauseState"></small>
+          <span id="clockLabel">Sleigh leaves in</span
+          ><strong id="clock"></strong><small id="pauseState"></small>
         </div>
-        <button class="metric" id="money" data-help="budget">
-          <span>Money left</span><strong id="budget"></strong>
-        </button>
         <button id="pause" disabled>Pause</button
         ><button id="caseCue" class="case-cue" hidden>Decision waiting</button>
       </section>
       <div class="status-row">
+        <div
+          id="milestoneToast"
+          class="milestone-toast"
+          role="status"
+          hidden
+        ></div>
         <p id="status" role="status" aria-live="polite"></p>
         <button
           id="helpMove"
@@ -93,9 +94,9 @@
         </button>
       </div>
       <nav id="stationPicker" aria-label="Workshop stations">
-        <button data-station-page="0" aria-pressed="true">Letters</button
-        ><button data-station-page="1" aria-pressed="false">Toys</button
-        ><button data-station-page="2" aria-pressed="false">Checking</button
+        <button data-station-page="0" aria-pressed="true"></button
+        ><button data-station-page="1" aria-pressed="false"></button
+        ><button data-station-page="2" aria-pressed="false"></button
         ><button data-station-page="3" aria-pressed="false">
           Sleigh · cocoa
         </button>
@@ -114,27 +115,23 @@
             </button>
           </div>
           <div class="sleigh-art" aria-hidden="true"></div>
-          <div
-            id="runStars"
-            class="run-stars"
-            aria-label="Finished sleigh runs"
-          ></div>
-          <div class="sleigh-total">
-            <strong id="sleighRight">0</strong><span id="sleighTarget"></span
-            ><span>right gifts aboard</span>
+          <div class="sleigh-total" id="sleighTotal">
+            <span class="sleigh-count"
+              ><span
+                id="sleighStar"
+                class="sleigh-star"
+                aria-hidden="true"
+              ></span
+              ><strong id="sleighRight">0</strong
+              ><span id="sleighTarget"></span></span
+            ><span class="sleigh-bar" aria-hidden="true"><i></i></span>
           </div>
-          <div class="arrival" id="arrival">
-            <span class="arrival-icon" id="arrivalIcon"></span
-            ><b id="arrivalLabel">Waiting for gifts</b
-            ><span class="big-tag" id="arrivalBig" hidden>big</span>
-          </div>
-          <button id="wrongDelivery" class="wrong-delivery" data-empty>
+          <button id="wrongDelivery" class="wrong-delivery" hidden>
             <span class="eyebrow">Last wrong gift</span
             ><span id="wrongToy" class="wrong-toy"></span><b id="wrongName"></b
             ><span class="big-tag" id="wrongBig" hidden>big</span
             ><span>See wish & gift</span>
           </button>
-          <div id="recentGifts" class="recent-gifts"></div>
           <p id="sleighNote" class="sleigh-note"></p>
           <div id="sleighFeedback" class="feedback-slot"></div>
         </section>
@@ -167,21 +164,19 @@
     <dialog id="intro">
       <span class="eyebrow">Christmas Eve</span>
       <h2>Find the balance.</h2>
-      <p id="mission"></p>
       <p>
-        Check too little and wrong gifts go out. Check too much and the sleigh
-        leaves half full.
+        Fill Santa's sleigh with the right gifts. AI makes it fast. Checks keep
+        it right.
       </p>
 
-      <!-- The look chooser is hidden: the polished look is the published one. ?look=paper still
-           shows the paper look. -->
+      <!-- The look chooser stays hidden. Paper is the default; ?look=polish opens the alternative. -->
       <fieldset class="look-choice" hidden>
         <legend>Choose a look</legend>
         <label
-          ><input type="radio" name="look" value="paper" /> Paper
+          ><input type="radio" name="look" value="paper" checked /> Paper
           workshop</label
         ><label
-          ><input type="radio" name="look" value="polish" checked /> Polished
+          ><input type="radio" name="look" value="polish" /> Polished
           workshop</label
         >
       </fieldset>
@@ -191,20 +186,20 @@
       ><button id="start" class="primary">Open the workshop</button>
     </dialog>
     <aside
-      id="tutorial"
-      class="floating-panel tutorial"
+      id="tour"
+      class="floating-panel tour"
       role="dialog"
-      aria-label="Workshop guidance"
+      aria-labelledby="tourTitle"
+      aria-describedby="tourText"
+      tabindex="-1"
       hidden
     >
-      <div class="panel-head">
-        <span class="eyebrow">Walkthrough</span>
-      </div>
-      <h3 id="tutorialTitle"></h3>
-      <p id="tutorialText"></p>
+      <span class="eyebrow" id="tourCount"></span>
+      <h3 id="tourTitle"></h3>
+      <p id="tourText"></p>
       <div class="panel-actions">
-        <button id="continue">Not now</button
-        ><button id="skipGuidance" class="link-button">Skip walkthrough</button>
+        <button id="tourSkip" class="link-button">Skip</button
+        ><button id="tourNext" class="primary"></button>
       </div>
     </aside>
     <aside
@@ -235,8 +230,10 @@
           </svg>
         </button>
       </div>
+      <span class="case-paused">Clock stopped</span>
       <p id="caseText" class="case-text"></p>
-      <div id="caseEvidence" class="case-evidence"></div>
+      <div id="caseReadings" class="case-readings" role="group" hidden></div>
+      <p id="caseFact" class="case-fact"></p>
       <div id="caseOptions" class="case-options"></div>
       <div id="caseResolving" hidden>
         <p id="caseProgressText"></p>
@@ -262,13 +259,12 @@
           aria-hidden="true"
         ></span>
         <div class="break-hero-copy">
-          <span id="breakRun"></span>
           <h2 id="breakTitle"></h2>
         </div>
-        <span class="break-paused">Clock paused</span>
+        <span class="break-paused">Clock stopped</span>
       </div>
       <div class="break-body">
-        <section class="break-result" aria-label="How it went">
+        <section class="break-result" aria-label="How the sleigh stands">
           <div id="breakGoals" class="goal-slots"></div>
           <div id="breakLines" class="break-lines"></div>
         </section>
@@ -284,11 +280,6 @@
           </div>
         </div>
         <div id="breakOptions" class="break-options"></div>
-        <details id="breakLast" class="break-detail">
-          <summary>All causes</summary>
-          <div id="breakSlips"></div>
-          <ol id="breakCauses" class="cause-list"></ol>
-        </details>
       </div>
     </dialog>
     <dialog id="report" class="end-screen" aria-labelledby="resultTitle">
@@ -304,11 +295,10 @@
             <div class="end-score-copy">
               <h2 id="resultTitle"></h2>
               <p id="lessonText" class="end-lesson"></p>
-              <p class="end-points">
-                <b id="endPoints"></b> <span id="personalBest"></span>
-              </p>
+              <p id="personalBest" class="end-best"></p>
             </div>
           </div>
+          <div id="endGoals" class="goal-slots end-goals"></div>
         </section>
         <section
           id="practices"
@@ -334,12 +324,13 @@
           <div class="assurance-dial" role="img" id="assuranceDial"></div>
           <div class="assurance-costs">
             <div class="cost-under">
-              <span>Wrong gifts that skipped a check</span
-              ><strong id="underCost"></strong>
+              <span>Lost to too few checks</span><strong id="underCost"></strong
+              ><em>estimate</em>
             </div>
             <div class="cost-over">
-              <span>Extra checks</span><strong id="overCost"></strong
-              ><em>estimate</em>
+              <span>Lost to too many checks</span><strong id="overCost"></strong
+              ><em>estimate</em
+              ><small id="overSplit" class="cost-split" hidden></small>
             </div>
           </div>
           <p id="assuranceText"></p>
@@ -372,13 +363,10 @@
             <div id="assuranceGroups" class="assurance-groups"></div>
             <p class="estimate-help">
               Mistakes stopped: about what the wrong gifts caught would have
-              cost. Extra checks: checks that cost more than they stopped, and
-              gifts held up while every gift was checked.
+              cost. Lost to too many checks: checks that cost more than they
+              stopped, and gifts held up while every gift was checked.
             </p>
           </details>
-        </section>
-        <section class="end-wide" aria-label="The four runs">
-          <div id="endRuns" class="end-runs"></div>
         </section>
         <section class="end-card end-wide end-offer" aria-label="Frontier">
           <p>
@@ -386,7 +374,7 @@
             does.
           </p>
           <div class="end-offer-links">
-            <a href="#article" class="article-link">Read the article</a>
+            <a href="#article" class="article-link" hidden>Read the article</a>
             <a
               class="explore-link"
               href="https://www.frontier-economics.com/uk/en/expertise/data-science-ai/"
@@ -418,19 +406,19 @@
     </dialog>
     <dialog id="restartDialog">
       <h2 id="restartTitle">Start this Christmas again?</h2>
-      <p>Your current run will reset.</p>
+      <p>Your current game will reset.</p>
       <div class="panel-actions">
         <button id="confirmRestart" class="primary">Start again</button
         ><button id="cancelRestart">Keep playing</button>
       </div>
     </dialog>
     <div id="celebration" class="celebration" aria-hidden="true"></div>
-    <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
-    <script src="workshop.js?v=review6"></script>
-    <script src="paper-art.js?v=review6"></script>
-    <script src="polish-art.js?v=review6"></script>
-    <script src="shared-art.js?v=review6"></script>
-    <script src="game.js?v=review6"></script>
+    <script src="workshop.js?v=takeover9"></script>
+    <script src="paper-art.js?v=takeover9"></script>
+    <script src="polish-art.js?v=takeover9"></script>
+    <script src="shared-art.js?v=takeover9"></script>
+    <script src="station-flow.js?v=takeover9"></script>
+    <script src="game.js?v=takeover9"></script>
   </body>
 </html>

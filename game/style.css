@@ -33,8 +33,10 @@ button {
   min-height: 32px;
   touch-action: manipulation;
 }
-button:hover:not(:disabled) {
-  background: #e5f0eb;
+@media (hover: hover) {
+  button:hover:not(:disabled):not([aria-pressed="true"]) {
+    background: #e5f0eb;
+  }
 }
 button:disabled {
   opacity: 0.5;
@@ -131,13 +133,6 @@ main {
   width: 160px;
   margin-top: 3px;
 }
-.metric {
-  border: 0;
-  background: transparent;
-  text-align: left;
-  min-width: 100px;
-  padding: 0;
-}
 .clock-box {
   min-width: 105px;
 }
@@ -170,11 +165,6 @@ main {
 .status-row button {
   font-size: 11px;
   flex-shrink: 0;
-}
-#guidanceContinue {
-  color: white;
-  background: var(--teal);
-  border-color: var(--teal);
 }
 #helpMove {
   width: 25px;
@@ -390,14 +380,8 @@ main {
 .queue-trend[data-trend="steady"] svg {
   transform: rotate(90deg);
 }
-.elf .elf-doing > svg.ui-icon {
-  width: 13px !important;
-  height: 13px !important;
-  display: block;
-}
 .small-action,
 .case-cue,
-.more-evidence,
 .milestone-toast,
 .gift-flight,
 .cargo-badge {
@@ -442,72 +426,26 @@ main {
   width: 34px;
   height: 27px;
 }
-.run-star-set {
-  display: inline-flex;
+/* Tour card: where it is, a title, one line, Skip and Next */
+.tour {
+  width: 300px;
+  border: 2px solid var(--gold);
+  background: #fff5da;
+}
+.tour h3 {
+  margin: 4px 0;
+}
+.tour p {
+  margin: 0;
+}
+.tour .panel-actions {
   align-items: center;
-  gap: 1px;
-  margin-right: 8px;
+  justify-content: space-between;
 }
-.run-star-set b {
-  margin-right: 3px;
+.tour #tourNext {
+  min-width: 84px;
+  font-size: 12px;
 }
-.door-stars .ui-icon {
-  width: 9px;
-  height: 9px;
-}
-/* Ask the child: an on/off switch */
-.ask-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  min-height: 30px;
-  padding: 4px 8px;
-  text-align: left;
-}
-.ask-toggle .toggle-label {
-  flex: 1;
-  font-weight: bold;
-}
-.toggle-track {
-  position: relative;
-  flex: none;
-  width: 30px;
-  height: 17px;
-  border-radius: 9px;
-  background: #b9c5bc;
-  transition: background 0.15s;
-}
-.toggle-knob {
-  position: absolute;
-  left: 2px;
-  top: 2px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px #0003;
-  transition: transform 0.15s;
-}
-.ask-toggle[aria-pressed="true"] .toggle-track {
-  background: #2f8a5b;
-}
-.ask-toggle[aria-pressed="true"] .toggle-knob {
-  transform: translateX(13px);
-}
-.toggle-state {
-  flex: none;
-  min-width: 22px;
-  font-size: 10px;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #6b776d;
-}
-.ask-toggle[aria-pressed="true"] .toggle-state {
-  color: #237743;
-}
-/* Walkthrough card: title, text, one action button */
 .link-button {
   border: 0;
   background: none;
@@ -518,42 +456,83 @@ main {
   color: inherit;
   opacity: 0.75;
 }
-.tutorial .panel-actions {
-  align-items: center;
-  justify-content: space-between;
-}
-.tutorial.floating-panel[data-compact="true"] .panel-actions,
-.tutorial.floating-panel[data-control="ai0"] .panel-actions,
-.tutorial.floating-panel[data-control="ai1"] .panel-actions {
-  display: flex;
-  margin-top: 8px;
-}
-.tutorial[data-compact="true"] #skipGuidance,
-.tutorial[data-control="ai0"] #skipGuidance,
-.tutorial[data-control="ai1"] #skipGuidance {
-  display: none;
-}
-.tutorial[data-compact="true"] .panel-head,
-.tutorial[data-control="ai0"] .panel-head,
-.tutorial[data-control="ai1"] .panel-head {
-  display: none;
-}
-/* Top bar: the three goals of the run under way, one star each */
+/* Top bar: the mistakes and cost goals, one star each */
 .dashboard .goals {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 640px;
+  max-width: 430px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: center;
   gap: 3px 8px;
 }
-.dashboard .goals-title {
-  grid-column: 1 / -1;
-  font-size: 10px;
-  line-height: 12px;
+/* On a desktop the sleigh shows its own count, so the gifts slot is for phones and tablets, where
+   the slots carry a short word each */
+@media (min-width: 1000px) {
+  .dashboard .hud-slot[data-goal="full"] {
+    display: none;
+  }
 }
-/* Top-bar goal slots use hud-* names, apart from the break card's goal-* names */
+@media (max-width: 999px) {
+  .dashboard .goals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .dashboard .hud-slot .hud-name > span[data-short] {
+    display: inline;
+    font-size: 0;
+  }
+  .dashboard .hud-slot .hud-name > span[data-short]::after {
+    content: attr(data-short);
+    font-size: 11px;
+  }
+}
+/* Marks on the phone's station tabs: where the game points, a tired elf, elves on cocoa */
+#stationPicker button {
+  position: relative;
+}
+.tab-marks {
+  position: absolute;
+  top: -6px;
+  right: 3px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+}
+.tab-marks [hidden] {
+  display: none;
+}
+.tab-focus,
+.tab-tired {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+}
+.tab-focus {
+  background: #2f6fa8;
+}
+.tab-tired {
+  background: #c64235;
+}
+.tab-cocoa {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #8a5a1c;
+  color: #fff;
+  font:
+    700 10px/15px Arial,
+    sans-serif;
+}
+.tab-cocoa .ui-icon {
+  width: 11px;
+  height: 11px;
+}
+/* Top-bar goal slots use hud-* names, apart from the half-time card's goal-* names */
 .dashboard .hud-slot {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -677,30 +656,8 @@ main {
   overflow: hidden;
   background: #0000001f;
 }
-.dashboard .hud-note {
-  display: none;
-  grid-area: auto;
-  grid-row: 3;
-  grid-column: 1 / -1;
-  font-weight: normal;
-  margin-top: 2px;
-  font-size: 9.5px;
-  line-height: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dashboard .hud-slot[data-state="waiting"] .hud-note {
-  display: block;
-}
-.dashboard .hud-slot[data-state="waiting"] .hud-bar {
-  display: none;
-}
 .dashboard .hud-slot[data-state="waiting"] {
   border-style: dashed;
-}
-.dashboard .goals-note {
-  display: none;
 }
 @media (max-width: 600px) {
   .dashboard .hud-slot {
@@ -716,8 +673,7 @@ main {
     height: 13px;
   }
   .dashboard .hud-slot .hud-name > span,
-  .dashboard .hud-slot .hud-unit,
-  .dashboard .hud-slot[data-state] .hud-note {
+  .dashboard .hud-slot .hud-unit {
     display: none;
   }
   .dashboard .hud-slot[data-state] .hud-bar {
@@ -730,13 +686,6 @@ main {
   .dashboard .hud-slot .hud-figures small {
     font-size: 10px;
   }
-  .dashboard .goals-note {
-    display: block;
-    grid-column: 1 / -1;
-    font-size: 10px;
-    line-height: 12px;
-    min-height: 12px;
-  }
 }
 .dashboard .hud-bar i {
   display: block;
@@ -745,9 +694,9 @@ main {
   border-radius: 2px;
   background: currentColor;
 }
-/* A wrong gift lights up the control that would have stopped it */
+/* A wrong gift lights up the control its line names */
 .control-row.mistake-hint,
-.wrong-delivery.mistake-hint,
+.crew.mistake-hint,
 #cocoa.mistake-hint {
   position: relative;
 }
@@ -786,7 +735,7 @@ main {
 #stationPicker .mistake-hint-tab {
   box-shadow: inset 0 -3px 0 #c64235;
 }
-/* Decision cards: title, the rules' text, evidence as drawings, options as large buttons */
+/* Decision cards: title, the rules' text, the figure at stake, options as large buttons */
 .case-panel.floating-panel {
   width: 440px;
   padding: 14px 16px;
@@ -805,58 +754,70 @@ main {
   flex: none;
   margin-top: 2px;
 }
+/* The decision card stops the clock while it is open, and says so */
+.case-panel .case-paused {
+  display: inline-block;
+  margin: 2px 0 6px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #eef3ee;
+  color: #4b6250;
+  font-size: 11px;
+  font-weight: 700;
+}
+/* An unclear wish as a picture: the two things it could mean, side by side, with "or" between */
+.case-panel .case-readings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 10px;
+}
+.case-panel .case-readings[hidden] {
+  display: none;
+}
+.case-reading {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 6px 4px 5px;
+  border: 1px solid #d6ddd5;
+  border-radius: 10px;
+  background: #f7f9f5;
+}
+.case-reading svg {
+  width: 84px;
+  height: 67px;
+}
+.case-reading .reading-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+.case-or {
+  font-size: 14px;
+  font-weight: 700;
+  color: #6b776d;
+}
 .case-panel .case-text {
   margin: 6px 0 10px;
   font-size: 13px;
   line-height: 1.4;
 }
-.case-panel .case-evidence:empty {
-  display: none;
-}
-.case-panel .evidence-item {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 8px;
-  margin: 0 0 10px;
-  padding: 0;
-  border: 0;
-  background: none;
-}
-.case-panel .evidence-figure {
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  gap: 2px;
-  margin: 0;
-  padding: 6px 8px 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #f6f8f3;
-  text-align: center;
-}
-.case-panel .evidence-label {
+/* The figure the decision turns on, such as what the gift costs if wrong */
+.case-panel .case-fact {
   justify-self: start;
-  font-size: 10px;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: #5d7164;
-}
-.case-panel .evidence-figure .paper-toy {
-  width: 72px;
-  height: 58px;
-}
-.case-panel .evidence-figure figcaption {
+  width: fit-content;
+  margin: -4px 0 10px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--bc-gold-soft, #fbf0d3);
+  color: #6b4f12;
   font-size: 12px;
-  font-weight: bold;
-  line-height: 1.25;
-}
-.case-panel .evidence-wish figcaption {
-  align-self: center;
-  padding: 10px 0;
-  font:
-    italic 15px/1.3 Georgia,
-    serif;
+  font-weight: 700;
+  line-height: 19px;
 }
 .case-panel .case-options {
   display: grid;
@@ -918,6 +879,11 @@ main {
   width: 12px;
   height: 12px;
 }
+.opt-chip.chip-risk {
+  background: #fbe9e5;
+  color: #9a3326;
+  font-weight: 700;
+}
 .opt-chip.chip-why {
   background: #fbe9e5;
   color: #9a3326;
@@ -950,10 +916,6 @@ main {
   .case-panel .case-text {
     margin: 4px 0 8px;
   }
-  .case-panel .evidence-figure .paper-toy {
-    width: 56px;
-    height: 45px;
-  }
   .case-panel .case-choice {
     min-height: 50px;
     padding: 7px 10px;
@@ -982,8 +944,7 @@ main {
   }
 }
 /* Big gifts: the gold parcel carries a small "big" tag in the piles and on the sleigh */
-#queue-letters .stack i.big::before,
-#queue-clarify .stack i.big::before {
+#queue-letters .stack i.big::before {
   content: none;
 }
 .stack i.big::before {
@@ -1005,6 +966,60 @@ main {
 }
 .wrong-delivery {
   position: relative;
+}
+.wrong-delivery[hidden] {
+  display: none;
+}
+/* At checking, the straight-through and remake piles are two small counters under the main pile */
+.mini-piles {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+body[data-look] .queue.queue-mini {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: auto;
+  min-height: 30px;
+  padding: 3px 7px;
+}
+.queue-mini .ui-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+body[data-look] .queue-mini .queue-name {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  text-overflow: clip;
+  white-space: normal;
+}
+body[data-look] .queue-mini .queue-count {
+  font:
+    700 13px/16px Arial,
+    sans-serif;
+}
+body[data-look] #piles2 .queue.queue-mini.near-full {
+  border-color: #a56a16;
+  background: #fff0c4;
+  box-shadow: inset 3px 0 #a56a16;
+}
+body[data-look] #piles2 .queue.queue-mini.full {
+  border-color: #b3342a;
+  background: #fbe9e5;
+  box-shadow: inset 3px 0 #b3342a;
+}
+body[data-look] .queue-mini .queue-count {
+  flex: none;
+  white-space: nowrap;
 }
 .wrong-delivery .big-tag {
   position: absolute;
@@ -1066,9 +1081,6 @@ body[data-look] #vigilance {
   background: #fde9e5;
   border-color: #e7a497;
 }
-#vigilance.mistake-hint {
-  position: relative;
-}
 /* Longer words behind a small info control, for touch and keyboard */
 .more-host {
   position: relative;
@@ -1092,16 +1104,8 @@ body[data-look] #vigilance {
   border-color: var(--teal, #286e73);
   color: #fff;
 }
-.delivery-slip > .more-toggle.info-button {
-  top: 5px;
-  width: 20px;
-  height: 20px;
-  min-height: 20px;
-}
 .goal-slot > .more-toggle,
-.delivery-slip > .more-toggle,
-.upgrade-wrap > .more-toggle,
-.run-report > .more-toggle {
+.upgrade-wrap > .more-toggle {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -1122,6 +1126,7 @@ body[data-look] #vigilance {
   display: none;
 }
 .upgrade-wrap {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1131,8 +1136,17 @@ body[data-look] #vigilance {
   width: 100%;
   padding-right: 30px;
 }
+/* An option's longer words open over the foot of its own card, under its title, and scroll there
+   when they are long, so they never spill past the card */
 .upgrade-wrap > .more-text {
-  margin: 6px 2px 0;
+  position: absolute;
+  z-index: 1;
+  inset: 76px 2px 5px;
+  margin: 0;
+  padding: 6px 10px;
+  overflow: auto;
+  border-radius: 0 0 10px 10px;
+  background: var(--bc-card, #fff);
 }
 .elf[data-role="waiting"] .elf-task {
   color: inherit;
@@ -1142,20 +1156,13 @@ body[data-look] #vigilance {
   color: #6b776d;
   font-style: italic;
 }
-.elf[data-role="free"] .elf-doing {
-  color: #8a958c;
-}
 @media (prefers-reduced-motion: reduce) {
   .mistake-hint {
     animation: none;
   }
 }
-.queue-rate {
-  align-self: end;
-  font-size: 10px;
-  color: #3c6554;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+body.reduce-motion .mistake-hint {
+  animation: none;
 }
 .queue progress {
   grid-column: 1/-1;
@@ -1167,11 +1174,6 @@ body[data-look] #vigilance {
 }
 .queue.full {
   box-shadow: inset 3px 0 #ba6533;
-}
-.queue .rate-changed {
-  background: #ffe4a5;
-  color: #5b4314;
-  padding: 1px 3px;
 }
 progress {
   display: block;
@@ -1225,40 +1227,33 @@ progress {
   font-size: 9px;
   line-height: 12px;
 }
-.elf progress {
+/* Energy drains green, then amber, then red; the face changes with it */
+.elf .energy {
+  display: block;
   height: 3px;
   margin-top: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: #d5ddd7;
   pointer-events: none;
 }
-.elf.tired progress {
-  accent-color: #d58231;
+.elf .energy i {
+  display: block;
+  height: 100%;
+  width: calc(var(--energy, 100) * 1%);
+  background: #3b9d67;
 }
-.elf.exhausted progress {
-  accent-color: var(--red);
+.elf[data-mood="tiring"] .energy i {
+  background: #d58231;
+}
+.elf[data-mood="tired"] .energy i,
+.elf[data-mood="spent"] .energy i {
+  background: var(--red);
 }
 .elf.selected {
   background: #d8ece4;
   border-color: var(--teal);
   box-shadow: 0 0 0 1px var(--teal);
-}
-.elf-info {
-  position: absolute;
-  right: -1px;
-  top: 0;
-  border-radius: 50%;
-  height: 16px;
-  min-height: 16px;
-  width: 16px;
-  padding: 0;
-  font-size: 9px;
-  opacity: 0.75;
-}
-.elf-doing {
-  position: absolute;
-  left: 2px;
-  top: 0;
-  font-size: 11px;
-  pointer-events: none;
 }
 .move-target {
   min-height: 27px;
@@ -1289,6 +1284,9 @@ progress {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+.control-row[hidden] {
+  display: none;
 }
 .control-row .control-label {
   font-size: 10px;
@@ -1431,24 +1429,49 @@ progress {
   font-size: 10px;
   margin-top: 3px;
 }
-.arrival {
+/* The sleigh count and progress towards its target. */
+.sleigh-total .sleigh-count {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  background: white;
-  border: 1px solid var(--line);
-  padding: 6px;
-  min-height: 48px;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  margin: 0;
 }
-.arrival-icon {
-  font-size: 29px;
+.sleigh-total .sleigh-star {
+  align-self: center;
+  margin: 0;
+  color: #b88a1e;
 }
-.arrival b {
-  font-size: 11px;
+.sleigh-total .sleigh-star .ui-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
 }
-.arrival.new {
-  animation: arrive 0.65s ease-out;
+.sleigh-total[data-met="false"] .sleigh-star {
+  color: #8a9a8e;
 }
+.sleigh-total #sleighTarget {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  color: var(--teal);
+}
+.sleigh-total .sleigh-bar {
+  position: relative;
+  height: 4px;
+  margin: 5px 0 0;
+  border-radius: 2px;
+  background: #d5ddd7;
+}
+.sleigh-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--fill, 0) * 100%);
+  border-radius: 2px;
+  background: #d9a636;
+}
+
 @keyframes arrive {
   from {
     transform: translateX(-15px);
@@ -1480,22 +1503,6 @@ progress {
 }
 .wrong-delivery > span:last-child {
   font-size: 10px;
-}
-.recent-gifts {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.recent-gifts button {
-  font-size: 20px;
-  padding: 3px;
-  min-height: 30px;
-  width: 32px;
-}
-.recent-gifts .wrong {
-  background: #ffdccc;
-  border-color: #c44d38;
 }
 .sleigh-note {
   font-size: 10px;
@@ -1542,9 +1549,6 @@ progress {
 .cocoa-strip .elf svg {
   height: 25px;
 }
-.cocoa-strip .elf-info {
-  top: 0;
-}
 footer {
   display: flex;
   justify-content: space-between;
@@ -1569,11 +1573,6 @@ footer {
   border-radius: 10px;
   padding: 15px;
   box-shadow: 0 10px 35px #1d392d44;
-}
-.tutorial {
-  border: 2px solid var(--gold);
-  background: #fff5da;
-  width: 300px;
 }
 .panel-head {
   display: flex;
@@ -1635,31 +1634,6 @@ footer {
   display: block;
   font-size: 9px;
   color: #576653;
-}
-.case-evidence {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.evidence-item {
-  background: white;
-  border: 1px solid var(--line);
-  padding: 7px;
-  flex: 1 1 130px;
-  font-size: 11px;
-}
-.evidence-item blockquote {
-  margin: 0 0 4px;
-  font:
-    14px/1.3 Georgia,
-    serif;
-}
-.evidence-item p {
-  font-size: 11px;
-  margin: 3px 0;
-}
-.evidence-item .toy-icon {
-  font-size: 24px;
 }
 .case-options {
   display: grid;
@@ -1848,9 +1822,6 @@ dialog p {
   .dashboard {
     gap: 12px;
   }
-  .metric {
-    min-width: 75px;
-  }
   .dashboard .goal {
     min-width: 130px;
   }
@@ -1894,9 +1865,6 @@ dialog p {
   }
   .goal progress {
     width: 100%;
-  }
-  .metric {
-    min-width: 0;
   }
   .clock-box {
     display: flex;
@@ -1957,15 +1925,9 @@ dialog p {
   .cocoa-strip .move-target {
     flex: 1;
   }
-  .elf-info,
   .info-button {
     width: 24px;
     min-height: 24px;
-  }
-  .elf-info {
-    font-size: 10px;
-    top: -4px;
-    right: -3px;
   }
   .elf-card {
     margin-right: 3px;
@@ -1979,9 +1941,6 @@ dialog p {
   }
   .case-panel {
     width: calc(100vw - 24px);
-  }
-  .tutorial {
-    width: min(320px, calc(100vw - 24px));
   }
   footer {
     gap: 10px;
@@ -2057,12 +2016,6 @@ dialog p {
   }
   .elf-name {
     font-size: 8px;
-  }
-  .elf-info {
-    width: 13px;
-    min-height: 13px;
-    font-size: 8px;
-    right: -1px;
   }
   #controls2 {
     display: grid;
@@ -2191,12 +2144,9 @@ dialog p {
   scroll-behavior: auto !important;
 }
 @media (hover: hover) and (pointer: fine) {
-  .elf-info,
   .switch-choice > .info-button {
     opacity: 0;
   }
-  .elf-card:hover .elf-info,
-  .elf-card:focus-within .elf-info,
   .switch-choice:hover > .info-button,
   .switch-choice:focus-within > .info-button {
     opacity: 1;
@@ -2224,18 +2174,6 @@ dialog p {
 }
 .stack i:nth-child(n) {
   bottom: calc(var(--fill) * (100% - 20px) * var(--layer));
-}
-.queue.rate-changed .queue-rate {
-  font-size: 14px;
-  font-weight: bold;
-  background: #d2edd5;
-  border-radius: 3px;
-  padding: 3px;
-  color: #145d32;
-}
-.queue.rate-changed[data-delta="down"] .queue-rate {
-  background: #fff0ca;
-  color: #8c5410;
 }
 @media (max-width: 999px), (max-height: 699px) {
   .stack i:nth-child(n) {
@@ -2282,38 +2220,10 @@ dialog p {
     outline-color: #f2dc93;
   }
 }
-.case-panel[data-kind="update"] .case-options {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.case-panel[data-kind="update"] .case-option {
-  flex-direction: column;
-}
-.case-panel[data-kind="update"] .case-choice {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  text-align: center;
-  min-height: 113px;
-}
-.case-panel[data-kind="update"] .option-icon {
-  font-size: 30px;
-}
-.case-panel[data-kind="update"] .option-cost {
-  font-size: 10px;
-}
 @media (prefers-reduced-motion: reduce) {
   .needs-attention {
     animation: none;
   }
-}
-.score-metric strong {
-  color: var(--teal);
-}
-.score-metric small,
-.run-stars {
-  font-size: 10px;
-  color: #8b681f;
 }
 #runLabel {
   font-size: 10px;
@@ -2426,43 +2336,6 @@ dialog p {
   pointer-events: none;
   overflow: hidden;
 }
-.tutorial[data-control="ai0"],
-.tutorial[data-control="ai1"] {
-  padding: 8px;
-}
-.tutorial[data-control="ai0"] .panel-head,
-.tutorial[data-control="ai1"] .panel-head {
-  position: absolute;
-  right: 6px;
-  top: 6px;
-}
-.tutorial[data-control="ai0"] .panel-head .eyebrow,
-.tutorial[data-control="ai1"] .panel-head .eyebrow,
-.tutorial[data-control="ai0"] .panel-actions,
-.tutorial[data-control="ai1"] .panel-actions,
-.tutorial[data-control="ai0"] #tutorialPause,
-.tutorial[data-control="ai1"] #tutorialPause {
-  display: none;
-}
-.tutorial[data-control="ai0"] h3,
-.tutorial[data-control="ai1"] h3 {
-  font-size: 15px;
-  line-height: 18px;
-  margin: 0 28px 5px 0;
-}
-.tutorial[data-control="ai0"] p,
-.tutorial[data-control="ai1"] p {
-  font-size: 11.5px;
-  line-height: 14px;
-  margin: 0;
-}
-.station-rate {
-  position: absolute;
-  left: 55px;
-  top: 2px;
-  font-size: 12px;
-  line-height: 14px;
-}
 .station-bottleneck {
   position: absolute;
   right: 5px;
@@ -2482,50 +2355,12 @@ dialog p {
   color: #476353;
   white-space: nowrap;
 }
-.tutorial[data-compact="true"] {
-  padding: 8px;
-}
-.tutorial[data-compact="true"] .panel-head {
-  position: absolute;
-  right: 6px;
-  top: 6px;
-}
-.tutorial[data-compact="true"] .panel-head .eyebrow,
-.tutorial[data-compact="true"] .panel-actions,
-.tutorial[data-compact="true"] #tutorialPause {
-  display: none;
-}
-.tutorial[data-compact="true"] h3 {
-  font-size: 15px;
-  line-height: 18px;
-  margin: 0 28px 5px 0;
-}
-.tutorial[data-compact="true"] p {
-  font-size: 11.5px;
-  line-height: 14px;
-  margin: 0;
-}
-.capacity-label {
-  position: absolute;
-  left: 55px;
-  bottom: 1px;
-  font-size: 8px;
-  line-height: 10px;
-  color: #566850;
-}
 .elf-task {
   display: block;
   font-size: 7.5px;
   line-height: 9px;
   color: #4b6250;
   white-space: nowrap;
-}
-.elf[data-role="watching"] .elf-doing {
-  color: #2e675d;
-}
-.elf[data-role="watching"],
-.elf[data-role="idle"] {
-  animation: none;
 }
 .mode-caption {
   font-size: 9px;
@@ -2540,9 +2375,6 @@ dialog p {
   color: #22684b;
   pointer-events: none;
 }
-.tutorial[data-compact="true"] {
-  width: min(300px, calc(100vw - 24px));
-}
 
 .cargo-badge {
   flex-basis: 100%;
@@ -2556,7 +2388,7 @@ dialog p {
   white-space: nowrap;
 }
 
-/* ==== Break card and end screen: shared layout ====
+/* ==== Half-time card and end screen: shared layout ====
    Colours and type come from the --bc-* tokens, which polish.css and paper.css set per look. */
 #breakDialog,
 #report {
@@ -2596,9 +2428,6 @@ dialog p {
   --bc-scene-line: #fff;
   --bc-scene-window: #f2d27a;
   --bc-scene-moon: #fbf0d3;
-  --bc-run-bg: #ffffff1a;
-  --bc-mini-off: #ffffff59;
-  --bc-mini-on: #f0cf6c;
   --bc-snow: #fff;
   --bc-sleigh: var(--bc-scene-moon);
   --bc-title-font: var(--bc-sans);
@@ -2712,22 +2541,6 @@ dialog p {
   top: 13px;
   z-index: 1;
 }
-#breakRun {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--bc-hero-muted);
-  font-variant-numeric: tabular-nums;
-}
-.break-run-star {
-  color: var(--bc-mini-on);
-}
-.break-run-star svg {
-  width: 15px;
-  height: 15px;
-}
 #breakTitle {
   margin: 1px 0 0;
   font:
@@ -2751,7 +2564,7 @@ dialog p {
   gap: 10px;
   padding: 12px 22px 14px;
 }
-/* The choice heading carries the next sleigh: its cargo icon, name, target and one hint. */
+/* The choice heading carries the second half: its cargo icon, the one line on what changes, the prompt. */
 #breakDialog .break-choose {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -2790,11 +2603,13 @@ dialog p {
   gap: 8px;
 }
 .goal-slot {
+  color: var(--bc-ink);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
     "marks name"
-    "marks figure";
+    "marks figure"
+    "marks note";
   column-gap: 10px;
   align-items: center;
   padding: 7px 12px;
@@ -2853,6 +2668,16 @@ dialog p {
 }
 .goal-slot[data-waiting="true"] .goal-star {
   opacity: 0.75;
+}
+/* A goal that does not count yet: a dashed star and the line saying from when it counts */
+.goal-slot[data-waiting="true"] .goal-star svg {
+  stroke-dasharray: 2.6 1.9;
+}
+.goal-note {
+  grid-area: note;
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--bc-gold-ink);
 }
 .goal-slot[data-waiting="true"] .goal-figure {
   color: var(--bc-muted);
@@ -2914,57 +2739,8 @@ dialog p {
   font-weight: 700;
   white-space: nowrap;
 }
-#breakDialog .break-line-bonus {
-  border-color: var(--bc-ok-soft);
-  background: var(--bc-ok-soft);
-  color: var(--bc-ok);
-  font-weight: 700;
-}
-.break-line-bonus .break-line-icon {
-  color: var(--bc-gold);
-}
 .break-line-tired .break-line-icon {
   color: var(--bc-red-deep);
-}
-.break-line-slip {
-  display: flex;
-  flex: none;
-  gap: 2px;
-}
-.slip-mini {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 28px;
-  border-radius: 7px;
-  background: var(--bc-frost);
-}
-.slip-mini.slip-mini-made {
-  background: var(--bc-red-soft);
-}
-.slip-mini svg {
-  width: 30px;
-  height: 24px;
-}
-/* Details after the choices: the costliest wrong gift and every cause, folded away. */
-.break-detail {
-  padding: 8px 14px;
-  border: 1px solid var(--bc-line);
-  border-radius: 12px;
-  background: var(--bc-card);
-  font-size: 13px;
-}
-.break-detail summary {
-  cursor: pointer;
-  font-weight: 700;
-  color: var(--bc-muted);
-}
-.break-detail[open] summary {
-  margin-bottom: 8px;
-}
-.break-detail[open] {
-  display: grid;
-  gap: 8px;
 }
 .cause-list {
   display: grid;
@@ -3025,57 +2801,6 @@ dialog p {
   font-weight: 700;
   color: var(--bc-ok);
 }
-.delivery-slip {
-  display: grid;
-  gap: 4px;
-}
-#breakDialog .slip-wish {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--bc-muted);
-}
-.slip-toys {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.slip-side {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-content: center;
-  align-items: center;
-  column-gap: 6px;
-  padding: 4px 8px 4px 4px;
-  border-radius: 10px;
-  background: var(--bc-frost);
-}
-.slip-side .slip-art {
-  grid-row: 1 / 3;
-}
-.slip-side small {
-  align-self: end;
-}
-.slip-side b {
-  align-self: start;
-}
-.slip-side.slip-made {
-  background: var(--bc-red-soft);
-}
-.slip-art svg {
-  width: 50px;
-  height: 40px;
-}
-.slip-side small {
-  font-size: 10.5px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--bc-muted);
-}
-.slip-side b {
-  font-size: 12px;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
 .spend-icon svg {
   width: 15px;
   height: 15px;
@@ -3098,11 +2823,17 @@ dialog p {
   color: var(--bc-ink);
   text-align: left;
 }
-#breakDialog .upgrade-card:hover:not(:disabled),
 #breakDialog .upgrade-card:focus-visible {
   border-color: var(--bc-accent);
   background: var(--bc-card);
   box-shadow: 0 3px 0 var(--bc-accent);
+}
+@media (hover: hover) {
+  #breakDialog .upgrade-card:hover:not(:disabled) {
+    border-color: var(--bc-accent);
+    background: var(--bc-card);
+    box-shadow: 0 3px 0 var(--bc-accent);
+  }
 }
 .upgrade-icon {
   display: grid;
@@ -3135,6 +2866,8 @@ dialog p {
 }
 .upgrade-chips {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   flex-wrap: wrap;
   gap: 5px;
   margin-top: auto;
@@ -3321,100 +3054,12 @@ dialog p {
   line-height: 1.4;
   color: var(--bc-hero-ink);
 }
-#endPoints {
-  color: var(--bc-hero-ink);
-  font-size: 15px;
-}
 #personalBest {
   display: block;
   margin-top: 2px;
 }
 #personalBest:empty {
   display: none;
-}
-/* The four runs: a row of small cards on the page, below the money. */
-.end-runs {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-.run-report {
-  --bc-hero-muted: var(--bc-muted);
-  --bc-mini-off: var(--bc-off);
-  --bc-mini-on: var(--bc-gold);
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  padding: 10px 12px;
-  border: 1px solid var(--bc-line);
-  border-radius: 12px;
-  background: var(--bc-card);
-}
-.run-report .run-bonus {
-  justify-self: start;
-  padding: 0 8px;
-  border-radius: 20px;
-  background: var(--bc-ok-soft);
-  color: var(--bc-ok);
-  font-weight: 700;
-}
-.run-head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  column-gap: 6px;
-}
-.run-cargo-icon svg {
-  width: 20px;
-  height: 20px;
-}
-.run-head b {
-  font-size: 13px;
-}
-.run-cargo {
-  grid-column: 1 / -1;
-  font-size: 11px;
-  color: var(--bc-hero-muted);
-}
-.run-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 10px;
-}
-.goal-mini {
-  display: flex;
-  gap: 6px;
-}
-.goal-mini-mark {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  color: var(--bc-mini-off);
-}
-.goal-mini-mark svg {
-  width: 20px;
-  height: 20px;
-}
-.goal-mini-mark[data-waiting="true"] svg {
-  color: var(--bc-mini-on);
-  opacity: 0.6;
-}
-.goal-mini-mark[data-met="true"] {
-  color: var(--bc-mini-on);
-}
-#report .run-report p {
-  margin: 0;
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
-}
-.run-report small {
-  font-size: 11px;
-  line-height: 1.25;
-  color: var(--bc-hero-muted);
 }
 /* The dial across the page: the gauge on the left, its verdict and two figures beside it. */
 .dial-card {
@@ -3451,9 +3096,7 @@ dialog p {
   color: var(--bc-gold-ink);
 }
 /* A bottleneck: the zones fade and a full-pile mark sits where the needle would be. */
-.dial-stuck .dial-zone,
-.dial-stuck .dial-word,
-.dial-stuck .dial-end {
+.dial-stuck .dial-zone {
   opacity: 0.35;
 }
 .dial-stuck-mark circle {
@@ -3578,6 +3221,15 @@ dialog p {
 .cost-over strong {
   color: var(--bc-blue);
 }
+.assurance-costs .cost-split {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--bc-muted);
+}
+.assurance-costs .cost-split[hidden] {
+  display: none;
+}
 .assurance-costs em {
   padding: 1px 8px;
   border-radius: 20px;
@@ -3593,9 +3245,9 @@ dialog p {
   font-size: 13px;
   line-height: 1.45;
 }
-/* The costliest causes side by side, so the card stays one row high. */
+/* Each cause keeps its amount at the far edge of its row. */
 #endCauses {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px 18px;
 }
 #endCauses .cause + .cause {
@@ -3877,6 +3529,18 @@ dialog p {
 #report .practice-action[data-used="true"] {
   font-weight: 700;
 }
+/* The player's own figure under each action, and the one line on trust */
+#report .practice-figure {
+  display: block;
+  font-weight: normal;
+  opacity: 1;
+}
+#report .practice-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  font-style: italic;
+}
 .practice-tile[data-used="true"] .practice-action[data-used="false"] {
   opacity: 0.7;
 }
@@ -3990,8 +3654,10 @@ dialog p {
   font-weight: 700;
   box-shadow: 0 3px 0 var(--bc-red-deep);
 }
-#report #replay:hover {
-  filter: brightness(1.06);
+@media (hover: hover) {
+  #report #replay:hover {
+    filter: brightness(1.06);
+  }
 }
 #replay svg {
   width: 19px;
@@ -4056,7 +3722,8 @@ dialog p {
     grid-template-areas:
       "marks"
       "name"
-      "figure";
+      "figure"
+      "note";
     justify-items: center;
     row-gap: 1px;
     padding: 6px 4px;
@@ -4065,6 +3732,10 @@ dialog p {
   .goal-star svg {
     width: 20px;
     height: 20px;
+  }
+  .goal-note {
+    font-size: 10px;
+    line-height: 12px;
   }
   .goal-icon {
     width: 22px;
@@ -4096,6 +3767,26 @@ dialog p {
   }
   #breakDialog .upgrade-card {
     padding: 10px;
+  }
+  /* Carry on takes the last row whole, as one line */
+  .upgrade-wrap:has(> [data-choose="none"]) {
+    grid-column: 1 / -1;
+  }
+  #breakDialog .upgrade-card[data-choose="none"] {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 0 10px;
+  }
+  #breakDialog .upgrade-card[data-choose="none"] .upgrade-icon {
+    grid-row: 1 / 3;
+  }
+  #breakDialog .upgrade-card[data-choose="none"] .upgrade-chips {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    margin: 0;
+    padding: 0;
   }
   .upgrade-risk,
   .upgrade-stops {
@@ -4139,9 +3830,6 @@ dialog p {
   }
   #resultTitle {
     font-size: 19px;
-  }
-  .end-runs {
-    grid-template-columns: 1fr 1fr;
   }
   .dial-card {
     grid-template-columns: minmax(0, 1fr);
@@ -4212,11 +3900,12 @@ dialog p {
     justify-self: start;
   }
   #report .practice-name,
-  #report .practice-action {
+  #report .practice-action,
+  #report .practice-note {
     grid-column: 2;
     margin: 0;
   }
-  /* A practice not used is one short row on a phone: icon, name and badge. */
+  /* A practice not used is smaller on a phone, and still shows the player's figures. */
   .practice-tile[data-used="false"] {
     padding: 8px 12px;
   }
@@ -4231,9 +3920,6 @@ dialog p {
   }
   #report .practice-tile[data-used="false"] .practice-name {
     font-size: 14.5px;
-  }
-  #report .practice-tile[data-used="false"] .practice-action {
-    display: none;
   }
   #blunderCollection {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -4251,4 +3937,64 @@ dialog p {
     animation: none;
   }
 }
-/* ==== End of break card and end screen ==== */
+/* ==== End of half-time card and end screen ==== */
+/* The words of the drift banner on the card of an elf at Letters or Toys: inside the card's top,
+   below the corner where a crew's tag sits, and left out while a wrong-gift tag is on the card */
+.elf-card .swap-tag {
+  position: absolute;
+  z-index: 3;
+  top: 10px;
+  right: 3px;
+  left: 3px;
+  width: fit-content;
+  margin-inline: auto;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font:
+    700 10px/13px Arial,
+    sans-serif;
+  text-align: center;
+  pointer-events: none;
+}
+.elf-card:has(.mistake-hint-label) .swap-tag,
+.elf-card.swap-elf .rest-cue {
+  display: none;
+}
+
+.case-panel .case-reading {
+  min-width: 0;
+  min-height: 112px;
+  color: inherit;
+  cursor: pointer;
+}
+.case-panel .case-reading:hover:not(:disabled) {
+  border-color: var(--teal);
+  background: #edf4e8;
+}
+.case-panel .case-reading:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+.case-panel .case-reading:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.case-panel .case-options[hidden] {
+  display: none;
+}
+
+.queue-count .queue-held {
+  display: inline-block;
+  width: 38px;
+  margin-left: 3px;
+  font:
+    700 10px/11px Arial,
+    sans-serif;
+  vertical-align: middle;
+  white-space: normal;
+  text-align: center;
+  color: #8c3b15;
+}
+.queue-count .queue-held[hidden] {
+  display: none;
+}

@@ -1,0 +1,241 @@
+body[data-look="paper"] .queue-picture {
+  visibility: hidden;
+}
+.live-heap {
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px #2b1c1444);
+}
+body[data-look="paper"] .paper-scene :is(#piles0, #piles1, #piles2) {
+  top: 8px;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+}
+body[data-look="paper"] :is(#queue-letters, #queue-orders, #queue-check) {
+  position: static;
+}
+body[data-look="paper"] :is(.queue-tag, .flow-queue-label) {
+  display: block;
+  width: 112px;
+  height: 44px;
+  padding: 4px 7px;
+  box-sizing: border-box;
+  background: #f4ead3f5;
+  border: 1px solid #bea47b;
+  border-radius: 0;
+  box-shadow: 1px 2px 3px #2b1c1433;
+}
+body[data-look="paper"]
+  :is(#queue-letters, #queue-orders, #queue-check)
+  .queue-tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: none;
+}
+body[data-look="paper"] #piles2 .queue-mini .queue-name,
+body[data-look="paper"]
+  :is(#queue-letters, #queue-orders, #queue-check)
+  .queue-name {
+  display: block;
+  min-height: 0;
+  white-space: nowrap;
+  text-align: left;
+  font:
+    10px/12px Arial,
+    sans-serif;
+}
+body[data-look="paper"] #piles2 .queue-mini .queue-count,
+body[data-look="paper"]
+  :is(#queue-letters, #queue-orders, #queue-check)
+  .queue-count {
+  display: block;
+  text-align: left;
+  white-space: nowrap;
+  font:
+    18px/22px Georgia,
+    serif;
+}
+body[data-look="paper"] .flow-queue-label > .ui-icon {
+  display: none;
+}
+body[data-look="paper"] #queue-orders .queue-picture {
+  position: absolute;
+  top: 50px;
+  bottom: -8px;
+  left: 0;
+  width: 112px;
+  height: auto !important;
+  visibility: visible;
+  align-items: flex-end;
+  padding: 0;
+}
+body[data-look="paper"] #queue-orders .stack {
+  display: none;
+}
+.orders-heap {
+  display: block;
+  width: 112px;
+  height: 100%;
+  max-height: 65px;
+  overflow: visible;
+}
+body[data-look="paper"] #piles2 .mini-piles {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 112px;
+  display: block;
+}
+body[data-look="paper"] #piles2 .queue.queue-mini,
+body[data-look="paper"]
+  #piles2
+  .queue.queue-mini:is(.near-full, .full, :hover, :focus) {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: block;
+  width: 112px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+body[data-look="paper"] #piles2 #queue-rework {
+  top: 52px;
+}
+.flow-small-heap {
+  position: absolute;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+body[data-look="paper"] #piles2 .queue-mini.near-full .flow-queue-label {
+  background: #ffe3a7;
+  box-shadow: inset 3px 0 #b77c19;
+}
+body[data-look="paper"] #piles2 .queue-mini.full .flow-queue-label {
+  background: #f8d3ce;
+  box-shadow: inset 3px 0 #a3263a;
+}
+body[data-look="paper"] #piles2 .queue-mini:focus-visible {
+  outline: none;
+}
+body[data-look="paper"] #piles2 .queue-mini:focus-visible .flow-queue-label {
+  outline: 2px solid #245985;
+  outline-offset: 2px;
+}
+body[data-look="paper"] .paper-scene #feedback2 {
+  top: 58px !important;
+  left: 8px;
+  right: auto;
+  width: 128px;
+  max-width: calc(100% - 136px);
+}
+body[data-look="paper"] #feedback2 .caught-toy {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0 4px;
+  width: 100%;
+  height: auto;
+  min-height: 36px;
+  padding: 3px 4px;
+  box-sizing: border-box;
+  font-size: 10px;
+  line-height: 11px;
+}
+body[data-look="paper"] #feedback2 .caught-toy[hidden] {
+  display: none;
+}
+body[data-look="paper"] #feedback2 .caught-toy b {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: left;
+}
+body[data-look="paper"] #feedback2 .caught-toy .paper-toy {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 26px;
+  height: 24px;
+}
+body[data-look="paper"] #feedback2 .caught-toy span {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+  text-align: left;
+}
+body[data-look="paper"]
+  :is(.sleigh-total, .cargo-badge, .caught-toy, .gift-flight) {
+  border-color: #bea47b;
+  border-radius: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .heap-item {
+    animation: none;
+  }
+}
+/* Warm paper snow stays behind the workshop and its solid information panels. */
+body[data-look="paper"] {
+  isolation: isolate;
+}
+body[data-look="paper"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 44px 28px, #f4ead3 1.3px, transparent 2px),
+    radial-gradient(circle at 228px 96px, #f4ead3 1px, transparent 1.7px),
+    radial-gradient(circle at 410px 148px, #f4ead3 1.6px, transparent 2.3px);
+  background-size:
+    380px 290px,
+    520px 400px,
+    620px 360px;
+  opacity: 0.45;
+  animation: paper-background-snow 32s linear infinite;
+}
+@keyframes paper-background-snow {
+  to {
+    background-position:
+      18px 290px,
+      -12px 400px,
+      8px 360px;
+  }
+}
+body[data-look="paper"] > header,
+body[data-look="paper"] .status-row,
+body[data-look="paper"] .dashboard .clock-box {
+  background-color: #15332a;
+}
+body[data-look="paper"] .dashboard .hud-slot {
+  background: linear-gradient(#f4ead314, #f4ead314), #15332a;
+}
+@media (hover: hover) {
+  body[data-look="paper"] .dashboard .hud-slot:hover:not(:disabled) {
+    background: linear-gradient(#f4ead326, #f4ead326), #15332a;
+  }
+}
+body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] {
+  background: linear-gradient(#a3263a66, #a3263a66), #15332a;
+}
+body.reduce-motion[data-look="paper"]::before {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-look="paper"]::before {
+    animation: none;
+  }
+}
+body[data-look="paper"] main .board,
+body[data-look="paper"]:has(#caseCue:not([hidden])) main .board {
+  background-color: #f4ead3;
+}

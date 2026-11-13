@@ -1,9 +1,9 @@
 (() => {
   "use strict";
   const look =
-    new URLSearchParams(location.search).get("look") === "paper"
-      ? "paper"
-      : "polish";
+    new URLSearchParams(location.search).get("look") === "polish"
+      ? "polish"
+      : "paper";
   document.body.dataset.look = look;
   const Art =
     look === "polish" && typeof PolishArt !== "undefined"
@@ -36,34 +36,26 @@
         : Math.floor(Math.random() * 4294967296))
     );
   }
-  const queueIds = [
-    ["letters", "clarify"],
-    ["orders"],
-    ["check", "pass", "rework"],
-  ];
-  const stationNames = ["LETTERS", "TOYS", "CHECKING"];
+  const queueIds = [["letters"], ["orders"], ["check", "pass", "rework"]];
+  const miniPiles = { pass: "let-through", rework: "fixing" };
   let game,
     view,
     started = false,
     manualPaused = false,
     restartOpen = false,
-    restartGuided = null,
     selected = null,
     caseOpen = false,
-    lastMoment = null,
     lastCase = null,
-    ended = false;
-  let remembered = false;
+    ended = false,
+    tourStep = null;
+  // The tour is ticked until the player has finished one game.
+  let showTour = true;
   try {
-    remembered =
-      localStorage.getItem("workshop-walkthrough-finished") === "yes";
+    showTour = localStorage.getItem("workshop-walkthrough-finished") !== "yes";
   } catch {}
-  let guided = !remembered,
-    lastWrong = null,
-    lastArrival = null,
+  let lastWrong = null,
     notice = null,
-    newsSeen = new Set(),
-    rateChanges = new Map();
+    newsSeen = new Set();
   let infoAnchor = null,
     infoKey = null,
     infoPinned = false,
@@ -71,24 +63,21 @@
     suppressClick = { elf: null, until: 0 },
     nativeDragElf = null;
   let openedCases = new Set(),
-    resolvedAt = -Infinity,
-    ignoreClicksUntil = 0;
+    // Where and until when the second click of a double-click on a decision's answer is held back.
+    answered = null;
   let lastChoice = null,
     observedRight = 0,
-    observedRun = null,
     caughtSnapshot = null,
     caughtUntil = 0,
     toastUntil = 0;
-  let personalBest = null,
+  // The best stars out of 3. The old best, in points and stars out of 12, is dropped.
+  let bestStars = null,
     collectedBlunders = [];
   try {
-    const saved = JSON.parse(localStorage.getItem("workshop-personal-best"));
-    if (saved && Number.isFinite(saved.points)) personalBest = saved;
-    const collection = JSON.parse(localStorage.getItem("workshop-blunders"));
-    if (Array.isArray(collection))
-      collectedBlunders = collection.filter(
-        (item) => item && item.id !== undefined && item.name,
-      );
+    localStorage.removeItem("workshop-personal-best");
+    const saved = Number(localStorage.getItem("workshop-best-stars"));
+    if (localStorage.getItem("workshop-best-stars") !== null && saved >= 0)
+      bestStars = saved;
   } catch {}
   const make = (tag, cls, content) => {
     const node = document.createElement(tag);
@@ -104,19 +93,17 @@
     node.innerHTML = icon(name);
     node.append(make("span", "", value));
   };
-  // Free: nothing to do, or watching an automated machine (the rules may call it plain idle).
+  // Free: nothing to do at its station, often because the AI runs it alone.
   const isIdle = (elf) =>
     elf.station < 3 &&
     !elf.resting &&
-    (/watch/.test(elf.doing) || /^(nothing to do|idle|free)/.test(elf.doing));
+    /^(nothing to do|idle|free)/.test(elf.doing);
   // Free to move: idle at a reading or toy station the AI runs alone. Anywhere else an idle elf
   // is waiting for work, so the player is not invited to pull checkers away.
   const isFree = (elf) =>
     isIdle(elf) && elf.station < 2 && view.ai[elf.station] === 2;
   const trendArrow =
     '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.5V2M2.5 5.5 6 2l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const starRow = (stars, of = 3) =>
-    icon("star", "on").repeat(stars) + icon("star-empty").repeat(of - stars);
   // A small "i" button that shows or hides longer words in place: works with touch and keyboard.
   // buttonHost gets the button, textHost the words (hidden until asked for).
   function addMore(buttonHost, words, label, textHost = buttonHost) {
@@ -136,30 +123,6 @@
     buttonHost.append(button);
     textHost.append(more);
   }
-  // A paragraph showing its first sentence, with a button that shows the whole of it.
-  function addExpand(paragraph, short, full, label) {
-    paragraph.moreButton?.remove();
-    paragraph.textContent = short;
-    if (!full || full === short) return;
-    const button = make("button", "info-button more-toggle", "i");
-    button.type = "button";
-    button.setAttribute("aria-label", label);
-    button.setAttribute("aria-expanded", "false");
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const open = button.getAttribute("aria-expanded") !== "true";
-      paragraph.textContent = open ? full : short;
-      button.setAttribute("aria-expanded", String(open));
-    });
-    paragraph.after(button);
-    paragraph.moreButton = button;
-  }
-  const revealedToy = (toy, cls) => {
-    const node = make("span", cls);
-    node.innerHTML = toyArt(toy.name);
-    node.append(make("span", "", toy.name));
-    return node;
-  };
   const infoButton = (key, label = "More information") => {
     const b = make("button", "info-button", "i");
     b.dataset.help = key;
@@ -181,21 +144,34 @@
     const station = make("section", "station");
     station.id = `station${s}`;
     station.dataset.destination = s;
-    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2>${stationNames[s]}</h2></div><div class="machine">${Art.scene(s)}<strong class="station-rate" id="rate${s}"></strong><span class="station-bottleneck" id="bottleneck${s}"></span><span class="capacity-label">${["Reading", "Toy making", "Dispatch at current checking"][s]}</span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
-    station
-      .querySelector(".column-heading")
-      .append(
-        infoButton(`station:${s}`, `About ${stationNames[s].toLowerCase()}`),
-      );
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2></h2></div><div class="machine">${Art.scene(s)}<span class="station-bottleneck" id="bottleneck${s}"></span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station.querySelector(".column-heading").append(infoButton(`station:${s}`));
     $("board").insertBefore(station, $("sleigh"));
+    // One pile per station; at checking the straight-through and remake piles are two small
+    // counters under it.
     for (const id of queueIds[s]) {
-      const q = make("button", "queue");
+      const mini = miniPiles[id];
+      const q = make("button", mini ? "queue queue-mini" : "queue");
       q.id = `queue-${id}`;
       q.dataset.info = `queue:${id}`;
       q.dataset.help = `queue:${id}`;
-      q.innerHTML =
-        '<span class="queue-tag"><span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span><span class="queue-trend" role="img"></span></strong></span><span class="queue-picture"><span class="stack"></span></span><span class="queue-rate"></span><progress max="1" value="0"></progress>';
-      $(`piles${s}`).append(q);
+      q.innerHTML = mini
+        ? `${icon(mini)}<span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span></strong>`
+        : '<span class="queue-tag"><span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span><span class="queue-trend" role="img"></span></strong></span><span class="queue-picture"><span class="stack"></span></span><progress max="1" value="0"></progress>';
+      if (id === "orders") {
+        const held = make("small", "queue-held");
+        held.hidden = true;
+        q.querySelector(".queue-count").append(held);
+      }
+      if (!mini) $(`piles${s}`).append(q);
+      else {
+        if (!$(`minis${s}`)) {
+          const row = make("div", "mini-piles");
+          row.id = `minis${s}`;
+          $(`piles${s}`).append(row);
+        }
+        $(`minis${s}`).append(q);
+      }
     }
     const addGroup = (key, node) => {
       const wrap = make("div", "control-row");
@@ -228,13 +204,6 @@
       caption.id = `mode${s}`;
       $(`controls${s}`).append(caption);
     }
-    if (s === 0) {
-      const b = make("button", "small-action ask-toggle");
-      b.innerHTML = `${icon("ask")}<span class="toggle-label">Ask the child</span><span class="toggle-track" aria-hidden="true"><span class="toggle-knob"></span></span><span class="toggle-state" aria-hidden="true"></span>`;
-      b.dataset.action = "ask";
-      b.dataset.info = "action:ask";
-      addGroup("ask", b);
-    }
     if (s === 2) {
       const sw = make("div", "switch");
       for (let level = 0; level < 3; level++) {
@@ -248,13 +217,6 @@
       }
       sw.dataset.kind = "checking";
       addGroup("checking", sw);
-      for (const key of ["bypass"]) {
-        const b = make("button", "small-action");
-        b.innerHTML = `${icon("let-through")}<span class="bypass-label">Let through</span>`;
-        b.dataset.action = key;
-        b.dataset.info = `action:${key}`;
-        addGroup(key, b);
-      }
       const vigilance = make("button", "vigilance");
       vigilance.id = "vigilance";
       vigilance.dataset.help = "vigilance";
@@ -266,11 +228,7 @@
     const station = $(`station${s}`),
       heading = station.querySelector(".column-heading");
     const rate = make("div", "paper-rate");
-    rate.append(
-      $(`rate${s}`),
-      $(`bottleneck${s}`),
-      station.querySelector(".capacity-label"),
-    );
+    rate.append($(`bottleneck${s}`));
     heading.append(rate);
     const scene = make("div", "paper-scene");
     scene.append(station.querySelector(".machine"), $(`piles${s}`));
@@ -291,26 +249,23 @@
   cargoBadge.dataset.info = "cargo";
   const sleigh = $("sleigh"),
     sleighScene = make("div", "paper-scene paper-sleigh-scene");
-  // The cargo sits on the sleigh picture, so the four column headings match.
-  sleighScene.append(cargoBadge);
+  // Keep the cargo and the target together in the sleigh card.
+  $("sleighTotal").append(cargoBadge);
   sleigh.querySelector(".sleigh-art").innerHTML = Art.scene(3);
   sleighScene.append(
     sleigh.querySelector(".sleigh-art"),
     sleigh.querySelector(".sleigh-total"),
-    $("runStars"),
-    $("arrival"),
   );
   const sleighBelt = make("div", "paper-belt");
   sleighBelt.setAttribute("aria-hidden", "true");
   const sleighControls = make("div", "controls paper-sleigh-controls");
-  sleighControls.append($("wrongDelivery"), $("recentGifts"), $("sleighNote"));
+  sleighControls.append($("wrongDelivery"), $("sleighNote"));
   sleigh.append(sleighScene, sleighBelt, $("cocoa"), sleighControls);
   $("cocoa").classList.add("paper-floor");
   $("cocoa").querySelector(".cocoa-label > span").innerHTML =
     Art !== PaperArt
       ? Art.icon("mug")
       : '<svg viewBox="0 0 80 80" aria-hidden="true"><use href="#mug"/></svg>';
-  $("arrivalIcon").innerHTML = icon("gift");
   $("stationPicker").addEventListener("click", (event) => {
     const button = event.target.closest("[data-station-page]");
     if (!button) return;
@@ -349,26 +304,37 @@
     },
     { passive: true },
   );
-  // The three goals of the run under way, one star each.
+  // The mistakes and cost goals, one star each; on a desktop the full-sleigh goal is on the sleigh
+  // itself, and a phone or tablet shows it here too, as the sleigh is a tab away. The cost goal is
+  // the game's one money figure, the cost so far against its limit. Each has a short word for
+  // narrow screens.
   const goalSlots = {};
-  for (const [id, art] of [
-    ["full", "gift"],
-    ["right", "wrong-gift"],
-    ["cost", "budget"],
+  for (const [id, art, short] of [
+    ["full", "gift", "Gifts"],
+    ["right", "wrong-gift", "Mistakes"],
+    ["cost", "budget", "Cost"],
   ]) {
     const slot = make("button", "hud-slot");
     slot.dataset.goal = id;
+    slot.dataset.short = short;
     slot.dataset.help = `goal:${id}`;
     slot.dataset.info = `goal:${id}`;
-    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i>${id === "full" ? '<b class="hud-tick"></b>' : ""}</span>`;
+    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i></span>`;
     $("goals").append(slot);
+    slot.querySelector(".hud-name > span").dataset.short = short;
     goalSlots[id] = slot;
   }
-  function paintGoals() {
-    text(
-      "goalsTitle",
-      `Sleigh ${view.run.number} of ${view.run.of}: a star for each goal`,
+  // Marks on the phone's station tabs: the outlined control or the rules' focus, a tired elf,
+  // and on the sleigh tab a cup with the elves on cocoa.
+  $("stationPicker")
+    .querySelectorAll("[data-station-page]")
+    .forEach((tab) =>
+      tab.insertAdjacentHTML(
+        "beforeend",
+        `<span class="tab-marks" aria-hidden="true"><i class="tab-focus" hidden></i><i class="tab-tired" hidden></i><span class="tab-cocoa" hidden>${icon("cocoa")}<b></b></span></span>`,
+      ),
     );
+  function paintGoals() {
     // While a recall card is open, the wrong-gift goal previews the count after the recall.
     const c = view.case;
     const recall =
@@ -384,19 +350,21 @@
     goalSlots.right.classList.toggle("hud-previewing", after !== null);
     goalSlots.right.querySelector(".hud-preview").textContent =
       after !== null ? `${after} after recall` : "";
-    // From how many right gifts aboard the mistakes and spend stars count; marked on the sleigh bar.
-    const from = view.run.goalsCountFrom;
-    const full = view.run.goals.find((g) => g.id === "full");
-    goalSlots.full
-      .querySelector(".hud-tick")
-      .style.setProperty("--tick", Math.min(1, from / Math.max(1, full.need)));
     for (const goal of view.run.goals) {
       const slot = goalSlots[goal.id];
       if (!slot) continue;
-      const figure = (n) => (goal.id === "cost" ? money(n) : String(n));
-      slot.querySelector(".hud-name > span").textContent = goal.name;
-      slot.querySelector(".hud-figures b").textContent = figure(goal.now);
-      slot.querySelector(".hud-need").textContent = ` / ${figure(goal.need)}`;
+      const cost = goal.id === "cost";
+      const figure = (n) => (cost ? money(n) : String(n));
+      const now = cost
+          ? (view.cost?.spent ?? goal.now)
+          : goal.id === "full"
+            ? (view.run.aboard ?? goal.now)
+            : goal.now,
+        need = cost ? (view.cost?.limit ?? goal.need) : goal.need;
+      const name = cost ? "Cost so far" : goal.name;
+      slot.querySelector(".hud-name > span").textContent = name;
+      slot.querySelector(".hud-figures b").textContent = figure(now);
+      slot.querySelector(".hud-need").textContent = ` / ${figure(need)}`;
       slot.querySelector(".hud-unit").textContent =
         goal.id === "right" ? " wrong" : "";
       // met: lit star; waiting: inside the limit but the sleigh is not full enough yet;
@@ -416,64 +384,66 @@
       }
       slot
         .querySelector(".hud-bar i")
-        .style.setProperty(
-          "--fill",
-          Math.min(1, goal.now / Math.max(1, goal.need)),
-        );
+        .style.setProperty("--fill", Math.min(1, now / Math.max(1, need)));
       slot.setAttribute(
         "aria-label",
-        `${goal.name}: ${figure(goal.now)} of ${figure(goal.need)}, ${{ met: "star earned so far", waiting: `counts from ${from} right gifts`, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
+        `${name}: ${figure(now)} of ${figure(need)}, ${{ met: "star earned so far", waiting: "not counted yet", failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
       );
     }
   }
-  // A wrong gift lights up, for about three seconds, the control that would have stopped it.
-  // The training and update choices live on the break card, so their hint goes on the sleigh.
-  // The tag on the lit control; "" where the control's own label already says it.
-  const hintWords = {
-    ask: "",
-    checking: "Check the risky ones",
-    ai0: "Try Assist",
-    ai1: "Try Assist",
-    cocoa: "",
-    train: "Train or rest them",
-    update: "Test updates first",
-    vigilance: "Train or rest them",
+  // A wrong gift lights up, for a few seconds, the control its news line names, with the rules'
+  // words for what to do as its tag.
+  const hintTargets = {
+    checking: () => actionGroups.get("checking"),
+    "ai:0": () => actionGroups.get("ai0"),
+    "ai:1": () => actionGroups.get("ai1"),
+    cocoa: () => $("cocoa"),
+    decide: () =>
+      caseOpen && view.case?.kind === "unclear" ? $("caseReadings") : null,
   };
-  let mistakeHint = null,
-    pendingCause = null;
+  let mistakeHint = null;
   const hintLabel = make("span", "mistake-hint-label");
-  hintLabel.setAttribute("role", "status");
-  // A control already set the way its tag advises gets no tag: the gift was on its way before.
-  const alreadySet = {
-    ask: () => view.ask,
-    checking: () => view.checking >= 1,
-    ai0: () => view.ai[0] <= 1,
-    ai1: () => view.ai[1] <= 1,
-  };
-  function showMistakeHint(control) {
-    if (!(control in hintWords) || alreadySet[control]?.()) return;
-    mistakeHint = { control, until: performance.now() + 3000 };
-    setTimeout(paintMistakeHint, 3100);
+  const mistakeHintOn = () =>
+    !!mistakeHint &&
+    mistakeHint.until > performance.now() &&
+    !view.end &&
+    tourStep === null;
+  function showMistakeHint(news) {
+    // The rules' short tag when they send one, else the line's last sentence up to any colon.
+    const action =
+      news.action ??
+      (/([^.]+)\.\s*$/.exec(news.text)?.[1] ?? "").split(":")[0].trim();
+    // A tag that names an elf ("Swap Pip") outlines that elf's card; "Swap an elf" outlines the
+    // crew of the station its line names.
+    const elf = view.elves.findIndex((e) =>
+      new RegExp(`\\b${e.name}\\b`).test(action),
+    );
+    const crew =
+      /^Swap an elf/.test(action) && elf < 0
+        ? /checkers/.test(news.text)
+          ? 2
+          : view.stations.findIndex((st) => news.text.includes(`at ${st.name}`))
+        : -1;
+    if (elf < 0 && crew < 0 && !hintTargets[news.control]) return;
+    mistakeHint = {
+      control: news.control,
+      elf,
+      crew,
+      words: /^Wrong gift/.test(action) ? "" : action,
+      until: performance.now() + 5000,
+    };
+    setTimeout(paintMistakeHint, 5100);
   }
   function paintMistakeHint() {
-    let target = null;
-    // A walkthrough card's outline is the only one while the card is up.
-    if (
-      mistakeHint &&
-      mistakeHint.until > performance.now() &&
-      !view.end &&
-      !(view.moment && view.moment.control !== "case")
-    ) {
-      const control = mistakeHint.control;
-      target =
-        control === "cocoa"
-          ? $("cocoa")
-          : control === "vigilance"
-            ? $("vigilance")
-            : actionGroups.get(control);
-      if (!target?.getClientRects().length) target = $("wrongDelivery");
-      if (!target.getClientRects().length) target = $("sleigh");
-    }
+    // The tour's outline is the only one while the tour is up.
+    let target = !mistakeHintOn()
+      ? null
+      : mistakeHint.elf >= 0
+        ? elfNodes[mistakeHint.elf]
+        : mistakeHint.crew >= 0
+          ? $(`elves${mistakeHint.crew}`)
+          : hintTargets[mistakeHint.control]();
+    if (!target?.getClientRects().length) target = null;
     document
       .querySelectorAll(".mistake-hint")
       .forEach(
@@ -495,16 +465,45 @@
       return;
     }
     target.classList.add("mistake-hint");
-    // A lit control with its own label says it already; the sleigh's card or column needs the words.
-    const words =
-      hintWords[mistakeHint.control] ||
-      (target === $("wrongDelivery") || target === $("sleigh")
-        ? { ask: "Ask the child", cocoa: "Cocoa break" }[mistakeHint.control]
-        : "");
-    hintLabel.textContent = words;
-    if (!words) hintLabel.remove();
+    hintLabel.textContent = mistakeHint.words;
+    if (!mistakeHint.words) hintLabel.remove();
     else if (hintLabel.parentNode !== target) target.append(hintLabel);
   }
+  // The phone's station tabs say what is happening a page away: a dot where the game points, a
+  // red dot where an elf at work is tired, and a cup with the number of elves on cocoa.
+  function paintTabMarks() {
+    $("stationPicker")
+      .querySelectorAll("[data-station-page]")
+      .forEach((tab) => {
+        const page = Number(tab.dataset.stationPage);
+        tab.querySelector(".tab-focus").hidden = !(
+          tab.classList.contains("focus-tab") ||
+          tab.classList.contains("mistake-hint-tab") ||
+          view.vigilance.swap?.station === page
+        );
+        tab.querySelector(".tab-tired").hidden = !view.elves.some(
+          (elf) =>
+            elf.station === page && page < 3 && /tired|spent/.test(elf.mood),
+        );
+        const resting = page === 3 ? crewSize(3) : 0;
+        const cup = tab.querySelector(".tab-cocoa");
+        cup.hidden = !resting;
+        cup.querySelector("b").textContent = resting || "";
+        tab.setAttribute(
+          "aria-label",
+          [
+            tab.firstChild.textContent.trim(),
+            tab.querySelector(".tab-focus").hidden ? "" : "needs you",
+            tab.querySelector(".tab-tired").hidden ? "" : "a tired elf",
+            resting ? `${resting} on cocoa` : "",
+          ]
+            .filter(Boolean)
+            .join(", "),
+        );
+      });
+  }
+  const crewSize = (station) =>
+    view.elves.filter((elf) => elf.station === station).length;
   // How sharp the checkers are, from the rules' vigilance state value.
   const attentionOf = (state) =>
     /wav|not look|asleep/.test(state)
@@ -512,7 +511,6 @@
       : /relax|drift/.test(state)
         ? "drifting"
         : "sharp";
-  let lastAttention = "sharp";
   const eyes = {
     sharp:
       '<svg class="ui-icon attention-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/></svg>',
@@ -531,9 +529,7 @@
       b.draggable = true;
       b.dataset.elf = i;
       b.dataset.info = `elf:${i}`;
-      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><span class="elf-task"></span><progress class="fatigue" max="100" value="0"></progress><span class="elf-doing" aria-hidden="true"></span>`;
-      const more = infoButton(`elf:${i}`, `About ${elf.name}`);
-      more.classList.add("elf-info");
+      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><span class="elf-task"></span><span class="energy" aria-hidden="true"><i></i></span>`;
       // On a phone the cocoa strip is a page away, so a selected elf can be sent from its card.
       const rest = make("button", "rest-button");
       rest.dataset.rest = i;
@@ -542,39 +538,53 @@
       const cue = make("span", "rest-cue");
       cue.innerHTML = icon("cocoa");
       cue.setAttribute("aria-hidden", "true");
-      wrap.append(b, more, rest, cue);
+      wrap.append(b, rest, cue);
       elfNodes.push(wrap);
     });
   }
+  // The station names come from the rules, so headings, tabs and the rules' lines use one word.
+  function nameStations() {
+    for (let s = 0; s < 3; s++) {
+      const name = view.stations[s].name ?? "";
+      const station = $(`station${s}`);
+      station.querySelector("h2").textContent = name.toUpperCase();
+      station
+        .querySelector(".column-heading .info-button")
+        .setAttribute("aria-label", `About ${name}`);
+      const tab = $("stationPicker").querySelector(
+        `[data-station-page="${s}"]`,
+      );
+      if (tab.firstChild?.nodeType === Node.TEXT_NODE)
+        tab.firstChild.textContent = name;
+      else tab.prepend(name);
+    }
+  }
   function reset(showIntro = true, freshSeed = true) {
     if (freshSeed) seed = nextSeed();
-    game = new Workshop({ seed, guided });
+    game = new Workshop({ seed });
     view = game.view();
+    nameStations();
     started = false;
     manualPaused = false;
     restartOpen = false;
     selected = null;
     caseOpen = false;
-    lastMoment = null;
+    tourStep = null;
     lastCase = null;
     openedCases.clear();
-    resolvedAt = -Infinity;
     ended = false;
     lastWrong = null;
-    lastArrival = null;
     newsSeen = new Set();
     notice = null;
-    rateChanges.clear();
     mistakeHint = null;
-    pendingCause = null;
     closeInfo();
     buildElves();
-    $("walkthrough").checked = guided;
+    $("walkthrough").checked = showTour;
     $("report").close();
     $("breakDialog").close();
     lastChoice = null;
+    breakAnimated = false;
     observedRight = 0;
-    observedRun = null;
     caughtSnapshot = null;
     $("celebration").replaceChildren();
     hideToast();
@@ -582,7 +592,6 @@
     const url = new URL(location.href);
     if (fixedSeed !== null) url.searchParams.set("seed", fixedSeed);
     else url.searchParams.delete("seed");
-    url.searchParams.delete("version");
     history.replaceState(null, "", url);
     paint();
     $("board").scrollLeft = 0;
@@ -595,20 +604,8 @@
   }
   function moveElf(destination) {
     if (selected === null || !started || view.end) return;
-    const before = game.view();
     if (game.move(selected, destination)) {
       view = game.view();
-      for (const id of Object.keys(view.queues)) {
-        if (
-          queueIds[before.elves[selected].station]?.includes(id) ||
-          queueIds[destination]?.includes(id)
-        )
-          rateChanges.set(id, {
-            before: before.queues[id].rate,
-            after: view.queues[id].rate,
-            until: performance.now() + 5000,
-          });
-      }
       const moved = selected,
         elf = view.elves[moved];
       selected = null;
@@ -622,26 +619,7 @@
         elfNodes[moved].querySelector(".elf").focus({ preventScroll: true });
     }
   }
-  function acknowledge() {
-    if (view.moment) perform(() => game.acknowledge(view.moment.id));
-  }
-  function skip() {
-    perform(() => game.skipGuidance());
-    guided = false;
-  }
   const focusTag = make("span", "focus-tag");
-  // The exact control a walkthrough card asks the player to use.
-  function momentTarget(moment) {
-    const c = moment.control;
-    if (c === "ai0" || c === "ai1")
-      return document.querySelector(`[data-ai="${c[2]},1"]`);
-    if (c === "ask" || c === "bypass")
-      return document.querySelector(`[data-action="${c}"]`);
-    if (c === "cocoa")
-      return Number.isInteger(moment.elf) ? elfNodes[moment.elf] : $("cocoa");
-    if (c === "elves") return $("elves1");
-    return actionGroups.get(c) || null;
-  }
   // A line stays up at least 4 seconds unless something more important comes; 9 at most.
   function say(words, priority) {
     const now = performance.now();
@@ -657,103 +635,53 @@
   // What the player's last move did, from the view's own figures.
   function sayResult(words) {
     const now = performance.now();
+    // A wrong gift's line, or an elf back from cocoa, keeps its 4 seconds against the player's move.
+    if (notice?.priority > 5 && now - notice.since < 4000) return paint();
     notice = { text: words, priority: 5, since: now, until: now + 4000 };
     paint();
   }
+  const clockText = (seconds) =>
+    `${Math.floor(seconds / 60)}:${String(Math.round(seconds) % 60).padStart(2, "0")}`;
   const perMinute = (s) =>
-    `${["Reading", "Toy making", "Checking"][s]} ${Math.round(view.stations[s].rate)} a minute`;
+    `${view.stations[s].name}: ${Math.round(view.stations[s].rate)} a minute`;
   function paint() {
     view = game.view();
     paintGoals();
-    text("budget", money(view.budget.left));
-    const allowance = view.run.goals?.find((g) => g.id === "cost")?.need;
-    $("money").classList.toggle("low", view.budget.left < (allowance ?? 0));
-    if ($("cargoBadge").dataset.cargo !== view.run.cargo.id) {
-      $("cargoBadge").dataset.cargo = view.run.cargo.id;
-      iconText(
-        $("cargoBadge"),
-        `cargo-${view.run.cargo.id}`,
-        view.run.cargo.name,
-      );
-    }
-    $("cargoBadge").setAttribute(
-      "aria-label",
-      `${view.run.cargo.name}. About this cargo.`,
-    );
-    const runStars = (view.run?.stars || []).join();
-    if ($("runStars").dataset.value !== runStars) {
-      $("runStars").dataset.value = runStars;
-      $("runStars").innerHTML = (view.run?.stars || [])
-        .map(
-          (stars, i) =>
-            `<span class="run-star-set" aria-label="Sleigh ${i + 1}: ${stars} stars"><b>${i + 1}</b>${starRow(stars)}</span>`,
-        )
-        .join("");
-    }
-    const doors = $("adventRuns");
-    if (doors.children.length !== view.run.of) {
-      doors.replaceChildren(
-        ...Array.from({ length: view.run.of }, (_, i) => {
-          const door = make("div", "run-door");
-          door.append(
-            make("span", "door-number", i + 1),
-            make("span", "door-stars"),
-          );
-          return door;
-        }),
-      );
-    }
-    [...doors.children].forEach((door, i) => {
-      const stars = view.run.stars[i];
-      door.dataset.state =
-        stars !== undefined
-          ? "done"
-          : i + 1 === view.run.number
-            ? "current"
-            : "later";
-      const doorStars = door.querySelector(".door-stars");
-      if (doorStars.dataset.value !== String(stars)) {
-        doorStars.dataset.value = String(stars);
-        doorStars.innerHTML = stars === undefined ? "" : starRow(stars);
-      }
-      door.setAttribute(
+    const cargo = view.run.cargo;
+    if (cargo && $("cargoBadge").dataset.cargo !== cargo.id) {
+      $("cargoBadge").dataset.cargo = cargo.id;
+      iconText($("cargoBadge"), `cargo-${cargo.id}`, cargo.name);
+      $("cargoBadge").setAttribute(
         "aria-label",
-        `Sleigh ${i + 1}${stars === undefined ? (i + 1 === view.run.number ? ", current" : ", upcoming") : `, ${stars} stars`}`,
+        `${cargo.name}. About this cargo.`,
       );
-    });
+    }
+    // One clock for the whole game: the time until the sleigh leaves.
+    const left = Math.ceil(view.run.leavesIn ?? view.duration - view.t);
     $("countdownRing").style.setProperty(
       "--remaining",
-      Math.max(0, view.run.leavesIn / (view.duration / view.run.of)),
+      Math.max(0, Math.min(1, left / view.duration)),
     );
-    const left = Math.ceil(view.run?.leavesIn ?? view.duration - view.t);
-    text(
-      "clock",
-      `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`,
-    );
-    text(
-      "mission",
-      `Elves and AI must deliver ${view.target} right gifts${view.run ? ` on ${view.run.of} sleighs` : ""} in ${Math.round(view.duration / 60)} minutes.`,
-    );
-    $("pause").disabled = !started || !!view.end;
+    text("clock", clockText(left));
+    $("pause").disabled = !started || !!view.end || tourStep !== null;
     document.querySelector("main > footer").hidden = started && !view.end;
     text("pause", manualPaused ? "Resume" : "Pause");
     text(
       "pauseState",
-      // One word: the Pause button, the card or the break already says why.
+      // One word: the Pause button, the card or half-time already says why.
       started &&
         !view.end &&
-        (manualPaused || view.choice || view.moment || document.hidden)
+        (manualPaused ||
+          view.choice ||
+          tourStep !== null ||
+          caseStopsClock() ||
+          document.hidden)
         ? "Paused"
         : "",
     );
     for (let s = 0; s < 3; s++) {
       const station = view.stations[s];
       text(`staff${s}`, `${station.working} working · ${station.idle} idle`);
-      const capacity = station.rate;
-      text(
-        `rate${s}`,
-        `${Math.round(capacity)} ${["read", "made", "checked"][s]}/min`,
-      );
       const bottleneck = $(`bottleneck${s}`),
         isSlowest = view.pace.slowest === s;
       if (bottleneck.childNodes.length !== (isSlowest ? 2 : 0)) {
@@ -772,35 +700,30 @@
         const q = view.queues[id],
           node = $(`queue-${id}`);
         node.querySelector(".queue-name").textContent = q.name;
-        node.querySelector(".queue-amount").textContent =
-          `${q.parcels.length}/${q.limit}`;
+        const count = q.parcels.length;
+        const full = count >= q.limit;
+        const nearFull = !full && count >= q.limit * 0.8;
+        node.querySelector(".queue-amount").textContent = `${count}/${q.limit}`;
+        node.setAttribute(
+          "aria-label",
+          `${q.name}: ${count} of ${q.limit} places filled${full ? ", full" : nearFull ? ", nearly full" : ""}${q.held ? `, ${q.held} read letters waiting for room` : ""}`,
+        );
+        node.classList.toggle("blocked", !!q.blocked);
+        node.classList.toggle("full", full);
+        node.classList.toggle("near-full", nearFull);
+        // The two small counters at checking carry only their name and count.
+        if (miniPiles[id]) continue;
         const trend = node.querySelector(".queue-trend");
         if (!trend.firstChild) trend.innerHTML = trendArrow;
-        trend.hidden = !q.trend;
+        trend.hidden = !q.trend || !!q.held;
+        const held = node.querySelector(".queue-held");
+        if (held) {
+          held.hidden = !q.held;
+          held.textContent = q.held ? `+${q.held} waiting` : "";
+        }
         trend.dataset.trend = q.trend || "";
         trend.setAttribute("aria-label", q.trend ? `Pile ${q.trend}` : "");
-        node.classList.toggle("blocked", !!q.blocked);
-        // On a phone the ask pile hides while asking is off and nothing waits in it.
-        node.classList.toggle(
-          "asking-off",
-          id === "clarify" && !view.ask && !q.parcels.length,
-        );
-        node.classList.toggle("full", q.parcels.length >= q.limit);
         node.querySelector("progress").value = q.progress;
-        const change = rateChanges.get(id);
-        // A pile's own rate shows only while it flashes the change a move made.
-        node.querySelector(".queue-rate").hidden =
-          id === "pass" || !(change && change.until > performance.now());
-        node.querySelector(".queue-rate").textContent =
-          change && change.until > performance.now()
-            ? `${Math.round(change.after - change.before) > 0 ? "+" : ""}${Math.round(change.after - change.before)} a minute${Math.round(change.after - change.before) === 0 ? " unchanged" : ""}`
-            : `${Math.round(q.rate)} a minute`;
-        node.dataset.delta =
-          change && change.after < change.before ? "down" : "up";
-        node.classList.toggle(
-          "rate-changed",
-          !!change && change.until > performance.now(),
-        );
         const stack = node.querySelector(".stack");
         const signature = q.parcels
           .slice(-18)
@@ -815,7 +738,7 @@
               `${p.big ? "big " : ""}${p.suspect ? "suspect " : ""}${p.suspect === "batch" ? "batch" : ""}`,
             );
             // Parcels: a big gift is the gold parcel with a "big" tag; others red or green.
-            item.innerHTML = ["letters", "clarify", "orders"].includes(id)
+            item.innerHTML = ["letters", "orders"].includes(id)
               ? Art.pile?.(id, index) ||
                 Art.icon(id === "orders" ? "parcel-r" : "env")
               : Art.icon(
@@ -842,45 +765,38 @@
         b = wrap.querySelector(".elf");
       if (wrap.parentNode !== $(`elves${elf.station}`))
         $(`elves${elf.station}`).append(wrap);
+      const { energy, mood } = elf;
       b.querySelector(".elf-name").textContent = elf.name;
-      b.querySelector("progress").value = elf.tired;
+      b.querySelector(".energy").style.setProperty("--energy", energy);
+      b.dataset.mood = mood;
       b.classList.toggle("selected", selected === i);
       wrap.querySelector(".rest-button").hidden =
         selected !== i || elf.station === 3 || innerWidth >= 1000;
-      b.classList.toggle("tired", elf.tired >= 60);
       b.classList.toggle("exhausted", elf.resting);
       b.disabled = !started || !!view.end || elf.resting;
       b.setAttribute(
         "aria-label",
-        `${elf.name}, ${isFree(elf) ? "free to move" : isIdle(elf) ? "waiting for work" : elf.doing}, tiredness ${Math.round(elf.tired)} out of 100. Select to move.`,
+        `${elf.name}, ${isFree(elf) ? "free to move" : isIdle(elf) ? "waiting for work" : elf.doing}, energy ${energy} of 100. Select to move.`,
       );
-      const role = elf.doing.includes("asking")
-        ? ["role-asking", "asking"]
-        : isFree(elf)
-          ? ["role-idle", "free to move", "free"]
-          : isIdle(elf)
-            ? ["role-idle", "waiting", "waiting"]
-            : elf.doing.includes("confirm")
-              ? ["role-confirming", "confirm"]
-              : elf.station === 3 || elf.resting
-                ? ["role-resting", "resting"]
-                : elf.doing.includes("reading")
-                  ? ["role-reading", "reading"]
-                  : elf.doing.includes("making")
-                    ? ["role-making", "making"]
-                    : elf.doing.includes("checking")
-                      ? ["role-checking", "checking"]
-                      : ["role-making", "working"];
-      const doing = b.querySelector(".elf-doing");
-      if (doing.dataset.icon !== role[0]) {
-        doing.dataset.icon = role[0];
-        doing.innerHTML = icon(role[0]);
-      }
-      b.querySelector(".elf-task").textContent = role[1];
-      b.dataset.role = role[2] || role[1];
+      // The task word under the name is the first word of what the rules say the elf is doing
+      // ("reading", "loading", "remaking"); free, waiting and resting elves get their own word.
+      const [task, role = task] = isFree(elf)
+        ? ["free to move", "free"]
+        : isIdle(elf)
+          ? ["waiting"]
+          : elf.resting
+            ? ["burnt out", "resting"]
+            : elf.station === 3
+              ? ["resting"]
+              : [elf.doing.split(" ")[0] || "working"];
+      b.querySelector(".elf-task").textContent = task;
+      b.dataset.role = role;
       b.querySelector(".elf-eyes").setAttribute(
         "href",
-        "#" + artSymbol(elf.tired >= 55 ? "eyes-tired" : "eyes"),
+        "#" +
+          artSymbol(
+            { fresh: "eyes", tiring: "eyes-drowsy" }[mood] || "eyes-tired",
+          ),
       );
       b.querySelector(".elf-prop").setAttribute(
         "href",
@@ -889,26 +805,25 @@
             {
               reading: "p-letter",
               making: "p-hammer",
+              remaking: "p-hammer",
               checking: "p-glass",
-              confirm: "p-confirming",
-              watching: "p-watching",
-              asking: "p-asking",
+              confirming: "p-confirming",
               resting: "p-resting",
-            }[role[1]] || "",
+            }[role] || "",
           ),
       );
     });
-    for (let station = 0; station < 4; station++)
+    // Four to six elves in one place stand in two rows of full cards, so the floor grows.
+    const crews = [0, 1, 2, 3].map(
+      (station) => view.elves.filter((elf) => elf.station === station).length,
+    );
+    crews.forEach((count, station) =>
       $(`elves${station}`).style.setProperty(
         "--crew-count",
-        Math.max(
-          1,
-          Math.min(
-            4,
-            view.elves.filter((elf) => elf.station === station).length,
-          ),
-        ),
-      );
+        Math.max(1, Math.min(4, count)),
+      ),
+    );
+    $("board").dataset.crowd = String(crews.some((n) => n >= 4 && n <= 6));
     for (let station = 0; station < 2; station++) {
       // Under the AI switch: what the setting means, or, once the machine works alone and
       // elves stand free, the move that helps.
@@ -924,8 +839,10 @@
             ],
       );
       $(`mode${station}`).classList.toggle("spare", spare > 0);
-      $(`mode${station}`).hidden =
-        !started || !view.actions[`ai${station}`].unlocked;
+      // A station the machine runs with no elf left says so on its empty floor.
+      $(`elves${station}`).dataset.alone =
+        view.ai[station] === 2 && !crews[station] ? "Machine works alone" : "";
+      if ($(`elves${station}`).dataset.alone) text(`mode${station}`, "");
     }
     document
       .querySelectorAll("[data-destination]")
@@ -952,7 +869,6 @@
     });
     for (const [key, group] of actionGroups) {
       const action = view.actions[key];
-      group.hidden = !started || !action.unlocked;
       group
         .querySelectorAll("button:not(.info-button)")
         .forEach((b) => (b.disabled = !action.available || !!view.end));
@@ -978,49 +894,58 @@
           String(view.checking === Number(b.dataset.checking)),
         ),
       );
-    const ask = document.querySelector('[data-action="ask"]');
-    ask.setAttribute("aria-pressed", String(view.ask));
-    ask.querySelector(".toggle-state").textContent = view.ask ? "On" : "Off";
-    document.querySelector('[data-action="bypass"] .bypass-label').textContent =
-      `Let through ${view.queues.check.parcels.length}`;
-    const attention = attentionOf(view.vigilance.state);
-    if ($("vigilance").dataset.attention !== attention) {
-      if (lastAttention === "sharp" && attention !== "sharp" && started)
-        showMistakeHint("vigilance");
+    // The elf to swap out, while the rules name one: a banner with its name and an outline on
+    // its card, both gone once the station looks properly again.
+    const swap = view.vigilance.swap ?? null;
+    const attention = !swap
+      ? "sharp"
+      : swap.station === 2
+        ? attentionOf(view.vigilance.state)
+        : "drifting";
+    const banner = `${attention}:${swap?.name ?? ""}`;
+    if ($("vigilance").dataset.banner !== banner) {
+      $("vigilance").dataset.banner = banner;
       $("vigilance").dataset.attention = attention;
       $("vigilance").innerHTML = eyes[attention];
-      $("vigilance").append(
-        make(
-          "span",
-          "attention-label",
-          view.vigilance.name
-            ? `Checkers ${view.vigilance.name}`
-            : {
-                sharp: "Checkers sharp",
-                drifting: "Checkers drifting",
-                closed: "Checkers not looking",
-              }[attention],
-        ),
-      );
+      if (swap)
+        $("vigilance").append(
+          make(
+            "span",
+            "attention-label",
+            `${swap.name} ${attention === "closed" ? "not looking" : "trusting the AI"}`,
+          ),
+        );
     }
-    lastAttention = attention;
-    // The checkers' eye shows only once they stop looking properly.
-    $("vigilance").hidden =
-      !started || !view.actions.checking.unlocked || attention === "sharp";
+    // The banner belongs to Checking; at Letters or Toys the same words sit on the elf's card.
+    $("vigilance").hidden = !swap || swap.station !== 2;
     $("vigilance").dataset.state = view.vigilance.state;
-    // One outlined thing at a time: the control a walkthrough card names, else the rules' focus,
-    // with its reason as a tag on the outlined box. A tired elf gets its own card outlined.
-    const moment =
-      started && !view.end && view.moment?.control !== "case"
-        ? view.moment
+    elfNodes.forEach((wrap, i) => {
+      wrap.classList.toggle("swap-elf", swap?.elf === i);
+      const words =
+        swap?.elf === i && swap.station !== 2
+          ? `${swap.name} trusting the AI`
+          : "";
+      let tag = wrap.querySelector(".swap-tag");
+      if (!words) return tag?.remove();
+      if (!tag) {
+        tag = make("span", "swap-tag");
+        wrap.append(tag);
+      }
+      if (tag.textContent !== words) tag.textContent = words;
+    });
+    // One outlined thing at a time: the control the tour points at, else the rules' focus, with
+    // its reason as a tag on the outlined box. A tired elf gets its own card outlined.
+    const walkTarget = tourStep === null ? null : tourSteps[tourStep].target();
+    // A wrong gift's highlight takes the place of the focus outline while it shows.
+    const focus =
+      started && !view.end && !walkTarget && !mistakeHintOn()
+        ? view.focus
         : null;
-    const focus = started && !view.end && !moment ? view.focus : null;
     const tiredElf =
       focus?.control === "cocoa"
         ? view.elves.findIndex((elf) => focus.text.includes(elf.name))
         : -1;
     text("cocoaFocus", focus?.station === 3 ? focus.text : "");
-    const walkTarget = moment ? momentTarget(moment) : null;
     const focusTarget =
       tiredElf >= 0
         ? elfNodes[tiredElf]
@@ -1035,7 +960,9 @@
       });
     focusTarget?.classList.add("needs-attention");
     walkTarget?.classList.add("walk-target");
-    focusTag.textContent = focus && tiredElf < 0 ? focus.text : "";
+    // While an elf is being moved, Move here takes the floor's corner and the tag waits.
+    focusTag.textContent =
+      focus && tiredElf < 0 && selected === null ? focus.text : "";
     if (focusTarget && tiredElf < 0) {
       if (focusTag.parentNode !== focusTarget) focusTarget.append(focusTag);
     } else focusTag.remove();
@@ -1053,25 +980,13 @@
             focusColumn === (page === 3 ? $("sleigh") : $(`station${page}`)),
         ),
       );
-    text("sleighRight", view.sleigh.right);
-    const arrivals = view.sleigh.parcels;
-    const newest = arrivals.at(-1);
-    if (newest && newest.id !== lastArrival) {
-      lastArrival = newest.id;
-      $("arrivalIcon").innerHTML = newest.made
-        ? toyArt(newest.made.name)
-        : icon("gift");
-      text(
-        "arrivalLabel",
-        newest.result === "wrong" ? "Wrong gift aboard" : "Gift loaded",
-      );
-      $("arrival").classList.toggle("wrong", newest.result === "wrong");
-      $("arrivalBig").hidden = !newest.big;
-    }
-    const wrong = arrivals.filter((p) => p.result === "wrong").at(-1);
+
+    const wrong = view.sleigh.parcels
+      .filter((p) => p.result === "wrong")
+      .at(-1);
     if (wrong) lastWrong = wrong;
-    // The wrong-gift card keeps its place from the start, so the sleigh never shrinks.
-    $("wrongDelivery").toggleAttribute("data-empty", !lastWrong);
+    // The wrong-gift card shows once there is a wrong gift aboard.
+    $("wrongDelivery").hidden = !lastWrong;
     if (lastWrong) {
       if ($("wrongToy").dataset.toy !== lastWrong.made.name) {
         $("wrongToy").dataset.toy = lastWrong.made.name;
@@ -1092,16 +1007,19 @@
       handleNews(n);
       // Routine lines never show: a card title repeated, or a check that found nothing wrong.
       const priority =
-        n.kind === "unlock" ||
-        (n.kind === "checked" && n.check?.result !== "wrong")
+        n.kind === "checked" && n.check?.result !== "wrong"
           ? 0
           : n.kind === "loaded" && n.check?.result === "wrong"
-            ? 4
-            : n.kind === "resolved"
-              ? 3
-              : /wrong|fault|incident/.test(n.kind)
-                ? 4
-                : 1;
+            ? 7
+            : // An elf walking back from cocoa by itself, or an elf starting to trust the AI, is
+              // news the player's own last move must not hide.
+              /rested|relaxed/.test(n.kind)
+              ? 6
+              : n.kind === "resolved"
+                ? 3
+                : n.kind === "noticed"
+                  ? 4
+                  : 1;
       say(n.text, priority);
     }
     const narrow = innerWidth < 1000;
@@ -1109,7 +1027,7 @@
       "status",
       selected !== null
         ? `${view.elves[selected].name}: ${!narrow ? "drag or tap to a lit station" : view.elves[selected].station < 3 ? "tap Rest, or a lit station tab then Move here" : "tap a lit station tab, then Move here"}.`
-        : started && view.moment
+        : tourStep !== null
           ? ""
           : notice && notice.until > performance.now()
             ? notice.text
@@ -1118,28 +1036,33 @@
               : "Drag an elf to a new station.",
     );
     paintCase();
-    paintGuidance();
-    if (started && view.choice)
-      pendingCause = view.choice.report.causes?.[0]?.control ?? null;
-    else if (pendingCause) {
-      showMistakeHint(pendingCause);
-      pendingCause = null;
-    }
+    paintTour();
     paintChoice();
     paintEffects();
+    StationFlow.update(
+      view,
+      started &&
+        !manualPaused &&
+        !restartOpen &&
+        !document.hidden &&
+        tourStep === null &&
+        !view.choice &&
+        !view.end &&
+        !caseStopsClock(),
+    );
     paintMistakeHint();
+    paintTabMarks();
     if (infoKey && infoAnchor?.isConnected) renderInfo();
     if (view.end && !ended) {
       ended = true;
-      remembered = true;
-      guided = false;
+      showTour = false;
       try {
         localStorage.setItem("workshop-walkthrough-finished", "yes");
       } catch {}
       showReport();
     }
   }
-  // Break card and end screen: drawings and small builders shared by both.
+  // Half-time card and end screen: drawings and small builders shared by both.
   const uiIcon = (name) => SharedArt.icon(name) || "";
   const iconNode = (name, cls) => {
     const node = make("span", cls);
@@ -1153,19 +1076,22 @@
       ? `${money(goal.now)} / ${money(goal.need)}`
       : `${goal.now} / ${goal.need}${goal.id === "right" ? " wrong" : ""}`;
   const causeIcons = {
-    guessed: "gift-unclear",
+    picked: "gift-unclear",
     big: "gift-big",
     misread: "letter",
     misMade: "toy",
     waved: "checks",
     faulty: "update",
     tired: "role-tired",
+    recalled: "rollback",
+    slip: "hand",
   };
   const optionIcons = {
     update: "update",
     tested: "test",
     train: "train",
     rest: "rest",
+    none: "play",
   };
   // A toy drawn: the one a child wanted, or the wrong one the workshop made.
   const drawnToy = (name, wanted, cls) => {
@@ -1204,7 +1130,9 @@
       `<span class="header-icon">${uiIcon(icon)}</span><span class="header-word">${words}</span>`;
     $(id).title = words;
   }
-  function goalSlot(goal, countsFrom) {
+  // The end screen shows the counts-from line under a goal that never counted; the half-time card
+  // keeps only the dashed star and the hover text.
+  function goalSlot(goal, countsFrom, withNote = true) {
     const slot = make("div", "goal-slot");
     slot.dataset.goal = goal.id;
     slot.dataset.met = String(goal.met);
@@ -1220,9 +1148,14 @@
       make("b", "goal-name", goal.name),
       make("strong", "goal-figure", goalFigure(goal)),
     );
+    // Inside its limit but not counted: the sleigh holds fewer gifts than the goal counts from.
+    if (goal.waiting && countsFrom && withNote)
+      slot.append(
+        make("small", "goal-note", `Counts from ${countsFrom} gifts aboard`),
+      );
     // Within its limit but never counted: the sleigh stayed under the share where this goal starts.
     const why =
-      goal.waiting && countsFrom
+      goal.waiting && countsFrom && withNote
         ? `, counts from ${countsFrom} right gifts`
         : "";
     slot.title = goal.text + why;
@@ -1232,24 +1165,6 @@
     );
     slot.setAttribute("role", "group");
     return slot;
-  }
-  // The three goals of a finished run as small lit or unlit stars, for the end screen.
-  function goalMarks(goals) {
-    const row = make("div", "goal-mini");
-    for (const goal of goals) {
-      const mark = make("span", "goal-mini-mark");
-      mark.innerHTML = uiIcon(goal.met ? "star" : "star-empty");
-      mark.dataset.met = String(goal.met);
-      mark.dataset.waiting = String(Boolean(goal.waiting));
-      mark.title = `${goal.name}: ${goalFigure(goal)}${goal.met ? ", star earned" : ""}`;
-      row.append(mark);
-    }
-    row.setAttribute(
-      "aria-label",
-      goals.map((g) => `${g.name} ${g.met ? "earned" : "missed"}`).join(", "),
-    );
-    row.setAttribute("role", "img");
-    return row;
   }
   function paintCauses(list, causes, none) {
     list.replaceChildren(
@@ -1276,10 +1191,10 @@
     );
     if (!causes.length) list.append(make("li", "cause-none", none));
   }
-  // The break card: what the last run earned, at most two lines on why, then the choice.
+  // The half-time card: how the sleigh stands, at most two lines, what changes, then the choice.
   // A decision still waiting can be opened from here; the card steps aside until it is answered.
   let breakAside = false,
-    breakAnimated = null;
+    breakAnimated = false;
   function breakLine(cls, iconName, ...parts) {
     const line = make("p", `break-line ${cls}`);
     if (iconName) line.append(iconNode(iconName, "break-line-icon"));
@@ -1291,29 +1206,12 @@
   function paintBreakLines(choice) {
     const report = choice.report;
     const lines = [];
-    const top = report.causes[0];
-    const slip = report.slips[0];
-    // A short sleigh whose elves lost a quarter of their work or more to tiredness names that in the
-    // one line under the figures, in place of the wrong-gift cause; a waiting decision still comes first.
-    const full = report.goals.find((g) => g.id === "full");
-    const worn = !full?.met && (report.tired ?? 0) >= 25;
     if (choice.openCase) {
       const line = breakLine(
         "break-line-case",
         "ask",
-        "Decision still waiting: ",
+        "Decision waiting: ",
         make("b", "", choice.openCase.title),
-        // A short, tired sleigh keeps its reason on this one line, as a figure.
-        ...(worn
-          ? [
-              " · ",
-              make(
-                "b",
-                "break-line-figure",
-                `tired elves lost ${report.tired}%`,
-              ),
-            ]
-          : []),
       );
       if (view.case) {
         const open = make("button", "break-open-case", "Open it");
@@ -1322,10 +1220,11 @@
         line.append(open);
       }
       lines.push(line);
-    } else if (worn) {
-      const burnt = report.burnouts
-        ? ` · ${plural(report.burnouts, "burnout")}`
-        : "";
+    }
+    // Tiredness shows only when it cost a quarter of the work or burnt an elf out; else the
+    // biggest cause of the wrong gifts, as the goal above already counts them.
+    const top = report.causes?.[0];
+    if ((report.tired ?? 0) >= 25 || report.burnouts)
       lines.push(
         breakLine(
           "break-line-tired",
@@ -1333,77 +1232,20 @@
           make(
             "b",
             "break-line-figure",
-            `Tired elves lost ${report.tired}% of their work${burnt}`,
+            `Tired elves lost ${report.tired}% of their work${report.burnouts ? ` · ${plural(report.burnouts, "burnout")}` : ""}`,
           ),
-          " Send them for cocoa.",
         ),
       );
-    } else if (report.wrong && top) {
-      const cost = report.assurance.shippedCost;
-      const line = breakLine(
-        "break-line-cause",
-        "",
-        make(
-          "b",
-          "break-line-figure",
-          `${plural(report.wrong, "wrong gift")} · ${money(cost)}`,
-        ),
-        top.fix ? ` ${top.name}. ${top.fix}` : ` ${top.name}.`,
-      );
-      if (slip) {
-        const pair = make("span", "break-line-slip");
-        pair.append(
-          drawnToy(slip.wanted.name, true, "slip-mini"),
-          drawnToy(slip.made.name, false, "slip-mini slip-mini-made"),
-        );
-        pair.title = `Wanted ${slip.wanted.name}, got ${slip.made.name}`;
-        line.prepend(pair);
-      }
-      lines.push(line);
-    } else if (report.bonus) {
+    else if (report.wrong && top)
       lines.push(
         breakLine(
-          "break-line-bonus",
-          "star",
-          `+${report.bonus} clean-run bonus`,
+          "break-line-cause",
+          causeIcons[top.id] || "mistakes",
+          report.wrong === 1 ? "The wrong gift: " : "Most wrong gifts: ",
+          make("b", "", top.name),
         ),
       );
-    }
     $("breakLines").replaceChildren(...lines);
-  }
-  function paintBreakDetail(report) {
-    const slip = report.slips[0];
-    $("breakLast").hidden = !report.wrong;
-    $("breakLast").open = false;
-    $("breakSlips").replaceChildren();
-    if (slip) {
-      const card = make("article", "delivery-slip");
-      const toys = make("div", "slip-toys");
-      const wanted = make("span", "slip-side");
-      wanted.append(
-        drawnToy(slip.wanted.name, true, "slip-art"),
-        make("small", "", "Wanted"),
-        make("b", "", slip.wanted.name),
-      );
-      const made = make("span", "slip-side slip-made");
-      made.append(
-        drawnToy(slip.made.name, false, "slip-art"),
-        make("small", "", "Got"),
-        make("b", "", slip.made.name),
-      );
-      toys.append(wanted, made);
-      card.append(
-        make("span", "eyebrow", `Costliest · ${money(slip.cost)}`),
-        toys,
-        make(
-          "p",
-          "slip-wish",
-          `"${slip.wish}" ${slip.cause.charAt(0).toUpperCase()}${slip.cause.slice(1)}.`,
-        ),
-      );
-      $("breakSlips").append(card);
-    }
-    paintCauses($("breakCauses"), report.causes, "");
   }
   function paintBreakOptions(choice) {
     $("breakOptions").replaceChildren();
@@ -1411,8 +1253,7 @@
     for (const option of choice.options) {
       const card = make("button", "upgrade-card");
       card.dataset.choose = option.id;
-      card.dataset.choiceId = choice.id;
-      card.dataset.kind = option.kind;
+      card.dataset.kind = option.id;
       const fact = (label) => option.facts.find((f) => f.label === label);
       const gives = fact("Gives");
       const costs = fact("Costs");
@@ -1421,21 +1262,16 @@
       const others = option.facts.filter(
         (f) => f !== gives && f !== costs && f !== risk && f !== stops,
       );
-      card.title = [
+      const more = [
         option.text,
         ...others.map((f) => `${f.label}: ${f.value}.`),
       ].join(" ");
       card.append(
-        iconNode(optionIcons[option.kind] || "gift", "upgrade-icon"),
+        iconNode(optionIcons[option.id] || "gift", "upgrade-icon"),
         make("strong", "", option.label),
+        make("span", "upgrade-gives", gives?.value ?? option.text),
       );
-      if (gives) card.append(make("span", "upgrade-gives", gives.value));
       const chips = make("span", "upgrade-chips");
-      if (costs) {
-        const chip = make("span", "upgrade-cost");
-        chip.append(iconNode("budget", ""), costs.value);
-        chips.append(chip);
-      }
       // The install risk is how likely the update is faulty; testing is what stops a bad one.
       if (risk) {
         const odds = risk.value.match(/\d+ in \d+/);
@@ -1449,10 +1285,18 @@
       }
       if (stops)
         chips.append(make("span", "upgrade-stops", `stops ${stops.value}`));
+      if (costs) {
+        const chip = make("span", "upgrade-cost");
+        chip.append(iconNode("budget", ""), costs.value);
+        chips.append(chip);
+      }
       card.append(chips);
       const wrap = make("div", "upgrade-wrap");
       wrap.append(card);
-      addMore(wrap, card.title, `More about ${option.label}`);
+      if (gives) {
+        card.title = more;
+        addMore(wrap, more, `More about ${option.label}`);
+      }
       $("breakOptions").append(wrap);
     }
   }
@@ -1469,34 +1313,19 @@
       breakAside = false;
       lastChoice = null;
     }
-    if (
-      lastChoice !== choice.id ||
-      $("breakLines").dataset.case !== String(choice.openCase?.id ?? "")
-    ) {
-      lastChoice = choice.id;
-      const report = choice.report;
-      const next = choice.next;
-      $("breakRun").replaceChildren(
-        iconNode("star", "break-run-star"),
-        `${view.score.stars} / ${view.score.best}`,
-      );
-      $("breakRun").setAttribute(
-        "aria-label",
-        `${view.score.stars} of ${view.score.best} stars so far`,
-      );
+    const caseKey = String(choice.openCase?.id ?? "");
+    if (lastChoice !== caseKey) {
+      lastChoice = caseKey;
       text("breakTitle", choice.title);
-      $("nextCargoIcon").innerHTML = uiIcon(`cargo-${next.cargo.id}`);
-      text(
-        "breakText",
-        `${choice.text} Next: ${next.cargo.name}, ${next.target} needed.`,
-      );
-      text("nextCargoText", next.cargo.text);
+      $("nextCargoIcon").innerHTML = uiIcon(`cargo-${choice.next.cargo.id}`);
+      text("breakText", "Pick one upgrade, or carry on.");
+      text("nextCargoText", choice.next.text);
       $("breakGoals").replaceChildren(
-        ...report.goals.map((g) => goalSlot(g, report.goalsCountFrom)),
+        ...choice.report.goals.map((g) =>
+          goalSlot(g, view.run.goalsCountFrom, false),
+        ),
       );
-      $("breakLines").dataset.case = String(choice.openCase?.id ?? "");
       paintBreakLines(choice);
-      paintBreakDetail(report);
       paintBreakOptions(choice);
     }
     closeInfo();
@@ -1505,21 +1334,21 @@
       $("breakDialog").showModal();
       $("breakText").focus({ preventScroll: true });
       $("breakDialog").scrollTop = 0;
-      if (breakAnimated === choice.id) return;
-      breakAnimated = choice.id;
+      if (breakAnimated) return;
+      breakAnimated = true;
       $("breakDeparture").classList.remove("break-arrival");
       void $("breakDeparture").offsetWidth;
       $("breakDeparture").classList.add("break-arrival");
     }
   }
-  // The milestone note goes when the break card or the end screen opens, so it never pokes out above them.
+  // The milestone note goes when the half-time card or the end screen opens, so it never pokes out above them.
   function hideToast() {
     toastUntil = 0;
     $("milestoneToast").hidden = true;
   }
   function handleNews(news) {
     if (!started) return;
-    if (news.kind === "loaded" && news.control) showMistakeHint(news.control);
+    if (news.kind === "loaded" && news.control) showMistakeHint(news);
     if (news.kind === "loaded" && news.caseId != null)
       openedCases.delete(news.caseId);
     if (
@@ -1552,25 +1381,48 @@
       setTimeout(() => sleigh.classList.remove("departing"), 1600);
     }
   }
+  // The sleigh count and progress towards its target.
+  function paintSleighCount() {
+    const full = view.run.goals?.find((g) => g.id === "full"),
+      target = Math.max(1, view.run.target);
+    const aboard = view.run.aboard ?? view.sleigh.right;
+    text("sleighRight", aboard);
+    text("sleighTarget", `of ${view.run.target}`);
+    const count = $("sleighTotal").querySelector(".sleigh-count");
+    count.setAttribute("role", "img");
+    count.setAttribute(
+      "aria-label",
+      `${aboard} right gifts aboard out of ${view.run.target} needed`,
+    );
+    $("sleighTotal").style.setProperty("--fill", Math.min(1, aboard / target));
+    const met = String(!!full?.met);
+    if ($("sleighTotal").dataset.met !== met) {
+      $("sleighTotal").dataset.met = met;
+      $("sleighStar").innerHTML = icon(full?.met ? "star" : "star-empty");
+    }
+    $("sleighTotal").title = full
+      ? `${full.name}: ${full.met ? "star earned" : "no star yet"}`
+      : "";
+  }
   let giftBubble = null,
     giftBubbleCount = 0,
     giftBubbleTimer = 0;
   function paintEffects() {
-    text("sleighTarget", `of ${view.run.target} needed`);
-    const run = view.run?.number ?? 1;
-    if (run !== observedRun) {
-      observedRun = run;
-      observedRight = 0;
-    }
-    const gained = view.sleigh.right - observedRight;
-    observedRight = view.sleigh.right;
+    paintSleighCount();
+    const aboard = view.run.aboard ?? view.sleigh.right;
+    const gained = aboard - observedRight;
+    observedRight = aboard;
     if (started && gained > 0 && !view.end) {
-      // One bubble beside the sleigh count (or in the Full sleigh tile when the sleigh is a page
-      // away) with a running count: gifts that land while it shows add to it and restart it.
+      // One bubble beside the sleigh count (or on the sleigh tab when the sleigh is a page away)
+      // with a running count: gifts that land while it shows add to it and restart it.
       const to = $("sleighRight").getBoundingClientRect(),
         column = $("sleigh").getBoundingClientRect();
       const visible = to.left >= 0 && to.right <= innerWidth;
-      const target = visible ? to : goalSlots.full.getBoundingClientRect();
+      const target = visible
+        ? to
+        : document
+            .querySelector('[data-station-page="3"]')
+            .getBoundingClientRect();
       let effect = giftBubble;
       if (
         effect?.isConnected &&
@@ -1589,8 +1441,13 @@
       }
       iconText(effect, "gift", `+${giftBubbleCount}`);
       effect.classList.toggle("in-slot", !visible);
-      effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? column.left + 12 : target.right - 52))}px`;
-      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, visible ? to.top - 6 : target.top + 4))}px`;
+      effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? column.left + 12 : target.left + 4))}px`;
+      const top = visible
+        ? look === "paper"
+          ? $("sleighTotal").getBoundingClientRect().top
+          : to.top - 6
+        : target.top - 14;
+      effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, top))}px`;
       effect.style.setProperty("--fly-x", "0px");
       effect.style.setProperty("--fly-y", visible ? "-14px" : "0px");
       giftBubbleTimer = setTimeout(() => effect.remove(), 1500);
@@ -1632,18 +1489,6 @@
       w = innerWidth,
       h = innerHeight;
     let horizontal = Math.max(12, Math.min(r.left, w - p.width - 12));
-    if (
-      panel.id === "tutorial" &&
-      panel.dataset.compact === "true" &&
-      anchor.closest(".station")
-    ) {
-      const column = anchor.closest(".station").getBoundingClientRect();
-      if (p.width <= column.width - 2 && column.left >= 0 && column.right <= w)
-        horizontal = Math.max(
-          column.left + 1,
-          Math.min(horizontal, column.right - p.width - 1),
-        );
-    }
     const vertical = Math.max(12, Math.min(r.top, h - p.height - 12));
     const protectedBounds = protectedNodes
       .map((node) => node.getBoundingClientRect())
@@ -1777,93 +1622,84 @@
     if (innerWidth < 1000)
       anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
-  function paintGuidance() {
-    const moment = started && !view.end ? view.moment : null;
-    $("tutorial").hidden = !moment || moment.control === "case";
-    if (!moment) {
-      hidePopupPointer("tutorial");
-      delete $("tutorial").dataset.anchorVisit;
-      lastMoment = null;
+  // The tour before the clock: one step per control, each beside the real control. The clock
+  // starts when the last step or Skip ends it.
+  const tourSteps = [
+    {
+      title: "Elves",
+      text: () =>
+        "Move elves to where work piles up. Send tired elves for a cocoa break.",
+      target: () => $("elves0"),
+    },
+    {
+      title: "AI switch",
+      text: () =>
+        "By hand, Assist, Automate: more AI is faster, but makes more mistakes.",
+      target: () => actionGroups.get("ai0"),
+    },
+    {
+      title: "Checking",
+      text: () =>
+        "Checks catch most mistakes, but cost time and money. Tired checkers miss more.",
+      target: () => actionGroups.get("checking"),
+    },
+    {
+      title: "Sleigh",
+      text: () =>
+        `Get ${view.run.target} right gifts aboard. Keep mistakes and costs low for the other two stars.`,
+      target: () => $("sleighTotal"),
+    },
+  ];
+  function showTourStep(step) {
+    tourStep = step;
+    caseOpen = false;
+    const { title, text: words, target } = tourSteps[step];
+    text("tourCount", `Walkthrough ${step + 1} of ${tourSteps.length}`);
+    text("tourTitle", title);
+    text("tourText", words());
+    text("tourNext", step === tourSteps.length - 1 ? "Start" : "Next");
+    // On a phone the control may be a page or a scroll away: bring it into view first.
+    const anchor = target(),
+      column = anchor.closest(".station");
+    if (column)
+      $("board").scrollTo({
+        left: column.offsetLeft - $("board").offsetLeft,
+        behavior: "instant",
+      });
+    anchor.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "instant",
+    });
+    paint();
+    $("tour").focus({ preventScroll: true });
+  }
+  // The clock starts and the keyboard lands on Pause.
+  function endTour() {
+    tourStep = null;
+    $("board").scrollLeft = 0;
+    paint();
+    $("pause").focus({ preventScroll: true });
+  }
+  function nextTourStep() {
+    if (tourStep === tourSteps.length - 1) endTour();
+    else showTourStep(tourStep + 1);
+  }
+  function paintTour() {
+    const anchor = tourStep === null ? null : tourSteps[tourStep].target();
+    $("tour").hidden = !anchor;
+    if (!anchor) {
+      hidePopupPointer("tour");
       return;
     }
-    $("tutorial").dataset.control = moment.control;
-    $("tutorial").dataset.compact = String(
-      ["ai0", "ai1", "ask", "checking", "cocoa", "bypass"].includes(
-        moment.control,
-      ),
-    );
-    text("tutorialTitle", moment.title);
-    // On a phone the cocoa strip is on another page, so the card names the Rest button instead.
-    const elfName = view.elves[moment.elf]?.name;
-    text(
-      "tutorialText",
-      innerWidth < 1000 && moment.control === "cocoa" && elfName
-        ? moment.text.replace(/Drag them to cocoa/, `Tap ${elfName}, then Rest`)
-        : moment.text,
-    );
-    if (moment.control === "case") {
-      hidePopupPointer("tutorial");
-      caseOpen = true;
-      paintCase();
-    } else {
-      // Another card takes over from an open decision; the cue still waits.
-      if (caseOpen) {
-        caseOpen = false;
-        paintCase();
-      }
-      const ai = moment.control === "ai0" || moment.control === "ai1";
-      const tiredElf = Number.isInteger(moment.elf)
-        ? moment.elf
-        : view.elves
-            .map((elf, index) => ({ elf, index }))
-            .filter((item) => item.elf.station < 3)
-            .sort((a, b) => b.elf.tired - a.elf.tired)[0]?.index;
-      const anchor =
-        (["checking", "sleigh"].includes(moment.control) &&
-        !$("wrongDelivery").hasAttribute("data-empty")
-          ? $("wrongDelivery")
-          : null) ||
-        (moment.control === "cocoa" && tiredElf !== undefined
-          ? document.querySelector(`[data-elf="${tiredElf}"]`)
-          : null) ||
-        (ai
-          ? document.querySelector(
-              moment.control === "ai0" ? '[data-ai="0,1"]' : '[data-ai="1,2"]',
-            )
-          : null) ||
-        actionGroups.get(moment.control) ||
-        $(
-          moment.control === "cocoa"
-            ? "cocoa"
-            : moment.control === "sleigh"
-              ? "sleigh"
-              : "elves1",
-        );
-      const protectedNodes = [
-        document.querySelector(".dashboard"),
-        ...(innerWidth >= 1000 &&
-        look !== "paper" &&
-        ["elves", "cocoa", "bypass"].includes(moment.control)
-          ? document.querySelectorAll(".machine")
-          : []),
-        ...document.querySelectorAll(".crew, [data-move]:not([hidden])"),
-        $("cocoa"),
-        ...(["ai0", "ai1", "ask", "checking", "cocoa", "bypass"].includes(
-          moment.control,
-        )
-          ? [
-              ...(actionGroups.has(moment.control)
-                ? [actionGroups.get(moment.control)]
-                : []),
-              ...(anchor.closest(".station")?.querySelectorAll(".queue") || []),
-            ]
-          : []),
-        anchor,
-      ];
-      showAnchorOnce($("tutorial"), anchor, moment.id);
-      positionPanel($("tutorial"), anchor, protectedNodes);
-    }
-    lastMoment = moment.id;
+    if (tourStep === tourSteps.length - 1 && innerWidth >= 1000) {
+      const panel = $("tour");
+      const board = $("board").getBoundingClientRect();
+      const sleigh = $("sleigh").getBoundingClientRect();
+      panel.style.left = `${Math.max(board.left + 8, sleigh.left - panel.offsetWidth - 12)}px`;
+      panel.style.top = `${Math.max(board.top + 8, Math.min(anchor.getBoundingClientRect().top, board.bottom - panel.offsetHeight - 8))}px`;
+      drawPopupPointer(panel, anchor);
+    } else positionPanel($("tour"), anchor, [anchor]);
   }
   // How many wrong gifts an option brings off the sleigh, from its scope words.
   function recallCount(c, o) {
@@ -1871,17 +1707,21 @@
     const said = /(\d+) wrong gift/.exec(o.scope || "");
     return said ? Number(said[1]) : c.affected.count;
   }
-  // Chips for an option: what it does (the first part of its scope), what it does to the run's
-  // goals, money, time, or why it is shut. An option with no price gets no money chip: what it
-  // loses is in its scope.
+  // Chips for an option: what it does (the first part of its scope without a figure, as the figures
+  // get chips of their own), what it does to the goals, money, time, risk, or why it is shut.
   function optionChips(c, o) {
-    const recall = recallCount(c, o);
-    const does =
-      recall !== null
-        ? `${plural(recall, "wrong gift")} off the sleigh`
-        : o.scope.split(/;\s*/)[0];
+    const parts = (o.scope || "")
+      .split(/;\s*/)
+      .filter((part) => part && part !== o.goal)
+      .filter(
+        (part) =>
+          !(Number.isFinite(o.extra) && /£|costs?|nothing more/i.test(part)) &&
+          !(o.seconds && /^checkers busy /i.test(part)),
+      );
+    const does = parts.find((part) => !/\d/.test(part)) ?? parts[0] ?? "";
     const chips = [];
-    if (!o.available && o.why) chips.push(["chip-why", "", o.why]);
+    if (!o.available && o.why && !c.resolving)
+      chips.push(["chip-why", "", o.why]);
     if (does) chips.push(["chip-does", "", does]);
     if (o.goal)
       for (const part of o.goal.split(/,\s*/))
@@ -1890,28 +1730,33 @@
           /lost/.test(part) ? "star-empty" : "star",
           part,
         ]);
-    if (o.money) chips.push(["chip-money", "budget", money(o.money)]);
+    // A price the rules' words already give (a recall's "costs £395 instead of ...") is not repeated.
+    if (Number.isFinite(o.extra))
+      chips.push([
+        "chip-money",
+        "budget",
+        o.extra === 0 ? "Nothing more" : `${money(o.extra)} more`,
+      ]);
+    else if (o.trade) chips.push(["chip-money", "budget", o.trade]);
+    else if (o.money && !does.includes(money(o.money)))
+      chips.push(["chip-money", "budget", money(o.money)]);
     if (o.seconds)
       chips.push([
         "chip-time",
         "clock",
         o.seconds > view.run.leavesIn
-          ? "longer than the run"
-          : `${o.seconds} s`,
+          ? "longer than the time left"
+          : `${/checkers busy/i.test(o.scope || "") ? "Checkers " : ""}${o.seconds} s`,
+      ]);
+    if (o.risk)
+      chips.push([
+        "chip-risk",
+        "wrong-gift",
+        `${Math.round(o.risk * 100)}% wrong`,
       ]);
     return chips;
   }
-  // The rules' names for each decision, by incident step or by kind.
-  const caseHeadings = {
-    source: "Faulty update",
-    made: "Faulty update's gifts",
-    aboard: "Wrong gifts on sleigh",
-    judge: "Checker unsure",
-    unclear: "Unclear wish",
-    pattern: "Repeated mistake",
-  };
-  const caseHeading = (c) =>
-    caseHeadings[c.step] || caseHeadings[c.kind] || "Decision";
+  const caseHeading = (c) => c.title || "Decision";
   // The decision cue is gold and pulses until its case is opened; a wrong gift caused by that
   // case going aboard makes it pulse again. Built once, so later frames change only its words.
   $("caseCue").innerHTML =
@@ -1926,7 +1771,7 @@
       cue.querySelector(".cue-icon").innerHTML = icon(art);
     }
     const verb = resolving ? `${Math.ceil(c.resolving.remaining)} s` : "Decide";
-    const name = resolving ? " in progress" : `: ${caseHeading(c)}`;
+    const name = resolving ? "\u00a0in progress" : `: ${caseHeading(c)}`;
     if (cue.querySelector(".cue-verb").textContent !== verb)
       cue.querySelector(".cue-verb").textContent = verb;
     if (cue.querySelector(".cue-name").textContent !== name)
@@ -1944,7 +1789,7 @@
   }
   function focusCase() {
     (
-      $("caseOptions").querySelector(".case-choice:not(:disabled)") ||
+      $("casePanel").querySelector("[data-resolve]:not(:disabled)") ||
       $("closeCase")
     ).focus({ preventScroll: true });
   }
@@ -1966,10 +1811,10 @@
       delete $("casePanel").dataset.anchorVisit;
       return;
     }
+    // A new decision waits behind the gold cue until the player opens it.
     if (lastCase !== c.id) {
       lastCase = c.id;
-      // The next step of an incident follows straight on from the answer to the last one.
-      caseOpen = c.kind === "incident" && performance.now() - resolvedAt < 1000;
+      caseOpen = false;
     }
     if (caseOpen) openedCases.add(c.id);
     paintCue(c);
@@ -1979,47 +1824,65 @@
       delete $("casePanel").dataset.anchorVisit;
       return;
     }
-    text("caseTitle", caseHeading(c));
-    text("caseText", c.text);
     $("casePanel").dataset.kind = c.kind;
-    // Evidence as drawings: the child's words beside the toy the workshop made.
-    const evidence = $("caseEvidence");
-    const evidenceSignature = JSON.stringify(c.evidence);
-    if (evidence.dataset.signature !== evidenceSignature) {
-      evidence.dataset.signature = evidenceSignature;
-      evidence.replaceChildren();
-      const figure = (cls, label, art, name) => {
-        const node = make("figure", `evidence-figure ${cls}`);
-        node.append(make("span", "evidence-label", label));
-        if (art) node.insertAdjacentHTML("beforeend", art);
-        node.append(make("figcaption", "", name));
-        return node;
-      };
-      for (const e of c.evidence) {
-        const row = make("div", "evidence-item");
-        row.append(figure("evidence-wish", "Wish", "", `"${e.wish}"`));
-        if (e.wanted)
-          row.append(
-            figure("", "Wanted", toyArt(e.wanted.name), e.wanted.name),
-          );
-        const reading =
-          e.reading &&
-          (typeof e.reading === "string" ? e.reading : e.reading.name);
-        if (reading)
-          row.append(figure("", "AI reads", toyArt(reading), reading));
-        if (e.made)
-          row.append(
-            figure("evidence-made", "Made", toyArt(e.made.name), e.made.name),
-          );
-        evidence.append(row);
-      }
+    // An unclear wish is a picture: the child and the wish as the heading, then the two things it
+    // could mean, drawn side by side in the rules' order. Other decisions keep their sentence.
+    const letter = c.kind === "unclear" ? c.evidence?.[0] : null;
+    const readings = letter ? (c.readings ?? []) : [];
+    text(
+      "caseTitle",
+      letter ? `${letter.child}: "${letter.wish}"` : caseHeading(c),
+    );
+    text("caseText", readings.length === 2 ? "" : c.text);
+    $("caseText").hidden = readings.length === 2;
+    const readingsKey = `${c.id}:${readings.map((r) => r.art).join("|")}`;
+    if ($("caseReadings").dataset.key !== readingsKey) {
+      $("caseReadings").dataset.key = readingsKey;
+      const drawn = readings.map((r, index) => {
+        const button = make("button", "case-reading");
+        button.type = "button";
+        button.dataset.resolve = `pick:${index}`;
+        button.innerHTML = toyArt(r.name);
+        button.append(make("span", "reading-name", r.name));
+        button.setAttribute("aria-label", `Choose ${r.name}`);
+        return button;
+      });
+      $("caseReadings").replaceChildren(
+        ...(drawn.length === 2
+          ? [drawn[0], make("span", "case-or", "or"), drawn[1]]
+          : []),
+      );
+      $("caseReadings").setAttribute(
+        "aria-label",
+        readings.length === 2
+          ? `It could mean ${readings[0].name} or ${readings[1].name}`
+          : "",
+      );
     }
+    $("caseReadings").hidden = readings.length !== 2;
+    for (const button of $("caseReadings").querySelectorAll("[data-resolve]")) {
+      const option = c.options.find((o) => o.id === button.dataset.resolve);
+      button.disabled = !option || option.available === false || !!c.resolving;
+      button.title = option?.why || "";
+    }
+    // The figure the decision turns on most: for an unclear wish what the gift costs if it comes
+    // out wrong (the rules' stake, in pounds), else the first primary fact. The rest are behind
+    // the info button.
+    const fact = c.facts?.find((f) => f.primary);
+    const stake = Number.isFinite(c.stake)
+      ? `${money(c.stake)} if wrong`
+      : fact
+        ? `${fact.label}: ${fact.value}`
+        : "";
+    text("caseFact", stake);
+    $("caseFact").hidden = !stake;
     // Options: large buttons with an icon, the label and chips for what each costs and does.
     const options = $("caseOptions");
+    options.hidden = readings.length === 2;
     const ids = new Set(c.options.map((o) => o.id));
     for (const child of [...options.children])
       if (!ids.has(child.dataset.option)) child.remove();
-    for (const o of c.options) {
+    for (const o of readings.length === 2 ? [] : c.options) {
       let b = [...options.children].find((n) => n.dataset.option === o.id);
       if (!b) {
         b = make("button", "case-choice");
@@ -2030,21 +1893,8 @@
         options.append(b);
       }
       const icons = {
-        ship: "sleigh",
-        remake: "fixing",
-        ask: "ask",
-        accept: "check",
-        investigate: "role-checking",
-        hold: "hand",
-        carryOn: "play",
-        install: "update",
-        test: "test",
-        skip: "play",
         rollback: "rollback",
         keep: "automate",
-        remakeAll: "fixing",
-        checkEach: "role-checking",
-        letGo: "let-through",
         bringBack: "rollback",
         leave: "sleigh",
       };
@@ -2068,16 +1918,13 @@
           }),
         );
       }
-      b.disabled = !o.available || !!c.resolving;
-      b.classList.toggle("unavailable", !o.available);
+      b.disabled = o.available === false || !!c.resolving;
+      b.classList.toggle("unavailable", o.available === false);
       b.classList.toggle("chosen", c.resolving?.optionId === o.id);
     }
     $("caseResolving").hidden = !c.resolving;
     if (c.resolving) {
-      text(
-        "caseProgressText",
-        `${Math.ceil(c.resolving.remaining)} seconds remaining`,
-      );
+      text("caseProgressText", `${Math.ceil(c.resolving.remaining)} s left`);
       $("caseProgress").value =
         1 - c.resolving.remaining / c.resolving.duration;
     }
@@ -2088,20 +1935,8 @@
   function caseAnchor(c) {
     if (c.step === "source") return $("station1").querySelector(".machine");
     if (c.step === "aboard")
-      return $("wrongDelivery").hasAttribute("data-empty")
-        ? $("sleighRight")
-        : $("wrongDelivery");
-    if (c.kind === "unclear") return $("queue-clarify");
-    if (c.step === "made") {
-      const affected = new Set(c.affected.ids);
-      const queues = Object.values(view.queues)
-        .map((q) => ({
-          id: q.id,
-          count: q.parcels.filter((p) => affected.has(p.id)).length,
-        }))
-        .sort((a, b) => b.count - a.count);
-      if (queues[0]?.count) return $(`queue-${queues[0].id}`);
-    }
+      return $("wrongDelivery").hidden ? $("sleighRight") : $("wrongDelivery");
+    if (c.kind === "unclear") return $("queue-letters");
     return $("queue-check");
   }
   // What a wrong big gift costs against a wrong everyday one, from the rules' prices.
@@ -2119,7 +1954,7 @@
         view.run.cargo.name,
         [
           view.run.cargo.text,
-          `This sleigh needs ${view.run.target} right gifts.`,
+          `The sleigh needs ${view.run.target} right gifts.`,
         ],
       ];
     if (key === "caughtToy" && caughtSnapshot)
@@ -2133,10 +1968,7 @@
       return [
         "All evidence",
         [
-          // The whole game's time left is not the run's, so it stays out of view.
-          ...(view.case?.facts || [])
-            .filter((f) => f.label !== "Time left")
-            .map((f) => `${f.label}: ${f.value}.`),
+          ...(view.case?.facts || []).map((f) => `${f.label}: ${f.value}.`),
           ...(view.case?.options || []).map(
             (o) => `${o.label}: ${o.scope}${o.why ? ` (${o.why})` : ""}.`,
           ),
@@ -2146,12 +1978,20 @@
       type = parts[0];
     if (type === "goal") {
       const goal = view.run.goals.find((g) => g.id === parts[1]);
+      const cost = goal.id === "cost";
+      if (goal.id === "full")
+        return [
+          goal.name,
+          [`${cap(goal.text)} aboard when the sleigh leaves.`],
+        ];
       return [
-        goal.name,
+        cost ? "Cost so far" : goal.name,
         [
+          cost
+            ? "AI, checks, fixes, any change you buy and wrong gifts aboard all add to it."
+            : "",
           `${cap(goal.text)}.`,
-          `Stars for mistakes and spend count once ${view.run.goalsCountFrom} right gifts are aboard.`,
-        ],
+        ].filter(Boolean),
       ];
     }
     if (type === "ai") {
@@ -2166,10 +2006,8 @@
       const a = view.actions[parts[1]];
       return [
         {
-          ask: "Ask the child",
-          bypass: "Let through",
-          ai0: "AI at reading",
-          ai1: "AI at toy-making",
+          ai0: `AI at ${view.stations[0].name}`,
+          ai1: `AI at ${view.stations[1].name}`,
           checking: "How much to check",
         }[parts[1]],
         [a.why ? `${cap(a.why)}.` : "", `${cap(a.cost)}.`].filter(Boolean),
@@ -2181,11 +2019,14 @@
         q.name,
         [
           parts[1] === "pass"
-            ? "Gifts going to the sleigh without a check."
+            ? "Gifts not sent for a check, waiting for an elf here to load them onto the sleigh."
             : `${q.parcels.length} of ${q.limit} waiting, ${Math.round(q.rate)} a minute going out.`,
+          q.held
+            ? `${q.held} read letters are waiting for room in the toy pile.`
+            : "",
           q.blocked
             ? `${cap(q.blocked)}.`
-            : ["letters", "clarify"].includes(parts[1])
+            : parts[1] === "letters"
               ? ""
               : bigGiftSentence(),
         ].filter(Boolean),
@@ -2196,7 +2037,7 @@
       return [
         e.name,
         [
-          `${cap(e.doing)}, tiredness ${Math.round(e.tired)} of 100.`,
+          `${cap(e.doing)}, energy ${e.energy} of 100.`,
           e.resting ? "Back after this cocoa break." : "Drag to move.",
         ],
       ];
@@ -2205,13 +2046,14 @@
       const s = Number(parts[1]),
         v = view.stations[s];
       return [
-        stationNames[s],
+        v.name,
         [
           [
             "Elves read the letters, with or without AI.",
             "Elves or the toy machine make the toys.",
-            "Elves check gifts before the sleigh; AI never checks its own work.",
+            "Elves here check gifts, remake the caught ones and load the sleigh.",
           ][s],
+          `${Math.round(v.rate)} ${["read", "made", "checked"][s]} a minute now.`,
           v.blocked
             ? `${cap(v.blocked)}.`
             : view.pace.slowest === s
@@ -2245,12 +2087,12 @@
     }
     const fixed = {
       clock: [
-        "Until departure",
+        "The clock",
         [
-          "The sleigh leaves at zero. Pause and walkthrough cards stop the clock.",
+          "Time until the sleigh leaves.",
+          "Pause, an open decision card and the walkthrough stop it.",
         ],
       ],
-      budget: ["Budget", ["Elves, AI, checks and fixes all cost money."]],
       movement: [
         "Moving elves",
         [
@@ -2263,15 +2105,17 @@
       ],
       sleigh: [
         "The sleigh",
-        ["Right gifts count towards the target; wrong ones cost money."],
+        ["Right gifts count towards the target. Wrong ones cost money."],
       ],
       vigilance: [
-        "Checker attention",
+        "Trusting the AI",
         [
-          "After a long run of clean gifts, checkers start waving gifts through unchecked.",
+          view.vigilance.swap
+            ? `${view.vigilance.swap.name} has trusted a long run of clean AI gifts and now lets some through. Send ${view.vigilance.swap.name} for cocoa or swap in another elf.`
+            : "After a long run of clean AI gifts, elves stop looking properly.",
           view.vigilance.skipped
-            ? `${view.vigilance.skipped} checks skipped so far; train them at a break or rest them.`
-            : "Train them at a break, or rest them with cocoa.",
+            ? `${view.vigilance.skipped} checks skipped so far.`
+            : "",
         ],
       ],
     };
@@ -2289,7 +2133,9 @@
     $("infoContent").replaceChildren(
       ...lines.filter(Boolean).map((line) => make("p", "", line)),
     );
-    positionPanel($("infoPopover"), infoPositionAnchor());
+    positionPanel($("infoPopover"), infoPositionAnchor(), [
+      infoPositionAnchor(),
+    ]);
   }
   function openInfo(anchor, key, pinned = false) {
     closeInfo();
@@ -2425,7 +2271,7 @@
       perform(() => game.setAi(s, l));
       if (view.ai[s] === l)
         sayResult(
-          `${["Reading", "Toy making"][s]} on ${["By hand", "Assist", "Automate"][l]}: ${Math.round(view.stations[s].rate)} a minute.`,
+          `${view.stations[s].name} on ${["By hand", "Assist", "Automate"][l]}: ${Math.round(view.stations[s].rate)} a minute.`,
         );
       return;
     }
@@ -2435,24 +2281,20 @@
       sayResult(`Checking ${lever.per100} in 100 gifts.`);
       return;
     }
-    if (target.dataset.action) {
-      const a = target.dataset.action;
-      perform(() => (a === "ask" ? game.setAsk(!view.ask) : game[a]()));
-      return;
-    }
-    if (
-      target.dataset.choose &&
-      view.choice &&
-      String(view.choice.id) === target.dataset.choiceId
-    ) {
-      perform(() => game.choose(view.choice.id, target.dataset.choose));
+    if (target.dataset.choose && view.choice) {
+      perform(() => game.choose(target.dataset.choose));
       return;
     }
     if (target.dataset.resolve) {
       // A double-click must not land on whatever sits under the closed panel.
-      resolvedAt = performance.now();
-      ignoreClicksUntil = resolvedAt + 400;
-      perform(() => game.resolve(view.case.id, target.dataset.resolve));
+      answered = { x: e.clientX, y: e.clientY, until: performance.now() + 300 };
+      const c = view.case,
+        option = c?.options.find((o) => o.id === target.dataset.resolve);
+      // The card closes on an answer; the cue counts down an answer that takes time.
+      caseOpen = false;
+      // The decision may have gone while its card was still drawn (half-time came up over it).
+      if (!option) return paint();
+      perform(() => game.resolve(c.id, option.id));
       if (!document.activeElement?.offsetParent || target.disabled)
         returnFocus();
       return;
@@ -2461,7 +2303,14 @@
   document.addEventListener(
     "click",
     (e) => {
-      if (performance.now() < ignoreClicksUntil) {
+      // Only the second click of a double-click (or double tap) on the same spot as an answer is
+      // held back; any other click right after an answer acts at once.
+      if (
+        answered &&
+        e.detail >= 2 &&
+        performance.now() < answered.until &&
+        Math.hypot(e.clientX - answered.x, e.clientY - answered.y) < 24
+      ) {
         e.stopPropagation();
         e.preventDefault();
       }
@@ -2573,7 +2422,7 @@
     $("breakDialog").close();
     paint();
   });
-  // Escape closes the decision card; the break card then comes back.
+  // Escape closes the decision card; the half-time card then comes back.
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && breakAside) queueMicrotask(paint);
   });
@@ -2581,9 +2430,8 @@
     const end = view.end;
     const link = new URL(location.href);
     link.searchParams.set("seed", seed);
-    link.searchParams.delete("version");
     const verdict = end.assurance?.verdict;
-    const result = `Santa's AI Workshop: ${end.points} points, ${end.stars}/${view.score.best} stars. ${end.right} right gifts, ${end.wrong} wrong.${verdict ? ` Checking: ${verdict}.` : ""} ${link.href}`;
+    const result = `Santa's AI Workshop: ${end.stars}/3 stars. ${end.right} right gifts, ${end.wrong} wrong.${verdict ? ` Checking: ${verdict}.` : ""} ${link.href}`;
     try {
       await navigator.clipboard.writeText(result);
       text("copyStatus", "Result copied.");
@@ -2597,22 +2445,33 @@
     }
   };
   $("start").onclick = () => {
-    if (guided !== $("walkthrough").checked) {
-      guided = $("walkthrough").checked;
-      reset(false, false);
-    }
-    if (!guided) game.skipGuidance();
+    showTour = $("walkthrough").checked;
     started = true;
     $("intro").close();
     $("board").scrollLeft = 0;
-    paint();
+    if (showTour) showTourStep(0);
+    else paint();
   };
   $("pause").onclick = () => {
     manualPaused = !manualPaused;
     paint();
   };
-  $("continue").onclick = acknowledge;
-  $("skipGuidance").onclick = skip;
+  $("tourNext").onclick = nextTourStep;
+  $("tourSkip").onclick = endTour;
+  // In the tour Enter goes on (buttons keep their own Enter) and Escape skips.
+  document.addEventListener("keydown", (event) => {
+    if (tourStep === null) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      endTour();
+    } else if (
+      event.key === "Enter" &&
+      !event.target.closest("button, a, input")
+    ) {
+      event.preventDefault();
+      nextTourStep();
+    }
+  });
   $("caseCue").onclick = () => {
     caseOpen = !caseOpen;
     if (caseOpen && view.case && innerWidth < 1000) {
@@ -2631,22 +2490,13 @@
   };
   $("closeCase").onclick = () => {
     caseOpen = false;
-    if (view.moment?.control === "case") acknowledge();
     paint();
     returnFocus();
   };
+  // In play the Walkthrough button shows the tour again, with the clock stopped.
   $("guidanceToggle").onclick = () => {
-    if (!started) {
-      $("walkthrough").checked = !$("walkthrough").checked;
-      return;
-    }
-    if (guided) skip();
-    else {
-      restartGuided = true;
-      restartOpen = true;
-      text("restartTitle", "Restart with the walkthrough?");
-      $("restartDialog").showModal();
-    }
+    if (!started) $("walkthrough").checked = !$("walkthrough").checked;
+    else if (!view.end && !view.choice && tourStep === null) showTourStep(0);
   };
   $("restart").onclick = () => {
     if (!started || view.end) {
@@ -2654,22 +2504,18 @@
       return;
     }
     restartOpen = true;
-    text("restartTitle", "Start this Christmas again?");
     $("restartDialog").showModal();
+    paint();
   };
-  $("confirmRestart").onclick = () => {
-    if (restartGuided !== null) guided = restartGuided;
-    restartGuided = null;
-    reset();
-  };
+  $("confirmRestart").onclick = () => reset();
   $("cancelRestart").onclick = () => {
     restartOpen = false;
-    restartGuided = null;
     $("restartDialog").close();
+    paint();
   };
   $("restartDialog").addEventListener("cancel", () => {
     restartOpen = false;
-    restartGuided = null;
+    paint();
   });
   // The opening card is the only way in, so Escape cannot close it before the run starts.
   $("intro").addEventListener("cancel", (event) => event.preventDefault());
@@ -2677,13 +2523,14 @@
     if (!started) $("intro").showModal();
   });
   $("replay").onclick = () => {
-    guided = false;
+    showTour = false;
     reset(false);
     $("start").click();
   };
   $("closeReport").onclick = () => $("report").close();
   // Reduced motion starts from the player's saved choice, else from the system setting.
   function setMotion(reduced) {
+    if (reduced) StationFlow.stop();
     document.body.classList.toggle("reduce-motion", reduced);
     $("motion").setAttribute("aria-pressed", String(reduced));
   }
@@ -2705,6 +2552,10 @@
   };
   let lastTime = performance.now(),
     accumulated = 0;
+  // An open decision card stops the clock while the player reads it; the gold cue alone does not.
+  function caseStopsClock() {
+    return caseOpen && !!view.case && started && !view.end;
+  }
   function frame(now) {
     const dt = Math.min(0.25, (now - lastTime) / 1000);
     lastTime = now;
@@ -2713,7 +2564,8 @@
       !manualPaused &&
       !restartOpen &&
       !document.hidden &&
-      !view.moment &&
+      tourStep === null &&
+      !caseStopsClock() &&
       !view.choice &&
       !view.end
     ) {
@@ -2731,9 +2583,12 @@
     paint();
   });
   function repositionPopups() {
-    paintGuidance();
+    paintTour();
     paintCase();
-    if (infoAnchor) positionPanel($("infoPopover"), infoPositionAnchor());
+    if (infoAnchor)
+      positionPanel($("infoPopover"), infoPositionAnchor(), [
+        infoPositionAnchor(),
+      ]);
   }
   window.addEventListener("resize", repositionPopups);
   document.addEventListener("scroll", repositionPopups, true);
@@ -2892,6 +2747,14 @@
       text("assuranceVerdict", heading);
       text("underCost", money(a.underCost));
       text("overCost", money(a.overCost));
+      // How the loss to too many checks splits, only when gifts were held up as well.
+      text(
+        "overSplit",
+        a.overHeld > 0
+          ? `${money(a.overChecks ?? 0)} extra checks, ${money(a.overHeld)} gifts held up`
+          : "",
+      );
+      $("overSplit").hidden = !(a.overHeld > 0);
       // The two figures above already say how much each side cost; only a bottleneck needs words.
       text("assuranceText", a.verdict === "bottleneck" ? a.text : "");
       $("assuranceText").hidden = a.verdict !== "bottleneck";
@@ -2899,98 +2762,49 @@
       $("checkingPaid").querySelector("details").open = false;
       paintGroups(a);
     }
-    $("practices").hidden = !end.used;
-    $("practiceTiles").replaceChildren();
-    if (!end.used) return;
-    for (const [icon, practice, actions] of [
-      [
-        "human-in-loop",
-        "Human in the loop",
-        [["assist", "Elves confirmed the AI's drafts"]],
-      ],
-      [
-        "risk-check",
-        "Risk-based checking",
-        [["risky", "Checked the risky ones"]],
-      ],
-      [
-        "escalate",
-        "Ask a person when unsure",
-        [["asked", "Asked the child about an unclear wish"]],
-      ],
-      [
-        "test-release",
-        "Test before release, keep a way back",
-        [
-          ["tested", "Tested the update first"],
-          ["rolledBack", "Rolled back a faulty update"],
-        ],
-      ],
-      [
-        "oversight",
-        "Keep human oversight sharp",
-        [
-          ["trained", "Trained the checkers"],
-          ["rested", "Gave the elves a cocoa break"],
-        ],
-      ],
-    ]) {
-      const used = actions.some(([flag]) => end.used[flag]);
-      const tile = make("article", "practice-tile");
-      tile.dataset.used = String(used);
-      const top = make("div", "practice-top");
-      const badge = make("span", "practice-badge");
-      badge.innerHTML = used ? tickSVG : "";
-      badge.append(used ? "Used" : "Not used");
-      top.append(iconNode(icon, "practice-icon"), badge);
-      tile.append(top, make("h4", "practice-name", practice));
-      for (const [flag, label] of actions) {
-        const action = make("p", "practice-action", label);
-        action.dataset.used = String(end.used[flag]);
-        action.dataset.practice = flag;
-        tile.append(action);
-      }
-      tile.setAttribute(
-        "aria-label",
-        `${practice}: ${actions.map(([flag, label]) => `${label}, ${end.used[flag] ? "used" : "not used"}`).join("; ")}`,
-      );
-      $("practiceTiles").append(tile);
-    }
+    // One tile per practice, each line with the player's own figure so it ties back to the game.
+    const practices = end.practices || [];
+    $("practices").hidden = !practices.length;
+    $("practiceTiles").replaceChildren(
+      ...practices.map((practice) => {
+        const tile = make("article", "practice-tile");
+        tile.dataset.used = String(practice.used);
+        const top = make("div", "practice-top");
+        const badge = make("span", "practice-badge");
+        badge.innerHTML = practice.used ? tickSVG : "";
+        badge.append(practice.used ? "Used" : "Not used");
+        top.append(iconNode(practice.id, "practice-icon"), badge);
+        tile.append(top, make("h4", "practice-name", practice.name));
+        for (const action of practice.actions) {
+          const line = make("p", "practice-action", action.label);
+          line.dataset.used = String(action.used);
+          line.append(make("span", "practice-figure", action.figure));
+          tile.append(line);
+        }
+        if (practice.note)
+          tile.append(make("p", "practice-note", practice.note));
+        tile.setAttribute(
+          "aria-label",
+          `${practice.name}: ${practice.actions.map((a) => `${a.label}, ${a.used ? "used" : "not used"}, ${a.figure}`).join(". ")}${practice.note ? `. ${practice.note}` : ""}`,
+        );
+        return tile;
+      }),
+    );
   }
   const tickSVG =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  function paintRuns(e) {
-    $("endRuns").replaceChildren();
-    for (const run of e.runs || []) {
-      const card = make("article", "run-report");
-      card.dataset.stars = run.stars;
-      const head = make("div", "run-head");
-      head.append(
-        iconNode(`cargo-${run.cargo.id}`, "run-cargo-icon"),
-        make("b", "", `Run ${run.run}`),
-        make("span", "run-cargo", run.cargo.name),
-      );
-      const row = make("div", "run-row");
-      row.append(
-        goalMarks(run.goals || []),
-        make("p", "", `${run.right}/${run.target} right · ${run.wrong} wrong`),
-      );
-      card.append(head, row);
-      if (run.missedBy) card.title = run.missedBy;
-      if (run.bonus)
-        card.append(make("small", "run-bonus", `+${run.bonus} bonus`));
-      $("endRuns").append(card);
-    }
-  }
   function paintBlunders(e) {
+    const verified = Array.isArray(e.blunderIds);
+    const items = verified ? collectedBlunders : e.blunders || [];
+    const total = verified ? e.blunderTotal : undefined;
     text(
       "collectionTitle",
-      e.blunderTotal !== undefined
-        ? `Christmas blunders · ${collectedBlunders.length}/${e.blunderTotal} found`
+      total !== undefined
+        ? `Christmas blunders · ${items.length}/${total} found`
         : "Christmas blunders",
     );
     $("blunderCollection").replaceChildren(
-      ...collectedBlunders.map((item) => {
+      ...items.map((item) => {
         const card = make("div", "blunder");
         card.append(
           drawnToy(item.name, false, "blunder-art"),
@@ -2999,10 +2813,7 @@
         return card;
       }),
     );
-    const missing =
-      e.blunderTotal !== undefined
-        ? e.blunderTotal - collectedBlunders.length
-        : 0;
+    const missing = total !== undefined ? total - items.length : 0;
     if (missing > 0) {
       const locked = make("div", "blunder blunder-locked");
       locked.append(
@@ -3012,33 +2823,27 @@
       $("blunderCollection").append(locked);
     }
   }
-  // The money as one row of figures: what was spent, then what the wrong gifts cost and what
-  // checking stopped, under the same names as the dial and the bars.
+  // The money as one row of figures: what each part cost, adding up to the cost so far against its
+  // limit, then what checking stopped, under the same names as the dial and the bars.
   function paintAccount(e) {
-    const spent =
-      e.costs.people + e.costs.ai + e.costs.checking + e.costs.fixing;
+    const c = e.costs;
     $("account").replaceChildren();
     for (const [icon, label, value, cls] of [
-      ["people", "People", money(e.costs.people), ""],
-      ["ai", "AI", money(e.costs.ai), ""],
-      ["checks", "Spent on checks", money(e.costs.checking), ""],
-      ["fixing", "Fixing", money(e.costs.fixing), ""],
+      ["ai", "AI", money(c.ai), ""],
+      ["checks", "Spent on checks", money(c.checking), ""],
+      ["pause", "Half-time", money(c.halfTime ?? 0), ""],
+      ["fixing", "Fixing", money(c.fixing), ""],
+      ["mistakes", "Wrong gifts", money(c.mistakes), "account-loss"],
       [
         "budget",
-        "Spent",
-        `${money(spent)} of ${money(e.costs.budget)}`,
+        "Cost",
+        `${money(c.total)} of ${money(c.limit)}`,
         "account-total",
-      ],
-      [
-        "mistakes",
-        "Wrong gifts that went out",
-        money(e.costs.mistakes),
-        "account-loss",
       ],
       [
         "prevented",
         "Mistakes stopped (estimate)",
-        money(e.costs.prevented),
+        money(c.prevented),
         "account-saved",
       ],
     ]) {
@@ -3054,7 +2859,7 @@
     "A decision waited too long": "faulty",
     "A faulty update ran unchecked": "faulty",
     "The faulty update ran too long": "faulty",
-    "The AI guessed unclear wishes": "guessed",
+    "Unclear wishes read wrongly": "picked",
     "Big gifts the AI got wrong": "big",
     "Checkers stopped looking": "waved",
     "Tired elves slipped": "tired",
@@ -3062,47 +2867,49 @@
   function showReport() {
     const e = view.end;
     paintAssurance(e);
-    const hadPreviousGame = personalBest !== null;
-    const canCelebrate = hadPreviousGame && e.points >= 0;
-    const newBest =
-      Number.isFinite(e.points) &&
-      (!personalBest || e.points > personalBest.points);
-    const newStars =
-      Number.isFinite(e.stars) &&
-      (!personalBest || e.stars > personalBest.stars);
-    if (Number.isFinite(e.points))
-      personalBest = {
-        points: newBest ? e.points : personalBest.points,
-        stars: newStars ? e.stars : personalBest.stars,
-      };
-    const collection = new Map(
-      collectedBlunders.map((item) => [item.id, item]),
-    );
-    for (const item of e.blunders || []) collection.set(item.id, item);
-    collectedBlunders = [...collection.values()];
+    const hadPreviousGame = bestStars !== null;
+    const newBest = hadPreviousGame && e.stars > bestStars;
+    bestStars = Math.max(bestStars ?? 0, e.stars);
+    const catalogue = Array.isArray(e.blunderIds)
+      ? new Set(e.blunderIds)
+      : null;
+    let saved = [];
+    if (catalogue) {
+      try {
+        const stored = JSON.parse(localStorage.getItem("workshop-blunders"));
+        if (Array.isArray(stored)) saved = stored;
+      } catch {}
+      const collection = new Map();
+      for (const item of [
+        ...saved,
+        ...collectedBlunders,
+        ...(e.blunders || []),
+      ]) {
+        if (item && catalogue.has(item.id) && typeof item.name === "string")
+          collection.set(item.id, item);
+      }
+      collectedBlunders = [...collection.values()];
+    }
     try {
-      if (personalBest)
+      localStorage.setItem("workshop-best-stars", String(bestStars));
+      if (catalogue)
         localStorage.setItem(
-          "workshop-personal-best",
-          JSON.stringify(personalBest),
+          "workshop-blunders",
+          JSON.stringify(collectedBlunders),
         );
-      localStorage.setItem(
-        "workshop-blunders",
-        JSON.stringify(collectedBlunders),
-      );
     } catch {}
-    text("endPoints", Number.isFinite(e.points) ? `${e.points} points` : "");
-    $("endStars").replaceChildren();
-    if (e.stars !== undefined)
-      $("endStars").append(
-        make("span", "end-stars-number", e.stars),
-        make("small", "", ` / ${view.score.best}`),
-        make("span", "end-stars-label", "stars"),
-      );
+    $("endStars").replaceChildren(
+      make("span", "end-stars-number", e.stars),
+      make("small", "", " / 3"),
+      make("span", "end-stars-label", "stars"),
+    );
+    $("endGoals").replaceChildren(
+      ...(e.goals || []).map((g) => goalSlot(g, view.run.goalsCountFrom)),
+    );
     text(
       "personalBest",
-      hadPreviousGame && personalBest
-        ? `${canCelebrate && newBest ? "New best score! " : ""}${canCelebrate && newStars ? "New best stars! " : ""}Best: ${personalBest.points} points, ${personalBest.stars} stars`
+      hadPreviousGame
+        ? `${newBest ? "New best! " : ""}Best: ${bestStars} of 3 stars`
         : "",
     );
     text("resultTitle", e.headline);
@@ -3127,7 +2934,6 @@
     );
     told?.querySelector(".cause-fix")?.remove();
     paintAccount(e);
-    paintRuns(e);
     paintBlunders(e);
     text("copyStatus", "");
     $("copyFallback").hidden = true;

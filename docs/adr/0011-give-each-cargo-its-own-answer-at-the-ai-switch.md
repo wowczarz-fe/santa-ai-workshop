@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by 0014
 ---
 
 # 0011: Give each cargo its own answer at the AI switch, and drop watching

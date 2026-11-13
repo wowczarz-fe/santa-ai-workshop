@@ -182,3 +182,60 @@ body[data-look="paper"]
     animation: none;
   }
 }
+/* Warm paper snow stays behind the workshop and its solid information panels. */
+body[data-look="paper"] {
+  isolation: isolate;
+}
+body[data-look="paper"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 44px 28px, #f4ead3 1.3px, transparent 2px),
+    radial-gradient(circle at 228px 96px, #f4ead3 1px, transparent 1.7px),
+    radial-gradient(circle at 410px 148px, #f4ead3 1.6px, transparent 2.3px);
+  background-size:
+    380px 290px,
+    520px 400px,
+    620px 360px;
+  opacity: 0.45;
+  animation: paper-background-snow 32s linear infinite;
+}
+@keyframes paper-background-snow {
+  to {
+    background-position:
+      18px 290px,
+      -12px 400px,
+      8px 360px;
+  }
+}
+body[data-look="paper"] > header,
+body[data-look="paper"] .status-row,
+body[data-look="paper"] .dashboard .clock-box {
+  background-color: #15332a;
+}
+body[data-look="paper"] .dashboard .hud-slot {
+  background: linear-gradient(#f4ead314, #f4ead314), #15332a;
+}
+@media (hover: hover) {
+  body[data-look="paper"] .dashboard .hud-slot:hover:not(:disabled) {
+    background: linear-gradient(#f4ead326, #f4ead326), #15332a;
+  }
+}
+body[data-look="paper"] .dashboard .hud-slot[data-state="failed"] {
+  background: linear-gradient(#a3263a66, #a3263a66), #15332a;
+}
+body.reduce-motion[data-look="paper"]::before {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-look="paper"]::before {
+    animation: none;
+  }
+}
+body[data-look="paper"] main .board,
+body[data-look="paper"]:has(#caseCue:not([hidden])) main .board {
+  background-color: #f4ead3;
+}

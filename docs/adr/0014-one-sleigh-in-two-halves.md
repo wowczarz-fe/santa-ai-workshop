@@ -285,3 +285,21 @@ allowed for the headline's loss.
 No goal line changed and no row of the balance table moved by more than 0.2 of a star (the
 first-timer checking everything rose from 1.50 to 1.65, the first-timer following the advice from
 2.15 to 2.27).
+
+## Follow-up: last playtest fixes
+
+Date: 2026-11-13
+
+- One drift prompt at a time: `vigilance.swap` keeps naming its elf while that elf stays and the
+  station still drifts, and a drift line is said only for that elf and station.
+- Checks paid for but waved through by trusting checkers are checking not done properly, not too
+  much checking. A game that lost the Few mistakes goal never reads "too much" or advises fewer
+  checks; its answer reads "Not as run: ..., because trusting checkers waved 3 wrong gifts
+  through." Cause advice never asks for more checks while the dial reads too much.
+- A rested elf goes home unless home clearly does not need it (two elves left and piles under
+  half full, and for Checking a To check pile that is not growing).
+- The over-checking figure is "Lost to too many checks (estimate)", with its parts `overChecks`
+  and `overHeld` in `view()`.
+- The Full sleigh target is 110 (was 108): with rested elves going home the first-timer's
+  three-star share rose to 33%, and 110 brings it back to 30% while it still fills the sleigh in
+  35% of games. No other row moved by more than 0.2 of a star.

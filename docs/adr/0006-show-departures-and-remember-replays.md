@@ -29,3 +29,10 @@ Show the rules-owned assurance verdict, group outcomes and real-world practice f
 ## Consequences
 
 The player can compare causes, costs and upgrades before the next run. Replays have variety while explicit seeds still reproduce a game. Local records belong to this browser. Movement, break cards, storage failure and touch information controls require browser checks alongside the rules checks.
+
+## Article link pending
+
+Keep the end-screen article link hidden until the user supplies its final URL. The current
+`#article` value is a placeholder. Retain the link markup and styling so the URL and visibility
+can be updated together when the article is ready. The Frontier Data Science & AI link remains
+available in the meantime.

@@ -49,7 +49,7 @@ const NEWS_KINDS =
   "checked loaded consequence case resolved update noticed rolledBack recalled relaxed trained tired rested blocked lost behind milestone cleared halftime chose departed".split(
     " ",
   );
-const CONTROLS_NAMED = ["checking", "ai:0", "ai:1", "cocoa", "ask"];
+const CONTROLS_NAMED = ["checking", "ai:0", "ai:1", "cocoa", "decide"];
 const argmax = (list) => list.indexOf(Math.max(...list));
 const fill = (v, id) => v.queues[id].parcels.length / v.queues[id].limit;
 const mean = (list) => list.reduce((s, n) => s + n, 0) / list.length;
@@ -63,27 +63,30 @@ const odds = (text) => {
   return m ? m[1] / m[2] : 0;
 };
 const key = (c) => c.step ?? c.kind;
+// An unclear wish read the way a person would, from the clue in the child's line: the option for the
+// right reading, or for the wrong one. view() never says which is right, so the script looks it up.
+function reading(c, right = true) {
+  const wanted = UNCLEAR_WISHES.find((u) => u.wish === c.evidence[0].wish)
+    .wanted.name;
+  return c.options.find((o) => (o.label === wanted) === right).id;
+}
 
 // Weighs what a decision shows and what the workshop can spare.
 function conditional(c) {
   const left = num(fact(c, "Time left"));
   switch (key(c)) {
     case "unclear":
-      return left > 15 ? "ask" : "guess";
+      return reading(c);
     case "source":
       return left < 20 ? "keep" : "rollback";
     case "aboard": {
       // Read the stated star trade first; otherwise compare money saved with checker time at £1 a second.
       const bring = c.options.find((o) => o.id === "bringBack");
+      // A recall costs more than leaving the gifts aboard, so it is worth it only for the star.
       const savesStar =
         /Few mistakes star saved/.test(bring.goal) &&
         !/Within budget star lost/.test(bring.goal);
-      return bring.available &&
-        (savesStar ||
-          (num(fact(c, "In your cost now")) > bring.money + bring.seconds &&
-            left >= 30))
-        ? "bringBack"
-        : "leave";
+      return bring.available && savesStar ? "bringBack" : "leave";
     }
   }
 }
@@ -91,7 +94,7 @@ function conditional(c) {
 // Answers the open decision with a policy, falling back to any option that can be chosen now.
 function answer(w, v, m, policy = conditional) {
   const c = v.case;
-  if (!c || c.resolving) return;
+  if (!c) return;
   const wanted = policy(c, v);
   const pick =
     c.options.find((o) => o.id === wanted && o.available) ??
@@ -226,7 +229,7 @@ function shuffle(w, v, m) {
 // Answers a decision 5 to 10 seconds after it shows, with a policy that may be a guess.
 function decideSlowly(w, v, m, policy) {
   const c = v.case;
-  if (!c || c.resolving) return;
+  if (!c) return;
   if (m.caseId !== c.id) {
     m.caseId = c.id;
     m.answerAt = v.t + between(m, 5, 10);
@@ -242,15 +245,16 @@ function decideSlowly(w, v, m, policy) {
 
 // Someone who did the tour and means well but is slow and imperfect: sets the AI and checking some
 // seconds in, looks at the screen only every 2 to 4 seconds, moves an elf about every 20 seconds,
-// rests elves that show red but misses some, and answers decisions late, mostly asking, rolling
-// back and fetching back. On the good strategy both stations start on Assist and reading goes up to
+// rests elves that show red but misses some, and answers decisions late: it reads an unclear wish
+// right nine times in ten, and mostly rolls back and fetches back. On the good strategy both stations start on Assist and reading goes up to
 // Automate once letters pile up, as the tour says more AI is faster. With follows, it also does
 // what each wrong-gift line says, a look or two later.
 const meansWell = (c, m) =>
-  (key(c) === "unclear" && m.asks) ||
-  m.r() < ({ unclear: 0.75, source: 0.75, aboard: 0.75 }[key(c)] ?? 0.5)
-    ? { unclear: "ask", source: "rollback", aboard: "bringBack" }[key(c)]
-    : { unclear: "guess", source: "keep", aboard: "leave" }[key(c)];
+  key(c) === "unclear"
+    ? reading(c, m.reads || m.r() < 0.9)
+    : m.r() < 0.75
+      ? { source: "rollback", aboard: "bringBack" }[key(c)]
+      : { source: "keep", aboard: "leave" }[key(c)];
 const firstTimer =
   ({
     ai = "good",
@@ -287,8 +291,8 @@ const firstTimer =
   };
 
 // Does what each new wrong-gift line says: checks the risky ones, checks all for 20 seconds, puts a
-// station on Assist, sends the named elf or the most tired elf (or checker) for cocoa, or asks
-// the child next time. "Keep checking" asks for nothing new.
+// station on Assist, sends the named elf or the most tired elf (or checker) for cocoa, or reads
+// the child's clue next time. "Keep checking" asks for nothing new.
 function followAdvice(w, v, m) {
   const fresh = v.news.filter((n) => n.id > (m.seenNews ?? 0));
   m.seenNews = v.news[0]?.id ?? m.seenNews;
@@ -303,8 +307,8 @@ function followAdvice(w, v, m) {
       if (!m.backAt) w.setChecking(m.checking);
     } else if (n.action === "Keep checking") {
       continue;
-    } else if (n.control === "ask") {
-      m.asks = true;
+    } else if (n.control === "decide") {
+      m.reads = true;
     } else if (n.control === "checking") {
       w.setChecking(2);
       m.backAt = v.t + 20;
@@ -355,8 +359,9 @@ const players = {
   expertCheckFew: active({ checking: 0 }),
   expertAutomate: active({ ai: [2, 2] }),
   expertNeverRests: active({ rest: false }),
-  expertGuesses: active({
-    policy: (c) => (c.kind === "unclear" ? "guess" : conditional(c)),
+  // Picks the first picture without reading the child's line: right about half the time.
+  expertPicksBlind: active({
+    policy: (c) => (c.kind === "unclear" ? "pick:0" : conditional(c)),
   }),
   first: firstTimer(),
   firstCheckAll: firstTimer({ checking: 2 }),
@@ -364,15 +369,12 @@ const players = {
   firstAutomate: firstTimer({ ai: [2, 2] }),
   firstNeverRests: firstTimer({ rest: false }),
   firstFollows: firstTimer({ follows: true }),
-  // A careless first-timer: checking left on a few, every unclear wish guessed and other decisions
-  // answered at random, and nobody rested.
+  // A careless first-timer: checking left on a few, every decision answered at random (an unclear
+  // wish picked without reading the child's line), and nobody rested.
   careless: firstTimer({
     checking: 0,
     rest: false,
-    policy: (c, m) =>
-      c.kind === "unclear"
-        ? "guess"
-        : c.options[Math.floor(m.r() * c.options.length)].id,
+    policy: (c, m) => c.options[Math.floor(m.r() * c.options.length)].id,
   }),
 };
 const EXPERT = Object.keys(players).filter((n) => n.startsWith("expert"));
@@ -398,6 +400,14 @@ function checkView(v) {
         v.elves[swap.elf].name === swap.name,
       "the drift names an elf at its station",
     );
+  // No pile ever holds more than its limit; a read letter waiting for room is counted as held.
+  for (const q of Object.values(v.queues)) {
+    assert(
+      q.parcels.length <= q.limit,
+      `${q.name} holds ${q.parcels.length} of ${q.limit} at ${Math.round(v.t)} s`,
+    );
+    assert(q.held >= 0 && (q.id === "orders" || q.held === 0));
+  }
   const all = [
     ...Object.values(v.queues).flatMap((q) => q.parcels),
     ...v.sleigh.parcels,
@@ -447,7 +457,7 @@ function checkView(v) {
   if (!v.case) return;
   assert.strictEqual(
     Object.keys(v.case).join(),
-    "id,kind,step,title,text,facts,evidence,affected,options,resolving" +
+    "id,kind,step,title,text,facts,evidence,affected,options" +
       (v.case.kind === "unclear" ? ",stake,readings" : ""),
   );
   if (v.case.kind === "unclear") {
@@ -471,14 +481,30 @@ function checkView(v) {
   for (const o of v.case.options)
     assert.strictEqual(
       Object.keys(o).join(),
-      "id,label,seconds,money,risk,scope,why,goal,available",
+      v.case.step === "aboard"
+        ? "id,label,seconds,money,risk,scope,why,instead,extra,goal,available"
+        : "id,label,seconds,money,risk,scope,why,goal,available",
     );
-  if (v.case.kind === "unclear")
-    assert.strictEqual(
-      v.case.options.map((o) => o.id).join(),
-      "ask,guess",
-      "an unclear letter offers ask or guess",
+  // An unclear letter offers its two readings, in the order the card draws them, and nothing in the
+  // view says which is right.
+  if (v.case.kind === "unclear") {
+    assert.deepStrictEqual(
+      v.case.options.map((o) => [o.id, o.label]),
+      v.case.readings.map((r, i) => [`pick:${i}`, r.name]),
     );
+    assert(!/"(right|wrong|wanted|correct)"/.test(JSON.stringify(v.case)));
+  }
+  // A recall costs more than leaving the gifts aboard; leaving costs nothing more.
+  if (v.case.step === "aboard") {
+    const [bring, leave] = v.case.options;
+    assert.strictEqual(bring.extra, bring.money - bring.instead);
+    assert(bring.extra >= 40 && bring.money >= bring.instead * 1.5 - 1);
+    assert.strictEqual(bring.scope.split(";")[0], `${money(bring.extra)} more`);
+    assert.deepStrictEqual(
+      [leave.money, leave.instead, leave.extra, leave.scope.split(";")[0]],
+      [0, 0, 0, "nothing more"],
+    );
+  }
 }
 
 // Half-time: the rules stand still and the card carries the report, the next half and the options.
@@ -504,8 +530,7 @@ function checkChoice(v, w) {
     "update,tested,train,rest,none",
   );
   for (const o of ch.options) assert(o.facts.length <= 3, "option facts");
-  const waiting = w.cases.find((c) => !c.resolving);
-  assert.strictEqual(ch.openCase?.id ?? null, waiting?.id ?? null);
+  assert.strictEqual(ch.openCase?.id ?? null, w.cases[0]?.id ?? null);
   const t = w.t;
   w.step(5);
   assert.strictEqual(w.t, t, "nothing moves while half-time is open");
@@ -535,7 +560,7 @@ function checkNews(n) {
       `wrong gift control ${n.control}`,
     );
     assert(
-      /(Check|Put|Send|Rest|Swap|Keep|Ask) [^.]*\.$/.test(n.text),
+      /(Check|Put|Send|Rest|Swap|Keep|Read) [^.]*\.$/.test(n.text),
       `wrong gift line names an action: ${n.text}`,
     );
     assert(n.cause in WRONG_CAUSES, `cause ${n.cause}`);
@@ -774,8 +799,8 @@ assert(
   `following the wrong-gift advice scores no worse (${avgStars("firstFollows").toFixed(2)} against ${avgStars("first").toFixed(2)})`,
 );
 warn(
-  avgStars("expertGuesses") <= avgStars("expert"),
-  "asking about unclear wishes pays at least as well as guessing",
+  avgStars("expertPicksBlind") <= avgStars("expert"),
+  "reading the child's clue pays at least as well as picking blind",
 );
 for (const name of ["expert", "expertCheckAll", "expertCheckFew"])
   for (const r of results[name])
@@ -957,8 +982,8 @@ for (const [name, rs] of Object.entries(results))
       why,
     );
     assert.strictEqual(
-      acts.asked.used,
-      !/^asked 0 /.test(acts.asked.figure),
+      acts.decided.used,
+      !/^decided 0 /.test(acts.decided.figure),
       why,
     );
     for (const p of r.end.practices)
@@ -981,12 +1006,16 @@ for (const name of IDLE)
   for (const r of results[name])
     assert.strictEqual(
       r.end.practices.find((p) => p.id === "escalate").actions[0].figure,
-      "asked 0 of 2",
-      "an untouched player asked no child",
+      "decided 0 of 2, 0 right; 2 left unanswered",
+      "an untouched player read no unclear wish",
     );
 for (const r of results.expert) {
   const escalate = r.end.practices.find((p) => p.id === "escalate");
-  assert(escalate.used && /^asked [12] of 2$/.test(escalate.actions[0].figure));
+  assert(
+    escalate.used &&
+      /^decided ([12]) of 2, \1 right/.test(escalate.actions[0].figure),
+    escalate.actions[0].figure,
+  );
   assert.strictEqual(
     r.end.practices.map((p) => p.id).join(),
     "human-in-loop,risk-check,escalate,test-release,oversight",
@@ -1180,21 +1209,31 @@ for (const k of NEWS_KINDS) warn(kinds.has(k), `news kind ${k} is emitted`);
   }
 }
 
-// An unclear letter waits for its decision: asking delays it and reads it right; a letter still
-// waiting when the sleigh leaves is lost.
-{
+// An unclear letter waits for the player to read it. The right pick sends it on to be made right at
+// once; the wrong pick sends the wrong reading on, to be caught by a check or reach the sleigh as the
+// player's own mistake. A letter still waiting when the sleigh leaves is lost.
+for (const right of [true, false]) {
   const w = new Workshop({ seed: 5 });
   while (!w.view().case) w.step(0.5);
   const c = w.view().case;
   assert.strictEqual(c.kind, "unclear");
   assert(c.evidence[0].child && c.text.includes(c.evidence[0].child));
   const id = c.evidence[0].parcelId;
-  assert(w.resolve(c.id, "ask"));
-  w.step(ASK_SECONDS - 0.5);
-  assert(w.view().case?.resolving, "the letter waits while the child answers");
-  w.step(1);
+  assert(!w.resolve(c.id, "ask") && !w.resolve(c.id, "pick:2"));
+  assert(w.resolve(c.id, reading(c, right)));
+  assert.strictEqual(w.view().case, null, "the card closes at once");
   const x = w.q.orders.find((x) => x.id === id);
-  assert(x && x.asked && !x.wrong, "an asked letter is read right");
+  assert(x && x.wrong === !right, "the letter goes on as the reading picked");
+  const said = w.view().news.find((n) => n.kind === "resolved").text;
+  assert(!/right|wrong/i.test(said), `"${said}" gives the answer away`);
+  if (right) continue;
+  assert.strictEqual(w.causeId(x), "picked");
+  assert.strictEqual(w.advice({ ...x, exit: "checked" }).control, "decide");
+  while (!w.end) (w.step(1), w.choice && w.choose("none"));
+  const act = w.end.practices.find((p) => p.id === "escalate").actions[0];
+  assert.match(act.figure, /^decided 1 of 2, 0 right; 1 left unanswered$/);
+}
+{
   const lazy = new Workshop({ seed: 5 });
   while (!lazy.end) (lazy.step(1), lazy.choice && lazy.choose("none"));
   assert(lazy.view().end.lost >= 2, "unclear letters left undecided are lost");

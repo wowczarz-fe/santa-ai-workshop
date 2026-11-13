@@ -366,6 +366,11 @@ const HALF_TIME = Object.fromEntries(
 
 // Nothing in view() may show what the player has not found out, and the shape holds.
 function checkView(v) {
+  assert.strictEqual(
+    v.stations.map((st) => st.name).join(),
+    "Letters,Toys,Checking",
+    "stations carry the heading words",
+  );
   // The drift to fix names an elf who is at that station now.
   const swap = v.vigilance.swap;
   if (swap)

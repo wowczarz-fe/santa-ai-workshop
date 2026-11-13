@@ -1111,9 +1111,6 @@ body[data-look] #vigilance {
   right: 6px;
   z-index: 1;
 }
-.group-head > .more-toggle {
-  margin-left: 6px;
-}
 .more-text {
   grid-column: 1 / -1;
   margin: 6px 0 0;
@@ -3303,143 +3300,6 @@ dialog p {
   color: var(--bc-ok);
 }
 /* Was checking worth it: the answer in one line, the bars folded away. */
-#report .checking-answer {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.4;
-}
-.checking-detail {
-  margin-top: 8px;
-  font-size: 13px;
-}
-.checking-detail summary {
-  cursor: pointer;
-  font-weight: 700;
-  color: var(--bc-muted);
-}
-.checking-detail[open] summary {
-  margin-bottom: 10px;
-}
-#report .group-text {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.35;
-  color: var(--bc-muted);
-}
-.assurance-groups {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-.assurance-group {
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  padding: 12px 14px;
-  border: 1px solid var(--bc-line);
-  border-radius: 12px;
-  background: var(--bc-paper);
-}
-.group-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
-}
-.group-icon {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--bc-accent-soft);
-  color: var(--bc-accent-deep);
-}
-.group-icon svg {
-  width: 20px;
-  height: 20px;
-}
-.group-head b {
-  font-size: 14px;
-}
-.group-verdict {
-  margin-left: auto;
-  padding: 2px 9px;
-  border-radius: 20px;
-  background: var(--bc-ok-soft);
-  color: var(--bc-ok);
-  font-size: 11.5px;
-  font-weight: 700;
-}
-.assurance-group[data-verdict="left exposed"] .group-verdict {
-  background: var(--bc-red-soft);
-  color: var(--bc-red-deep);
-}
-.assurance-group[data-verdict="cost more than it saved"] .group-verdict {
-  background: var(--bc-gold-soft);
-  color: var(--bc-gold-ink);
-}
-.group-bars {
-  display: grid;
-  gap: 7px;
-}
-.group-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 3px 8px;
-  font-size: 12.5px;
-}
-.bar-label {
-  color: var(--bc-muted);
-}
-.bar-value {
-  font-variant-numeric: tabular-nums;
-}
-.bar-track {
-  grid-column: 1 / -1;
-  height: 10px;
-  border-radius: 5px;
-  background: var(--bc-frost);
-  overflow: hidden;
-}
-.bar-fill {
-  display: block;
-  height: 100%;
-  border-radius: 5px;
-}
-.bar-spent .bar-fill {
-  background: var(--bc-gold);
-}
-.bar-stopped .bar-fill {
-  background: var(--bc-zone-right-on);
-}
-.bar-through .bar-fill {
-  background: var(--bc-red);
-}
-.bar-through .bar-value {
-  color: var(--bc-red-deep);
-}
-.assurance-group[data-none="true"] {
-  opacity: 0.6;
-}
-.assurance-group[data-none="true"] .group-verdict {
-  background: var(--bc-frost);
-  color: var(--bc-muted);
-}
-#report #noChecks {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
-  margin: 12px 0 6px;
-  font-size: 13px;
-}
-#report .estimate-help {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--bc-muted);
-}
 #practices {
   padding: 20px 22px;
   border: 2px solid var(--bc-accent);
@@ -3864,12 +3724,6 @@ dialog p {
   }
   .account-item dd {
     font-size: 17px;
-  }
-  #report .checking-answer {
-    font-size: 14px;
-  }
-  .assurance-groups {
-    grid-template-columns: minmax(0, 1fr);
   }
   #practices {
     padding: 16px 14px;

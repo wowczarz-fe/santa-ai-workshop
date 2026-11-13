@@ -30,6 +30,10 @@ Show only the wrong-gift count and a short result of the player's latest action 
 
 Use drawn stars for the end rating. Keep the checking dial below the practice tiles. This presentation pass retains the game length and the one-star outcome of an unattended game.
 
+## End-screen reading order
+
+Lead with the result, then real-world practices, the checking dial and Frontier's offer with both links. Follow with costliest causes, the money account and the blunder collection. Remove the separate checking-worth card and gift-kind disclosure: the dial and account already carry the trade-off. Both presentations use this order on desktop and phone.
+
 ## Consequences
 
 Station floors and controls align on desktop while all six queues remain available. Phone users can switch stations without traversing a long vertical list. Layout checks must include eight elves at one station, cocoa, queue counts, actual tap and drag movement, and decision cards at narrow widths.

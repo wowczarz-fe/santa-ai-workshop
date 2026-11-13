@@ -38,7 +38,7 @@ Lead with the result, then real-world practices, the checking dial and Frontier'
 
 Show the rules' remaining budget in the running header, with a labelled low state. Desktop figures use the space released by the quieter status strip; phone figures stay compact. A budget ending shows the rules' headline, lesson, star count and time remaining. Unaffordable choices show their reason beside the disabled option.
 
-Place a two-row reliability table after the practices and before the dial. It reports the player's everyday and big-gift jobs: letters read and toys made, before checking, with AI drafts counted as AI and manual work as elves. Show raw wrong counts out of jobs and “None made” for an empty sample. The dial remains beside the Frontier offer in the reading order. The walkthrough explains that everyday reliability matches a fresh elf while big gifts need a person.
+Keep the end report focused on practices, the checking dial and Frontier's offer, followed by causes, the account and blunders. The separate AI reliability card is removed; the rules retain their reliability data. The walkthrough explains that everyday reliability matches a fresh elf while big gifts need a person.
 
 ## Shared typography
 

@@ -2809,32 +2809,6 @@
         : "",
     );
     $("endReason").hidden = e.reason !== "budget";
-    $("reliability").hidden = !e.reliability;
-    $("reliabilityRows").replaceChildren();
-    if (e.reliability) {
-      for (const [id, label] of [
-        ["everyday", "Everyday gifts"],
-        ["big", "Big gifts"],
-      ]) {
-        const row = make("tr", "");
-        const heading = make("th", "", label);
-        heading.scope = "row";
-        row.append(heading);
-        for (const maker of ["ai", "elves"]) {
-          const count = e.reliability[id][maker];
-          row.append(
-            make(
-              "td",
-              "",
-              count.made
-                ? `${count.wrong} wrong of ${count.made}`
-                : "None made",
-            ),
-          );
-        }
-        $("reliabilityRows").append(row);
-      }
-    }
     // One lesson line under the headline; its title names it for screen readers and on hover.
     text("lessonText", e.lesson.text || e.lesson.title);
     $("lessonText").title = e.lesson.title;

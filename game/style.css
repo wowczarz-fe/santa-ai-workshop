@@ -3852,20 +3852,6 @@ body[data-look] .header-actions #helpMove {
   }
 }
 
-.reliability-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-variant-numeric: tabular-nums;
-}
-.reliability-table th,
-.reliability-table td {
-  padding: 10px 8px;
-  text-align: left;
-  border-bottom: 1px solid var(--bc-line);
-}
-.reliability-table thead {
-  color: var(--bc-muted);
-}
 body[data-look] #goals .hud-slot.budget-low {
   background: #fff0cf;
   color: #9b2432;
@@ -3900,15 +3886,6 @@ body[data-look] #goals .hud-slot.budget-low .hud-name::after {
   body[data-look] main .status-row {
     height: 25px;
     min-height: 25px;
-  }
-}
-@media (max-width: 600px) {
-  .reliability-table {
-    font-size: 12px;
-  }
-  .reliability-table th,
-  .reliability-table td {
-    padding: 8px 4px;
   }
 }
 

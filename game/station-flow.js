@@ -9,7 +9,7 @@ const StationFlow = (() => {
       width: 28,
       height: 19,
     },
-    { queue: "orders", x: 24, y: 294, from: [-8, 260], width: 28, height: 24 },
+    { queue: "orders", x: 0, y: 66, from: [0, 0], width: 28, height: 24 },
     { queue: "check", x: 42, y: 210, from: [12, 148], width: 32, height: 27 },
     { queue: "sleigh", x: 108, y: 235, from: [82, 174], width: 28, height: 24 },
   ];
@@ -26,7 +26,7 @@ const StationFlow = (() => {
   }
 
   function prepare(station) {
-    const svg = document.querySelector(
+    let svg = document.querySelector(
       station === 3
         ? "#sleigh .sleigh-art > svg"
         : `#station${station} .machine > svg`,
@@ -45,6 +45,14 @@ const StationFlow = (() => {
         node.querySelector('text[transform="rotate(-18 238 175)"]'),
       );
       benchProps?.remove();
+    }
+    if (station === 1) {
+      svg = element("svg", {
+        viewBox: "0 0 120 70",
+        class: "orders-heap",
+        "aria-hidden": "true",
+      });
+      document.querySelector("#queue-orders .queue-picture").append(svg);
     }
     const pile = element("g", { class: "live-heap", "aria-hidden": "true" });
     if (station === 3) {

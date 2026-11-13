@@ -258,3 +258,30 @@ which is slower and holds the sleigh up: it fills it in no game, but breaks the 
 rose from 1.98 to 2.15 (three stars in 30%), and the expert fell from 2.30 to 2.20 (55%). Checking
 everything still loses a star in every first-timer game, now through the held-up sleigh more than
 the cost; the check that it breaks the cost limit in most games is kept for the expert only.
+
+## Follow-up: an honest dial, named drift and rested elves that go where needed
+
+Date: 2026-11-13
+
+A second playtest found the end screen still contradicting itself and the drift prompt vague. The
+user ruled that the dial is an honest measure of checking by its own two figures and is never
+moved to fit the headline; this replaces the earlier rule that held the dial inside the verdicts
+allowed for the headline's loss.
+
+- The dial reads its two figures. When one is three times the other and at least £100, it reads
+  that side whatever the rest of the bill. On three stars it reads "about right", as neither too
+  much nor too little checking cost a star. The words follow it: the checking answer goes the same
+  way and never starts "No" on three stars; a checking lesson shows only on the dial's side; a
+  headline praises care only without too many wrong gifts or too few checks ("Slow, and wrong.",
+  "Slow, with too few checks."). The by-hand lesson is now "By hand is too slow".
+- Drift lines and the new `vigilance.swap` name the elf who trusts the AI most at the drifting
+  station. Wrong-gift advice names the true cause: tiredness only when an elf there is tired,
+  drift with the elf's name, and otherwise that even sharp checkers miss 1 in 10, or that checkers
+  miss most wrong guesses. An ordinary slip by a fresh elf is a cause of its own (`slip`).
+- A fully rested elf goes to the station that needs an elf, else home, and says where it went; a
+  need answered by one elf is left to it for 5 seconds.
+- The straight-through pile is the waiting-to-load pile in every line, as on the page.
+
+No goal line changed and no row of the balance table moved by more than 0.2 of a star (the
+first-timer checking everything rose from 1.50 to 1.65, the first-timer following the advice from
+2.15 to 2.27).

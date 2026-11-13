@@ -623,7 +623,7 @@
   // What the player's last move did, from the view's own figures.
   function sayResult(words) {
     const now = performance.now();
-    // A wrong gift's line keeps its 4 seconds: it says what to do now.
+    // A wrong gift's line, or an elf back from cocoa, keeps its 4 seconds against the player's move.
     if (notice?.priority > 5 && now - notice.since < 4000) return paint();
     notice = { text: words, priority: 5, since: now, until: now + 4000 };
     paint();
@@ -1002,12 +1002,16 @@
         n.kind === "checked" && n.check?.result !== "wrong"
           ? 0
           : n.kind === "loaded" && n.check?.result === "wrong"
-            ? 6
-            : n.kind === "resolved"
-              ? 3
-              : /noticed|relaxed|rested/.test(n.kind)
-                ? 4
-                : 1;
+            ? 7
+            : // An elf walking back from cocoa by itself is news the player's own last move
+              // must not hide.
+              n.kind === "rested"
+              ? 6
+              : n.kind === "resolved"
+                ? 3
+                : /noticed|relaxed/.test(n.kind)
+                  ? 4
+                  : 1;
       say(n.text, priority);
     }
     const narrow = innerWidth < 1000;

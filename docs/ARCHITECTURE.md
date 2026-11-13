@@ -109,7 +109,7 @@ An elf is `{ name, station, tired, energy, mood, resting, doing }`, for example
 - `resting`: `true` while a burnt-out elf is on its long break, which cannot be cut short. It comes
   back to its station by itself after 15 seconds.
 - `doing`: a short phrase: `"reading letters"`, `"confirming the AI's readings"`, `"making toys"`,
-  `"confirming the AI's toys"`, `"checking gifts"`, `"loading"` (checkers loading straight-through
+  `"confirming the AI's toys"`, `"checking gifts"`, `"loading"` (checkers loading waiting
   gifts onto the sleigh), `"remaking"` (checkers remaking a caught or recalled gift),
   `"nothing to do"`, `"having cocoa"` or `"burnt out"`. Elves at a station on Automate have nothing
   to do there.
@@ -142,7 +142,9 @@ A queue is `{ id, name, parcels, limit, rate, inflow, trend, progress, blocked }
 staffing, `inflow` parcels a minute arriving, `trend` `"growing"`, `"steady"` or `"shrinking"`
 over the last ten seconds, `progress` 0 to 1 towards the next parcel (unrounded), `blocked` `null`
 or a short reason such as `"nobody reading"`. Limits: letters 24, orders 20, check 10, pass 12,
-rework 30.
+rework 30. Names: `"Letters"`, `"Toy orders"`, `"To check"`, `"Waiting to load"` (the gifts that
+need no check, which the checkers load onto the sleigh) and `"To remake"`; every line about the
+`pass` pile calls it the waiting-to-load pile.
 
 ### Parcels
 
@@ -158,9 +160,9 @@ A parcel is `{ id, wish, big, unclear, wanted, made, suspect, result }`, for exa
 
 ### Vigilance
 
-`vigilance` is `{ state, name, cleanRun, confirming, secondsPerCheck, skipped, trained }`, for
+`vigilance` is `{ state, name, cleanRun, confirming, secondsPerCheck, skipped, trained, swap }`, for
 example
-`{ state: "careful", name: "sharp", cleanRun: 6, confirming: "sharp", secondsPerCheck: 4.5, skipped: 0, trained: false }`.
+`{ state: "careful", name: "sharp", cleanRun: 6, confirming: "sharp", secondsPerCheck: 4.5, skipped: 0, trained: false, swap: null }`.
 
 - `state` is the checkers' state, `"careful"`, `"relaxing"` or `"waving through"`, and `name` the
   word to show: `"sharp"`, `"drifting"` or `"not looking"`. Each elf keeps its own run of clean AI
@@ -175,6 +177,11 @@ example
 - `cleanRun` is the checkers' average run of clean AI gifts, `secondsPerCheck` what a check takes now,
   `skipped` how many checks they have skipped, `trained` whether half-time training was bought.
   Training keeps checkers and confirmers sharp for the rest of the game.
+- `swap` is the drift to fix now: `null`, or `{ elf, station, name }`, the elf (its index in
+  `elves`) who trusts the AI most at a drifting station, checkers first, then the Assist station
+  that trusts the AI most. Read it on every view to show the drift banner and outline that one
+  elf: it moves to the next elf when that elf leaves, and turns `null` once the station looks
+  properly again, empties, or training is bought, and in the first 20 seconds.
 
 ### Run
 
@@ -224,7 +231,7 @@ costs time only.
 `{ station: 3, control: "cocoa", text: "rest Holly" }`. `station` is 0 to 3, `control` one of
 `"cocoa"`, `"elves"`, `"ai0"`, `"ai1"` or `"checking"`, and `text` four words at most.
 When the line has stopped or a pile is full, `focus` names what would free it, ahead of anything
-else: the checkers when the checking or straight-through pile is full (`{ station: 2, control:
+else: the checkers when the checking or waiting-to-load pile is full (`{ station: 2, control:
 "elves", text: "needs another elf" }`, or `control: "checking", text: "check fewer"` while every
 gift is checked by three elves or more), else the toy makers or readers when their pile is full
 or nobody works there (`"elves"`, or `"ai0"`/`"ai1"` with `"try the AI"` while three elves work
@@ -386,9 +393,10 @@ something only half-time sells.
 | `noticed`     | `by`: `"watcher"`, `"checker"` or `"sleigh"`                                               | The faulty update became known                        |
 | `rolledBack`  |                                                                                            | The rollback finished                                 |
 | `recalled`    | `count`                                                                                    | Wrong gifts came off the sleigh                       |
-| `relaxed`     |                                                                                            | Checkers, or elves on Assist, started to trust the AI |
+| `relaxed`     | `elf`, `station`                                                                           | Checkers, or elves on Assist, started to trust the AI |
 | `trained`     |                                                                                            | Training was bought at half-time                      |
 | `tired`       | `elf`                                                                                      | An elf burnt out                                      |
+| `rested`      | `elf`, `station`                                                                           | A rested elf left cocoa for a station                 |
 | `blocked`     | `station`                                                                                  | A station stopped because the next pile is full       |
 | `lost`        | `count`                                                                                    | Letters were lost to a full pile                      |
 | `behind`      | `station`                                                                                  | The pace first falls short and a station holds it up  |
@@ -398,9 +406,11 @@ something only half-time sells.
 | `chose`       | `option`, `outcome: { money, seconds, gained }`                                            | The player picked a half-time option                  |
 | `departed`    | `right`, `wrong`, `target`, `stars`                                                        | The sleigh left; the game is over                     |
 
-A `relaxed` item says in plain words what is happening and what to do now, for example
-`"Checkers are trusting the AI and skipping checks. Swap in a rested elf."`. It comes once each time
-the checkers, or the elves on Assist, start to drift, and never in the first 20 seconds.
+A `relaxed` item names the elf who trusts the AI most and what to do now, for example
+`"Tinsel is trusting the AI and skipping checks. Send Tinsel for cocoa or swap in another elf."`
+(on Assist: "trusting the AI's drafts and missing mistakes"). `elf` and `station` say who and
+where. It comes once each time the checkers, or the elves on an Assist station, start to drift,
+and never in the first 20 seconds; `vigilance.swap` says whether the drift is still there.
 
 ### A wrong gift says what to do now
 
@@ -409,18 +419,28 @@ for example `"Wrong gift: Jack got a full-sized galleon, not a toy pirate ship. 
 Its `control` is the control to highlight and `action` a few words naming the action, for a tag
 on that control. Following the advice never sends a station back to working by hand:
 
-| `control`      | When                                                         | Text                                           | `action`            |
-| -------------- | ------------------------------------------------------------ | ---------------------------------------------- | ------------------- |
-| `checking`     | A risky gift went out unchecked while checking was on a few  | `Check the risky ones.`                        | `Check more`        |
-| `cocoa`        | A tired elf slipped                                          | `Send tired elves for cocoa.`                  | `Rest tired elves`  |
-| `ai:0`, `ai:1` | The AI made the mistake on Automate at reading or toy making | `Put reading on Assist: an elf confirms each.` | `Drop to Assist`    |
-| `checking`     | Any other gift went out unchecked                            | `Check all for a while.`                       | `Check all for now` |
-| `cocoa`        | It went past a checker                                       | `Rest the checkers: tired ones miss more.`     | `Rest the checkers` |
+| `control`      | When                                                          | Text                                                                      | `action`            |
+| -------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------- |
+| `checking`     | A risky gift went out unchecked while checking was on a few   | `Check the risky ones.`                                                   | `Check more`        |
+| `cocoa`        | A tired elf working by hand slipped                           | `Send tired elves for cocoa.`                                             | `Rest tired elves`  |
+| `ai:0`, `ai:1` | The AI made the mistake on Automate at reading or toy making  | `Put reading on Assist: an elf confirms each.`                            | `Drop to Assist`    |
+| `checking`     | The player let it through unchecked                           | `Check them instead of letting them through: move an elf to Checking.`    | `Check them`        |
+| `cocoa`        | An elf on Assist passed the wrong draft while trusting the AI | `Swap the toy makers: Pip had stopped checking the AI's drafts.`          | `Swap Pip`          |
+| `cocoa`        | An elf on Assist passed it while tired                        | `Send tired elves for cocoa.`                                             | `Rest tired elves`  |
+| `checking`     | Any other gift went out unchecked                             | `Check all for a while.`                                                  | `Check all for now` |
+| `cocoa`        | A checker waved it through while trusting the AI              | `Swap the checkers: Tinsel had stopped checking properly.`                | `Swap Tinsel`       |
+| `cocoa`        | A checker missed it while a checker was tired                 | `Rest the checkers: tired ones miss more.`                                | `Rest the checkers` |
+| `ask`          | A sharp, rested checker missed a guessed wish                 | `Ask the child when a wish is unclear: checkers miss most wrong guesses.` | `Ask next time`     |
+| `checking`     | A sharp, rested checker missed it                             | `Keep checking the risky ones: even sharp checkers miss 1 in 10.`         | `Keep checking`     |
+
+The first that applies is used. Tiredness is named only when an elf at that station is tired
+(red), and drift names the elf there who trusts the AI most. `ask` is a new `control`: there is
+no control to outline until the next unclear wish, so the page shows only the line.
 
 A wrong gift whose advice was given in the last 20 seconds goes aboard without a new line, so the
 player is not asked twice for the same thing; it still shows on the sleigh.
 
-The first that applies is used. `cause` is the cause id (see Causes). `caseId` is set only when
+`cause` is the cause id (see Causes). `caseId` is set only when
 the faulty update's decision was still waiting for an answer as the gift went aboard.
 
 A `resolved` item's `text` says what the answer did, with the time, money and parcels involved,
@@ -454,17 +474,24 @@ for example `"Amir wrote back: a cuddly bat."` or
 - `headline` is a few words without figures and `lesson` `{ title, text }` the one lesson under
   it. The lesson names one loss, and only a loss that cost a goal: the sleigh fell short, tiredness
   held it up, wrong gifts cost the Few mistakes goal or much of a broken cost limit, or the cost
-  limit broke. The headline names the same loss: "Careful, but slow." (short), "Too tired to keep
+  limit broke. The headline names the same loss: "Careful, but slow." (short), "Slow, and wrong."
+  (short with more wrong gifts than allowed), "Slow, with too few checks." (short, and the dial
+  reads too little), "Too tired to keep
   up." (tiredness), "Fast, but wrong." (wrong gifts on a full sleigh), "Too many wrong gifts." (wrong
   gifts, sleigh short), "Wrong gifts cost too much." (wrong gifts within the allowed number but
   over the cost limit) or "Over budget." (cost). "Christmas, carefully delivered." is for three
-  stars, and the lesson is then a tip.
-- `checkingAnswer` is one sentence answering "Was checking worth it?": yes or no with what the
-  checks cost and about what they stopped, for example "Yes: £208 of checks stopped about £400 of
-  wrong gifts." It follows the dial's verdict: "too little" adds "and more checks on big gifts
-  would have paid too" (or, after a no, "; checks on big gifts would have paid"), "too much"
-  after a yes reads "Yes overall: ..., but the checks on everyday gifts cost more than they saved",
-  and a bottleneck reads "Not as run: ..., but the pile held back 23 gifts."
+  stars, and the lesson is then a tip. A headline praises care only when the Few mistakes goal
+  was not lost to too many wrong gifts and the dial does not read too little.
+- `checkingAnswer` is one sentence answering "Was checking worth it?", always in the dial's
+  direction:
+  - "about right": "Yes: £208 of checks stopped about £400 of wrong gifts." or, when the checks
+    stopped less than they cost, "Mostly: ..."; on three stars "Yes: checks kept the wrong gifts
+    aboard to 3, though they stopped only about £36 this time." It never starts "No" on three stars.
+  - "too little": "Yes, but too few: ..., and more checks on big gifts would have paid too." or
+    "Too few: ...; more checks on big gifts would have paid."
+  - "too much": "Mostly: ..., but the checks on everyday gifts cost more than they saved." or "No:
+    ...; fewer checks would have done."
+  - "bottleneck": "Not as run: ..., but the pile held back 23 gifts."
 - `blunders` is `[{ id, name, icon }]`: the absurd wrong toys this game produced, caught or not.
   `blunderTotal` is how many different ones exist, so the page can keep a collection across games.
 
@@ -505,6 +532,7 @@ of it). The end screen and the half-time card may mention half-time options.
 | `waved`    | checkers who skipped or missed them           | `train`    |
 | `faulty`   | the faulty update                             | `update`   |
 | `tired`    | tired elves working by hand                   | `cocoa`    |
+| `slip`     | ordinary slips by fresh elves working by hand | `checking` |
 | `recalled` | wrong gifts brought back off the sleigh       | `checking` |
 
 A gift that went past a checker counts under `waved` whatever made it wrong, and one from the
@@ -559,10 +587,10 @@ beforehand: a risky batch can happen to come out clean.
   the fix: rest the checkers with cocoa when `tired`, else move an elf to checking. When
   over-checking is the largest, `verdict` is `"too much"`. When checking stayed on a few all
   game the verdict is never `"too much"`: the player checked as little as the game allows.
-- The verdict always fits the loss the headline and lesson name: wrong gifts can read "too little"
-  or "about right"; a short sleigh "about right", "too much" or "bottleneck"; tiredness "about
-  right" or "bottleneck"; a broken cost limit "about right" or "too much". Any other reading is held
-  at the edge of "about right". After three stars any verdict can show.
+- The dial measures checking by its own two figures and is never moved to fit the headline. When
+  one of `underCost` and `overCost` is three times the other and at least £100, the verdict is that
+  side ("too little" or "too much") whatever the rest of the bill. On three stars it reads "about
+  right": neither too much nor too little checking cost a star. The words follow the dial instead.
 - The one figure for what wrong gifts cost is `costs.mistakes` (the wrong gifts aboard at
   departure, the same as in `cost.spent`). `underCost` and `overCost` are estimates of something
   else and are named so: "Lost to too few checks (estimate)" and "Spent on extra checks
@@ -574,18 +602,20 @@ beforehand: a risky batch can happen to come out clean.
   `{ id: "big", name: "Big gifts", icon: "📦", parcels: 7, wrongMade: 6, checked: 6, caught: 5, shipped: 0, checkCost: 12, prevented: 500, shippedCost: 0, shippedUnchecked: 0, shippedUncheckedCost: 0, verdict: "paid", text: "Checking 6 big gifts cost £12 and stopped about £500 of wrong gifts." }`.
   `verdict` is `"left exposed"`, `"cost more than it saved"` or `"paid"`. The unclear wishes'
   `text` counts asking: "1 of 2 asked; no wrong ones." or "0 of 2 asked; 1 wrong one cost £12.".
-- `end.lesson` and the verdict agree: a "Too much checking" or "Too little checking" lesson puts the
-  needle on that side, and a "Checking in the right places" tip gives way to the verdict's own
-  title when the dial reads otherwise.
+- `end.lesson` and the verdict agree: a "Too much checking" lesson shows only when the dial reads
+  too much, "Too little checking" only when it reads too little, and "Checking in the right places"
+  only with "about right".
 
 ## Behaviour the page relies on
 
 - When the checking pile is full the line waits; a full pile never lets gifts through by itself.
   Gifts miss a check in two ways, both visible: the player calls `bypass()`, counted in
   `bypassed`, or relaxed checkers wave a gift through, counted in `vigilance.skipped`.
-- A cocoa break from tired to fresh takes about 3 seconds. An elf on cocoa walks back to the
-  station it came from once fully rested (at least 3 seconds after it sat down), so nobody is left
-  on a break. A `tired` news item means an elf burnt
+- A cocoa break from tired to fresh takes about 3 seconds. Once fully rested (at least 3 seconds
+  after it sat down) an elf on cocoa leaves by itself: to the station that needs an elf, as
+  `focus` would name it, else back to the station it came from, with a `rested` news item saying
+  where. A need one rested elf has gone to is left to it for 5 seconds, so two elves rested
+  together do not both answer it. Nobody is left on a break. A `tired` news item means an elf burnt
   out; it comes back by itself after 15 seconds, still tired. An elf working without rest burns out
   for the first time about 110 seconds in; a player who rests elves when they turn red sees about
   one burnout a game.

@@ -474,17 +474,24 @@ for example `"Amir wrote back: a cuddly bat."` or
 - `headline` is a few words without figures and `lesson` `{ title, text }` the one lesson under
   it. The lesson names one loss, and only a loss that cost a goal: the sleigh fell short, tiredness
   held it up, wrong gifts cost the Few mistakes goal or much of a broken cost limit, or the cost
-  limit broke. The headline names the same loss: "Careful, but slow." (short), "Too tired to keep
+  limit broke. The headline names the same loss: "Careful, but slow." (short), "Slow, and wrong."
+  (short with more wrong gifts than allowed), "Slow, with too few checks." (short, and the dial
+  reads too little), "Too tired to keep
   up." (tiredness), "Fast, but wrong." (wrong gifts on a full sleigh), "Too many wrong gifts." (wrong
   gifts, sleigh short), "Wrong gifts cost too much." (wrong gifts within the allowed number but
   over the cost limit) or "Over budget." (cost). "Christmas, carefully delivered." is for three
-  stars, and the lesson is then a tip.
-- `checkingAnswer` is one sentence answering "Was checking worth it?": yes or no with what the
-  checks cost and about what they stopped, for example "Yes: £208 of checks stopped about £400 of
-  wrong gifts." It follows the dial's verdict: "too little" adds "and more checks on big gifts
-  would have paid too" (or, after a no, "; checks on big gifts would have paid"), "too much"
-  after a yes reads "Yes overall: ..., but the checks on everyday gifts cost more than they saved",
-  and a bottleneck reads "Not as run: ..., but the pile held back 23 gifts."
+  stars, and the lesson is then a tip. A headline praises care only when the Few mistakes goal
+  was not lost to too many wrong gifts and the dial does not read too little.
+- `checkingAnswer` is one sentence answering "Was checking worth it?", always in the dial's
+  direction:
+  - "about right": "Yes: £208 of checks stopped about £400 of wrong gifts." or, when the checks
+    stopped less than they cost, "Mostly: ..."; on three stars "Yes: checks kept the wrong gifts
+    aboard to 3, though they stopped only about £36 this time." It never starts "No" on three stars.
+  - "too little": "Yes, but too few: ..., and more checks on big gifts would have paid too." or
+    "Too few: ...; more checks on big gifts would have paid."
+  - "too much": "Mostly: ..., but the checks on everyday gifts cost more than they saved." or "No:
+    ...; fewer checks would have done."
+  - "bottleneck": "Not as run: ..., but the pile held back 23 gifts."
 - `blunders` is `[{ id, name, icon }]`: the absurd wrong toys this game produced, caught or not.
   `blunderTotal` is how many different ones exist, so the page can keep a collection across games.
 
@@ -580,10 +587,10 @@ beforehand: a risky batch can happen to come out clean.
   the fix: rest the checkers with cocoa when `tired`, else move an elf to checking. When
   over-checking is the largest, `verdict` is `"too much"`. When checking stayed on a few all
   game the verdict is never `"too much"`: the player checked as little as the game allows.
-- The verdict always fits the loss the headline and lesson name: wrong gifts can read "too little"
-  or "about right"; a short sleigh "about right", "too much" or "bottleneck"; tiredness "about
-  right" or "bottleneck"; a broken cost limit "about right" or "too much". Any other reading is held
-  at the edge of "about right". After three stars any verdict can show.
+- The dial measures checking by its own two figures and is never moved to fit the headline. When
+  one of `underCost` and `overCost` is three times the other and at least £100, the verdict is that
+  side ("too little" or "too much") whatever the rest of the bill. On three stars it reads "about
+  right": neither too much nor too little checking cost a star. The words follow the dial instead.
 - The one figure for what wrong gifts cost is `costs.mistakes` (the wrong gifts aboard at
   departure, the same as in `cost.spent`). `underCost` and `overCost` are estimates of something
   else and are named so: "Lost to too few checks (estimate)" and "Spent on extra checks
@@ -595,9 +602,9 @@ beforehand: a risky batch can happen to come out clean.
   `{ id: "big", name: "Big gifts", icon: "📦", parcels: 7, wrongMade: 6, checked: 6, caught: 5, shipped: 0, checkCost: 12, prevented: 500, shippedCost: 0, shippedUnchecked: 0, shippedUncheckedCost: 0, verdict: "paid", text: "Checking 6 big gifts cost £12 and stopped about £500 of wrong gifts." }`.
   `verdict` is `"left exposed"`, `"cost more than it saved"` or `"paid"`. The unclear wishes'
   `text` counts asking: "1 of 2 asked; no wrong ones." or "0 of 2 asked; 1 wrong one cost £12.".
-- `end.lesson` and the verdict agree: a "Too much checking" or "Too little checking" lesson puts the
-  needle on that side, and a "Checking in the right places" tip gives way to the verdict's own
-  title when the dial reads otherwise.
+- `end.lesson` and the verdict agree: a "Too much checking" lesson shows only when the dial reads
+  too much, "Too little checking" only when it reads too little, and "Checking in the right places"
+  only with "about right".
 
 ## Behaviour the page relies on
 

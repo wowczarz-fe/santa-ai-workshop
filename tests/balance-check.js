@@ -811,11 +811,24 @@ console.log(
     .map(([k, xs]) => `${k} ${xs.length}`)
     .join(", ")}`,
 );
-// The end screen agrees with itself: the headline names the lesson's loss, a lesson about a loss
-// shows only when that loss cost a goal, the dial sits on the side a checking lesson names, and it
-// never reads too much checking when checking stayed on a few all game.
+// The end screen agrees with itself. The dial measures checking by its own two figures: one far
+// above the other and large decides its side, it reads about right on three stars, and never too
+// much when checking stayed on a few all game. The words never contradict it: the checking answer
+// goes the same way (never "No" on three stars), a checking lesson sits on the dial's side, and
+// the headline praises care only without too many wrong gifts or too few checks. The headline
+// names the lesson's loss, and a lesson about a loss shows only when that loss cost a goal.
+const ANSWERS = {
+  "too little": /more checks|^Too few: nothing was checked/,
+  "too much": /cost more than they saved|fewer checks would have done/,
+  "about right": /^(Yes|Mostly|Nothing)/,
+  bottleneck: /^Not as run/,
+};
 const HEADLINES = {
-  slow: ["Careful, but slow."],
+  slow: [
+    "Careful, but slow.",
+    "Slow, and wrong.",
+    "Slow, with too few checks.",
+  ],
   tired: ["Too tired to keep up."],
   wrong: [
     "Fast, but wrong.",
@@ -840,12 +853,28 @@ for (const [name, rs] of Object.entries(results))
       e.lesson.title === "Too much checking"
         ? ["slow", "cost"]
         : [LOSSES[e.lesson.title]];
-    const why = `${name}: "${e.headline}" over "${e.lesson.title}" (${e.stars} stars)`;
+    const a = e.assurance;
+    const why = `${name}: "${e.headline}" over "${e.lesson.title}" (${e.stars} stars), dial ${a.verdict} (${a.underCost} lost to too few checks, ${a.overCost} on extra checks): ${e.checkingAnswer}`;
     assert(losses[0], `lesson "${e.lesson.title}" names a loss`);
+    assert(ANSWERS[a.verdict].test(e.checkingAnswer), why);
+    const clear = (x, y) => x >= ASSURANCE.clear * y && x >= ASSURANCE.floor;
+    if (a.verdict !== "bottleneck" && e.stars < 3) {
+      if (clear(a.underCost, a.overCost))
+        assert.strictEqual(a.verdict, "too little", why);
+      if (clear(a.overCost, a.underCost) && !STAYED_ON_A_FEW.includes(name))
+        assert.strictEqual(a.verdict, "too much", why);
+    }
+    if (e.lesson.title === "Checking in the right places")
+      assert.strictEqual(a.verdict, "about right", why);
+    if (STAYED_ON_A_FEW.includes(name))
+      assert.notStrictEqual(a.verdict, "too much", why);
     if (e.stars === 3) {
       assert.strictEqual(e.headline, "Christmas, carefully delivered.", why);
+      assert(a.verdict === "about right" && !/^No/.test(e.checkingAnswer), why);
       continue;
     }
+    if (e.wrong > WRONG_ALLOWED || a.verdict === "too little")
+      assert(!/careful/i.test(e.headline), why);
     const loss = losses.find((l) => HEADLINES[l].includes(e.headline));
     assert(loss, why);
     if (loss === "slow" || loss === "tired") assert(!r.met.full, why);
@@ -855,12 +884,6 @@ for (const [name, rs] of Object.entries(results))
       assert.strictEqual(e.assurance.verdict, "too much", why);
     if (e.lesson.title === "Too little checking")
       assert.strictEqual(e.assurance.verdict, "too little", why);
-    if (STAYED_ON_A_FEW.includes(name))
-      assert.notStrictEqual(e.assurance.verdict, "too much", why);
-    assert(
-      losses.some((l) => VERDICTS[l].includes(e.assurance.verdict)),
-      `${why}: the dial reads ${e.assurance.verdict}`,
-    );
   }
 // The end screen tells what the player did: a recall shows among the causes, and an action shows
 // as used only when it was done. No elf sits on a break fully rested.

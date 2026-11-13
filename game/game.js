@@ -698,12 +698,17 @@
         const q = view.queues[id],
           node = $(`queue-${id}`);
         node.querySelector(".queue-name").textContent = q.name;
-        // A small counter shows the count alone; it turns red when its pile is full.
-        node.querySelector(".queue-amount").textContent = miniPiles[id]
-          ? String(q.parcels.length)
-          : `${q.parcels.length}/${q.limit}`;
+        const count = q.parcels.length;
+        const full = count >= q.limit;
+        const nearFull = !full && count >= q.limit * 0.8;
+        node.querySelector(".queue-amount").textContent = `${count}/${q.limit}`;
+        node.setAttribute(
+          "aria-label",
+          `${q.name}: ${count} of ${q.limit} places filled${full ? ", full" : nearFull ? ", nearly full" : ""}`,
+        );
         node.classList.toggle("blocked", !!q.blocked);
-        node.classList.toggle("full", q.parcels.length >= q.limit);
+        node.classList.toggle("full", full);
+        node.classList.toggle("near-full", nearFull);
         // The two small counters at checking carry only their name and count.
         if (miniPiles[id]) continue;
         const trend = node.querySelector(".queue-trend");

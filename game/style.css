@@ -790,7 +790,7 @@ main {
   width: 84px;
   height: 67px;
 }
-.case-reading figcaption {
+.case-reading .reading-name {
   font-size: 12.5px;
   font-weight: 700;
   line-height: 1.2;
@@ -3958,5 +3958,27 @@ dialog p {
 }
 .elf-card:has(.mistake-hint-label) .swap-tag,
 .elf-card.swap-elf .rest-cue {
+  display: none;
+}
+
+.case-panel .case-reading {
+  min-width: 0;
+  min-height: 112px;
+  color: inherit;
+  cursor: pointer;
+}
+.case-panel .case-reading:hover:not(:disabled) {
+  border-color: var(--teal);
+  background: #edf4e8;
+}
+.case-panel .case-reading:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+.case-panel .case-reading:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.case-panel .case-options[hidden] {
   display: none;
 }

@@ -412,7 +412,7 @@
       news.action ??
       (/([^.]+)\.\s*$/.exec(news.text)?.[1] ?? "").split(":")[0].trim();
     // A tag that names an elf ("Swap Pip") outlines that elf's card; "Swap an elf" outlines the
-    // crew of the station its line names; "ask" has no control yet.
+    // crew of the station its line names.
     const elf = view.elves.findIndex((e) =>
       new RegExp(`\\b${e.name}\\b`).test(action),
     );
@@ -1691,12 +1691,15 @@
   // Chips for an option: what it does (the first part of its scope without a figure, as the figures
   // get chips of their own), what it does to the goals, money, time, risk, or why it is shut.
   function optionChips(c, o) {
-    const parts = o.scope.split(/;\s*/).filter((part) => part !== o.goal);
-    const does = parts.find((part) => !/\d/.test(part)) ?? parts[0];
+    const parts = (o.scope || "")
+      .split(/;\s*/)
+      .filter((part) => part && part !== o.goal);
+    const does = parts.find((part) => !/\d/.test(part)) ?? parts[0] ?? "";
     const chips = [];
     if (!o.available && o.why && !c.resolving)
       chips.push(["chip-why", "", o.why]);
-    if (does) chips.push(["chip-does", "", does]);
+    if (does && !(Number.isFinite(o.extra) && /£|costs?/.test(does)))
+      chips.push(["chip-does", "", does]);
     if (o.goal)
       for (const part of o.goal.split(/,\s*/))
         chips.push([
@@ -1705,7 +1708,14 @@
           part,
         ]);
     // A price the rules' words already give (a recall's "costs £395 instead of ...") is not repeated.
-    if (o.money && !does.includes(money(o.money)))
+    if (Number.isFinite(o.extra))
+      chips.push([
+        "chip-money",
+        "budget",
+        o.extra === 0 ? "Nothing more" : `${money(o.extra)} more`,
+      ]);
+    else if (o.trade) chips.push(["chip-money", "budget", o.trade]);
+    else if (o.money && !does.includes(money(o.money)))
       chips.push(["chip-money", "budget", money(o.money)]);
     if (o.seconds)
       chips.push([
@@ -1756,7 +1766,7 @@
   }
   function focusCase() {
     (
-      $("caseOptions").querySelector(".case-choice:not(:disabled)") ||
+      $("casePanel").querySelector("[data-resolve]:not(:disabled)") ||
       $("closeCase")
     ).focus({ preventScroll: true });
   }
@@ -1802,14 +1812,17 @@
     );
     text("caseText", readings.length === 2 ? "" : c.text);
     $("caseText").hidden = readings.length === 2;
-    const readingsKey = readings.map((r) => r.art).join("|");
+    const readingsKey = `${c.id}:${readings.map((r) => r.art).join("|")}`;
     if ($("caseReadings").dataset.key !== readingsKey) {
       $("caseReadings").dataset.key = readingsKey;
-      const drawn = readings.map((r) => {
-        const figure = make("figure", "case-reading");
-        figure.innerHTML = toyArt(r.name);
-        figure.append(make("figcaption", "", r.name));
-        return figure;
+      const drawn = readings.map((r, index) => {
+        const button = make("button", "case-reading");
+        button.type = "button";
+        button.dataset.resolve = `pick:${index}`;
+        button.innerHTML = toyArt(r.name);
+        button.append(make("span", "reading-name", r.name));
+        button.setAttribute("aria-label", `Choose ${r.name}`);
+        return button;
       });
       $("caseReadings").replaceChildren(
         ...(drawn.length === 2
@@ -1824,6 +1837,11 @@
       );
     }
     $("caseReadings").hidden = readings.length !== 2;
+    for (const button of $("caseReadings").querySelectorAll("[data-resolve]")) {
+      const option = c.options.find((o) => o.id === button.dataset.resolve);
+      button.disabled = !option || option.available === false || !!c.resolving;
+      button.title = option?.why || "";
+    }
     // The figure the decision turns on most: for an unclear wish what the gift costs if it comes
     // out wrong (the rules' stake, in pounds), else the first primary fact. The rest are behind
     // the info button.
@@ -1837,10 +1855,11 @@
     $("caseFact").hidden = !stake;
     // Options: large buttons with an icon, the label and chips for what each costs and does.
     const options = $("caseOptions");
+    options.hidden = readings.length === 2;
     const ids = new Set(c.options.map((o) => o.id));
     for (const child of [...options.children])
       if (!ids.has(child.dataset.option)) child.remove();
-    for (const o of c.options) {
+    for (const o of readings.length === 2 ? [] : c.options) {
       let b = [...options.children].find((n) => n.dataset.option === o.id);
       if (!b) {
         b = make("button", "case-choice");
@@ -1851,8 +1870,6 @@
         options.append(b);
       }
       const icons = {
-        ask: "ask",
-        guess: "gift-unclear",
         rollback: "rollback",
         keep: "automate",
         bringBack: "rollback",
@@ -1864,10 +1881,7 @@
         optionIcon.innerHTML = icon(icons[o.id] || "info");
       }
       b.querySelector(".option-label").textContent = o.label;
-      // On an unclear wish each option carries one figure: the wait, or the chance it is wrong.
-      const chips = optionChips(c, o).filter(
-        ([cls]) => c.kind !== "unclear" || /chip-(time|risk|why)/.test(cls),
-      );
+      const chips = optionChips(c, o);
       const chipsNode = b.querySelector(".option-chips");
       const chipsSignature = JSON.stringify(chips);
       if (chipsNode.dataset.value !== chipsSignature) {
@@ -1881,8 +1895,8 @@
           }),
         );
       }
-      b.disabled = !o.available || !!c.resolving;
-      b.classList.toggle("unavailable", !o.available);
+      b.disabled = o.available === false || !!c.resolving;
+      b.classList.toggle("unavailable", o.available === false);
       b.classList.toggle("chosen", c.resolving?.optionId === o.id);
     }
     $("caseResolving").hidden = !c.resolving;
@@ -2255,11 +2269,6 @@
       // The decision may have gone while its card was still drawn (half-time came up over it).
       if (!option) return paint();
       perform(() => game.resolve(c.id, option.id));
-      // Asking takes time and says nothing until the answer comes back, so the line says so now.
-      if (view.case?.resolving && c.evidence[0]?.child)
-        sayResult(
-          `Asked ${c.evidence[0].child}: the answer comes in ${option.seconds} s.`,
-        );
       if (!document.activeElement?.offsetParent || target.disabled)
         returnFocus();
       return;

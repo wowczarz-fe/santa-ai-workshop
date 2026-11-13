@@ -2389,10 +2389,10 @@ body[data-look="paper"]
   :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf
   svg {
-  width: 40px;
-  height: 50px;
+  width: 36px;
+  height: 44px;
   max-width: 100%;
-  margin-top: -2px;
+  margin-top: -1px;
 }
 body[data-look="paper"]
   :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
@@ -2409,8 +2409,15 @@ body[data-look="paper"]
   .elf
   .energy {
   bottom: 4px;
-  left: 20%;
-  width: 60%;
+  left: 18%;
+  width: 64%;
+  height: 4px;
+}
+/* Every energy bar has a light track with a dark edge, so it reads on cream cards and on the
+   brown floor alike */
+body[data-look="paper"] .elf .energy {
+  background: #f4ead3;
+  box-shadow: 0 0 0 1px #2b1c1459;
 }
 /* The cocoa floor shares its room with its label, so its cards are a little shorter */
 body[data-look="paper"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) {

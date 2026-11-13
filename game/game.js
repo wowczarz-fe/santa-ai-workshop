@@ -1062,6 +1062,17 @@
     paintTour();
     paintChoice();
     paintEffects();
+    StationFlow.update(
+      view,
+      started &&
+        !manualPaused &&
+        !restartOpen &&
+        !document.hidden &&
+        tourStep === null &&
+        !view.choice &&
+        !view.end &&
+        !caseOpen,
+    );
     paintMistakeHint();
     paintTabMarks();
     if (infoKey && infoAnchor?.isConnected) renderInfo();
@@ -2491,6 +2502,7 @@
   $("closeReport").onclick = () => $("report").close();
   // Reduced motion starts from the player's saved choice, else from the system setting.
   function setMotion(reduced) {
+    if (reduced) StationFlow.stop();
     document.body.classList.toggle("reduce-motion", reduced);
     $("motion").setAttribute("aria-pressed", String(reduced));
   }

@@ -1,0 +1,159 @@
+const StationFlow = (() => {
+  const ns = "http://www.w3.org/2000/svg";
+  const heaps = [
+    {
+      queue: "letters",
+      x: 88,
+      y: 238,
+      from: [168, 182],
+      width: 28,
+      height: 19,
+    },
+    { queue: "orders", x: 24, y: 294, from: [-8, 260], width: 28, height: 24 },
+    { queue: "check", x: 42, y: 210, from: [12, 148], width: 32, height: 27 },
+  ];
+  let previousTime = -1;
+  const previous = new Map();
+  const groups = new Map();
+  const motion = new Set();
+
+  function element(name, attrs) {
+    const node = document.createElementNS(ns, name);
+    for (const [key, value] of Object.entries(attrs))
+      node.setAttribute(key, value);
+    return node;
+  }
+
+  function prepare(station) {
+    const svg = document.querySelector(`#station${station} .machine > svg`);
+    if (!svg) return null;
+    if (groups.has(station)) return groups.get(station);
+    if (station === 0) {
+      for (const letter of svg.querySelectorAll('use[href="#env"]'))
+        letter.remove();
+    }
+    if (station === 2) {
+      for (const parcel of svg.querySelectorAll('use[href^="#parcel-"]'))
+        parcel.remove();
+      // The mock's chimney parcel is a prop, not a gift in the checking queue.
+      const benchProps = [...svg.children].find((node) =>
+        node.querySelector('text[transform="rotate(-18 238 175)"]'),
+      );
+      benchProps?.remove();
+    }
+    const pile = element("g", { class: "live-heap", "aria-hidden": "true" });
+    svg.append(pile);
+    groups.set(station, pile);
+    return pile;
+  }
+
+  function update(view, running) {
+    if (document.body.dataset.look !== "paper") return;
+    const reset = view.t < previousTime;
+    const reduced = document.body.classList.contains("reduce-motion");
+    if (reset || reduced) {
+      for (const animation of motion) animation.cancel();
+      motion.clear();
+    }
+    if (reset) previous.clear();
+    for (const animation of motion) {
+      if (running) animation.play();
+      else animation.pause();
+    }
+    for (const [station, heap] of heaps.entries()) {
+      const pile = prepare(station);
+      const parcels = view.queues[heap.queue]?.parcels;
+      if (!pile || !parcels) continue;
+      const old = previous.get(heap.queue);
+      const ids = new Set(parcels.map((parcel) => parcel.id));
+      const signature = parcels
+        .slice(-18)
+        .map((p) => `${p.id}:${p.big}:${p.suspect}`)
+        .join();
+      if (pile.dataset.signature === signature) continue;
+      pile.dataset.signature = signature;
+      for (const animation of motion) {
+        if (animation.flowStation === station) {
+          animation.cancel();
+          motion.delete(animation);
+        }
+      }
+      pile.replaceChildren();
+      let arrivals = 0;
+      for (const [index, parcel] of parcels.slice(-18).entries()) {
+        const row = Math.floor(index / 5);
+        const x = heap.x + (index % 5) * 22 + (row % 2) * 5;
+        const y = heap.y - heap.height - row * (station === 0 ? 5 : 12);
+        const wrap = element("g", { class: "heap-item" });
+        const size = parcel.big && station !== 0 ? 1.18 : 1;
+        const symbol =
+          station === 0
+            ? "env"
+            : parcel.big
+              ? "parcel-k"
+              : index % 2
+                ? "parcel-g"
+                : "parcel-r";
+        const item = element("use", {
+          href: `#${symbol}`,
+          x,
+          y,
+          width: heap.width * size,
+          height: heap.height * size,
+          transform: `rotate(${index % 2 ? 7 : -6} ${x + heap.width / 2} ${y + heap.height / 2})`,
+        });
+        wrap.append(item);
+        if (parcel.suspect)
+          wrap.append(
+            element("circle", {
+              cx: x + heap.width - 2,
+              cy: y + 3,
+              r: 4,
+              fill: parcel.suspect === "batch" ? "#a3263a" : "#d2a447",
+              stroke: "#f4ead3",
+              "stroke-width": 1.5,
+            }),
+          );
+        pile.append(wrap);
+        if (
+          old &&
+          !old.has(parcel.id) &&
+          !reduced &&
+          running &&
+          arrivals < 3 &&
+          view.t > previousTime
+        ) {
+          arrivals++;
+          const animation = wrap.animate(
+            [
+              {
+                transform: `translate(${heap.from[0] - x}px, ${heap.from[1] - y}px)`,
+                opacity: 0,
+              },
+              { opacity: 1, offset: 0.12 },
+              { transform: "translate(0px, 0px)", opacity: 1 },
+            ],
+            {
+              duration: 460,
+              easing: "cubic-bezier(.3,0,.7,1)",
+              fill: "backwards",
+            },
+          );
+          animation.flowStation = station;
+          motion.add(animation);
+          animation.finished.then(
+            () => motion.delete(animation),
+            () => motion.delete(animation),
+          );
+        }
+      }
+      previous.set(heap.queue, ids);
+    }
+    previousTime = view.t;
+  }
+  function stop() {
+    for (const animation of motion) animation.cancel();
+    motion.clear();
+  }
+  return { update, stop };
+})();

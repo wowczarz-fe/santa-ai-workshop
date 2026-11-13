@@ -2085,3 +2085,8 @@ body[data-look="polish"] .sleigh-total .cargo-badge {
   border: 0;
   background: transparent;
 }
+
+/* Gift arrivals sit above the count card, leaving its target readable. */
+body[data-look="polish"] .gift-flight:not(.in-slot) {
+  margin-top: -36px;
+}

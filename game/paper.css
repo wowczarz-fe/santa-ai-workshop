@@ -1783,7 +1783,7 @@ body[data-look="paper"] .sleigh-total span {
 }
 /* The gift bubble lands beside the count card, not on it */
 body[data-look="paper"] .gift-flight:not(.in-slot) {
-  margin-left: 116px;
+  margin-left: 156px;
   background: #fbf6e9;
   color: #2c6a43;
   border: 1px solid #bea47b;

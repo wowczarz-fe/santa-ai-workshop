@@ -24,6 +24,12 @@ Keep one visible information button per station, listing every supplied lever op
 
 Quiet decorative snow sits behind the workshop and opaque information panels. It receives no pointer input and stops when reduced motion is selected. Real parcel arrivals follow the queues and settle into their piles when the clock stops.
 
+## Quiet running screen
+
+Show only the wrong-gift count and a short result of the player's latest action in the status strip. Keep full news and action feedback in a visually hidden live region. Move movement help into the header. Station switches retain their labels and information pop-ups while captions, milestone banners, free-elf instructions and the lost-letter line give way to the workshop itself. Keep staffing warnings, wrong-gift evidence and the attention-drift tag.
+
+Use drawn stars for the end rating. Keep the checking dial below the practice tiles. This presentation pass retains the game length and the one-star outcome of an unattended game.
+
 ## Consequences
 
 Station floors and controls align on desktop while all six queues remain available. Phone users can switch stations without traversing a long vertical list. Layout checks must include eight elves at one station, cocoa, queue counts, actual tap and drag movement, and decision cards at narrow widths.

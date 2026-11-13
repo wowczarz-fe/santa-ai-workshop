@@ -54,7 +54,6 @@
     showTour = localStorage.getItem("workshop-walkthrough-finished") !== "yes";
   } catch {}
   let lastWrong = null,
-    notice = null,
     newsSeen = new Set();
   let infoAnchor = null,
     infoKey = null,
@@ -69,7 +68,8 @@
     observedRight = 0,
     caughtSnapshot = null,
     caughtUntil = 0,
-    toastUntil = 0;
+    actionNotice = null,
+    liveNotice = "";
   // The best stars out of 3. The old best, in points and stars out of 12, is dropped.
   let bestStars = null,
     collectedBlunders = [];
@@ -200,9 +200,6 @@
       }
       sw.dataset.kind = "ai";
       addGroup(`ai${s}`, sw);
-      const caption = make("span", "mode-caption");
-      caption.id = `mode${s}`;
-      $(`controls${s}`).append(caption);
     }
     if (s === 2) {
       const sw = make("div", "switch");
@@ -259,7 +256,7 @@
   const sleighBelt = make("div", "paper-belt");
   sleighBelt.setAttribute("aria-hidden", "true");
   const sleighControls = make("div", "controls paper-sleigh-controls");
-  sleighControls.append($("wrongDelivery"), $("sleighNote"));
+  sleighControls.append($("wrongDelivery"));
   sleigh.append(sleighScene, sleighBelt, $("cocoa"), sleighControls);
   $("cocoa").classList.add("paper-floor");
   $("cocoa").querySelector(".cocoa-label > span").innerHTML =
@@ -379,7 +376,7 @@
       if (slot.dataset.state !== state) {
         slot.dataset.state = state;
         slot.querySelector(".hud-star").innerHTML = icon(
-          state === "waiting" ? "star-empty" : "star",
+          goal.met ? "star" : "star-empty",
         );
       }
       slot
@@ -575,7 +572,8 @@
     ended = false;
     lastWrong = null;
     newsSeen = new Set();
-    notice = null;
+    actionNotice = null;
+    liveNotice = "";
     mistakeHint = null;
     closeInfo();
     buildElves();
@@ -587,7 +585,6 @@
     observedRight = 0;
     caughtSnapshot = null;
     $("celebration").replaceChildren();
-    hideToast();
     $("restartDialog").close();
     const url = new URL(location.href);
     if (fixedSeed !== null) url.searchParams.set("seed", fixedSeed);
@@ -613,6 +610,7 @@
         destination === 3
           ? `${elf.name} is having cocoa.`
           : `${elf.name} moved. ${perMinute(destination)}.`,
+        destination === 3 ? "Cocoa break started" : "Elf moved",
       );
       // The keyboard stays with the elf rather than with the Move here button that just hid.
       if (!document.activeElement?.offsetParent)
@@ -620,24 +618,10 @@
     }
   }
   const focusTag = make("span", "focus-tag");
-  // A line stays up at least 4 seconds unless something more important comes; 9 at most.
-  function say(words, priority) {
-    const now = performance.now();
-    if (
-      priority > 0 &&
-      (!notice ||
-        now > notice.until ||
-        priority > notice.priority ||
-        now - notice.since >= 4000)
-    )
-      notice = { text: words, priority, since: now, until: now + 9000 };
-  }
-  // What the player's last move did, from the view's own figures.
-  function sayResult(words) {
-    const now = performance.now();
-    // A wrong gift's line, or an elf back from cocoa, keeps its 4 seconds against the player's move.
-    if (notice?.priority > 5 && now - notice.since < 4000) return paint();
-    notice = { text: words, priority: 5, since: now, until: now + 4000 };
+  // Full action feedback stays available to assistive technology; the board uses a short result.
+  function sayResult(words, summary) {
+    liveNotice = words;
+    actionNotice = { text: summary, until: performance.now() + 4000 };
     paint();
   }
   const clockText = (seconds) =>
@@ -825,24 +809,9 @@
     );
     $("board").dataset.crowd = String(crews.some((n) => n >= 4 && n <= 6));
     for (let station = 0; station < 2; station++) {
-      // Under the AI switch: what the setting means, or, once the machine works alone and
-      // elves stand free, the move that helps.
-      const spare = view.elves.filter(
-        (elf) => elf.station === station && isFree(elf),
-      ).length;
-      text(
-        `mode${station}`,
-        spare
-          ? `${spare} ${spare === 1 ? "elf" : "elves"} free: move one to checks`
-          : ["Elves do the work", "Elves confirm each", "Machine works alone"][
-              view.ai[station]
-            ],
-      );
-      $(`mode${station}`).classList.toggle("spare", spare > 0);
       // A station the machine runs with no elf left says so on its empty floor.
       $(`elves${station}`).dataset.alone =
         view.ai[station] === 2 && !crews[station] ? "Machine works alone" : "";
-      if ($(`elves${station}`).dataset.alone) text(`mode${station}`, "");
     }
     document
       .querySelectorAll("[data-destination]")
@@ -997,30 +966,11 @@
       $("wrongDelivery").dataset.help = "lastWrong";
       $("wrongDelivery").dataset.info = "lastWrong";
     }
-    text(
-      "sleighNote",
-      view.lost ? `${view.lost} letters lost from full piles` : "",
-    );
     for (const n of [...view.news].reverse()) {
       if (newsSeen.has(n.id)) continue;
       newsSeen.add(n.id);
       handleNews(n);
-      // Routine lines never show: a card title repeated, or a check that found nothing wrong.
-      const priority =
-        n.kind === "checked" && n.check?.result !== "wrong"
-          ? 0
-          : n.kind === "loaded" && n.check?.result === "wrong"
-            ? 7
-            : // An elf walking back from cocoa by itself, or an elf starting to trust the AI, is
-              // news the player's own last move must not hide.
-              /rested|relaxed/.test(n.kind)
-              ? 6
-              : n.kind === "resolved"
-                ? 3
-                : n.kind === "noticed"
-                  ? 4
-                  : 1;
-      say(n.text, priority);
+      liveNotice = n.text;
     }
     const narrow = innerWidth < 1000;
     text(
@@ -1029,11 +979,23 @@
         ? `${view.elves[selected].name}: ${!narrow ? "drag or tap to a lit station" : view.elves[selected].station < 3 ? "tap Rest, or a lit station tab then Move here" : "tap a lit station tab, then Move here"}.`
         : tourStep !== null
           ? ""
-          : notice && notice.until > performance.now()
-            ? notice.text
+          : liveNotice
+            ? liveNotice
             : narrow
               ? "Tap an elf, then its new station."
               : "Drag an elf to a new station.",
+    );
+    const wrongCount = view.sleigh.wrong;
+    text(
+      "visualStatus",
+      [
+        wrongCount
+          ? `${wrongCount} wrong ${wrongCount === 1 ? "gift" : "gifts"} aboard`
+          : "",
+        actionNotice?.until > performance.now() ? actionNotice.text : "",
+      ]
+        .filter(Boolean)
+        .join(". "),
     );
     paintCase();
     paintTour();
@@ -1330,7 +1292,6 @@
     }
     closeInfo();
     if (!$("breakDialog").open) {
-      hideToast();
       $("breakDialog").showModal();
       $("breakText").focus({ preventScroll: true });
       $("breakDialog").scrollTop = 0;
@@ -1341,25 +1302,11 @@
       $("breakDeparture").classList.add("break-arrival");
     }
   }
-  // The milestone note goes when the half-time card or the end screen opens, so it never pokes out above them.
-  function hideToast() {
-    toastUntil = 0;
-    $("milestoneToast").hidden = true;
-  }
   function handleNews(news) {
     if (!started) return;
     if (news.kind === "loaded" && news.control) showMistakeHint(news);
     if (news.kind === "loaded" && news.caseId != null)
       openedCases.delete(news.caseId);
-    if (
-      news.kind === "milestone" &&
-      !$("breakDialog").open &&
-      !$("report").open
-    ) {
-      iconText($("milestoneToast"), "gift", news.text);
-      toastUntil = performance.now() + 3500;
-      $("milestoneToast").hidden = false;
-    }
     if (news.kind === "cleared" && view.queues[news.queue]) {
       const node = $(`queue-${news.queue}`);
       node.dataset.clearedEvent = news.id;
@@ -1392,7 +1339,7 @@
     count.setAttribute("role", "img");
     count.setAttribute(
       "aria-label",
-      `${aboard} right gifts aboard out of ${view.run.target} needed`,
+      `${aboard} right gifts aboard out of ${view.run.target} needed. ${view.lost} letters lost from full piles.`,
     );
     $("sleighTotal").style.setProperty("--fill", Math.min(1, aboard / target));
     const met = String(!!full?.met);
@@ -1452,7 +1399,6 @@
       effect.style.setProperty("--fly-y", visible ? "-14px" : "0px");
       giftBubbleTimer = setTimeout(() => effect.remove(), 1500);
     }
-    if (toastUntil < performance.now()) $("milestoneToast").hidden = true;
     let caught = $("caughtToy");
     if (!caught) {
       caught = make("button", "caught-toy");
@@ -2272,13 +2218,17 @@
       if (view.ai[s] === l)
         sayResult(
           `${view.stations[s].name} on ${["By hand", "Assist", "Automate"][l]}: ${Math.round(view.stations[s].rate)} a minute.`,
+          `${view.stations[s].name}: ${["by hand", "assist", "automate"][l]}`,
         );
       return;
     }
     if (target.dataset.checking !== undefined) {
       perform(() => game.setChecking(Number(target.dataset.checking)));
       const lever = view.levers.checking[view.checking];
-      sayResult(`Checking ${lever.per100} in 100 gifts.`);
+      sayResult(
+        `Checking ${lever.per100} in 100 gifts.`,
+        `Checking: ${["a few", "risky gifts", "all gifts"][view.checking]}`,
+      );
       return;
     }
     if (target.dataset.choose && view.choice) {
@@ -2898,11 +2848,17 @@
           JSON.stringify(collectedBlunders),
         );
     } catch {}
-    $("endStars").replaceChildren(
-      make("span", "end-stars-number", e.stars),
-      make("small", "", " / 3"),
-      make("span", "end-stars-label", "stars"),
-    );
+    const stars = make("span", "end-rating-stars");
+    stars.setAttribute("role", "img");
+    stars.setAttribute("aria-label", `${e.stars} of 3 stars`);
+    for (let i = 0; i < 3; i++)
+      stars.append(
+        iconNode(
+          i < e.stars ? "star" : "star-empty",
+          i < e.stars ? "earned" : "empty",
+        ),
+      );
+    $("endStars").replaceChildren(stars);
     $("endGoals").replaceChildren(
       ...(e.goals || []).map((g) => goalSlot(g, view.run.goalsCountFrom)),
     );
@@ -2937,7 +2893,6 @@
     paintBlunders(e);
     text("copyStatus", "");
     $("copyFallback").hidden = true;
-    hideToast();
     $("report").showModal();
     $("report").scrollTop = 0;
   }

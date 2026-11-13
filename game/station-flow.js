@@ -11,6 +11,7 @@ const StationFlow = (() => {
     },
     { queue: "orders", x: 24, y: 294, from: [-8, 260], width: 28, height: 24 },
     { queue: "check", x: 42, y: 210, from: [12, 148], width: 32, height: 27 },
+    { queue: "sleigh", x: 108, y: 235, from: [82, 174], width: 28, height: 24 },
   ];
   let previousTime = -1;
   const previous = new Map();
@@ -25,7 +26,11 @@ const StationFlow = (() => {
   }
 
   function prepare(station) {
-    const svg = document.querySelector(`#station${station} .machine > svg`);
+    const svg = document.querySelector(
+      station === 3
+        ? "#sleigh .sleigh-art > svg"
+        : `#station${station} .machine > svg`,
+    );
     if (!svg) return null;
     if (groups.has(station)) return groups.get(station);
     if (station === 0) {
@@ -42,7 +47,14 @@ const StationFlow = (() => {
       benchProps?.remove();
     }
     const pile = element("g", { class: "live-heap", "aria-hidden": "true" });
-    svg.append(pile);
+    if (station === 3) {
+      for (const parcel of svg.querySelectorAll('use[href^="#parcel-"]'))
+        parcel.remove();
+      svg.querySelector('path[d^="M104 230"]')?.remove();
+      svg.querySelector('path[d^="M120 186"]')?.remove();
+      const front = svg.querySelector('path[d^="M96 230"]');
+      front.parentNode.insertBefore(pile, front);
+    } else svg.append(pile);
     groups.set(station, pile);
     return pile;
   }
@@ -62,7 +74,8 @@ const StationFlow = (() => {
     }
     for (const [station, heap] of heaps.entries()) {
       const pile = prepare(station);
-      const parcels = view.queues[heap.queue]?.parcels;
+      const parcels =
+        station === 3 ? view.sleigh.parcels : view.queues[heap.queue]?.parcels;
       if (!pile || !parcels) continue;
       const old = previous.get(heap.queue);
       const ids = new Set(parcels.map((parcel) => parcel.id));

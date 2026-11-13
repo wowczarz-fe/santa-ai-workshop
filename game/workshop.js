@@ -38,11 +38,21 @@ const ELF_SECONDS = {
 const ASK_SECONDS = 10;
 // However many gifts come back, a recall takes the checkers at most this many seconds in all.
 const RECALL_MAX_SECONDS = 20;
-// What bringing these gifts back off the sleigh costs, remakes included. Fixing a mistake after it
-// has shipped costs far more than checking it would have, and a big gift twice as much again.
+// What these wrong gifts count in the cost while they stay aboard.
+const countedPrice = (list) =>
+  sum(list.map((x) => (x.w.big ? WRONG_PRICE.big : WRONG_PRICE.everyday)));
+// What bringing these gifts back off the sleigh costs, remakes included: half as much again as they
+// count in the cost aboard, and at least RECALL_MARGIN more. Fixing a mistake after it has shipped
+// costs more than living with it, so a recall buys Santa's good name with real money.
+const RECALL_FACTOR = 1.5;
+const RECALL_MARGIN = 40;
 const recallPrice = (list) =>
-  PRICE.recall +
-  sum(list.map((x) => PRICE.recallEach * (x.w.big ? 2 : 1) + PRICE.remake));
+  Math.round(
+    Math.max(
+      countedPrice(list) * RECALL_FACTOR,
+      countedPrice(list) + RECALL_MARGIN,
+    ),
+  );
 // Seconds of checker work for each of n gifts brought back.
 const recallSeconds = (n) =>
   Math.min(ELF_SECONDS.recall, RECALL_MAX_SECONDS / Math.max(1, n));
@@ -293,8 +303,6 @@ const PRICE = {
   check: 4, // each gift sent for a check
   remake: 3,
   rollback: 65,
-  recall: 20,
-  recallEach: 40, // per gift brought back, twice that for a big one, on top of its remake
 };
 const WRONG_PRICE = { everyday: 12, big: 100 };
 // For the end summary: what a gift that misses its sleigh while it waits to be checked is worth. The
@@ -1611,7 +1619,7 @@ class Workshop {
         `${list.length}${list.some((x) => x.w.big) ? `, ${list.filter((x) => x.w.big).length} big` : ""}`,
         true,
       ),
-      f("In your cost now", money(sum(list.map((x) => this.price(x)))), true),
+      f("In your cost now", money(countedPrice(list)), true),
       time,
     ];
   }
@@ -1628,6 +1636,9 @@ class Workshop {
       scope,
       why,
     });
+    // A recall's payment, what its gifts count in the cost now, and how much more the recall costs.
+    const counted = countedPrice(list);
+    const extra = recallPrice(list) - counted;
     let options;
     if (c.kind === "unclear") {
       const p = this.guessRisk();
@@ -1670,27 +1681,35 @@ class Workshop {
       ];
     else
       options = [
-        o(
-          "bringBack",
-          n === 1 ? "Bring it back" : `Bring ${n} back`,
-          n * recallSeconds(n),
-          recallPrice(list),
-          null,
-          `costs ${money(recallPrice(list))} instead of the ${money(sum(list.map((x) => this.price(x))))} ${n === 1 ? "it counts" : "they count"} now; checkers busy ${this.span(n * recallSeconds(n))}`,
-          !this.staff(2).length
-            ? "no elf at Checking"
-            : !this.recallFits(list)
-              ? "no time before the sleigh leaves"
-              : null,
-        ),
-        o(
-          "leave",
-          n === 1 ? "Leave it" : "Leave them",
-          0,
-          0,
-          null,
-          `${n === 1 ? "its" : "their"} ${money(sum(list.map((x) => this.price(x))))} stays in your cost`,
-        ),
+        {
+          ...o(
+            "bringBack",
+            n === 1 ? "Bring it back" : `Bring ${n} back`,
+            n * recallSeconds(n),
+            recallPrice(list),
+            null,
+            `${money(extra)} more; checkers busy ${this.span(n * recallSeconds(n))}`,
+            !this.staff(2).length
+              ? "no elf at Checking"
+              : !this.recallFits(list)
+                ? "no time before the sleigh leaves"
+                : null,
+          ),
+          instead: counted,
+          extra,
+        },
+        {
+          ...o(
+            "leave",
+            n === 1 ? "Leave it" : "Leave them",
+            0,
+            0,
+            null,
+            "nothing more",
+          ),
+          instead: 0,
+          extra: 0,
+        },
       ];
     const goal = c.step === "aboard" ? this.aboardGoals(list) : {};
     return options.map((o) => ({
@@ -1704,13 +1723,12 @@ class Workshop {
 
   // What bringing the wrong gifts back or leaving them does to the goals, in a few words, so the
   // dearer recall shows what it buys: leaving keeps too many wrong gifts aboard for the mistakes
-  // goal, and the recall's price can push the cost over its limit. Wrong gifts aboard already count
-  // against the cost at what they will cost, so leaving them changes nothing there.
+  // goal, and the recall costs more than the gifts count aboard, which can push the cost over its
+  // limit. Wrong gifts aboard already count against the cost, so leaving them changes nothing there.
   aboardGoals(list) {
     const [, right, cost] = this.goals();
     const over = right.now > right.need;
-    const left = sum(list.map((x) => this.price(x)));
-    const after = cost.now - left + recallPrice(list);
+    const after = cost.now - countedPrice(list) + recallPrice(list);
     const bring = [
       over && right.now - list.length <= right.need
         ? `${right.name} star saved`
@@ -1838,7 +1856,8 @@ class Workshop {
             : "unchecked";
           if (x.recalled === "unchecked")
             this.assure.recallCost +=
-              PRICE.recall / n + PRICE.recallEach * (x.w.big ? 2 : 1);
+              ((recallPrice(list) - n * PRICE.remake) * this.price(x)) /
+              countedPrice(list);
           this.toRework(x, recallSeconds(n), job);
         });
         this.pay("fixing", recallPrice(list) - n * PRICE.remake);
@@ -1850,7 +1869,7 @@ class Workshop {
           { count: n },
         );
         tell(
-          `${does(n, "wrong gift", "comes", "come")} back to be remade for ${money(recallPrice(list))}: checkers busy ${this.span(n * recallSeconds(n))}.`,
+          `${does(n, "wrong gift", "comes", "come")} back to be remade for ${money(recallPrice(list))}, ${money(recallPrice(list) - countedPrice(list))} more than leaving: checkers busy ${this.span(n * recallSeconds(n))}.`,
           {
             seconds: n * recallSeconds(n),
             money: recallPrice(list),
@@ -1861,8 +1880,8 @@ class Workshop {
       }
       default:
         tell(
-          `${does(n, "wrong gift", "stays", "stay")} aboard: ${n === 1 ? "its" : "their"} ${money(sum(list.map((x) => this.price(x))))} stays in your cost.`,
-          { money: sum(list.map((x) => this.price(x))), parcels: n },
+          `${does(n, "wrong gift", "stays", "stay")} aboard: ${n === 1 ? "its" : "their"} ${money(countedPrice(list))} stays in your cost.`,
+          { money: countedPrice(list), parcels: n },
         );
     }
   }

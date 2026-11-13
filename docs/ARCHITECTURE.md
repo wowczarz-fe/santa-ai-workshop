@@ -222,8 +222,8 @@ grows, except when a recall brings wrong gifts back (their price leaves, the rec
 What costs what: the AI £0.22 a second per station on Assist and £0.72 on Automate; each gift
 sent for a check £4, paid as it joins the checking pile whether or not a checker then looks at it
 properly; a
-remake £3; a rollback £65; a recall £20 plus £40 for each everyday gift and £80 for each big one,
-plus its remake; a wrong everyday gift aboard £12 and a big one £100; the half-time option its
+remake £3; a rollback £65; a recall half as much again as its gifts count aboard and at least £40 more than that, remakes
+included (£150 for one big gift, £52 for one everyday gift); a wrong everyday gift aboard £12 and a big one £100; the half-time option its
 price (update £40, test £50, training £100, cocoa for everyone £50, carry on £0). Asking a child
 costs time only.
 
@@ -272,7 +272,8 @@ two unclear letters, at most one faulty update and at most two recalls.
 - `evidence` is `[{ parcelId, child, wish, made }]`: the letter for an unclear wish, empty for an
   incident. `child` is the child's name, `made` is `null` until a toy is made.
 - `affected` is `{ count, ids }`: the parcels an option could cover.
-- `options` is `[{ id, label, seconds, money, risk, scope, why, goal, available }]`. `seconds` is
+- `options` is `[{ id, label, seconds, money, risk, scope, why, goal, available }]`, and a recall's
+  options also carry `instead` and `extra` (below). `seconds` is
   the time it takes, `money` what it costs, `risk` `null` or the chance (0 to 1) of a wrong gift or
   toy it leaves, `scope` what it does in words (the part before the first semicolon is a few words
   a chip can show), `goal` `null` or a few words on what it does to the goals, `available` `false`
@@ -343,11 +344,28 @@ Facts: `"Wrong gifts aboard"`, `"To bring back"`, `"In your cost now"`, `"Time l
 
 The affected gifts are just those above the limit, big gifts first. `"bringBack"` removes them from
 the sleigh immediately and sends them to the checkers to remake, 4 seconds each and at most 20
-in all. It costs the recall price, needs a checker, and is unavailable with a reason when too
-little time remains. The reputation decision still appears then. `"leave"` keeps them aboard.
-The options say how many gifts they cover and show `"Few mistakes star saved"` or
-`"Few mistakes star lost"`; the recall also says if its cost loses the budget star. The mistakes
-star still needs the normal minimum of right gifts to count.
+in all. It needs a checker, and is unavailable with a reason when too little time remains. The
+reputation decision still appears then. `"leave"` keeps them aboard.
+
+Bringing gifts back always costs more than leaving them, so the player pays to protect Santa's
+name. Both options carry three money fields: `money` is what the option adds to the cost (the
+recall's payment, remakes included), `instead` what those gifts count in the cost now and stop
+counting once recalled, and `extra` the difference, `money - instead`, which is the net rise in
+`cost.spent`. The recall's `money` is 1.5 times `instead` and at least `instead + 40`, rounded, so
+its `extra` is always above zero; leaving has all three at 0. The first part of `scope` says the
+same in words (`"£50 more"`, `"nothing more"`). `goal` shows `"Few mistakes star saved"` or
+`"Few mistakes star lost"`, and for the recall also `"Within budget star lost"` when its extra
+cost takes the cost over the limit. The mistakes star still needs the normal minimum of right
+gifts to count.
+
+```
+options: [ { id: "bringBack", label: "Bring it back", seconds: 4, money: 150, risk: null,
+             scope: "£50 more; checkers busy about 4 s; Few mistakes star saved", why: null,
+             instead: 100, extra: 50, goal: "Few mistakes star saved", available: true },
+           { id: "leave", label: "Leave it", seconds: 0, money: 0, risk: null,
+             scope: "nothing more; Few mistakes star lost", why: null,
+             instead: 0, extra: 0, goal: "Few mistakes star lost", available: true } ]
+```
 
 A successful recall adds a `recalled` action to the end report's response practice, with its gift
 count and price. Its cause and cost also remain in the account.

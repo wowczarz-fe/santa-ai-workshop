@@ -75,15 +75,11 @@ function conditional(c) {
     case "aboard": {
       // Read the stated star trade first; otherwise compare money saved with checker time at £1 a second.
       const bring = c.options.find((o) => o.id === "bringBack");
+      // A recall costs more than leaving the gifts aboard, so it is worth it only for the star.
       const savesStar =
         /Few mistakes star saved/.test(bring.goal) &&
         !/Within budget star lost/.test(bring.goal);
-      return bring.available &&
-        (savesStar ||
-          (num(fact(c, "In your cost now")) > bring.money + bring.seconds &&
-            left >= 30))
-        ? "bringBack"
-        : "leave";
+      return bring.available && savesStar ? "bringBack" : "leave";
     }
   }
 }
@@ -471,8 +467,21 @@ function checkView(v) {
   for (const o of v.case.options)
     assert.strictEqual(
       Object.keys(o).join(),
-      "id,label,seconds,money,risk,scope,why,goal,available",
+      v.case.step === "aboard"
+        ? "id,label,seconds,money,risk,scope,why,instead,extra,goal,available"
+        : "id,label,seconds,money,risk,scope,why,goal,available",
     );
+  // A recall costs more than leaving the gifts aboard; leaving costs nothing more.
+  if (v.case.step === "aboard") {
+    const [bring, leave] = v.case.options;
+    assert.strictEqual(bring.extra, bring.money - bring.instead);
+    assert(bring.extra >= 40 && bring.money >= bring.instead * 1.5 - 1);
+    assert.strictEqual(bring.scope.split(";")[0], `${money(bring.extra)} more`);
+    assert.deepStrictEqual(
+      [leave.money, leave.instead, leave.extra, leave.scope.split(";")[0]],
+      [0, 0, 0, "nothing more"],
+    );
+  }
   if (v.case.kind === "unclear")
     assert.strictEqual(
       v.case.options.map((o) => o.id).join(),

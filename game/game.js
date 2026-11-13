@@ -1628,7 +1628,7 @@
     {
       title: "Checking",
       text: () =>
-        "Checks catch mistakes but cost time and money. Bigger stakes, more checks.",
+        "Checks catch most mistakes, but cost time and money. Tired checkers miss more.",
       target: () => actionGroups.get("checking"),
     },
     {

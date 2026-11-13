@@ -1655,7 +1655,7 @@
     {
       title: "Sleigh",
       text: () =>
-        `Fill it with ${view.run.target} right gifts. The mistakes and cost stars count once ${view.run.goalsCountFrom} are aboard.`,
+        `Get ${view.run.target} of the right gifts aboard to earn a star. The mistakes and cost stars need ${view.run.goalsCountFrom} aboard first.`,
       target: () => $("sleighTotal"),
     },
   ];

@@ -420,3 +420,33 @@ from 0.7 of the target.
 
 A tired elf's slip is now a mix-up with another child's toy of the same kind. The user could not
 tell what was wrong with "a doll in a pink dress in the wrong size".
+
+## Follow-up: a recall for the first wrong gift
+
+With the AI as reliable as a fresh elf on everyday gifts (ADR 0019), wrong gifts became rare for
+sensible play, and so did the reputation card: over 40 seeded games it appeared in 13% of an
+expert's games, 33% of a good first-timer's and 10% of those of a first-timer following the
+advice. The user likes that card and chose to raise it on the first wrong gift aboard, everyday
+or big, at most twice a game in all.
+
+The recall decision is now raised in two ways. The first time a wrong gift is aboard, a card asks
+about that one gift while the count is still within the mistakes limit: bring it back for more
+than it costs to leave, so that it does not count as a mistake, or leave it. No star is at stake,
+so the options say "No mistake counted" and "Counts as N of 2 mistakes". As before, a card is also
+raised when wrong gifts aboard pass the limit, for the excess, with the star named. The two share
+the limit of two cards a game. The first kind waits until the gift can be brought back (room on
+the remake pile, time, budget) and does not use a card slot if it never can.
+
+One goal line moved, because fetching back the first wrong gift made a first game easier: with
+the old lines a good first-timer earned three stars in 43% of games. The mistakes limit went from 3
+to 2 wrong gifts, which also gives the card weight: leaving the first wrong gift aboard uses half
+the allowance. The Full sleigh target stays at 145 right gifts (the mistakes and budget stars count
+from 102 aboard). Raising it to 147 of about 149 letters was tried and rejected: it held the
+three-star share at 30% but left a player who follows the advice filling the sleigh in only 13% of
+games. With the limit at 2 and the target at 145, a good first-timer earns three stars in 35% of
+games and fills the sleigh in 43%, and an expert earns three stars in 90%. The cap on a
+first-timer earning three stars is therefore 40%, up from 30%: a reachable sleigh was chosen over a
+stricter cap. A dearer recall (twice what the gifts count) was also tried and ended one good first
+game in five on the budget.
+
+The card now appears in 90% of a good first-timer's games and 85% of an expert's.

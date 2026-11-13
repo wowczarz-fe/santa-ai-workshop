@@ -2042,7 +2042,9 @@
     $("infoContent").replaceChildren(
       ...lines.filter(Boolean).map((line) => make("p", "", line)),
     );
-    positionPanel($("infoPopover"), infoPositionAnchor());
+    positionPanel($("infoPopover"), infoPositionAnchor(), [
+      infoPositionAnchor(),
+    ]);
   }
   function openInfo(anchor, key, pinned = false) {
     closeInfo();
@@ -2503,7 +2505,10 @@
   function repositionPopups() {
     paintTour();
     paintCase();
-    if (infoAnchor) positionPanel($("infoPopover"), infoPositionAnchor());
+    if (infoAnchor)
+      positionPanel($("infoPopover"), infoPositionAnchor(), [
+        infoPositionAnchor(),
+      ]);
   }
   window.addEventListener("resize", repositionPopups);
   document.addEventListener("scroll", repositionPopups, true);

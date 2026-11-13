@@ -2,6 +2,7 @@ const StationFlow = (() => {
   const ns = "http://www.w3.org/2000/svg";
   const heaps = [
     {
+      station: 0,
       queue: "letters",
       x: 88,
       y: 238,
@@ -9,9 +10,53 @@ const StationFlow = (() => {
       width: 28,
       height: 19,
     },
-    { queue: "orders", x: 0, y: 66, from: [0, 0], width: 28, height: 24 },
-    { queue: "check", x: 42, y: 210, from: [12, 148], width: 32, height: 27 },
-    { queue: "sleigh", x: 108, y: 235, from: [82, 174], width: 28, height: 24 },
+    {
+      station: 1,
+      queue: "orders",
+      x: 0,
+      y: 66,
+      from: [0, 0],
+      width: 28,
+      height: 24,
+    },
+    {
+      station: 2,
+      queue: "check",
+      x: 42,
+      y: 210,
+      from: [12, 148],
+      width: 32,
+      height: 27,
+    },
+    {
+      station: 3,
+      queue: "sleigh",
+      x: 108,
+      y: 235,
+      from: [82, 174],
+      width: 28,
+      height: 24,
+    },
+    {
+      station: 2,
+      queue: "pass",
+      small: true,
+      x: 2,
+      y: 60,
+      from: [0, 0],
+      width: 26,
+      height: 23,
+    },
+    {
+      station: 2,
+      queue: "rework",
+      small: true,
+      x: 2,
+      y: 60,
+      from: [0, 0],
+      width: 26,
+      height: 23,
+    },
   ];
   let previousTime = -1;
   const previous = new Map();
@@ -25,19 +70,21 @@ const StationFlow = (() => {
     return node;
   }
 
-  function prepare(station) {
+  function prepare(heap) {
+    const { station, queue } = heap;
     let svg = document.querySelector(
       station === 3
         ? "#sleigh .sleigh-art > svg"
         : `#station${station} .machine > svg`,
     );
     if (!svg) return null;
-    if (groups.has(station)) return groups.get(station);
+    if (groups.has(queue)) return groups.get(queue);
     if (station === 0) {
       for (const letter of svg.querySelectorAll('use[href="#env"]'))
         letter.remove();
     }
-    if (station === 2) {
+    if (queue === "check") {
+      svg.closest(".paper-scene").append(document.getElementById("feedback2"));
       for (const parcel of svg.querySelectorAll('use[href^="#parcel-"]'))
         parcel.remove();
       // The mock's chimney parcel is a prop, not a gift in the checking queue.
@@ -54,7 +101,24 @@ const StationFlow = (() => {
       });
       document.querySelector("#queue-orders .queue-picture").append(svg);
     }
-    const pile = element("g", { class: "live-heap", "aria-hidden": "true" });
+    if (heap.small) {
+      const queueButton = document.getElementById(`queue-${queue}`);
+      const label = document.createElement("span");
+      label.className = "flow-queue-label";
+      label.append(...queueButton.childNodes);
+      queueButton.append(label);
+      svg = element("svg", {
+        viewBox: "0 0 120 64",
+        class: "flow-small-heap",
+        "aria-hidden": "true",
+      });
+      document.getElementById(`queue-${queue}`).append(svg);
+    }
+    const pile = element("g", {
+      class: "live-heap",
+      "data-queue": queue,
+      "aria-hidden": "true",
+    });
     if (station === 3) {
       for (const parcel of svg.querySelectorAll('use[href^="#parcel-"]'))
         parcel.remove();
@@ -63,7 +127,7 @@ const StationFlow = (() => {
       const front = svg.querySelector('path[d^="M96 230"]');
       front.parentNode.insertBefore(pile, front);
     } else svg.append(pile);
-    groups.set(station, pile);
+    groups.set(queue, pile);
     return pile;
   }
 
@@ -80,8 +144,9 @@ const StationFlow = (() => {
       if (running) animation.play();
       else animation.pause();
     }
-    for (const [station, heap] of heaps.entries()) {
-      const pile = prepare(station);
+    for (const heap of heaps) {
+      const { station } = heap;
+      const pile = prepare(heap);
       const parcels =
         station === 3 ? view.sleigh.parcels : view.queues[heap.queue]?.parcels;
       if (!pile || !parcels) continue;
@@ -94,17 +159,20 @@ const StationFlow = (() => {
       if (pile.dataset.signature === signature) continue;
       pile.dataset.signature = signature;
       for (const animation of motion) {
-        if (animation.flowStation === station) {
+        if (animation.flowQueue === heap.queue) {
           animation.cancel();
           motion.delete(animation);
         }
       }
       pile.replaceChildren();
-      let arrivals = 0;
+
       for (const [index, parcel] of parcels.slice(-18).entries()) {
         const row = Math.floor(index / 5);
         const x = heap.x + (index % 5) * 22 + (row % 2) * 5;
-        const y = heap.y - heap.height - row * (station === 0 ? 5 : 12);
+        const y =
+          heap.y -
+          heap.height -
+          row * (station === 0 ? 5 : heap.small ? 9 : 12);
         const wrap = element("g", { class: "heap-item" });
         const size = parcel.big && station !== 0 ? 1.18 : 1;
         const symbol =
@@ -141,10 +209,10 @@ const StationFlow = (() => {
           !old.has(parcel.id) &&
           !reduced &&
           running &&
-          arrivals < 3 &&
+          [...motion].filter((animation) => animation.flowStation === station)
+            .length < 3 &&
           view.t > previousTime
         ) {
-          arrivals++;
           const animation = wrap.animate(
             [
               {
@@ -161,6 +229,7 @@ const StationFlow = (() => {
             },
           );
           animation.flowStation = station;
+          animation.flowQueue = heap.queue;
           motion.add(animation);
           animation.finished.then(
             () => motion.delete(animation),

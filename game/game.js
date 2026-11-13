@@ -163,6 +163,11 @@
       q.innerHTML = mini
         ? `${icon(mini)}<span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span></strong>`
         : '<span class="queue-tag"><span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span><span class="queue-trend" role="img"></span></strong></span><span class="queue-picture"><span class="stack"></span></span><progress max="1" value="0"></progress>';
+      if (id === "orders") {
+        const held = make("small", "queue-held");
+        held.hidden = true;
+        q.querySelector(".queue-count").append(held);
+      }
       if (!mini) $(`piles${s}`).append(q);
       else {
         if (!$(`minis${s}`)) {
@@ -398,6 +403,8 @@
     "ai:0": () => actionGroups.get("ai0"),
     "ai:1": () => actionGroups.get("ai1"),
     cocoa: () => $("cocoa"),
+    decide: () =>
+      caseOpen && view.case?.kind === "unclear" ? $("caseReadings") : null,
   };
   let mistakeHint = null;
   const hintLabel = make("span", "mistake-hint-label");
@@ -698,17 +705,27 @@
         const q = view.queues[id],
           node = $(`queue-${id}`);
         node.querySelector(".queue-name").textContent = q.name;
-        // A small counter shows the count alone; it turns red when its pile is full.
-        node.querySelector(".queue-amount").textContent = miniPiles[id]
-          ? String(q.parcels.length)
-          : `${q.parcels.length}/${q.limit}`;
+        const count = q.parcels.length;
+        const full = count >= q.limit;
+        const nearFull = !full && count >= q.limit * 0.8;
+        node.querySelector(".queue-amount").textContent = `${count}/${q.limit}`;
+        node.setAttribute(
+          "aria-label",
+          `${q.name}: ${count} of ${q.limit} places filled${full ? ", full" : nearFull ? ", nearly full" : ""}${q.held ? `, ${q.held} read letters waiting for room` : ""}`,
+        );
         node.classList.toggle("blocked", !!q.blocked);
-        node.classList.toggle("full", q.parcels.length >= q.limit);
+        node.classList.toggle("full", full);
+        node.classList.toggle("near-full", nearFull);
         // The two small counters at checking carry only their name and count.
         if (miniPiles[id]) continue;
         const trend = node.querySelector(".queue-trend");
         if (!trend.firstChild) trend.innerHTML = trendArrow;
-        trend.hidden = !q.trend;
+        trend.hidden = !q.trend || !!q.held;
+        const held = node.querySelector(".queue-held");
+        if (held) {
+          held.hidden = !q.held;
+          held.textContent = q.held ? `+${q.held} waiting` : "";
+        }
         trend.dataset.trend = q.trend || "";
         trend.setAttribute("aria-label", q.trend ? `Pile ${q.trend}` : "");
         node.querySelector("progress").value = q.progress;
@@ -1064,7 +1081,7 @@
       ? `${money(goal.now)} / ${money(goal.need)}`
       : `${goal.now} / ${goal.need}${goal.id === "right" ? " wrong" : ""}`;
   const causeIcons = {
-    guessed: "gift-unclear",
+    picked: "gift-unclear",
     big: "gift-big",
     misread: "letter",
     misMade: "toy",
@@ -1623,7 +1640,7 @@
     {
       title: "Checking",
       text: () =>
-        "Checks catch mistakes but cost time and money. Bigger stakes, more checks.",
+        "Checks catch most mistakes, but cost time and money. Tired checkers miss more.",
       target: () => actionGroups.get("checking"),
     },
     {
@@ -1997,6 +2014,9 @@
           parts[1] === "pass"
             ? "Gifts not sent for a check, waiting for an elf here to load them onto the sleigh."
             : `${q.parcels.length} of ${q.limit} waiting, ${Math.round(q.rate)} a minute going out.`,
+          q.held
+            ? `${q.held} read letters are waiting for room in the toy pile.`
+            : "",
           q.blocked
             ? `${cap(q.blocked)}.`
             : parts[1] === "letters"
@@ -2832,7 +2852,7 @@
     "A decision waited too long": "faulty",
     "A faulty update ran unchecked": "faulty",
     "The faulty update ran too long": "faulty",
-    "Guesses went wrong": "guessed",
+    "Unclear wishes read wrongly": "picked",
     "Big gifts the AI got wrong": "big",
     "Checkers stopped looking": "waved",
     "Tired elves slipped": "tired",

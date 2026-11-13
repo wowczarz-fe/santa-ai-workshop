@@ -999,17 +999,27 @@ body[data-look] .queue-mini .queue-name {
   font-size: 11px;
   font-weight: 600;
   line-height: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 body[data-look] .queue-mini .queue-count {
   font:
     700 13px/16px Arial,
     sans-serif;
 }
-body[data-look] .queue-mini.full {
-  border-color: #c64235;
+body[data-look] #piles2 .queue.queue-mini.near-full {
+  border-color: #a56a16;
+  background: #fff0c4;
+  box-shadow: inset 3px 0 #a56a16;
+}
+body[data-look] #piles2 .queue.queue-mini.full {
+  border-color: #b3342a;
   background: #fbe9e5;
+  box-shadow: inset 3px 0 #b3342a;
+}
+body[data-look] .queue-mini .queue-count {
+  flex: none;
+  white-space: nowrap;
 }
 .wrong-delivery .big-tag {
   position: absolute;
@@ -3970,5 +3980,21 @@ dialog p {
   opacity: 0.6;
 }
 .case-panel .case-options[hidden] {
+  display: none;
+}
+
+.queue-count .queue-held {
+  display: inline-block;
+  width: 38px;
+  margin-left: 3px;
+  font:
+    700 10px/11px Arial,
+    sans-serif;
+  vertical-align: middle;
+  white-space: normal;
+  text-align: center;
+  color: #8c3b15;
+}
+.queue-count .queue-held[hidden] {
   display: none;
 }

@@ -349,3 +349,44 @@ earns 1.68 and three stars in 7 games. The earlier absolute benchmark of at most
 automation games is now a printed balance warning (17.5% with recall). The requirement that those
 strategies score at least half a star below the sensible strategy remains blocking. Game prices,
 rates and risks stay as they were; this round makes recovery available at the stated limit.
+
+## Follow-up: a recall costs more than leaving
+
+Date: 2026-11-13
+
+A recall was cheaper than the gifts it took off the sleigh (£186 against the £200 they counted)
+and saved the Few mistakes star as well, so nobody would leave them: the card was not a choice.
+The user ruled that the player decides and that the recall must cost real money. A recall now
+costs half as much again as its gifts count aboard, and at least £40 more than that, remakes
+included: £150 for one big gift, £300 for two, £52 for one everyday gift. The fixed £20 and the
+per-gift £40 and £80 are gone. Leaving costs nothing more and keeps the star lost. Each option
+carries `money`, `instead` and `extra`, so the card can show the net effect ("£50 more",
+"nothing more") beside the star, and the recall says when its extra cost loses the budget star.
+The scripted players bring gifts back only when that saves the mistakes star without losing the
+budget star. Fixing a mistake after it has shipped now costs more than checking it would have.
+
+## Follow-up: no elf asked for at a station on Automate
+
+Date: 2026-11-13
+
+In the user's play Toys on Automate still showed "needs another elf". On Automate the machine
+works alone at its own speed, so an elf adds nothing there, but `focus` named the station whenever
+its pile was full or growing. A station on Automate is now never named with `elves`: its full pile
+raises no focus (there is no control that would free it), a growing pile there is left out, and so
+is a pile held up by a full pile further along. The "is holding things up. Move an elf there."
+line is not said for such a station, and the end lesson about lost letters drops "Move free elves
+there" when the station that held things up longest ended on Automate. `tests/focus-check.js`
+plays 192 seeded Automate games and checks the focus, that line and the rested-elf line.
+
+## Follow-up: no pile above its limit
+
+Date: 2026-11-13
+
+The page showed "Toy orders 21/20": an answered unclear letter went straight into the toy pile
+with no check for room. Every pile now keeps to its limit whatever puts a parcel there. A letter
+the player has read waits for room when the toy pile is full: it is held (`queues.orders.held`),
+never dropped, and joins ahead of the letters being read as soon as a toy is made. A recall brings
+back no more gifts than the remake pile has room for, and checking waits while the remake pile is
+full, since a caught gift goes there. Half-time choices and the rollback put nothing on a pile.
+`tests/pile-check.js` covers the three cases, and the balance check asserts the limit on every
+pile at every look of every seeded game.

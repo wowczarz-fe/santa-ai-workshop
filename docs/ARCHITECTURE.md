@@ -123,7 +123,7 @@ An elf is `{ name, station, tired, energy, mood, resting, doing }`, for example
   `risk` says what to watch for now, from the current state. `perMinute` is parcels a minute at the
   current staffing, `costPerMinute` the AI's running cost in pounds a minute (0, 13 or 43).
 - `checking` holds three entries `{ name, sends, per100 }`, for example
-  `{ name: "The risky ones", sends: "elves check big, guessed and unsure gifts, where the AI slips most", per100: 37 }`:
+  `{ name: "The risky ones", sends: "elves check big gifts and the ones the AI flagged", per100: 37 }`:
   which gifts the elves check and how many in a hundred that is now.
 
 ### Stations and queues
@@ -137,12 +137,13 @@ points at a station uses it ("Move an elf to Toys", "Pip is rested and back at L
 as `"the toy pile is full"`. `rate` is parcels a minute at its current staffing and AI level.
 
 A queue is `{ id, name, parcels, limit, rate, inflow, trend, progress, blocked }`, for example
-`{ id: "check", name: "To check", parcels: [...], limit: 10, rate: 51, inflow: 22, trend: "steady", progress: 0.42, blocked: null }`.
+`{ id: "check", name: "To check", parcels: [...], limit: 10, rate: 51, inflow: 22, trend: "steady", progress: 0.42, blocked: null, held: 0 }`.
 `parcels` are parcels (below), `limit` the pile's size, `rate` parcels a minute at the current
 staffing, `inflow` parcels a minute arriving, `trend` `"growing"`, `"steady"` or `"shrinking"`
 over the last ten seconds, `progress` 0 to 1 towards the next parcel (unrounded), `blocked` `null`
-or a short reason such as `"nobody reading"`. Limits: letters 24, orders 20, check 10, pass 12,
-rework 30. Names: `"Letters"`, `"Toy orders"`, `"To check"`, `"Waiting to load"` (the gifts that
+or a short reason such as `"nobody reading"`, `held` the unclear letters the player has read
+that wait for room in a full pile (toy orders only, else 0). Limits: letters 24, orders 20, check
+10, pass 12, rework 30; `parcels` never holds more than `limit`. Names: `"Letters"`, `"Toy orders"`, `"To check"`, `"Waiting to load"` (the gifts that
 need no check, which the checkers load onto the sleigh) and `"To remake"`; every line about the
 `pass` pile calls it the waiting-to-load pile.
 
@@ -222,10 +223,10 @@ grows, except when a recall brings wrong gifts back (their price leaves, the rec
 What costs what: the AI £0.22 a second per station on Assist and £0.72 on Automate; each gift
 sent for a check £4, paid as it joins the checking pile whether or not a checker then looks at it
 properly; a
-remake £3; a rollback £65; a recall £20 plus £40 for each everyday gift and £80 for each big one,
-plus its remake; a wrong everyday gift aboard £12 and a big one £100; the half-time option its
-price (update £40, test £50, training £100, cocoa for everyone £50, carry on £0). Asking a child
-costs time only.
+remake £3; a rollback £65; a recall half as much again as its gifts count aboard and at least £40 more than that, remakes
+included (£150 for one big gift, £52 for one everyday gift); a wrong everyday gift aboard £12 and a big one £100; the half-time option its
+price (update £40, test £50, training £100, cocoa for everyone £50, carry on £0). Reading an
+unclear wish costs nothing.
 
 ### Focus and actions
 
@@ -237,7 +238,10 @@ else: the checkers when the checking or waiting-to-load pile is full (`{ station
 "elves", text: "needs another elf" }`, or `control: "checking", text: "check fewer"` while every
 gift is checked by three elves or more), else the toy makers or readers when their pile is full
 or nobody works there (`"elves"`, or `"ai0"`/`"ai1"` with `"try the AI"` while three elves work
-it by hand). While a rollback holds the toys up, the other hints apply.
+it by hand). While a rollback holds the toys up, the other hints apply. A station on Automate is
+never named with `"elves"`: the machine works alone there and another elf adds nothing. Its full
+pile raises no focus, and a growing pile there, or one held up by a full pile further along, is
+left out. The `behind` news line and a rested elf's walk follow the same rule.
 
 `actions` has a key for each of `ai0`, `ai1` and `checking`, each
 `{ available, why, cost }`, for example
@@ -255,29 +259,30 @@ parcels still in the workshop. A good update never sets it.
 ## Decisions
 
 A decision ("case") is
-`{ id, kind, step, title, text, facts, evidence, affected, options, resolving }`, and an unclear
+`{ id, kind, step, title, text, facts, evidence, affected, options }`, and an unclear
 letter also has `stake` and `readings`. At most one is
 open (`case`); the others wait (`casesWaiting`) in this order: the faulty update, the recall, the
 unclear letters. The page pauses the clock while a Decide card awaits an answer, preserving any
-manual pause. After an answer, resolving work advances with play. A game has two to five decisions:
+manual pause. Every answer closes its decision at once. A game has two to five decisions:
 two unclear letters, at most one faulty update and at most two recalls.
 
 - `kind` is `"unclear"` or `"incident"`. `step` is `null` for an unclear letter, and `"source"`
   (the faulty update) or `"aboard"` (wrong gifts on the sleigh) for an incident.
 - `title` names it in a few words: `"Unclear wish"`, `"Faulty update"` or `"Santa's reputation at risk"`.
 - `text` is one short sentence of what happened, for example
-  `"Timmy writes: 'A little train, please.' It could mean two things."`.
+  `"Timmy writes: 'A little train for my toy track.' It could mean two things."`.
 - `facts` is `[{ label, value, primary }]`: the figures the decision turns on. At most three are
   `primary`; show those on the card and the rest behind the info pop-up.
 - `evidence` is `[{ parcelId, child, wish, made }]`: the letter for an unclear wish, empty for an
   incident. `child` is the child's name, `made` is `null` until a toy is made.
 - `affected` is `{ count, ids }`: the parcels an option could cover.
-- `options` is `[{ id, label, seconds, money, risk, scope, why, goal, available }]`. `seconds` is
+- `options` is `[{ id, label, seconds, money, risk, scope, why, goal, available }]`, and a recall's
+  options also carry `instead` and `extra` (below). `seconds` is
   the time it takes, `money` what it costs, `risk` `null` or the chance (0 to 1) of a wrong gift or
   toy it leaves, `scope` what it does in words (the part before the first semicolon is a few words
   a chip can show), `goal` `null` or a few words on what it does to the goals, `available` `false`
   with a short `why` when it cannot be chosen now.
-- `stake` (unclear letters only): what a wrong guess costs once aboard, a number of pounds: 12
+- `stake` (unclear letters only): what a wrong pick costs once aboard, a number of pounds: 12
   for an everyday wish, 100 for a big one, as `prices` shows them. Format it on the page, for
   example `"£12 if wrong"`.
 - `readings` (unclear letters only): the two things the wish could mean, each `{ name, art }`, for
@@ -288,10 +293,6 @@ two unclear letters, at most one faulty update and at most two recalls.
   case with dashes, as `SharedArt.toy` and `PaperArt.toy` look it up and as `blunders` ids read. For
   a card heading the child and the wish in its own words are `evidence[0].child` and
   `evidence[0].wish`.
-- `resolving` is `null` until the player answers, then `{ optionId, remaining, duration }` while
-  the chosen option takes its time. The decision stays open and takes no second answer until
-  `remaining` reaches zero; then it closes with a `resolved` news item. An option that takes no
-  time closes it at once.
 
 ### Unclear letter
 
@@ -299,30 +300,36 @@ two unclear letters, at most one faulty update and at most two recalls.
 { id: 1, kind: "unclear", step: null, title: "Unclear wish",
   text: "Amir writes: 'A bat, please! I love caves.' It could mean two things.",
   facts: [ { label: "Gift", value: "£12 if wrong", primary: true },
-           { label: "Ask", value: "waits 10 s, comes out right", primary: true },
-           { label: "Guess", value: "70% wrong, AI reads", primary: true },
            { label: "Time left", value: "116 s", primary: false } ],
   evidence: [ { parcelId: 36, child: "Amir", wish: "A bat, please! I love caves.", made: null } ],
   affected: { count: 1, ids: [36] },
-  options: [ { id: "ask", label: "Ask the child", seconds: 10, money: 0, risk: null,
-               scope: "the letter waits about 10 s; the gift comes out right", why: null, goal: null, available: true },
-             { id: "guess", label: "Let the reader guess", seconds: 0, money: 0, risk: 0.7,
-               scope: "goes on now; 70% wrong, the AI guesses confidently", why: null, goal: null, available: true } ],
-  resolving: null, stake: 12,
+  options: [ { id: "pick:0", label: "cuddly bat", seconds: 0, money: 0, risk: null,
+               scope: "", why: null, goal: null, available: true },
+             { id: "pick:1", label: "cricket bat", seconds: 0, money: 0, risk: null,
+               scope: "", why: null, goal: null, available: true } ],
+  stake: 12,
   readings: [ { name: "cuddly bat", art: "cuddly-bat" }, { name: "cricket bat", art: "cricket-bat" } ] }
 ```
 
 - The letter is set aside as it arrives and waits for the answer; it never joins the letter pile
   until answered and is never lost to a full pile. Still undecided when the sleigh leaves, it is
   lost (counted in `lost`).
-- `"ask"` counts down 10 seconds in `resolving`; then the child's answer comes back, the letter is
-  read right and goes to the toy pile. No elf is taken from its station.
-- `"guess"` closes at once: the letter goes to the front of the letter pile and the reader guesses
-  as it reads it. By hand an elf is wrong 35% of the time; with the AI reading (Assist or Automate)
-  70%, and an elf confirming the AI's guess cannot tell either. Every line about a guess gives the
-  chance as a percentage, the same figure as `risk`. The `risk` and
-  the `"Guess"` fact follow the reading level at the moment. A guessed gift counts as risky for
-  checking, but a checker catches only 3 in 10 wrong guesses.
+- The player reads the wish: the options are the two readings, `"pick:0"` and `"pick:1"`, in the
+  same order as `readings`, each with the reading's name as its `label`. Draw the two pictures as
+  the two buttons. Nothing in `view()` says which reading is right: the child's line carries the
+  clue ("I love caves"), and every unclear wish has one.
+- `resolve(caseId, "pick:0" | "pick:1")` closes the decision at once and sends the letter to the
+  toy pile as the reading picked, without passing a reader. The right pick is made as the right
+  gift. The wrong pick is made as the wrong one: a wrong gift like any other, caught by a check 9
+  times in 10 if it is sent for one, else aboard under the cause `picked`. A letter the player has
+  read is not flagged as risky, so "the risky ones" checks it only when it is a big gift.
+- When the toy pile is full the read letter waits for room: it shows as `queues.orders.held`, is
+  never dropped, and joins the pile ahead of the letters being read as soon as a toy is made.
+- The `resolved` news line says what went on, not whether it was right
+  (`"Amir's letter goes on: a cuddly bat."`); a check or the sleigh shows that.
+- An unanswered card waits as long as the game lasts: it never answers itself. Its wait is game
+  time, so it does not run while a Decide card is open or the game is paused. The half-time card
+  names it in `choice.openCase`.
 
 ### Faulty update (`step` `"source"`)
 
@@ -341,13 +348,31 @@ is running. At most two recall decisions per game. After leaving gifts aboard, a
 requires another wrong gift to arrive; answering does not repeat the same decision immediately.
 Facts: `"Wrong gifts aboard"`, `"To bring back"`, `"In your cost now"`, `"Time left"`.
 
-The affected gifts are just those above the limit, big gifts first. `"bringBack"` removes them from
+The affected gifts are just those above the limit, big gifts first, and never more than the
+remake pile has room for. `"bringBack"` removes them from
 the sleigh immediately and sends them to the checkers to remake, 4 seconds each and at most 20
-in all. It costs the recall price, needs a checker, and is unavailable with a reason when too
-little time remains. The reputation decision still appears then. `"leave"` keeps them aboard.
-The options say how many gifts they cover and show `"Few mistakes star saved"` or
-`"Few mistakes star lost"`; the recall also says if its cost loses the budget star. The mistakes
-star still needs the normal minimum of right gifts to count.
+in all. It needs a checker, and is unavailable with a reason when too little time remains. The
+reputation decision still appears then. `"leave"` keeps them aboard.
+
+Bringing gifts back always costs more than leaving them, so the player pays to protect Santa's
+name. Both options carry three money fields: `money` is what the option adds to the cost (the
+recall's payment, remakes included), `instead` what those gifts count in the cost now and stop
+counting once recalled, and `extra` the difference, `money - instead`, which is the net rise in
+`cost.spent`. The recall's `money` is 1.5 times `instead` and at least `instead + 40`, rounded, so
+its `extra` is always above zero; leaving has all three at 0. The first part of `scope` says the
+same in words (`"£50 more"`, `"nothing more"`). `goal` shows `"Few mistakes star saved"` or
+`"Few mistakes star lost"`, and for the recall also `"Within budget star lost"` when its extra
+cost takes the cost over the limit. The mistakes star still needs the normal minimum of right
+gifts to count.
+
+```
+options: [ { id: "bringBack", label: "Bring it back", seconds: 4, money: 150, risk: null,
+             scope: "£50 more; checkers busy about 4 s; Few mistakes star saved", why: null,
+             instead: 100, extra: 50, goal: "Few mistakes star saved", available: true },
+           { id: "leave", label: "Leave it", seconds: 0, money: 0, risk: null,
+             scope: "nothing more; Few mistakes star lost", why: null,
+             instead: 0, extra: 0, goal: "Few mistakes star lost", available: true } ]
+```
 
 A successful recall adds a `recalled` action to the end report's response practice, with its gift
 count and price. Its cause and cost also remain in the account.
@@ -397,29 +422,29 @@ count and price. Its cause and cost also remain in the account.
 Every item has `id`, `t`, `kind` and `text`; some carry more. During play no item suggests
 something only half-time sells.
 
-| Kind          | Extra fields                                                                               | When                                                  |
-| ------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `checked`     | `check: { wish, wanted, made, result, seconds, by }`                                       | A checker finished checking a gift                    |
-| `loaded`      | `check: { wish, wanted, made, result }`, `cause`, `control`, `action`, `caseId` (optional) | A wrong gift landed on the sleigh                     |
-| `consequence` | `about`, `facts: { seconds, checked, caught, estimatedAvoided, waiting, money }`           | A setting or decision reports what it did             |
-| `case`        | `caseId`                                                                                   | A decision was raised                                 |
-| `resolved`    | `caseId`, `option`, `outcome: { seconds, money, parcels }`                                 | A decision closed                                     |
-| `update`      |                                                                                            | An update was installed on the toy machine            |
-| `noticed`     | `by`: `"watcher"`, `"checker"` or `"sleigh"`                                               | The faulty update became known                        |
-| `rolledBack`  |                                                                                            | The rollback finished                                 |
-| `recalled`    | `count`                                                                                    | Wrong gifts came off the sleigh                       |
-| `relaxed`     | `elf`, `station`                                                                           | Checkers, or elves on Assist, started to trust the AI |
-| `trained`     |                                                                                            | Training was bought at half-time                      |
-| `tired`       | `elf`                                                                                      | An elf burnt out                                      |
-| `rested`      | `elf`, `station`                                                                           | A rested elf left cocoa for a station                 |
-| `blocked`     | `station`                                                                                  | A station stopped because the next pile is full       |
-| `lost`        | `count`                                                                                    | Letters were lost to a full pile                      |
-| `behind`      | `station`                                                                                  | The pace first falls short and a station holds it up  |
-| `milestone`   | `right`                                                                                    | The sleigh passed 25, 50, 75 or 110 right gifts       |
-| `cleared`     | `queue`                                                                                    | A pile that was more than half full has been emptied  |
-| `halftime`    | `right`, `wrong`                                                                           | Half-time began                                       |
-| `chose`       | `option`, `outcome: { money, seconds, gained }`                                            | The player picked a half-time option                  |
-| `departed`    | `right`, `wrong`, `target`, `stars`                                                        | The sleigh left; the game is over                     |
+| Kind          | Extra fields                                                                               | When                                                   |
+| ------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| `checked`     | `check: { wish, wanted, made, result, seconds, by }`                                       | A checker finished checking a gift                     |
+| `loaded`      | `check: { wish, wanted, made, result }`, `cause`, `control`, `action`, `caseId` (optional) | A wrong gift landed on the sleigh                      |
+| `consequence` | `about`, `facts: { seconds, checked, caught, estimatedAvoided, waiting, money }`           | A setting or decision reports what it did              |
+| `case`        | `caseId`                                                                                   | A decision was raised                                  |
+| `resolved`    | `caseId`, `option`, `outcome: { seconds, money, parcels }`                                 | A decision closed                                      |
+| `update`      |                                                                                            | An update was installed on the toy machine             |
+| `noticed`     | `by`: `"watcher"`, `"checker"` or `"sleigh"`                                               | The faulty update became known                         |
+| `rolledBack`  |                                                                                            | The rollback finished                                  |
+| `recalled`    | `count`                                                                                    | Wrong gifts came off the sleigh                        |
+| `relaxed`     | `elf`, `station`                                                                           | Checkers, or elves on Assist, started to trust the AI  |
+| `trained`     |                                                                                            | Training was bought at half-time                       |
+| `tired`       | `elf`                                                                                      | An elf burnt out                                       |
+| `rested`      | `elf`, `station`                                                                           | A rested elf left cocoa for a station                  |
+| `blocked`     | `station`                                                                                  | A station stopped because the next pile is full        |
+| `lost`        | `count`                                                                                    | Letters were lost to a full pile                       |
+| `behind`      | `station`                                                                                  | The pace falls short and elves at a station hold it up |
+| `milestone`   | `right`                                                                                    | The sleigh passed 25, 50, 75 or 110 right gifts        |
+| `cleared`     | `queue`                                                                                    | A pile that was more than half full has been emptied   |
+| `halftime`    | `right`, `wrong`                                                                           | Half-time began                                        |
+| `chose`       | `option`, `outcome: { money, seconds, gained }`                                            | The player picked a half-time option                   |
+| `departed`    | `right`, `wrong`, `target`, `stars`                                                        | The sleigh left; the game is over                      |
 
 A `relaxed` item names the elf who trusts the AI most and what to do now, for example
 `"Tinsel is trusting the AI and skipping checks. Send Tinsel for cocoa or swap in another elf."`
@@ -435,22 +460,22 @@ for example `"Wrong gift: Jack got a full-sized galleon, not a toy pirate ship. 
 Its `control` is the control to highlight and `action` a few words naming the action, for a tag
 on that control. Following the advice never sends a station back to working by hand:
 
-| `control`      | When                                                          | Text                                                                      | `action`            |
-| -------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------- |
-| `checking`     | A risky gift went out unchecked while checking was on a few   | `Check the risky ones.`                                                   | `Check more`        |
-| `cocoa`        | A tired elf working by hand slipped                           | `Send tired elves for cocoa.`                                             | `Rest tired elves`  |
-| `ai:0`, `ai:1` | The AI made the mistake on Automate at reading or toy making  | `Put Letters on Assist: an elf confirms each.`                            | `Drop to Assist`    |
-| `cocoa`        | An elf on Assist passed the wrong draft while trusting the AI | `Swap the elves at Toys: Pip had stopped checking the AI's drafts.`       | `Swap Pip`          |
-| `cocoa`        | An elf on Assist passed it while tired                        | `Send tired elves for cocoa.`                                             | `Rest tired elves`  |
-| `checking`     | Any other gift went out unchecked                             | `Check all for a while.`                                                  | `Check all for now` |
-| `cocoa`        | A checker waved it through while trusting the AI              | `Swap the checkers: Tinsel had stopped checking properly.`                | `Swap Tinsel`       |
-| `cocoa`        | A checker missed it while a checker was tired                 | `Rest the checkers: tired ones miss more.`                                | `Rest the checkers` |
-| `ask`          | A sharp, rested checker missed a guessed wish                 | `Ask the child when a wish is unclear: checkers miss most wrong guesses.` | `Ask next time`     |
-| `checking`     | A sharp, rested checker missed it                             | `Keep checking the risky ones: even sharp checkers miss 1 in 10.`         | `Keep checking`     |
+| `control`      | When                                                          | Text                                                                | `action`            |
+| -------------- | ------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------- |
+| `checking`     | A risky gift went out unchecked while checking was on a few   | `Check the risky ones.`                                             | `Check more`        |
+| `cocoa`        | A tired elf working by hand slipped                           | `Send tired elves for cocoa.`                                       | `Rest tired elves`  |
+| `ai:0`, `ai:1` | The AI made the mistake on Automate at reading or toy making  | `Put Letters on Assist: an elf confirms each.`                      | `Drop to Assist`    |
+| `cocoa`        | An elf on Assist passed the wrong draft while trusting the AI | `Swap the elves at Toys: Pip had stopped checking the AI's drafts.` | `Swap Pip`          |
+| `cocoa`        | An elf on Assist passed it while tired                        | `Send tired elves for cocoa.`                                       | `Rest tired elves`  |
+| `checking`     | Any other gift went out unchecked                             | `Check all for a while.`                                            | `Check all for now` |
+| `cocoa`        | A checker waved it through while trusting the AI              | `Swap the checkers: Tinsel had stopped checking properly.`          | `Swap Tinsel`       |
+| `cocoa`        | A checker missed it while a checker was tired                 | `Rest the checkers: tired ones miss more.`                          | `Rest the checkers` |
+| `decide`       | A sharp, rested checker missed a wish the player read wrongly | `Read the child's clue before you pick.`                            | `Read the clue`     |
+| `checking`     | A sharp, rested checker missed it                             | `Keep checking the risky ones: even sharp checkers miss 1 in 10.`   | `Keep checking`     |
 
 The first that applies is used. Tiredness is named only when an elf at that station is tired
-(red), and drift names the elf there who trusts the AI most. `ask` is a new `control`: there is
-no control to outline until the next unclear wish, so the page shows only the line.
+(red), and drift names the elf there who trusts the AI most. `decide` has no control to outline
+until the next unclear wish, so the page shows only the line.
 
 A wrong gift whose advice was given in the last 20 seconds goes aboard without a new line, so the
 player is not asked twice for the same thing; it still shows on the sleigh.
@@ -526,12 +551,12 @@ tile per practice and one line per action, with its figure.
 | --------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | `human-in-loop` | `Human in the loop`                    | `assist`, "Elves confirmed the AI's drafts", "Assist for 150 of 150 s"                                                                                                           | `null`                                              |
 | `risk-check`    | `Risk-based checking`                  | `risky`, "Checked the risky ones", "150 s on the risky ones; 3 of 7 mistakes caught"                                                                                             | "Wrong gifts cost Santa trust: 2 reached children." |
-| `escalate`      | `Ask a person when unsure`             | `asked`, "Asked the child about an unclear wish", "asked 1 of 2"                                                                                                                 | `null`                                              |
+| `escalate`      | `Ask a person when unsure`             | `decided`, "Read the unclear wishes yourself", "decided 2 of 2, 2 right" / "decided 1 of 2, 0 right; 1 left unanswered"                                                          | `null`                                              |
 | `test-release`  | `Test before release, keep a way back` | `tested`, "Tested the update first", "the test passed" / "installed untested" / "no update installed"; `rolledBack`, "Rolled back a faulty update", "rolled back after 9 trains" | `null`                                              |
 | `oversight`     | `Keep human oversight sharp`           | `trained`, "Trained the checkers not to just defer to AI", "4 checks skipped"; `rested`, "Gave the elves a cocoa break", "6 cocoa breaks, 1 burnout"                             | `null`                                              |
 
 A practice's `used` is `true` when any of its actions was used. `assist` and `risky` count once
-the setting ran for 10 seconds or more; `asked` once a child was asked; `tested` and `trained`
+the setting ran for 10 seconds or more; `decided` once the player read an unclear wish; `tested` and `trained`
 when bought at half-time; `rolledBack` when the faulty update was rolled back; `rested` when an
 elf was sent for cocoa or cocoa for everyone was bought.
 
@@ -545,7 +570,7 @@ of it), and on the end screen any part that asks for more checks while the dial 
 
 | `id`       | Wrong gifts from                              | `control`  |
 | ---------- | --------------------------------------------- | ---------- |
-| `guessed`  | unclear wishes the reader guessed             | `ask`      |
+| `picked`   | unclear wishes the player read wrongly        | `decide`   |
 | `big`      | AI slips on big gifts that went out unchecked | `checking` |
 | `misread`  | AI misreadings of everyday letters            | `ai:0`     |
 | `misMade`  | AI slips making everyday toys                 | `ai:1`     |
@@ -627,7 +652,8 @@ beforehand: a risky batch can happen to come out clean.
   counts as big), for example
   `{ id: "big", name: "Big gifts", icon: "📦", parcels: 7, wrongMade: 6, checked: 6, caught: 5, shipped: 0, checkCost: 12, prevented: 500, shippedCost: 0, shippedUnchecked: 0, shippedUncheckedCost: 0, verdict: "paid", text: "Checking 6 big gifts cost £12 and stopped about £500 of wrong gifts." }`.
   `verdict` is `"left exposed"`, `"cost more than it saved"` or `"paid"`. The unclear wishes'
-  `text` counts asking: "1 of 2 asked; no wrong ones." or "0 of 2 asked; 1 wrong one cost £12.".
+  `text` counts the player's readings: "2 of 2 decided; no wrong ones." or
+  "2 of 2 decided; 1 wrong one cost £12.".
 - `end.lesson` and the verdict agree: a "Too much checking" lesson shows only when the dial reads
   too much, "Too little checking" only when it reads too little, and "Checking in the right places"
   only with "about right".
@@ -648,7 +674,7 @@ beforehand: a risky batch can happen to come out clean.
   for the first time about 110 seconds in; a player who rests elves when they turn red sees about
   one burnout a game.
 - An elf confirming an AI draft on Assist catches 95 in 100 wrong ones while sharp and rested. A
-  checker catches 90 in 100, but only 30 in 100 on a guessed wish. Both miss more as they tire.
+  checker catches 90 in 100. Both miss more as they tire.
 - `pace.projected` is smoothed over about fifteen seconds; a player action works it out afresh.
-- Options that take no time close the decision at once: guess, roll back, keep running, bring
-  back, leave. Ask counts down in `resolving`.
+- Every option closes its decision at once: pick a reading, roll back, keep running, bring back,
+  leave.

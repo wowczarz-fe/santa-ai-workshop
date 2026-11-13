@@ -34,30 +34,35 @@ const ELF_SECONDS = {
   remake: 10, // remaking a caught mistake: catching it late costs more than preventing it
   recall: 4, // fetching a gift back off a loaded sleigh, then remaking it
 };
-// An unclear letter waits this long for the child's answer when the player asks.
-const ASK_SECONDS = 10;
 // However many gifts come back, a recall takes the checkers at most this many seconds in all.
 const RECALL_MAX_SECONDS = 20;
-// What bringing these gifts back off the sleigh costs, remakes included. Fixing a mistake after it
-// has shipped costs far more than checking it would have, and a big gift twice as much again.
+// What these wrong gifts count in the cost while they stay aboard.
+const countedPrice = (list) =>
+  sum(list.map((x) => (x.w.big ? WRONG_PRICE.big : WRONG_PRICE.everyday)));
+// What bringing these gifts back off the sleigh costs, remakes included: half as much again as they
+// count in the cost aboard, and at least RECALL_MARGIN more. Fixing a mistake after it has shipped
+// costs more than living with it, so a recall buys Santa's good name with real money.
+const RECALL_FACTOR = 1.5;
+const RECALL_MARGIN = 40;
 const recallPrice = (list) =>
-  PRICE.recall +
-  sum(list.map((x) => PRICE.recallEach * (x.w.big ? 2 : 1) + PRICE.remake));
+  Math.round(
+    Math.max(
+      countedPrice(list) * RECALL_FACTOR,
+      countedPrice(list) + RECALL_MARGIN,
+    ),
+  );
 // Seconds of checker work for each of n gifts brought back.
 const recallSeconds = (n) =>
   Math.min(ELF_SECONDS.recall, RECALL_MAX_SECONDS / Math.max(1, n));
 const AI_SECONDS = { read: 0.6, make: 0.75 };
 const ROLLBACK_SECONDS = 8;
 
-// What goes wrong. Elves get worse as they tire. The AI is steady on everyday work, slips on big
-// gifts it has seen less of, and guesses an unclear wish confidently and more often wrongly than an
-// elf; a faulty update makes the same wrong toy again and again.
+// What goes wrong. Elves get worse as they tire. The AI is steady on everyday work and slips on big
+// gifts it has seen less of; a faulty update makes the same wrong toy again and again.
 const RISK = {
   elfRead: 0.005,
   aiRead: 0.02,
   aiReadBig: 0.15,
-  elfGuess: 0.35,
-  aiGuess: 0.7,
   elfMake: 0.005,
   aiMake: 0.03,
   aiMakeBig: 0.45,
@@ -66,9 +71,8 @@ const RISK = {
 };
 const CONFIRM_CATCH = 0.95; // an elf confirming an AI draft spots a wrong one
 const CHECK_CATCH = 0.9;
-// A checker cannot tell whether a guessed wish was read right either, so checking catches fewer of
-// those mistakes; asking the child fixes them at the source.
-const CHECK_CATCH_UNCLEAR = 0.3;
+// The cause of a wrong gift the player made by picking the wrong reading of an unclear wish.
+const PICKED_WRONG = "you read an unclear wish wrongly";
 const UNSURE_IF_WRONG = 0.7;
 const CATCH_SHARPENS = 5; // clean parcels a caught mistake takes off the elves' run
 // A clean AI draft adds this much to the trust of each elf confirming drafts at that station, as a
@@ -110,10 +114,10 @@ const GOALS_FROM = 0.7;
 // fix is the advice in parts, each with a test of whether the settings already follow it
 // (causes() leaves those out).
 const WRONG_CAUSES = {
-  guessed: {
-    name: "Guessed unclear wishes",
-    control: "ask",
-    fix: [["ask the child when a wish is unclear", () => false]],
+  picked: {
+    name: "Unclear wishes you read wrongly",
+    control: "decide",
+    fix: [["read the child's clue before you pick", () => false]],
   },
   big: {
     name: "AI slips on big gifts that went out unchecked",
@@ -198,7 +202,7 @@ const LOSSES = {
   "Tired elves let letters pile up": "tired",
   "Burnouts slowed the line": "tired",
   "A decision waited too long": "wrong",
-  "Guesses went wrong": "wrong",
+  "Unclear wishes read wrongly": "wrong",
   "Big gifts the AI got wrong": "wrong",
   "A faulty update ran unchecked": "wrong",
   "Checkers stopped looking": "wrong",
@@ -215,7 +219,7 @@ const LOSSES = {
 // The lesson under the checking dial: what to do next time, so it never repeats the dial's figures.
 const CHECKING_ADVICE = {
   "too little":
-    "Check where the AI slips and a mistake costs most: big gifts and unclear wishes.",
+    "Check where the AI slips and a mistake costs most: the big gifts.",
   "about right": "Checks went where mistakes were likeliest and dearest.",
   "too much":
     "Check where a mistake is likely or dear, and let the rest through.",
@@ -293,8 +297,6 @@ const PRICE = {
   check: 4, // each gift sent for a check
   remake: 3,
   rollback: 65,
-  recall: 20,
-  recallEach: 40, // per gift brought back, twice that for a big one, on top of its remake
 };
 const WRONG_PRICE = { everyday: 12, big: 100 };
 // For the end summary: what a gift that misses its sleigh while it waits to be checked is worth. The
@@ -347,11 +349,11 @@ const CASE_TITLES = {
 
 // child | words | wanted toy | wrong toy the AI might make | flags
 const WISHES = [
-  "Timmy | A little train, please. | 🚃 model train | 🚂 full-sized locomotive | unclear",
+  "Timmy | A little train for my toy track. | 🚃 model train | 🚂 full-sized locomotive | unclear",
   "Mia | A red bike for the park. | 🚲 red bike | 🚲 blue bike | big subtle",
   "Noah | A teddy bear to cuddle. | 🧸 teddy bear | 🐻 live bear cub",
-  "Ava | Something to paint with. I already have brushes. | 🎨 box of watercolours | 🪣 tin of wall paint | unclear",
-  "Leo | A mouse for my desk. | 🖱️ computer mouse | 🐭 pet mouse | unclear",
+  "Ava | Something to paint pictures with. | 🎨 box of watercolours | 🪣 tin of wall paint | unclear",
+  "Leo | A mouse for my desk. My old one stopped clicking. | 🖱️ computer mouse | 🐭 pet mouse | unclear",
   "Isla | A blue football. | ⚽ blue football | 🏈 rugby ball | subtle",
   "Oliver | A rocket for my space toys. | 🚀 toy rocket | 🎆 box of fireworks | unclear",
   "Grace | A small drum to play music. | 🥁 toy drum | 🛢️ oil drum",
@@ -364,19 +366,19 @@ const WISHES = [
   "Ruby | A puppy toy that barks. | 🐶 toy puppy | 🪵 sack of tree bark",
   "Jack | A pirate ship for the bath. | 🏴‍☠️ toy pirate ship | ⛵ full-sized galleon | big",
   "Lily | A yellow rubber duck. | 🐤 yellow rubber duck | 🦆 live duck",
-  "Sam | Some cool shades, please. | 🕶️ pair of sunglasses | 💡 lampshade | unclear",
+  "Sam | Some cool shades for the beach. | 🕶️ pair of sunglasses | 💡 lampshade | unclear",
   "Maya | A crown like a real queen. | 👑 toy crown | 💎 set of crown jewels",
   "Ben | A dragon that breathes fire! | 🐉 toy dragon | 🔥 garden bonfire",
   "Chloe | A green dinosaur. | 🦕 green dinosaur | 🦕 purple dinosaur | subtle",
-  "Ethan | Something for the snow. | 🛷 sledge | 🧂 bag of road salt | unclear big",
+  "Ethan | Something to ride down the snowy hill. | 🛷 sledge | 🧂 bag of road salt | unclear big",
   "Hannah | A horse with a horn! | 🦄 toy unicorn | 🐴 horse in a party hat",
   "Lucas | A robot that helps me tidy up. | 🤖 toy robot | 🧹 broom",
-  "Poppy | Something sweet, please. | 🍬 bag of sweets | 🍠 sweet potato | unclear",
+  "Poppy | Something sweet. Mum says they are bad for my teeth. | 🍬 bag of sweets | 🍠 sweet potato | unclear",
   "Theo | A big red fire engine. | 🚒 red fire engine | 🚒 blue fire engine | big subtle",
-  "Nina | A guitar so I can rock. | 🎸 toy guitar | 🪨 big rock | unclear big",
+  "Nina | I want to rock! I know three chords. | 🎸 toy guitar | 🪨 big rock | unclear big",
   "Omar | A space helmet. | 👩‍🚀 space helmet | 🐠 fishbowl",
   "Rosa | A chess set, please. | ♟️ chess set | 🗄️ chest of drawers | big",
-  "Lena | A car like my mum's. | 🚗 pedal car | 🚙 full-sized car | unclear big",
+  "Lena | A car like my mum's, but my size. | 🚗 pedal car | 🚙 full-sized car | unclear big",
   "Freya | Pink roller skates. | 🛼 pair of pink roller skates | ⛸️ pair of ice skates | big subtle",
   "Kai | A yo-yo. | 🪀 yo-yo | 🥣 bowl of yoghurt",
   "Elsie | A magic wand. | 🪄 magic wand | 🥖 baguette",
@@ -423,7 +425,6 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const does = (n, word, one, many) =>
   `${plural(n, word)} ${n === 1 ? one : many}`;
 // "about 2 in 3" for a chance, rounded to a fraction a player reads at a glance.
-const percent = (p) => `${Math.round(p * 100)}%`;
 const chance = (p) => {
   const n =
     [2, 3, 4, 5, 10, 20].find(
@@ -503,6 +504,7 @@ class Workshop {
     this.claimed = {}; // when a rested elf last went to answer each station's need
     this.recalled = { count: 0, cost: 0 }; // wrong gifts brought back off the sleigh, and what it cost
     this.undecided = 0; // unclear letters still waiting for a decision when the sleigh left
+    this.answered = []; // unclear letters the player has read, waiting for room in the toy pile
     this.testResult = null; // "passed" or "failed" once a tested update has been tried
     this.recent = [];
     this.report = { checking: this.fresh() };
@@ -562,8 +564,8 @@ class Workshop {
       trained: false,
       restAll: false,
       cocoa: 0, // elves the player sent for cocoa
-      asked: 0,
-      guessed: 0,
+      picked: 0, // unclear wishes the player read
+      pickedRight: 0,
     };
     this.stats = {
       ai: [0, 0, 0],
@@ -734,8 +736,6 @@ class Workshop {
       roll,
       made: null,
       wrong: false,
-      asked: false,
-      guessed: false,
       byAi: false,
       unsure: false,
       batch: false,
@@ -821,7 +821,11 @@ class Workshop {
         if (this.full("check")) return "the checking pile is full";
         return this.full("pass") ? "the waiting-to-load pile is full" : null;
       default:
-        return nobody ? "no checkers here" : null;
+        if (nobody) return "no checkers here";
+        // A caught gift goes to the remake pile, so checking waits while that pile is full.
+        return id === "check" && this.full("rework")
+          ? "the remake pile is full"
+          : null;
     }
   }
 
@@ -867,9 +871,8 @@ class Workshop {
     );
   }
 
-  checkCatch(x) {
-    const base = x?.guessed ? CHECK_CATCH_UNCLEAR : CHECK_CATCH;
-    return Math.max(0.35, base - this.slipAt(2) * TIRED_MISSES);
+  checkCatch() {
+    return Math.max(0.35, CHECK_CATCH - this.slipAt(2) * TIRED_MISSES);
   }
 
   suspect(x) {
@@ -877,10 +880,11 @@ class Workshop {
     return x.unsure ? "unsure" : false;
   }
 
-  // Risky: a big gift, a guessed wish, or one the AI flagged or a known faulty update made.
+  // Risky: a big gift, or one the AI flagged or a known faulty update made. An unclear wish the
+  // player has read is not flagged: a person decided it, so nobody doubts it further down the line.
   needsCheck(x, level = this.checking) {
     const sample = x.roll.sample < SAMPLE;
-    const risky = x.w.big || x.guessed || this.suspect(x);
+    const risky = x.w.big || this.suspect(x);
     return [sample, sample || Boolean(risky), true][level];
   }
 
@@ -954,6 +958,7 @@ class Workshop {
       }
     if (this.pendingTest && this.t >= this.pendingTest.at) this.finishTest();
     this.raiseIncident();
+    this.passAnswered();
   }
 
   run(s, pool, dt) {
@@ -1004,20 +1009,7 @@ class Workshop {
 
   read(x) {
     const level = this.ai[0];
-    if (x.guessed) {
-      // The reader guesses an unclear wish the player chose not to ask about. The AI guesses
-      // confidently and more often wrongly; an elf confirming its guess cannot tell either.
-      x.byAi = level > 0;
-      if (x.roll.read < (level ? RISK.aiGuess : RISK.elfGuess))
-        this.wentWrong(
-          x,
-          0,
-          level
-            ? "the AI guessed an unclear wish"
-            : "an elf guessed an unclear wish",
-          x.w.wrong,
-        );
-    } else if (level === 0) {
+    if (level === 0) {
       if (x.roll.read < RISK.elfRead + this.slipAt(0) * RISK.perStrain)
         this.wentWrong(x, 0, this.slipCause(0), this.slipToy(x));
     } else {
@@ -1088,7 +1080,9 @@ class Workshop {
     x.unsure =
       x.byAi &&
       x.roll.unsure <
-        (x.wrong && !faulty && !x.guessed ? UNSURE_IF_WRONG : UNSURE_IF_RIGHT);
+        (x.wrong && !faulty && x.cause !== PICKED_WRONG
+          ? UNSURE_IF_WRONG
+          : UNSURE_IF_RIGHT);
     this.recent = [...this.recent.slice(-49), x];
     x.route = this.needsCheck(x) ? "check" : "pass";
     this.q[x.route].push(x);
@@ -1334,6 +1328,8 @@ class Workshop {
     const s = x.wrongAt;
     const tiredAt = (st) => this.staff(st).some((e) => e.tired > SLIPS_FROM);
     const say = (control, text, action) => ({ control, text, action });
+    // The player read the wish wrongly: no setting at Letters made this mistake.
+    const picked = x.cause === PICKED_WRONG;
     const swap = (st, crew, what) => {
       const e = this.mostTrusting(st);
       return e
@@ -1352,7 +1348,7 @@ class Workshop {
       return say("checking", "Check the risky ones.", "Check more");
     if (x.cause === "a tired elf")
       return say("cocoa", "Send tired elves for cocoa.", "Rest tired elves");
-    if (s !== null && this.ai[s] === 2 && !x.guessed)
+    if (s !== null && this.ai[s] === 2 && !picked)
       return say(
         `ai:${s}`,
         `Put ${STATION_NAMES[s]} on Assist: an elf confirms each.`,
@@ -1360,7 +1356,7 @@ class Workshop {
       );
     if (!checked) {
       // An elf on Assist let a wrong draft through: it trusted the AI, or it was tired.
-      if (s !== null && this.ai[s] === 1 && !x.guessed) {
+      if (s !== null && this.ai[s] === 1 && !picked) {
         if (this.vigilance(this.trustAt(s)).state !== "careful")
           return swap(
             s,
@@ -1384,11 +1380,11 @@ class Workshop {
         "Rest the checkers: tired ones miss more.",
         "Rest the checkers",
       );
-    if (x.guessed)
+    if (picked)
       return say(
-        "ask",
-        "Ask the child when a wish is unclear: checkers miss most wrong guesses.",
-        "Ask next time",
+        "decide",
+        "Read the child's clue before you pick.",
+        "Read the clue",
       );
     return say(
       "checking",
@@ -1403,7 +1399,6 @@ class Workshop {
     return (
       this.cases.find(
         (c) =>
-          !c.resolving &&
           c.kind === "incident" &&
           c.step === "source" &&
           this.causeId(x) === "faulty",
@@ -1455,7 +1450,6 @@ class Workshop {
       id: ++this.lastCaseId,
       step: null,
       parcels: [],
-      resolving: null,
       opened: this.t,
       ...spec,
     };
@@ -1496,13 +1490,15 @@ class Workshop {
   }
 
   // The wrong gifts aboard beyond what the Few mistakes goal allows, the big ones first: the fewest
-  // that bring the count back within the goal, and the dearest to leave aboard.
+  // that bring the count back within the goal, and the dearest to leave aboard. Never more than the
+  // remake pile has room for.
   toRecall() {
     const allowed = this.goals().find((g) => g.id === "right").need;
+    const room = QUEUES.rework.limit - this.q.rework.length;
     const wrong = this.aboard
       .filter((x) => x.wrong)
       .sort((x, y) => y.w.big - x.w.big);
-    return wrong.slice(0, Math.max(0, wrong.length - allowed));
+    return wrong.slice(0, Math.max(0, Math.min(wrong.length - allowed, room)));
   }
 
   // Whether the checkers can bring these gifts back and remake them before the sleigh leaves.
@@ -1532,11 +1528,6 @@ class Workshop {
   affected(c) {
     if (c.step === "aboard") return this.toRecall();
     return c.parcels;
-  }
-
-  // The chance the reader guesses an unclear wish wrongly at the current reading level.
-  guessRisk() {
-    return this.ai[0] ? RISK.aiGuess : RISK.elfGuess;
   }
 
   failChance(u) {
@@ -1581,12 +1572,6 @@ class Workshop {
             : `${money(WRONG_PRICE.everyday)} if wrong`,
           true,
         ),
-        f("Ask", `waits ${ASK_SECONDS} s, comes out right`, true),
-        f(
-          "Guess",
-          `${percent(this.guessRisk())} wrong, ${this.ai[0] ? "AI reads" : "elves read"}`,
-          true,
-        ),
         time,
       ];
     if (c.step === "source")
@@ -1611,7 +1596,7 @@ class Workshop {
         `${list.length}${list.some((x) => x.w.big) ? `, ${list.filter((x) => x.w.big).length} big` : ""}`,
         true,
       ),
-      f("In your cost now", money(sum(list.map((x) => this.price(x)))), true),
+      f("In your cost now", money(countedPrice(list)), true),
       time,
     ];
   }
@@ -1628,28 +1613,16 @@ class Workshop {
       scope,
       why,
     });
+    // A recall's payment, what its gifts count in the cost now, and how much more the recall costs.
+    const counted = countedPrice(list);
+    const extra = recallPrice(list) - counted;
     let options;
-    if (c.kind === "unclear") {
-      const p = this.guessRisk();
-      options = [
-        o(
-          "ask",
-          "Ask the child",
-          ASK_SECONDS,
-          0,
-          null,
-          `the letter waits ${this.span(ASK_SECONDS)}; the gift comes out right`,
-        ),
-        o(
-          "guess",
-          "Let the reader guess",
-          0,
-          0,
-          p,
-          `goes on now; ${percent(p)} wrong${this.ai[0] ? ", the AI guesses confidently" : ""}`,
-        ),
-      ];
-    } else if (c.step === "source")
+    if (c.kind === "unclear")
+      // The player reads the wish: one option for each reading, in the card's order.
+      options = this.readings(c).map((r, i) =>
+        o(`pick:${i}`, r.name, 0, 0, null, ""),
+      );
+    else if (c.step === "source")
       options = [
         o(
           "rollback",
@@ -1670,47 +1643,55 @@ class Workshop {
       ];
     else
       options = [
-        o(
-          "bringBack",
-          n === 1 ? "Bring it back" : `Bring ${n} back`,
-          n * recallSeconds(n),
-          recallPrice(list),
-          null,
-          `costs ${money(recallPrice(list))} instead of the ${money(sum(list.map((x) => this.price(x))))} ${n === 1 ? "it counts" : "they count"} now; checkers busy ${this.span(n * recallSeconds(n))}`,
-          !this.staff(2).length
-            ? "no elf at Checking"
-            : !this.recallFits(list)
-              ? "no time before the sleigh leaves"
-              : null,
-        ),
-        o(
-          "leave",
-          n === 1 ? "Leave it" : "Leave them",
-          0,
-          0,
-          null,
-          `${n === 1 ? "its" : "their"} ${money(sum(list.map((x) => this.price(x))))} stays in your cost`,
-        ),
+        {
+          ...o(
+            "bringBack",
+            n === 1 ? "Bring it back" : `Bring ${n} back`,
+            n * recallSeconds(n),
+            recallPrice(list),
+            null,
+            `${money(extra)} more; checkers busy ${this.span(n * recallSeconds(n))}`,
+            !n
+              ? "the remake pile is full"
+              : !this.staff(2).length
+                ? "no elf at Checking"
+                : !this.recallFits(list)
+                  ? "no time before the sleigh leaves"
+                  : null,
+          ),
+          instead: counted,
+          extra,
+        },
+        {
+          ...o(
+            "leave",
+            n === 1 ? "Leave it" : "Leave them",
+            0,
+            0,
+            null,
+            "nothing more",
+          ),
+          instead: 0,
+          extra: 0,
+        },
       ];
     const goal = c.step === "aboard" ? this.aboardGoals(list) : {};
     return options.map((o) => ({
       ...o,
       scope: goal[o.id] ? `${o.scope}; ${goal[o.id]}` : o.scope,
       goal: goal[o.id] ?? null,
-      available: !o.why && !c.resolving,
-      why: c.resolving ? "already answered" : o.why,
+      available: !o.why,
     }));
   }
 
   // What bringing the wrong gifts back or leaving them does to the goals, in a few words, so the
   // dearer recall shows what it buys: leaving keeps too many wrong gifts aboard for the mistakes
-  // goal, and the recall's price can push the cost over its limit. Wrong gifts aboard already count
-  // against the cost at what they will cost, so leaving them changes nothing there.
+  // goal, and the recall costs more than the gifts count aboard, which can push the cost over its
+  // limit. Wrong gifts aboard already count against the cost, so leaving them changes nothing there.
   aboardGoals(list) {
     const [, right, cost] = this.goals();
     const over = right.now > right.need;
-    const left = sum(list.map((x) => this.price(x)));
-    const after = cost.now - left + recallPrice(list);
+    const after = cost.now - countedPrice(list) + recallPrice(list);
     const bring = [
       over && right.now - list.length <= right.need
         ? `${right.name} star saved`
@@ -1725,20 +1706,19 @@ class Workshop {
     };
   }
 
+  // A letter the player has read joins the toy pile as soon as the pile has room, ahead of the
+  // letters being read, and never above its limit.
+  passAnswered() {
+    while (this.answered.length && !this.full("orders"))
+      this.q.orders.push(this.answered.shift());
+  }
+
   resolve(caseId, optionId) {
     const c = this.cases[0];
-    if (this.end || !c || c.id !== caseId || c.resolving) return false;
+    if (this.end || !c || c.id !== caseId) return false;
     const option = this.options(c).find((o) => o.id === optionId);
     if (!option?.available) return false;
     this.did();
-    if (optionId === "ask") {
-      c.resolving = {
-        optionId,
-        remaining: option.seconds,
-        duration: option.seconds,
-      };
-      return true;
-    }
     this.closeCase(c, optionId);
     return true;
   }
@@ -1756,20 +1736,17 @@ class Workshop {
           ? this.aboard.filter((p) => p.wrong).length - this.affected(c).length
           : this.aboard.filter((p) => p.wrong).length;
     if (c.kind === "unclear") {
-      if (optionId === "ask") {
-        // The child's answer comes back: the letter is read right and goes on to be made.
-        x.asked = true;
-        this.used.asked++;
-        this.q.orders.push(x);
-        text = `${x.w.child} wrote back: ${a(x.w.wanted.name)}.`;
-        outcome = { seconds: ASK_SECONDS, parcels: 1 };
-      } else {
-        x.guessed = true;
-        this.used.guessed++;
-        this.q.letters.unshift(x);
-        text = `${x.w.child}'s letter goes on: the reader guesses, ${percent(this.guessRisk())} wrong.`;
-        outcome = { parcels: 1 };
-      }
+      // The player has read the wish: the letter goes on to be made as the reading they picked. The
+      // line does not say whether the pick was right; a check or the sleigh shows that.
+      const reading = this.readings(c)[Number(optionId.slice(5))];
+      const right = reading.name === x.w.wanted.name;
+      this.used.picked++;
+      if (right) this.used.pickedRight++;
+      else this.wentWrong(x, 0, PICKED_WRONG, x.w.wrong);
+      this.answered.push(x);
+      this.passAnswered();
+      text = `${x.w.child}'s letter goes on: ${a(reading.name)}.`;
+      outcome = { parcels: 1 };
     } else
       this.closeIncident(c, optionId, (t, o) => ((text = t), (outcome = o)));
     const kept = Object.fromEntries(
@@ -1838,7 +1815,8 @@ class Workshop {
             : "unchecked";
           if (x.recalled === "unchecked")
             this.assure.recallCost +=
-              PRICE.recall / n + PRICE.recallEach * (x.w.big ? 2 : 1);
+              ((recallPrice(list) - n * PRICE.remake) * this.price(x)) /
+              countedPrice(list);
           this.toRework(x, recallSeconds(n), job);
         });
         this.pay("fixing", recallPrice(list) - n * PRICE.remake);
@@ -1850,7 +1828,7 @@ class Workshop {
           { count: n },
         );
         tell(
-          `${does(n, "wrong gift", "comes", "come")} back to be remade for ${money(recallPrice(list))}: checkers busy ${this.span(n * recallSeconds(n))}.`,
+          `${does(n, "wrong gift", "comes", "come")} back to be remade for ${money(recallPrice(list))}, ${money(recallPrice(list) - countedPrice(list))} more than leaving: checkers busy ${this.span(n * recallSeconds(n))}.`,
           {
             seconds: n * recallSeconds(n),
             money: recallPrice(list),
@@ -1861,19 +1839,13 @@ class Workshop {
       }
       default:
         tell(
-          `${does(n, "wrong gift", "stays", "stay")} aboard: ${n === 1 ? "its" : "their"} ${money(sum(list.map((x) => this.price(x))))} stays in your cost.`,
-          { money: sum(list.map((x) => this.price(x))), parcels: n },
+          `${does(n, "wrong gift", "stays", "stay")} aboard: ${n === 1 ? "its" : "their"} ${money(countedPrice(list))} stays in your cost.`,
+          { money: countedPrice(list), parcels: n },
         );
     }
   }
 
   timers(dt) {
-    const c = this.cases[0];
-    if (
-      c?.resolving &&
-      (c.resolving.remaining = countDown(c.resolving.remaining, dt)) === 0
-    )
-      this.closeCase(c, c.resolving.optionId);
     const inc = this.incident;
     if (
       inc?.rollingBack > 0 &&
@@ -2006,11 +1978,13 @@ class Workshop {
     this.slowest = now.slowest;
     if (this.slowest !== null) this.stats.holding[this.slowest] += dt;
     const pace = this.pace();
-    // Said only when a station is holding things up, so the line always names a move to make.
+    // Said only when a station whose elves do the work is holding things up, so the line always
+    // names a move to make: an elf adds nothing at a station on Automate.
     if (
       this.t >= 20 &&
       pace.behind &&
       pace.slowest !== null &&
+      !(pace.slowest < 2 && this.ai[pace.slowest] === 2) &&
       !this.behindNoted
     ) {
       this.behindNoted = true;
@@ -2091,7 +2065,8 @@ class Workshop {
     return change >= 1 ? "growing" : change <= -1 ? "shrinking" : "steady";
   }
 
-  // More hands or more AI at a station: the AI while its elves work by hand, else another elf.
+  // More hands or more AI at a station whose elves do the work: the AI while they work by hand, else
+  // another elf. Never asked of a station on Automate, where the machine sets the pace.
   helpAt(s) {
     return s < 2 && this.ai[s] === 0 && this.staff(s).length >= 3
       ? { station: s, control: `ai${s}`, text: "try the AI" }
@@ -2112,21 +2087,30 @@ class Workshop {
         ? { station: 2, control: "checking", text: "check fewer" }
         : this.helpAt(2);
     if (this.incident?.rollingBack) return null;
-    for (const s of [1, 0])
-      if (
-        this.full(STATION_QUEUES[s][0]) ||
-        (this.ai[s] < 2 && !this.staff(s).length && waiting(s))
-      )
-        return this.helpAt(s);
+    for (const s of [1, 0]) {
+      const full = this.full(STATION_QUEUES[s][0]);
+      // On Automate the machine works alone at its own speed: another elf adds nothing, and its
+      // full pile is what holds the station before it, so there is no control to name.
+      if (this.ai[s] === 2) {
+        if (full) return null;
+        continue;
+      }
+      if (full || (!this.staff(s).length && waiting(s))) return this.helpAt(s);
+    }
     return null;
   }
 
-  // More hands or AI for the station whose pile is growing fastest towards full, or null.
+  // More hands or AI for the station whose pile is growing fastest towards full, or null. A pile
+  // at a station on Automate, or one held up by a full pile further along, is left out: another elf
+  // would not shrink it.
   growingPile() {
+    const helped = (s) =>
+      !(s < 2 && this.ai[s] === 2) && !this.stationBlocked(s);
     const piles = ["letters", "orders", "check"].filter(
       (id) =>
         this.trend(id) === "growing" &&
-        this.q[id].length >= QUEUES[id].limit * 0.3,
+        this.q[id].length >= QUEUES[id].limit * 0.3 &&
+        helped(QUEUES[id].station),
     );
     piles.sort(
       (x, y) =>
@@ -2142,7 +2126,6 @@ class Workshop {
     const need = this.unblock() ?? this.growingPile();
     if (need?.control !== "elves") return null;
     const s = need.station;
-    if (s < 2 && this.ai[s] === 2) return null;
     return this.t - (this.claimed[s] ?? -99) < NEED_CLAIM ? null : s;
   }
 
@@ -2252,7 +2235,10 @@ class Workshop {
     const rates = this.rates();
     const slowest = this.holdingUp();
     const letters = this.lettersBetween(this.t, CLOSE);
-    const supply = sum(Object.values(this.q).map((q) => q.length)) + letters;
+    const supply =
+      sum(Object.values(this.q).map((q) => q.length)) +
+      this.answered.length +
+      letters;
     const right = this.rightSoFar();
     const rightShare =
       this.aboard.length >= 10 ? right / this.aboard.length : 0.95;
@@ -2323,10 +2309,7 @@ class Workshop {
     };
     const checking = [
       ["A few", "elves check a few at random"],
-      [
-        "The risky ones",
-        "elves check big, guessed and unsure gifts, where the AI slips most",
-      ],
+      ["The risky ones", "elves check big gifts and the ones the AI flagged"],
       ["All", "elves check every gift"],
     ].map(([name, sends], level) => ({
       name,
@@ -2492,7 +2475,7 @@ class Workshop {
     const st = this.stats;
     const u = this.used;
     const inc = this.incident;
-    const letters = u.asked + u.guessed + this.undecided;
+    const letters = u.picked + this.undecided;
     const p = (id, name, actions, note = null) => ({
       id,
       name,
@@ -2527,10 +2510,10 @@ class Workshop {
       ),
       p("escalate", "Ask a person when unsure", [
         act(
-          "asked",
-          "Asked the child about an unclear wish",
-          u.asked > 0,
-          `asked ${u.asked} of ${letters}`,
+          "decided",
+          "Read the unclear wishes yourself",
+          u.picked > 0,
+          `decided ${u.picked} of ${letters}, ${u.pickedRight} right${this.undecided ? `; ${this.undecided} left unanswered` : ""}`,
         ),
       ]),
       p("test-release", "Test before release, keep a way back", [
@@ -2658,8 +2641,10 @@ class Workshop {
   // can happen to come out clean. Estimated amounts (what checks prevented) read "about".
   assurance(biggest = null, stars = 0) {
     const a = this.assure;
-    const letters = this.used.asked + this.used.guessed + this.undecided;
-    const guessedWrong = this.aboard.filter((x) => x.wrong && x.guessed);
+    const letters = this.used.picked + this.undecided;
+    const pickedWrong = this.aboard.filter(
+      (x) => x.wrong && x.cause === PICKED_WRONG,
+    );
     const groups = GROUPS.map((g) => {
       const t = a.groups[g.id];
       const unchecked = t.parcels - t.checked;
@@ -2677,7 +2662,7 @@ class Workshop {
         : "no wrong gifts";
       const text =
         g.id === "unclear"
-          ? `${this.used.asked} of ${letters} asked; ${guessedWrong.length ? `${plural(guessedWrong.length, "wrong one")} cost ${money(sum(guessedWrong.map((x) => this.price(x))))}` : "no wrong ones"}.`
+          ? `${this.used.picked} of ${letters} decided; ${pickedWrong.length ? `${plural(pickedWrong.length, "wrong one")} cost ${money(sum(pickedWrong.map((x) => this.price(x))))}` : "no wrong ones"}.`
           : {
               paid: t.checked
                 ? `Checking ${count(t.checked)} cost ${money(t.checkCost)} and stopped ${stopped}.`
@@ -2846,7 +2831,7 @@ class Workshop {
     if (x.slipped || x.exit === "skipped") return "waved";
     if (x.cause === "a tired elf") return "tired";
     if (x.cause === "an elf's slip") return "slip";
-    if (x.guessed) return "guessed";
+    if (x.cause === PICKED_WRONG) return "picked";
     if (x.w.big) return "big";
     return x.cause === "the AI made the wrong toy" ? "misMade" : "misread";
   }
@@ -3112,7 +3097,7 @@ class Workshop {
           )
         : L(
             "Letters piled up",
-            `${this.lost} letters lost in full piles; ${where} held things up longest. Move free elves there.`,
+            `${this.lost} letters lost in full piles; ${where} held things up longest.${longest < 2 && this.ai[longest] === 2 ? "" : " Move free elves there."}`,
           );
     }
     // Wrong gifts that went aboard while the decision that would have stopped them waited.
@@ -3136,13 +3121,11 @@ class Workshop {
     const top = Object.entries(Object.groupBy(slips, (x) => x.cause)).sort(
       (p, q) => costOf(q[1]) - costOf(p[1]),
     )[0];
-    const guessed = [
-      "Guesses went wrong",
-      "Most of the wrong-gift cost came from unclear wishes the reader guessed. Ask the child when a wish is unclear.",
-    ];
     const byCause = {
-      "the AI guessed an unclear wish": guessed,
-      "an elf guessed an unclear wish": guessed,
+      [PICKED_WRONG]: [
+        "Unclear wishes read wrongly",
+        "Most of the wrong-gift cost came from unclear wishes you read wrongly. The child's line holds the clue.",
+      ],
       "the AI on a big gift": [
         "Big gifts the AI got wrong",
         "Most of the wrong-gift cost came from big gifts the AI got wrong. Check the big ones: they cost the most.",
@@ -3339,6 +3322,7 @@ class Workshop {
       progress:
         head && next === id ? Math.min(1, (this.work[key] ?? 0) / seconds) : 0,
       blocked: head ? this.queueBlocked(id) : null,
+      held: id === "orders" ? this.answered.length : 0,
     };
   }
 
@@ -3359,8 +3343,7 @@ class Workshop {
       })),
       affected: { count: affected.length, ids: affected.map((x) => x.id) },
       options: this.options(c),
-      resolving: c.resolving && { ...c.resolving },
-      // An unclear letter: what a wrong guess costs once aboard, in pounds, and the two things the
+      // An unclear letter: what a wrong pick costs once aboard, in pounds, and the two things the
       // wish could mean, as toy names and drawing keys, in an order that does not tell which is right.
       ...(c.kind === "unclear"
         ? { stake: this.price(c.parcels[0]), readings: this.readings(c) }
@@ -3381,7 +3364,7 @@ class Workshop {
 
   // The first decision still waiting for an answer, by id and name, or null.
   openCaseView() {
-    const c = this.cases.find((c) => !c.resolving);
+    const c = this.cases[0];
     return c ? { id: c.id, title: CASE_TITLES[c.step ?? c.kind] } : null;
   }
 

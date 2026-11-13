@@ -10,7 +10,7 @@ const QUEUES = {
   letters: { name: "Letters", station: 0, limit: 24 },
   orders: { name: "Toy orders", station: 1, limit: 20 },
   check: { name: "To check", station: 2, limit: 10 },
-  pass: { name: "Straight through", station: 2, limit: 12 },
+  pass: { name: "Waiting to load", station: 2, limit: 12 },
   rework: { name: "To remake", station: 2, limit: 30 },
 };
 // What the player calls each pile, for the line that says a full pile has cleared.
@@ -18,7 +18,7 @@ const PILE_NAMES = {
   letters: "Letter pile",
   orders: "Toy pile",
   check: "Checking pile",
-  pass: "Straight-through pile",
+  pass: "Waiting-to-load pile",
   rework: "Remake pile",
 };
 const STATION_QUEUES = [["letters"], ["orders"], ["check", "pass", "rework"]];
@@ -803,7 +803,7 @@ class Workshop {
         if (this.incident?.rollingBack) return "rolling back the update";
         if (nobody) return "nobody making toys";
         if (this.full("check")) return "the checking pile is full";
-        return this.full("pass") ? "the straight-through pile is full" : null;
+        return this.full("pass") ? "the waiting-to-load pile is full" : null;
       default:
         return nobody ? "no checkers here" : null;
     }
@@ -815,7 +815,7 @@ class Workshop {
       return this.full("check")
         ? "the checking pile is full"
         : this.full("pass")
-          ? "the straight-through pile is full"
+          ? "the waiting-to-load pile is full"
           : null;
     return null;
   }
@@ -1843,7 +1843,7 @@ class Workshop {
         10,
         "blocked0",
         "blocked",
-        "Reading stopped: toy pile full.",
+        "Reading stopped: the toy pile is full. Move an elf to Toy making.",
         { station: 0 },
       );
     if (this.stationBlocked(1))
@@ -1851,7 +1851,7 @@ class Workshop {
         10,
         "blocked1",
         "blocked",
-        `Toy making stopped: ${this.full("check") ? "checking" : "straight-through"} pile full.`,
+        `Toy making stopped: the ${this.full("check") ? "checking" : "waiting-to-load"} pile is full. Move an elf to Checking.`,
         { station: 1 },
       );
     const count = this.unreportedLost;

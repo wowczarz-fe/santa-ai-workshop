@@ -109,7 +109,7 @@ An elf is `{ name, station, tired, energy, mood, resting, doing }`, for example
 - `resting`: `true` while a burnt-out elf is on its long break, which cannot be cut short. It comes
   back to its station by itself after 15 seconds.
 - `doing`: a short phrase: `"reading letters"`, `"confirming the AI's readings"`, `"making toys"`,
-  `"confirming the AI's toys"`, `"checking gifts"`, `"loading"` (checkers loading straight-through
+  `"confirming the AI's toys"`, `"checking gifts"`, `"loading"` (checkers loading waiting
   gifts onto the sleigh), `"remaking"` (checkers remaking a caught or recalled gift),
   `"nothing to do"`, `"having cocoa"` or `"burnt out"`. Elves at a station on Automate have nothing
   to do there.
@@ -142,7 +142,9 @@ A queue is `{ id, name, parcels, limit, rate, inflow, trend, progress, blocked }
 staffing, `inflow` parcels a minute arriving, `trend` `"growing"`, `"steady"` or `"shrinking"`
 over the last ten seconds, `progress` 0 to 1 towards the next parcel (unrounded), `blocked` `null`
 or a short reason such as `"nobody reading"`. Limits: letters 24, orders 20, check 10, pass 12,
-rework 30.
+rework 30. Names: `"Letters"`, `"Toy orders"`, `"To check"`, `"Waiting to load"` (the gifts that
+need no check, which the checkers load onto the sleigh) and `"To remake"`; every line about the
+`pass` pile calls it the waiting-to-load pile.
 
 ### Parcels
 
@@ -224,7 +226,7 @@ costs time only.
 `{ station: 3, control: "cocoa", text: "rest Holly" }`. `station` is 0 to 3, `control` one of
 `"cocoa"`, `"elves"`, `"ai0"`, `"ai1"` or `"checking"`, and `text` four words at most.
 When the line has stopped or a pile is full, `focus` names what would free it, ahead of anything
-else: the checkers when the checking or straight-through pile is full (`{ station: 2, control:
+else: the checkers when the checking or waiting-to-load pile is full (`{ station: 2, control:
 "elves", text: "needs another elf" }`, or `control: "checking", text: "check fewer"` while every
 gift is checked by three elves or more), else the toy makers or readers when their pile is full
 or nobody works there (`"elves"`, or `"ai0"`/`"ai1"` with `"try the AI"` while three elves work

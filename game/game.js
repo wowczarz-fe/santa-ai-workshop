@@ -303,13 +303,13 @@
   );
   // The mistakes and cost goals, one star each; on a desktop the full-sleigh goal is on the sleigh
   // itself, and a phone or tablet shows it here too, as the sleigh is a tab away. The cost goal is
-  // the game's one money figure, the cost so far against its limit. Each has a short word for
+  // the game's remaining budget. Each has a short word for
   // narrow screens.
   const goalSlots = {};
   for (const [id, art, short] of [
     ["full", "gift", "Gifts"],
     ["right", "wrong-gift", "Mistakes"],
-    ["cost", "budget", "Cost"],
+    ["cost", "budget", "Budget"],
   ]) {
     const slot = make("button", "hud-slot");
     slot.dataset.goal = id;
@@ -353,15 +353,18 @@
       const cost = goal.id === "cost";
       const figure = (n) => (cost ? money(n) : String(n));
       const now = cost
-          ? (view.cost?.spent ?? goal.now)
+          ? (view.cost?.left ?? Math.max(0, view.cost.limit - view.cost.spent))
           : goal.id === "full"
             ? (view.run.aboard ?? goal.now)
             : goal.now,
         need = cost ? (view.cost?.limit ?? goal.need) : goal.need;
-      const name = cost ? "Cost so far" : goal.name;
+      const name = cost ? "Budget left" : goal.name;
+      slot.classList.toggle("budget-low", cost && !!view.cost.low);
       slot.querySelector(".hud-name > span").textContent = name;
       slot.querySelector(".hud-figures b").textContent = figure(now);
-      slot.querySelector(".hud-need").textContent = ` / ${figure(need)}`;
+      slot.querySelector(".hud-need").textContent = cost
+        ? ""
+        : ` / ${figure(need)}`;
       slot.querySelector(".hud-unit").textContent =
         goal.id === "right" ? " wrong" : "";
       // met: lit star; waiting: inside the limit but the sleigh is not full enough yet;
@@ -1217,6 +1220,7 @@
     for (const option of choice.options) {
       const card = make("button", "upgrade-card");
       card.dataset.choose = option.id;
+      card.disabled = option.available === false;
       card.dataset.kind = option.id;
       const fact = (label) => option.facts.find((f) => f.label === label);
       const gives = fact("Gives");
@@ -1254,6 +1258,8 @@
         chip.append(iconNode("budget", ""), costs.value);
         chips.append(chip);
       }
+      if (option.available === false && option.why)
+        chips.append(make("span", "chip-why", option.why));
       card.append(chips);
       const wrap = make("div", "upgrade-wrap");
       wrap.append(card);
@@ -1306,6 +1312,8 @@
   }
   function handleNews(news) {
     if (!started) return;
+    if (news.kind === "budgetLow")
+      actionNotice = { text: news.text, until: performance.now() + 6000 };
     if (news.kind === "loaded" && news.control) showMistakeHint(news);
     if (news.kind === "loaded" && news.caseId != null)
       openedCases.delete(news.caseId);
@@ -1585,7 +1593,7 @@
     {
       title: "AI switch",
       text: () =>
-        "By hand, Assist, Automate: more AI is faster, but makes more mistakes.",
+        "AI is fast and never tires. It matches a fresh elf on everyday gifts. Big gifts need a person.",
       target: () => actionGroups.get("ai0"),
     },
     {
@@ -1936,10 +1944,10 @@
           [`${cap(goal.text)} aboard when the sleigh leaves.`],
         ];
       return [
-        cost ? "Cost so far" : goal.name,
+        cost ? "Budget left" : goal.name,
         [
           cost
-            ? "AI, checks, fixes, any change you buy and wrong gifts aboard all add to it."
+            ? "AI, checks, fixes, upgrades and wrong gifts use the budget. The sleigh leaves when it runs out."
             : "",
           `${cap(goal.text)}.`,
         ].filter(Boolean),
@@ -1947,7 +1955,7 @@
     }
     if (type === "ai") {
       const l = view.levers[`ai${parts[1]}`][Number(parts[2])];
-      return [l.name, [`${cap(l.who)}, ${l.speed}.`, `Watch for: ${l.risk}.`]];
+      return [l.name, [`${cap(l.risk)}.`, `${cap(l.who)}, ${l.speed}.`]];
     }
     if (type === "checking") {
       const l = view.levers.checking[Number(parts[1])];
@@ -2790,6 +2798,39 @@
         : "",
     );
     text("resultTitle", e.headline);
+    text(
+      "endReason",
+      e.reason === "budget"
+        ? `Budget ran out with ${clockText(e.leftAt)} left.`
+        : "",
+    );
+    $("endReason").hidden = e.reason !== "budget";
+    $("reliability").hidden = !e.reliability;
+    $("reliabilityRows").replaceChildren();
+    if (e.reliability) {
+      for (const [id, label] of [
+        ["everyday", "Everyday gifts"],
+        ["big", "Big gifts"],
+      ]) {
+        const row = make("tr", "");
+        const heading = make("th", "", label);
+        heading.scope = "row";
+        row.append(heading);
+        for (const maker of ["ai", "elves"]) {
+          const count = e.reliability[id][maker];
+          row.append(
+            make(
+              "td",
+              "",
+              count.made
+                ? `${count.wrong} wrong of ${count.made}`
+                : "None made",
+            ),
+          );
+        }
+        $("reliabilityRows").append(row);
+      }
+    }
     // One lesson line under the headline; its title names it for screen readers and on hover.
     text("lessonText", e.lesson.text || e.lesson.title);
     $("lessonText").title = e.lesson.title;

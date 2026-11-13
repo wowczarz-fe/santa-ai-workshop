@@ -15,9 +15,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font:
-    14px/1.35 Arial,
-    sans-serif;
+  font: 14px/1.35 var(--font-body);
 }
 button,
 input {
@@ -73,14 +71,8 @@ header {
   line-height: 0;
   flex-shrink: 0;
 }
-.wordmark svg {
-  width: 100%;
-}
 h1 {
-  font:
-    500 23px "Arial Narrow",
-    Arial,
-    sans-serif;
+  font: 400 23px var(--font-heading);
   margin: 0;
   flex: 1;
 }
@@ -271,9 +263,7 @@ main {
   border-radius: 50%;
   background: #a82420;
   color: #fff;
-  font:
-    bold 15px/22px Arial,
-    sans-serif;
+  font: bold 15px/22px var(--font-body);
   text-align: center;
 }
 @keyframes belt {
@@ -524,9 +514,7 @@ main {
   border-radius: 8px;
   background: #8a5a1c;
   color: #fff;
-  font:
-    700 10px/15px Arial,
-    sans-serif;
+  font: 700 10px/15px var(--font-body);
 }
 .tab-cocoa .ui-icon {
   width: 11px;
@@ -958,9 +946,7 @@ main {
   border-radius: 3px;
   background: #8a6416;
   color: #fff;
-  font:
-    bold 8px/10px Arial,
-    sans-serif;
+  font: bold 8px/10px var(--font-body);
   letter-spacing: 0.3px;
   text-transform: uppercase;
 }
@@ -1003,9 +989,7 @@ body[data-look] .queue-mini .queue-name {
   white-space: normal;
 }
 body[data-look] .queue-mini .queue-count {
-  font:
-    700 13px/16px Arial,
-    sans-serif;
+  font: 700 13px/16px var(--font-body);
 }
 body[data-look] #piles2 .queue.queue-mini.near-full {
   border-color: #a56a16;
@@ -1033,9 +1017,7 @@ body[data-look] .queue-mini .queue-count {
   border-radius: 4px;
   background: #8a6416;
   color: #fff;
-  font:
-    bold 9px/14px Arial,
-    sans-serif;
+  font: bold 9px/14px var(--font-body);
   letter-spacing: 0.4px;
   text-transform: uppercase;
 }
@@ -1094,9 +1076,7 @@ body[data-look] #vigilance {
   min-height: 22px;
   padding: 0;
   border-radius: 50%;
-  font:
-    bold 12px/1 Georgia,
-    serif;
+  font: 400 12px/1 var(--font-heading);
   vertical-align: middle;
 }
 .more-toggle[aria-expanded="true"] {
@@ -1416,9 +1396,7 @@ progress {
   text-align: center;
 }
 .sleigh-total strong {
-  font:
-    42px/1 Georgia,
-    serif;
+  font: 42px/1 var(--font-heading);
   color: var(--teal);
 }
 .sleigh-total span {
@@ -1725,9 +1703,7 @@ dialog::backdrop {
   background: #183a30a0;
 }
 dialog h2 {
-  font:
-    27px Georgia,
-    serif;
+  font: 27px var(--font-heading);
   margin: 10px 0;
 }
 dialog p {
@@ -2413,8 +2389,8 @@ dialog p {
   --bc-frost: #edf4f0;
   --bc-off: #d3dad1;
   --bc-press: #c9d6cd;
-  --bc-serif: Georgia, serif;
-  --bc-sans: Arial, sans-serif;
+  --bc-serif: var(--font-heading);
+  --bc-sans: var(--font-body);
   --bc-zone-little: #efb9ae;
   --bc-zone-right: #a9d6b3;
   --bc-zone-much: #b6cfdf;
@@ -2427,7 +2403,7 @@ dialog p {
   --bc-scene-moon: #fbf0d3;
   --bc-snow: #fff;
   --bc-sleigh: var(--bc-scene-moon);
-  --bc-title-font: var(--bc-sans);
+  --bc-title-font: var(--font-heading);
   color: var(--bc-ink);
   font-family: var(--bc-sans);
 }
@@ -2541,7 +2517,7 @@ dialog p {
 #breakTitle {
   margin: 1px 0 0;
   font:
-    600 28px/1.1 var(--bc-serif),
+    400 28px/1.1 var(--bc-serif),
     serif;
   color: inherit;
 }
@@ -2655,7 +2631,7 @@ dialog p {
 .goal-figure {
   grid-area: figure;
   font:
-    600 22px/1.15 var(--bc-serif),
+    400 22px/1.15 var(--bc-serif),
     serif;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -3012,7 +2988,7 @@ dialog p {
   display: block;
   flex: none;
   font:
-    600 76px/0.9 var(--bc-serif),
+    400 76px/0.9 var(--bc-serif),
     serif;
   white-space: nowrap;
   font-variant-numeric: lining-nums;
@@ -3035,7 +3011,7 @@ dialog p {
 #resultTitle {
   margin: 0 0 6px;
   font:
-    700 22px/1.2 var(--bc-title-font),
+    400 22px/1.2 var(--bc-title-font),
     sans-serif;
   color: inherit;
 }
@@ -3077,7 +3053,7 @@ dialog p {
 #report #assuranceVerdict {
   margin: 2px 0 0;
   font:
-    700 26px/1.1 var(--bc-serif),
+    400 26px/1.1 var(--bc-serif),
     serif;
 }
 #assurance[data-verdict="too little"] #assuranceVerdict {
@@ -3208,7 +3184,7 @@ dialog p {
 }
 .assurance-costs strong {
   font:
-    600 24px/1.1 var(--bc-serif),
+    400 24px/1.1 var(--bc-serif),
     serif;
   font-variant-numeric: tabular-nums;
 }
@@ -3272,7 +3248,7 @@ dialog p {
 .account-item dd {
   margin: 0;
   font:
-    600 19px/1.15 var(--bc-serif),
+    400 19px/1.15 var(--bc-serif),
     serif;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -3475,7 +3451,7 @@ dialog p {
   place-items: center;
   height: 61px;
   font:
-    600 36px var(--bc-serif),
+    400 36px var(--bc-serif),
     serif;
   color: var(--bc-muted);
 }
@@ -3804,9 +3780,7 @@ dialog p {
   margin-inline: auto;
   padding: 1px 6px;
   border-radius: 8px;
-  font:
-    700 10px/13px Arial,
-    sans-serif;
+  font: 700 10px/13px var(--font-body);
   text-align: center;
   pointer-events: none;
 }
@@ -3841,9 +3815,7 @@ dialog p {
   display: inline-block;
   width: 38px;
   margin-left: 3px;
-  font:
-    700 10px/11px Arial,
-    sans-serif;
+  font: 700 10px/11px var(--font-body);
   vertical-align: middle;
   white-space: normal;
   text-align: center;
@@ -3878,4 +3850,178 @@ body[data-look] .header-actions #helpMove {
     font-size: 12px;
     line-height: 1.2;
   }
+}
+
+.reliability-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.reliability-table th,
+.reliability-table td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--bc-line);
+}
+.reliability-table thead {
+  color: var(--bc-muted);
+}
+body[data-look] #goals .hud-slot.budget-low {
+  background: #fff0cf;
+  color: #9b2432;
+  border: 2px solid #b32b3c;
+}
+body[data-look] #goals .hud-slot.budget-low .hud-name::after {
+  content: "Low";
+  font-weight: bold;
+}
+.end-reason {
+  font-weight: bold;
+}
+@media (min-width: 1000px) {
+  body[data-look] main .dashboard {
+    align-items: center;
+  }
+  body[data-look] main .dashboard .hud-slot {
+    min-height: 76px;
+  }
+  body[data-look] main .dashboard .hud-name {
+    font-size: 13px;
+  }
+  body[data-look] main .dashboard .hud-figures b {
+    font-size: 30px;
+  }
+  body[data-look] main .dashboard .clock-box {
+    min-height: 76px;
+  }
+  body[data-look] main .dashboard #clock {
+    font-size: 34px;
+  }
+  body[data-look] main .status-row {
+    height: 25px;
+    min-height: 25px;
+  }
+}
+@media (max-width: 600px) {
+  .reliability-table {
+    font-size: 12px;
+  }
+  .reliability-table th,
+  .reliability-table td {
+    padding: 8px 4px;
+  }
+}
+
+body[data-look] #goals .hud-slot.budget-low .hud-name,
+body[data-look] #goals .hud-slot.budget-low .hud-figures,
+body[data-look] #goals .hud-slot.budget-low .hud-figures b {
+  color: #8e2330;
+  opacity: 1;
+}
+@media (min-width: 1000px) {
+  body[data-look] main .dashboard .hud-slot,
+  body[data-look] main .dashboard .clock-box {
+    height: 76px;
+    grid-template-rows: 17px 34px 0;
+    align-content: start;
+    padding-top: 9px;
+    padding-bottom: 8px;
+  }
+  body[data-look] main .dashboard .hud-figures b {
+    font-size: 30px;
+    line-height: 34px;
+    font-weight: bold;
+  }
+  body[data-look] main .dashboard #clockLabel {
+    font-size: 13px;
+    line-height: 17px;
+  }
+  body[data-look] main .dashboard #clock {
+    top: 0;
+    line-height: 34px;
+  }
+}
+
+@media (max-width: 600px) {
+  body[data-look] #goals [data-goal="cost"] .hud-name .ui-icon {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  body[data-look] #goals [data-goal="cost"] .hud-name > span[data-short] {
+    display: none;
+  }
+  body[data-look] #goals [data-goal="cost"] .hud-name::before {
+    content: "Budget";
+  }
+}
+
+body[data-look] > header .wordmark {
+  width: auto;
+  height: 38px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+body[data-look] > header .wordmark img {
+  display: block;
+  width: auto;
+  height: 38px;
+}
+@media (max-width: 600px) {
+  body[data-look] > header .wordmark,
+  body[data-look] > header .wordmark img {
+    height: 24px;
+  }
+}
+
+body[data-look] :is(h1, h2, h3, h4):not(.body-copy),
+body[data-look]
+  :is(
+    #clock,
+    .hud-figures b,
+    .sleigh-count strong,
+    .end-score,
+    .upgrade-card > strong,
+    .case-title
+  ) {
+  font-family: var(--font-heading);
+}
+body[data-look]
+  :is(
+    #clock,
+    .hud-figures,
+    .queue-amount,
+    .sleigh-count,
+    .chip-money,
+    .account-row
+  ) {
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-look] button,
+body[data-look] #report #replay,
+body[data-look] .chip {
+  font-family: var(--font-body);
+}
+body[data-look] .upgrade-card > strong {
+  font-family: var(--font-heading);
+}
+
+body[data-look] :is(h1, h2, h3, h4),
+body[data-look]
+  :is(
+    #clock,
+    .hud-figures b,
+    .queue-count,
+    .sleigh-count strong,
+    .upgrade-card > strong,
+    .case-title,
+    .goal-figure,
+    .assurance-costs strong,
+    .account-item dd
+  ) {
+  font-weight: 400 !important;
+  font-synthesis: none;
 }

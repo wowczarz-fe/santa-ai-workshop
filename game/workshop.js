@@ -86,17 +86,18 @@ const SIGN_IF_GOOD = 0.3;
 const TEST_TOYS = 4;
 const ABOARD_AT = 5; // wrong gifts aboard that raise the one recall decision
 const DRIFT_QUIET = 20; // seconds at the start with no line about elves trusting the AI
+const DRIFT_GAP = 20; // seconds at least between two lines about elves trusting the AI
 const COCOA_LEAST = 3; // seconds a cocoa break lasts at least, however rested the elf
 const NEED_CLAIM = 5; // seconds a need answered by one rested elf is left to it
 const WRONG_LINE_GAP = 20; // seconds before a wrong-gift line repeats the same advice
 
 // One sleigh, filled over two halves with a pause between them. The target sits where a first-time
 // player on the good strategy (reading on Automate, toys on Assist, the risky ones checked) fills it
-// in about four games in ten; checking everything is held back by its cost, not by this target.
+// in about one game in three; checking everything is held back by its cost, not by this target.
 const HALF_SECONDS = 75;
 const DURATION = 2 * HALF_SECONDS;
 const CLOSE = DURATION - 15; // letters stop coming, so the last ones can still reach the sleigh
-const TARGET = 108;
+const TARGET = 110;
 // Three goals for the game, one star each (ADR 0014). full: the right gifts aboard reach the
 // target. right: at most WRONG_ALLOWED wrong gifts aboard. cost: the cost so far, wrong gifts
 // aboard at what they will cost included, stays within COST_LIMIT. The right and cost goals count
@@ -473,7 +474,8 @@ class Workshop {
     // Checks skipped by relaxed checkers, and whether training at half-time keeps every elf sharp for
     // good. How far each elf trusts the AI is its own (`trust`).
     this.vig = { skipped: 0, trained: false };
-    this.driftSaid = { relaxed: false, relaxedConfirm: false };
+    this.swapNow = null; // the drift prompt: the elf to send for cocoa, and its station
+    this.driftSaid = null; // the prompt the last drift line named
     this.machineSpeed = 1;
     this.update = this.planUpdate();
     // One unclear letter in each half: two different children, each at a time drawn in its half.
@@ -545,6 +547,8 @@ class Workshop {
       heldBy: { all: 0, some: 0 },
       lostAtCheck: 0,
       recallCost: 0,
+      // What the checks waved through by trusting checkers cost, by kind of gift: paid, not done.
+      wavedCost: Object.fromEntries(GROUPS.map((g) => [g.id, 0])),
       trainCost: 0,
     };
     // What the player has done, for the practices on the end screen.
@@ -1097,6 +1101,7 @@ class Workshop {
     const v = this.vigilance();
     if (x.byAi && x.roll.skip < v.skip) {
       this.vig.skipped++;
+      this.assure.wavedCost[groupOf(x.w)] += PRICE.check;
       x.exit = "skipped";
       if (x.wrong) {
         this.stats.waved++;
@@ -1110,6 +1115,7 @@ class Workshop {
     x.exit = "checked";
     if (x.wrong && x.roll.catch >= this.checkCatch(x)) {
       x.slipped = true;
+      x.slippedTired = this.slipAt(2) > 0;
       return this.load(x);
     }
     this.reveal(x);
@@ -1172,34 +1178,54 @@ class Workshop {
     return this.staff(s).sort((x, y) => y.trust - x.trust)[0] ?? null;
   }
 
-  // The drifting station to fix now and the elf there who trusts the AI most, or null: the checkers
-  // first, then the Assist station that trusts the AI most. Null in the first DRIFT_QUIET seconds,
-  // when nobody there drifts, and once that station is empty.
-  drift() {
-    if (this.t < DRIFT_QUIET) return null;
-    const stations = [2, ...[0, 1].filter((s) => this.ai[s] === 1)];
-    const s = stations.find(
-      (s) => this.vigilance(this.trustAt(s)).state !== "careful",
+  // Whether a drift prompt still holds: its elf is at that station and the station still drifts.
+  driftHolds(d) {
+    return Boolean(
+      d &&
+      this.elves[d.elf].station === d.station &&
+      (d.station === 2 || this.ai[d.station] === 1) &&
+      this.vigilance(this.trustAt(d.station)).state !== "careful",
     );
-    const e = s === undefined ? null : this.mostTrusting(s);
-    return e && { elf: this.elves.indexOf(e), station: s, name: e.name };
   }
 
-  // Says once each time a station starts trusting the AI, naming the elf to send for cocoa.
+  // The one drift prompt now, as the page shows it: the elf named stays named while it holds;
+  // otherwise null. Null in the first DRIFT_QUIET seconds.
+  drift() {
+    return this.t >= DRIFT_QUIET && this.driftHolds(this.swapNow)
+      ? { ...this.swapNow }
+      : null;
+  }
+
+  // Keeps the drift prompt: the elf named stays while it holds, else the checkers first, then the
+  // Assist station that trusts the AI most, and the elf there who trusts the AI most. A line names
+  // that same elf when the prompt first names it, at most one line every DRIFT_GAP seconds.
   noteDrift() {
-    const d = this.drift();
-    const key = d ? (d.station === 2 ? "relaxed" : "relaxedConfirm") : null;
-    for (const k of ["relaxed", "relaxedConfirm"])
-      if (k !== key) this.driftSaid[k] = false;
-    if (!d || this.driftSaid[key]) return;
-    this.driftSaid[key] = true;
+    if (this.t < DRIFT_QUIET) return;
+    if (!this.driftHolds(this.swapNow)) {
+      const stations = [2, ...[0, 1].filter((s) => this.ai[s] === 1)];
+      const s = stations.find(
+        (s) => this.vigilance(this.trustAt(s)).state !== "careful",
+      );
+      const e = s === undefined ? null : this.mostTrusting(s);
+      this.swapNow = e && {
+        elf: this.elves.indexOf(e),
+        station: s,
+        name: e.name,
+      };
+    }
+    const d = this.swapNow;
+    const id = d && `${d.elf}@${d.station}`;
+    if (!d) this.driftSaid = null;
+    if (!d || id === this.driftSaid) return;
+    if (this.t - (this.newsAt.relaxed ?? -99) < DRIFT_GAP) return;
+    this.driftSaid = id;
     const what =
       d.station === 2
         ? "trusting the AI and skipping checks"
         : "trusting the AI's drafts and missing mistakes";
     this.sayEvery(
-      20,
-      key,
+      DRIFT_GAP,
+      "relaxed",
       "relaxed",
       `${d.name} is ${what}. Send ${d.name} for cocoa or swap in another elf.`,
       { elf: d.elf, station: d.station },
@@ -2079,20 +2105,35 @@ class Workshop {
     return this.t - (this.claimed[s] ?? -99) < NEED_CLAIM ? null : s;
   }
 
-  // A fully rested elf leaves cocoa for the station that needs an elf, else the one it came from,
-  // and says where it went.
+  // A fully rested elf goes back to the station it came from, unless that station clearly does not
+  // need it and another one does; it says where it went.
   backFromCocoa(i) {
     const e = this.elves[i];
     const need = this.elfNeed();
-    e.station = need ?? e.home;
-    if (need !== null) this.claimed[need] = this.t;
+    const away = need !== null && need !== e.home && this.homeSpares(e.home);
+    e.station = away ? need : e.home;
+    if (away) this.claimed[need] = this.t;
     const where = STATION_NAMES[e.station];
     this.say(
       "rested",
-      need === null || need === e.home
-        ? `${e.name} is rested and back at ${where}.`
-        : `${e.name} is rested and goes to ${where}, which needs an elf.`,
+      away
+        ? `${e.name} is rested and goes to ${where}, which needs an elf.`
+        : `${e.name} is rested and back at ${where}.`,
       { elf: i, station: e.station },
+    );
+  }
+
+  // Whether station h clearly does not need an elf back: it works on Automate, or it keeps two
+  // elves or more and its piles are under half full; checking never while its pile is growing.
+  homeSpares(h) {
+    if (h < 2 && this.ai[h] === 2) return true;
+    const calm = STATION_QUEUES[h]
+      .filter((id) => id !== "rework")
+      .every((id) => this.q[id].length < QUEUES[id].limit / 2);
+    return (
+      this.staff(h).length >= 2 &&
+      calm &&
+      (h !== 2 || this.trend("check") !== "growing")
     );
   }
 
@@ -2336,7 +2377,7 @@ class Workshop {
       assurance,
       checkingAnswer: this.checkingAnswer(assurance, stars),
       practices: this.practices(assurance),
-      causes: this.causes(wrongGifts),
+      causes: this.causes(wrongGifts, assurance.verdict),
       blunders: [...this.blunders.values()].map((b) => ({ ...b })),
       blunderTotal: BLUNDER_TOTAL,
     };
@@ -2513,6 +2554,22 @@ class Workshop {
         : paid
           ? `Yes, but too few: ${stopped}, and more checks${on(exposed)} would have paid too.`
           : `Too few: ${stopped}; more checks${on(exposed)} would have paid.`;
+    // Wrong gifts that went past trusting or tired checkers: the checks were not done properly.
+    const waved = this.aboard.filter(
+      (x) => x.wrong && x.exit === "skipped",
+    ).length;
+    const missed = this.aboard.filter((x) => x.wrong && x.slippedTired).length;
+    if (wrong > WRONG_ALLOWED && waved + missed > 0) {
+      const how = [
+        waved &&
+          `trusting checkers waved ${plural(waved, "wrong gift")} through`,
+        missed && `tired ones missed ${plural(missed, "wrong gift")}`,
+      ]
+        .filter(Boolean)
+        .join(" and ")
+        .replace(/^tired ones/, "tired checkers");
+      return `Not as run: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts, because ${how}.`;
+    }
     if (a.verdict === "too much")
       return paid
         ? `Mostly: ${stopped}, but the checks${on(wasted) || " on the rest"} cost more than they saved.`
@@ -2599,13 +2656,18 @@ class Workshop {
           ),
         ),
       ) + a.recallCost;
-    const overCost =
-      sum(
-        Object.values(a.groups)
-          .filter((t) => t.checkCost > t.prevented)
-          .map((t) => t.checkCost),
-      ) +
-      a.heldBy.all * LATE_PRICE;
+    // Checks waved through by trusting checkers were paid for but not done: checking not done
+    // properly, not too much of it.
+    const doneCost = (id) => a.groups[id].checkCost - a.wavedCost[id];
+    // Lost to too many checks, in two parts: checks that cost more than they stopped, and gifts held
+    // back while every gift was checked.
+    const overChecks = sum(
+      Object.keys(a.groups)
+        .filter((id) => doneCost(id) > a.groups[id].prevented)
+        .map(doneCost),
+    );
+    const overHeld = a.heldBy.all * LATE_PRICE;
+    const overCost = overChecks + overHeld;
     const lost = underCost + overCost;
     const weight =
       lost /
@@ -2622,6 +2684,9 @@ class Workshop {
     // On a few checks all game the player checked as little as the game allows; on three stars
     // neither too much nor too little checking cost a star.
     if (lowest) to = Math.min(to, ASSURANCE.much);
+    // A game that lost the mistakes star did not check too much, whatever the checks cost.
+    if (this.aboard.filter((x) => x.wrong).length > WRONG_ALLOWED)
+      to = Math.min(to, ASSURANCE.much);
     if (stars === 3)
       to = Math.min(Math.max(to, ASSURANCE.little), ASSURANCE.much);
     const position = Math.round(to * 100) / 100;
@@ -2634,7 +2699,7 @@ class Workshop {
             ? "too much"
             : "about right";
     const under = `about ${money(underCost)} lost to too few checks`;
-    const over = `about ${money(overCost)} on extra checks${a.heldBy.all ? " and the gifts they held back" : ""}`;
+    const over = `about ${money(overCost)} lost to too many checks`;
     const held = a.heldBy.all + a.heldBy.some;
     const tired = verdict === "bottleneck" && this.tiredAt(2);
     const text = {
@@ -2651,6 +2716,8 @@ class Workshop {
       thresholds: { little: ASSURANCE.little, much: ASSURANCE.much },
       underCost: Math.round(underCost),
       overCost: Math.round(overCost),
+      overChecks: Math.round(overChecks),
+      overHeld: Math.round(overHeld),
       wrongMade: total("wrongMade"),
       caught: total("caught"),
       prevented: Math.round(total("prevented")),
@@ -2732,9 +2799,11 @@ class Workshop {
   }
 
   // A cause's advice without the parts the settings already follow, or "" when they follow it all.
-  causeFix(id) {
+  // While the dial reads too much checking it never asks for more checks.
+  causeFix(id, verdict = null) {
     const left = WRONG_CAUSES[id].fix
       .filter(([, done]) => !done(this))
+      .filter(([text]) => verdict !== "too much" || !/^check\b/.test(text))
       .map(([text]) => text)
       .join(", or ");
     return left ? left[0].toUpperCase() + left.slice(1) + "." : "";
@@ -2742,14 +2811,14 @@ class Workshop {
 
   // Up to three causes of the wrong gifts given, dearest first. Wrong gifts brought back off the
   // sleigh are a cause of their own, at what fetching them back cost.
-  causes(list) {
+  causes(list, verdict = null) {
     const cause = (id, wrong, cost) => ({
       id,
       name: WRONG_CAUSES[id].name,
       wrong,
       cost,
       control: WRONG_CAUSES[id].control,
-      fix: this.causeFix(id),
+      fix: this.causeFix(id, verdict),
     });
     const recalled = this.recalled.count
       ? [cause("recalled", this.recalled.count, this.recalled.cost)]

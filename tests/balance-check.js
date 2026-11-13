@@ -8,6 +8,20 @@ const vm = require("vm");
 vm.runInThisContext(
   fs.readFileSync(path.join(__dirname, "../game/workshop.js"), "utf8"),
 );
+// A drift line names the same elf and station as the drift prompt the page shows at that moment.
+{
+  const say = Workshop.prototype.say;
+  Workshop.prototype.say = function (kind, text, extra = {}) {
+    if (kind === "relaxed") {
+      const swap = this.view().vigilance.swap;
+      assert(
+        swap && swap.elf === extra.elf && swap.station === extra.station,
+        `drift line "${text}" while the prompt names ${JSON.stringify(swap)}`,
+      );
+    }
+    return say.call(this, kind, text, extra);
+  };
+}
 // No wrong-gift line blames tiredness when every elf at that station was fresh: the checkers when
 // it says to rest them, the station that made the gift when it says to send tired elves for cocoa.
 {
@@ -823,9 +837,9 @@ console.log(
 // the headline praises care only without too many wrong gifts or too few checks. The headline
 // names the lesson's loss, and a lesson about a loss shows only when that loss cost a goal.
 const ANSWERS = {
-  "too little": /more checks|^Too few: nothing was checked/,
   "too much": /cost more than they saved|fewer checks would have done/,
-  "about right": /^(Yes|Mostly|Nothing)/,
+  "about right": /^(Yes|Mostly|Nothing|Not as run)/,
+  "too little": /more checks|^Too few: nothing was checked/,
   bottleneck: /^Not as run/,
 };
 const HEADLINES = {
@@ -862,11 +876,21 @@ for (const [name, rs] of Object.entries(results))
     const why = `${name}: "${e.headline}" over "${e.lesson.title}" (${e.stars} stars), dial ${a.verdict} (${a.underCost} lost to too few checks, ${a.overCost} on extra checks): ${e.checkingAnswer}`;
     assert(losses[0], `lesson "${e.lesson.title}" names a loss`);
     assert(ANSWERS[a.verdict].test(e.checkingAnswer), why);
+    // Lost to too many checks is its two parts, and the checks part is no more than checking cost.
+    assert(
+      Math.abs(a.overCost - a.overChecks - a.overHeld) <= 1 &&
+        a.overChecks <= e.costs.checking,
+      why,
+    );
     const clear = (x, y) => x >= ASSURANCE.clear * y && x >= ASSURANCE.floor;
     if (a.verdict !== "bottleneck" && e.stars < 3) {
       if (clear(a.underCost, a.overCost))
         assert.strictEqual(a.verdict, "too little", why);
-      if (clear(a.overCost, a.underCost) && !STAYED_ON_A_FEW.includes(name))
+      if (
+        clear(a.overCost, a.underCost) &&
+        !STAYED_ON_A_FEW.includes(name) &&
+        e.wrong <= WRONG_ALLOWED
+      )
         assert.strictEqual(a.verdict, "too much", why);
     }
     if (e.lesson.title === "Checking in the right places")
@@ -880,6 +904,16 @@ for (const [name, rs] of Object.entries(results))
     }
     if (e.wrong > WRONG_ALLOWED || a.verdict === "too little")
       assert(!/careful/i.test(e.headline), why);
+    // Cause advice never asks for more checks while the dial reads too much.
+    if (a.verdict === "too much")
+      for (const c of e.causes)
+        assert(!/(^|or )check\b/i.test(c.fix), `${why}; cause fix: ${c.fix}`);
+    // A game that lost the mistakes star never reads too much checking or advises fewer checks.
+    if (e.wrong > WRONG_ALLOWED)
+      assert(
+        a.verdict !== "too much" && !/fewer checks/.test(e.checkingAnswer),
+        why,
+      );
     const loss = losses.find((l) => HEADLINES[l].includes(e.headline));
     assert(loss, why);
     if (loss === "slow" || loss === "tired") assert(!r.met.full, why);
@@ -1048,6 +1082,29 @@ for (const k of NEWS_KINDS) warn(kinds.has(k), `news kind ${k} is emitted`);
     said.length === 2 &&
       said.every((n) => n.text.startsWith(w.elves[n.elf].name)),
     said.map((n) => n.text).join(" / "),
+  );
+}
+// Rested checkers go back to Checking while its pile is half full, even when Toys needs an elf and
+// two checkers stay without them.
+{
+  const w = new Workshop({ seed: 61 });
+  w.step(10);
+  w.setAi(1, 1);
+  for (const i of [1, 2]) w.move(i, 2);
+  for (const i of [3, 4, 5]) w.move(i, 0);
+  for (const i of [6, 7]) {
+    w.move(i, 3);
+    w.elves[i].tired = 0;
+    w.elves[i].breakAt = w.t - 5;
+  }
+  w.q.orders.push({ ...w.q.letters[0], id: 1000 });
+  while (w.q.check.length < QUEUES.check.limit / 2 + 1)
+    w.q.check.push({ ...w.q.letters[0], id: 1100 + w.q.check.length });
+  w.step(0.1);
+  assert.deepStrictEqual(
+    [w.elves[6].station, w.elves[7].station],
+    [2, 2],
+    "rested checkers go back to a filling checking pile",
   );
 }
 

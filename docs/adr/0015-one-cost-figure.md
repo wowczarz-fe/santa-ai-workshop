@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted, amended by 0020
 ---
 
 # 0015: One cost figure that counts up
@@ -46,3 +46,10 @@ the sleigh. Because wrong gifts count at their price, the cost goal and the mist
 fall together in a bad game; the cost goal alone is decided by what the player buys, which is
 where the half-time purchase and the checking level become a trade. A page that showed money left
 must show cost so far against the limit instead.
+
+## Follow-up: the limit becomes a budget that ends the game
+
+ADR 0020 replaces two parts of this decision at the user's request. The cost so far still is the
+one money figure, but it is shown as budget left counting down from £900, and the game ends the
+moment it is gone. An option the budget cannot cover is unavailable again, so that nothing the
+player chooses ends the game by itself.

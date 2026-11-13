@@ -77,3 +77,39 @@ body[data-look="paper"] #piles2 .queue-mini {
 body[data-look="paper"] #piles2 .queue-mini .queue-name {
   white-space: normal;
 }
+body[data-look="paper"] .board[data-crowd="true"] #queue-check .queue-tag {
+  transform: none;
+}
+body[data-look="paper"] .board[data-crowd="true"] #piles2 .queue-mini {
+  min-height: 56px;
+  height: 56px;
+  grid-template-rows: 20px 30px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+body[data-look="paper"] .board[data-crowd="true"] .flow-small-heap {
+  height: 30px;
+}
+@media (max-width: 999px) {
+  body[data-look="paper"] .board[data-crowd="true"] #piles2 .mini-piles {
+    gap: 4px;
+  }
+  body[data-look="paper"] .board[data-crowd="true"] #piles2 .queue-mini {
+    min-height: 44px;
+    height: 44px;
+    grid-template-rows: 18px 22px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  body[data-look="paper"]
+    .board[data-crowd="true"]
+    #piles2
+    .queue-mini
+    .queue-name {
+    font-size: 9px;
+    line-height: 9px;
+  }
+  body[data-look="paper"] .board[data-crowd="true"] .flow-small-heap {
+    height: 22px;
+  }
+}

@@ -78,11 +78,6 @@
     const saved = Number(localStorage.getItem("workshop-best-stars"));
     if (localStorage.getItem("workshop-best-stars") !== null && saved >= 0)
       bestStars = saved;
-    const collection = JSON.parse(localStorage.getItem("workshop-blunders"));
-    if (Array.isArray(collection))
-      collectedBlunders = collection.filter(
-        (item) => item && item.id !== undefined && item.name,
-      );
   } catch {}
   const make = (tag, cls, content) => {
     const node = document.createElement(tag);
@@ -1323,8 +1318,8 @@
       lastChoice = caseKey;
       text("breakTitle", choice.title);
       $("nextCargoIcon").innerHTML = uiIcon(`cargo-${choice.next.cargo.id}`);
-      text("breakText", choice.next.text);
-      text("nextCargoText", choice.text);
+      text("breakText", "Pick one upgrade, or carry on.");
+      text("nextCargoText", choice.next.text);
       $("breakGoals").replaceChildren(
         ...choice.report.goals.map((g) =>
           goalSlot(g, view.run.goalsCountFrom, false),
@@ -2110,7 +2105,7 @@
       ],
       sleigh: [
         "The sleigh",
-        ["Right gifts count towards the target; wrong ones cost money."],
+        ["Right gifts count towards the target. Wrong ones cost money."],
       ],
       vigilance: [
         "Trusting the AI",
@@ -2790,7 +2785,7 @@
           tile.append(make("p", "practice-note", practice.note));
         tile.setAttribute(
           "aria-label",
-          `${practice.name}: ${practice.actions.map((a) => `${a.label}, ${a.used ? "used" : "not used"}, ${a.figure}`).join("; ")}${practice.note ? `. ${practice.note}` : ""}`,
+          `${practice.name}: ${practice.actions.map((a) => `${a.label}, ${a.used ? "used" : "not used"}, ${a.figure}`).join(". ")}${practice.note ? `. ${practice.note}` : ""}`,
         );
         return tile;
       }),
@@ -2799,14 +2794,17 @@
   const tickSVG =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function paintBlunders(e) {
+    const verified = Array.isArray(e.blunderIds);
+    const items = verified ? collectedBlunders : e.blunders || [];
+    const total = verified ? e.blunderTotal : undefined;
     text(
       "collectionTitle",
-      e.blunderTotal !== undefined
-        ? `Christmas blunders · ${collectedBlunders.length}/${e.blunderTotal} found`
+      total !== undefined
+        ? `Christmas blunders · ${items.length}/${total} found`
         : "Christmas blunders",
     );
     $("blunderCollection").replaceChildren(
-      ...collectedBlunders.map((item) => {
+      ...items.map((item) => {
         const card = make("div", "blunder");
         card.append(
           drawnToy(item.name, false, "blunder-art"),
@@ -2815,10 +2813,7 @@
         return card;
       }),
     );
-    const missing =
-      e.blunderTotal !== undefined
-        ? e.blunderTotal - collectedBlunders.length
-        : 0;
+    const missing = total !== undefined ? total - items.length : 0;
     if (missing > 0) {
       const locked = make("div", "blunder blunder-locked");
       locked.append(
@@ -2875,17 +2870,33 @@
     const hadPreviousGame = bestStars !== null;
     const newBest = hadPreviousGame && e.stars > bestStars;
     bestStars = Math.max(bestStars ?? 0, e.stars);
-    const collection = new Map(
-      collectedBlunders.map((item) => [item.id, item]),
-    );
-    for (const item of e.blunders || []) collection.set(item.id, item);
-    collectedBlunders = [...collection.values()];
+    const catalogue = Array.isArray(e.blunderIds)
+      ? new Set(e.blunderIds)
+      : null;
+    let saved = [];
+    if (catalogue) {
+      try {
+        const stored = JSON.parse(localStorage.getItem("workshop-blunders"));
+        if (Array.isArray(stored)) saved = stored;
+      } catch {}
+      const collection = new Map();
+      for (const item of [
+        ...saved,
+        ...collectedBlunders,
+        ...(e.blunders || []),
+      ]) {
+        if (item && catalogue.has(item.id) && typeof item.name === "string")
+          collection.set(item.id, item);
+      }
+      collectedBlunders = [...collection.values()];
+    }
     try {
       localStorage.setItem("workshop-best-stars", String(bestStars));
-      localStorage.setItem(
-        "workshop-blunders",
-        JSON.stringify(collectedBlunders),
-      );
+      if (catalogue)
+        localStorage.setItem(
+          "workshop-blunders",
+          JSON.stringify(collectedBlunders),
+        );
     } catch {}
     $("endStars").replaceChildren(
       make("span", "end-stars-number", e.stars),

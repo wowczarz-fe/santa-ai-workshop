@@ -259,7 +259,7 @@ parcels still in the workshop. A good update never sets it.
 
 A decision ("case") is
 `{ id, kind, step, title, text, facts, evidence, affected, options, resolving }`, and an unclear
-letter also has `stake`. At most one is
+letter also has `stake` and `readings`. At most one is
 open (`case`); the others wait (`casesWaiting`) in this order: the faulty update, the recall, the
 unclear letters. Decisions never resolve on their own, and the clock keeps running while one is
 open. A game has two to four: the two unclear letters, plus at most one faulty update and one
@@ -283,6 +283,14 @@ recall.
 - `stake` (unclear letters only): what a wrong guess costs once aboard, a number of pounds: 12
   for an everyday wish, 100 for a big one, as `prices` shows them. Format it on the page, for
   example `"£12 if wrong"`.
+- `readings` (unclear letters only): the two things the wish could mean, each `{ name, art }`, for
+  example `[{ name: "cuddly bat", art: "cuddly-bat" }, { name: "cricket bat", art: "cricket-bat" }]`.
+  One is the right gift and one the wrong one; their order is drawn per decision from the seed (the
+  right one first in about half of them), so it never tells which is right. `name` is the toy's
+  short name as `made` shows it, and `art` the key the page already draws toys by: the name in lower
+  case with dashes, as `SharedArt.toy` and `PaperArt.toy` look it up and as `blunders` ids read. For
+  a card heading the child and the wish in its own words are `evidence[0].child` and
+  `evidence[0].wish`.
 - `resolving` is `null` until the player answers, then `{ optionId, remaining, duration }` while
   the chosen option takes its time. The decision stays open and takes no second answer until
   `remaining` reaches zero; then it closes with a `resolved` news item. An option that takes no
@@ -303,7 +311,8 @@ recall.
                scope: "the letter waits about 10 s; the gift comes out right", why: null, goal: null, available: true },
              { id: "guess", label: "Let the reader guess", seconds: 0, money: 0, risk: 0.7,
                scope: "goes on now; 70% wrong, the AI guesses confidently", why: null, goal: null, available: true } ],
-  resolving: null, stake: 12 }
+  resolving: null, stake: 12,
+  readings: [ { name: "cuddly bat", art: "cuddly-bat" }, { name: "cricket bat", art: "cricket-bat" } ] }
 ```
 
 - The letter is set aside as it arrives and waits for the answer; it never joins the letter pile

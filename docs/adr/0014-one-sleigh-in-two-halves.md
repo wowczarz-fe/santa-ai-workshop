@@ -390,3 +390,19 @@ back no more gifts than the remake pile has room for, and checking waits while t
 full, since a caught gift goes there. Half-time choices and the rollback put nothing on a pile.
 `tests/pile-check.js` covers the three cases, and the balance check asserts the limit on every
 pile at every look of every seeded game.
+
+## Follow-up: plain wording and the blunder count
+
+Date: 2026-11-13
+
+The user found the half-time information texts and the end-screen lines hard to read: they joined
+facts with semicolons. Every text the rules hand the page is now short plain sentences or
+fragments with no semicolon, and `tests/wording-check.js` reads every string in `view()` across
+seeded games to keep it so. Each half-time option's information text is one or two short
+sentences. The half-time line on what comes next is cut to "Big gifts come next. A wrong one costs
+£100."; the page supplies the instruction to pick. A decision option's `scope` no longer repeats
+its `goal`: the page reads `extra`, `seconds` and `goal` as fields.
+
+The end screen could show more blunders found than exist ("28 of 27"), because the page keeps its
+collection across games and builds while wishes were reworded. `end.blunderIds` now lists every
+blunder that exists, so the page can drop the stale ones.

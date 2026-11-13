@@ -193,22 +193,22 @@ body[data-look="paper"]::before {
   z-index: -1;
   pointer-events: none;
   background-image:
-    radial-gradient(circle at 44px 28px, #f4ead3 1.3px, transparent 2px),
-    radial-gradient(circle at 228px 96px, #f4ead3 1px, transparent 1.7px),
-    radial-gradient(circle at 410px 148px, #f4ead3 1.6px, transparent 2.3px);
+    radial-gradient(circle at 22px 20px, #fff4dd 1.5px, transparent 2.2px),
+    radial-gradient(circle at 78px 64px, #fff4dd 2.1px, transparent 2.8px),
+    radial-gradient(circle at 132px 32px, #fff4dd 2.8px, transparent 3.5px);
   background-size:
-    380px 290px,
-    520px 400px,
-    620px 360px;
-  opacity: 0.45;
+    90px 80px,
+    120px 100px,
+    160px 125px;
+  opacity: 0.7;
   animation: paper-background-snow 32s linear infinite;
 }
 @keyframes paper-background-snow {
   to {
     background-position:
-      18px 290px,
-      -12px 400px,
-      8px 360px;
+      0 240px,
+      0 300px,
+      0 250px;
   }
 }
 body[data-look="paper"] > header,

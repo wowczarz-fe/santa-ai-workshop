@@ -33,8 +33,10 @@ button {
   min-height: 32px;
   touch-action: manipulation;
 }
-button:hover:not(:disabled) {
-  background: #e5f0eb;
+@media (hover: hover) {
+  button:hover:not(:disabled):not([aria-pressed="true"]) {
+    background: #e5f0eb;
+  }
 }
 button:disabled {
   opacity: 0.5;
@@ -2830,11 +2832,17 @@ dialog p {
   color: var(--bc-ink);
   text-align: left;
 }
-#breakDialog .upgrade-card:hover:not(:disabled),
 #breakDialog .upgrade-card:focus-visible {
   border-color: var(--bc-accent);
   background: var(--bc-card);
   box-shadow: 0 3px 0 var(--bc-accent);
+}
+@media (hover: hover) {
+  #breakDialog .upgrade-card:hover:not(:disabled) {
+    border-color: var(--bc-accent);
+    background: var(--bc-card);
+    box-shadow: 0 3px 0 var(--bc-accent);
+  }
 }
 .upgrade-icon {
   display: grid;
@@ -3646,8 +3654,10 @@ dialog p {
   font-weight: 700;
   box-shadow: 0 3px 0 var(--bc-red-deep);
 }
-#report #replay:hover {
-  filter: brightness(1.06);
+@media (hover: hover) {
+  #report #replay:hover {
+    filter: brightness(1.06);
+  }
 }
 #replay svg {
   width: 19px;

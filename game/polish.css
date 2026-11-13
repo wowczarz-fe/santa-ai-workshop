@@ -36,8 +36,11 @@ body[data-look="polish"] button {
   background: #fff;
   border-color: #c3d2c8;
 }
-body[data-look="polish"] button:hover:not(:disabled) {
-  background: #eaf3ee;
+@media (hover: hover) {
+  body[data-look="polish"]
+    button:hover:not(:disabled):not([aria-pressed="true"]) {
+    background: #eaf3ee;
+  }
 }
 body[data-look="polish"] button.primary {
   background: var(--teal);
@@ -161,8 +164,10 @@ body[data-look="polish"] .dashboard .case-cue {
   white-space: nowrap;
   align-self: center;
 }
-body[data-look="polish"] .dashboard .case-cue:hover:not(:disabled) {
-  background: #f5da85;
+@media (hover: hover) {
+  body[data-look="polish"] .dashboard .case-cue:hover:not(:disabled) {
+    background: #f5da85;
+  }
 }
 body[data-look="polish"] .dashboard .case-cue span,
 body[data-look="polish"] .dashboard .case-cue b {
@@ -358,8 +363,10 @@ body[data-look="polish"] .queue {
   color: #233c37;
   transform: none;
 }
-body[data-look="polish"] .queue:hover {
-  background: #edf3e9;
+@media (hover: hover) {
+  body[data-look="polish"] .queue:hover {
+    background: #edf3e9;
+  }
 }
 body[data-look="polish"] .queue-name {
   grid-column: 1;
@@ -637,9 +644,11 @@ body[data-look="polish"] .elf {
   min-height: 72px;
   padding: 2px 2px 9px;
 }
-body[data-look="polish"] .elf:hover:not(:disabled) {
-  background: #e7f0e780;
-  border-color: #c7d7ca;
+@media (hover: hover) {
+  body[data-look="polish"] .elf:hover:not(:disabled) {
+    background: #e7f0e780;
+    border-color: #c7d7ca;
+  }
 }
 body[data-look="polish"] .elf[data-mood="tired"],
 body[data-look="polish"] .elf[data-mood="spent"] {
@@ -1311,8 +1320,10 @@ body[data-look="polish"] .dashboard .hud-slot {
   background: #ffffff12;
   color: #fff;
 }
-body[data-look="polish"] .dashboard .hud-slot:hover:not(:disabled) {
-  background: #ffffff21;
+@media (hover: hover) {
+  body[data-look="polish"] .dashboard .hud-slot:hover:not(:disabled) {
+    background: #ffffff21;
+  }
 }
 body[data-look="polish"] .dashboard .hud-star {
   background: #00000026;
@@ -1838,8 +1849,10 @@ body[data-look="polish"] .opt-chip.chip-goal-lost {
 body[data-look="polish"] .dashboard .hud-slot {
   background: linear-gradient(#ffffff12, #ffffff12), #1e4d50;
 }
-body[data-look="polish"] .dashboard .hud-slot:hover:not(:disabled) {
-  background: linear-gradient(#ffffff21, #ffffff21), #1e4d50;
+@media (hover: hover) {
+  body[data-look="polish"] .dashboard .hud-slot:hover:not(:disabled) {
+    background: linear-gradient(#ffffff21, #ffffff21), #1e4d50;
+  }
 }
 body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] {
   background: linear-gradient(#c6423533, #c6423533), #1e4d50;

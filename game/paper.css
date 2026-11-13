@@ -45,8 +45,10 @@ button {
   background: var(--paper);
   border-color: #b59b72;
 }
-button:hover:not(:disabled) {
-  background: #e9d9b6;
+@media (hover: hover) {
+  button:hover:not(:disabled):not([aria-pressed="true"]) {
+    background: #e9d9b6;
+  }
 }
 button[aria-pressed="true"] {
   background: #e5d3aa;
@@ -484,8 +486,10 @@ body[data-look="paper"] .dashboard .hud-slot {
   background: #f4ead314;
   color: var(--paper);
 }
-body[data-look="paper"] .dashboard .hud-slot:hover:not(:disabled) {
-  background: #f4ead326;
+@media (hover: hover) {
+  body[data-look="paper"] .dashboard .hud-slot:hover:not(:disabled) {
+    background: #f4ead326;
+  }
 }
 body[data-look="paper"] .dashboard .hud-star {
   background: #00000033;
@@ -1411,8 +1415,10 @@ body[data-look="paper"] .dashboard .case-cue {
   align-self: center;
   box-shadow: 2px 3px 0 #0a1f17;
 }
-body[data-look="paper"] .dashboard .case-cue:hover:not(:disabled) {
-  background: #ecc364;
+@media (hover: hover) {
+  body[data-look="paper"] .dashboard .case-cue:hover:not(:disabled) {
+    background: #ecc364;
+  }
 }
 body[data-look="paper"] .dashboard .case-cue span,
 body[data-look="paper"] .dashboard .case-cue b {

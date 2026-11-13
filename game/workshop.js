@@ -84,7 +84,7 @@ const PROMISES = [0.3, 0.4, 0.5, 0.6];
 const SIGN_IF_FAULTY = 0.7;
 const SIGN_IF_GOOD = 0.3;
 const TEST_TOYS = 4;
-const ABOARD_AT = 5; // wrong gifts aboard that raise the one recall decision
+const RECALLS = 2;
 const DRIFT_QUIET = 20; // seconds at the start with no line about elves trusting the AI
 const DRIFT_GAP = 20; // seconds at least between two lines about elves trusting the AI
 const COCOA_LEAST = 3; // seconds a cocoa break lasts at least, however rested the elf
@@ -341,7 +341,7 @@ const CASE_ORDER = { source: 0, aboard: 1 };
 // A decision's name in a few words, by step for the incident and by kind for the others.
 const CASE_TITLES = {
   source: "Faulty update",
-  aboard: "Wrong gifts on sleigh",
+  aboard: "Santa's reputation at risk",
   unclear: "Unclear wish",
 };
 
@@ -498,7 +498,8 @@ class Workshop {
     this.incident = null;
     this.cases = [];
     this.lastCaseId = 0;
-    this.aboardRaised = false;
+    this.recallsRaised = 0; // recall decisions raised so far
+    this.recallWrongAtAnswer = 0;
     this.claimed = {}; // when a rested elf last went to answer each station's need
     this.recalled = { count: 0, cost: 0 }; // wrong gifts brought back off the sleigh, and what it cost
     this.undecided = 0; // unclear letters still waiting for a decision when the sleigh left
@@ -1447,7 +1448,7 @@ class Workshop {
     return by ? { ...check, seconds, by } : check;
   }
 
-  // Decisions: the unclear letters, the faulty update once it is known, and one recall when wrong
+  // Decisions: the unclear letters, the faulty update once it is known, and recalls when wrong
   // gifts pile up on the sleigh. One is open at a time; the others wait their turn.
   openCase(spec) {
     const c = {
@@ -1481,13 +1482,39 @@ class Workshop {
     this.openCase({ kind: "incident", step: "source" });
   }
 
-  // Once a game, when wrong gifts on the sleigh reach ABOARD_AT: bring them back or leave them.
   raiseAboard() {
     const wrong = this.aboard.filter((x) => x.wrong).length;
-    if (!this.aboardRaised && wrong >= ABOARD_AT && !this.incident?.fault) {
-      this.aboardRaised = true;
-      this.openCase({ kind: "incident", step: "aboard" });
-    }
+    if (
+      this.recallsRaised >= RECALLS ||
+      this.cases.some((c) => c.step === "aboard") ||
+      wrong <= this.recallWrongAtAnswer ||
+      !this.toRecall().length
+    )
+      return;
+    this.recallsRaised++;
+    this.openCase({ kind: "incident", step: "aboard" });
+  }
+
+  // The wrong gifts aboard beyond what the Few mistakes goal allows, the big ones first: the fewest
+  // that bring the count back within the goal, and the dearest to leave aboard.
+  toRecall() {
+    const allowed = this.goals().find((g) => g.id === "right").need;
+    const wrong = this.aboard
+      .filter((x) => x.wrong)
+      .sort((x, y) => y.w.big - x.w.big);
+    return wrong.slice(0, Math.max(0, wrong.length - allowed));
+  }
+
+  // Whether the checkers can bring these gifts back and remake them before the sleigh leaves.
+  recallFits(list) {
+    return list.length * recallSeconds(list.length) <= this.timeLeft();
+  }
+
+  // "4 wrong gifts are aboard: one more than Santa's name can take."
+  reputationText() {
+    const wrong = this.aboard.filter((x) => x.wrong).length;
+    const over = wrong - this.goals().find((g) => g.id === "right").need;
+    return `${plural(wrong, "wrong gift")} ${wrong === 1 ? "is" : "are"} aboard: ${over === 1 ? "one" : over} more than Santa's name can take.`;
   }
 
   // What happened, in one short sentence; the choices are the options' own labels.
@@ -1497,13 +1524,13 @@ class Workshop {
       return `${x.w.child} writes: '${x.w.wish}' It could mean two things.`;
     return {
       source: "The faulty update is making full-sized trains.",
-      aboard: "Wrong gifts go to children when the sleigh leaves.",
+      aboard: this.reputationText(),
     }[c.step];
   }
 
   // Parcels an option could cover.
   affected(c) {
-    if (c.step === "aboard") return this.aboard.filter((x) => x.wrong);
+    if (c.step === "aboard") return this.toRecall();
     return c.parcels;
   }
 
@@ -1578,8 +1605,12 @@ class Workshop {
         time,
       ];
     return [
-      f("Wrong gifts", list.length, true),
-      f("Big gifts", list.filter((x) => x.w.big).length, true),
+      f("Wrong gifts aboard", this.aboard.filter((x) => x.wrong).length, true),
+      f(
+        "To bring back",
+        `${list.length}${list.some((x) => x.w.big) ? `, ${list.filter((x) => x.w.big).length} big` : ""}`,
+        true,
+      ),
       f("In your cost now", money(sum(list.map((x) => this.price(x)))), true),
       time,
     ];
@@ -1641,20 +1672,24 @@ class Workshop {
       options = [
         o(
           "bringBack",
-          "Bring them back",
+          n === 1 ? "Bring it back" : `Bring ${n} back`,
           n * recallSeconds(n),
           recallPrice(list),
           null,
-          `costs ${money(recallPrice(list))} instead of the ${money(sum(list.map((x) => this.price(x))))} they count now; checkers busy ${this.span(n * recallSeconds(n))}`,
-          this.staff(2).length ? null : "no elf at Checking",
+          `costs ${money(recallPrice(list))} instead of the ${money(sum(list.map((x) => this.price(x))))} ${n === 1 ? "it counts" : "they count"} now; checkers busy ${this.span(n * recallSeconds(n))}`,
+          !this.staff(2).length
+            ? "no elf at Checking"
+            : !this.recallFits(list)
+              ? "no time before the sleigh leaves"
+              : null,
         ),
         o(
           "leave",
-          "Leave them",
+          n === 1 ? "Leave it" : "Leave them",
           0,
           0,
           null,
-          `their ${money(sum(list.map((x) => this.price(x))))} stays in your cost`,
+          `${n === 1 ? "its" : "their"} ${money(sum(list.map((x) => this.price(x))))} stays in your cost`,
         ),
       ];
     const goal = c.step === "aboard" ? this.aboardGoals(list) : {};
@@ -1678,15 +1713,15 @@ class Workshop {
     const after = cost.now - left + recallPrice(list);
     const bring = [
       over && right.now - list.length <= right.need
-        ? `${right.name} goal saved`
+        ? `${right.name} star saved`
         : null,
       cost.now <= cost.need && after > cost.need
-        ? `${cost.name} goal lost`
+        ? `${cost.name} star lost`
         : null,
     ].filter(Boolean);
     return {
       bringBack: bring.join(", ") || null,
-      leave: over ? `${right.name} goal lost` : null,
+      leave: over ? `${right.name} star lost` : null,
     };
   }
 
@@ -1715,6 +1750,11 @@ class Workshop {
     let text;
     let outcome = {};
     this.cases.shift();
+    if (c.step === "aboard")
+      this.recallWrongAtAnswer =
+        optionId === "bringBack"
+          ? this.aboard.filter((p) => p.wrong).length - this.affected(c).length
+          : this.aboard.filter((p) => p.wrong).length;
     if (c.kind === "unclear") {
       if (optionId === "ask") {
         // The child's answer comes back: the letter is read right and goes on to be made.
@@ -2481,7 +2521,9 @@ class Workshop {
             `${Math.round(st.checking[1])} s on the risky ones; ${assurance.caught} of ${plural(assurance.wrongMade, "mistake")} caught`,
           ),
         ],
-        `Wrong gifts cost Santa trust: ${assurance.shipped} reached children.`,
+        this.recalled.count
+          ? `Wrong gifts cost Santa trust: ${assurance.shipped} reached children, and ${this.recalled.count} more were brought back in time.`
+          : `Wrong gifts cost Santa trust: ${assurance.shipped} reached children.`,
       ),
       p("escalate", "Ask a person when unsure", [
         act(
@@ -2511,6 +2553,16 @@ class Workshop {
             : inc
               ? `ran to the end: ${plural(inc.trains, "train")}`
               : "no faulty update",
+        ),
+        act(
+          "recalled",
+          "Brought wrong gifts back off the sleigh",
+          this.recalled.count > 0,
+          this.recalled.count
+            ? `${plural(this.recalled.count, "wrong gift")} brought back for ${money(this.recalled.cost)}`
+            : this.recallsRaised
+              ? "left aboard"
+              : "not needed",
         ),
       ]),
       p("oversight", "Keep human oversight sharp", [
@@ -2865,11 +2917,11 @@ class Workshop {
     };
     this.choice = {
       title: "Half-time",
-      text: "Pick one change for the second half, or none.",
+      text: "Pick one change before you carry on, or none.",
       report,
       next: {
         cargo: this.cargoView(2),
-        text: `Second half: mostly big gifts. A wrong one costs ${money(WRONG_PRICE.big)}, so checks pay more.`,
+        text: `Next: mostly big gifts. A wrong one costs ${money(WRONG_PRICE.big)}, so checks pay more.`,
       },
       options: this.halfTimeOptions(),
     };

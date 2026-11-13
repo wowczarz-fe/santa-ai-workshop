@@ -258,13 +258,13 @@ A decision ("case") is
 `{ id, kind, step, title, text, facts, evidence, affected, options, resolving }`, and an unclear
 letter also has `stake` and `readings`. At most one is
 open (`case`); the others wait (`casesWaiting`) in this order: the faulty update, the recall, the
-unclear letters. Decisions never resolve on their own, and the clock keeps running while one is
-open. A game has two to four: the two unclear letters, plus at most one faulty update and one
-recall.
+unclear letters. The page pauses the clock while a Decide card awaits an answer, preserving any
+manual pause. After an answer, resolving work advances with play. A game has two to five decisions:
+two unclear letters, at most one faulty update and at most two recalls.
 
 - `kind` is `"unclear"` or `"incident"`. `step` is `null` for an unclear letter, and `"source"`
   (the faulty update) or `"aboard"` (wrong gifts on the sleigh) for an incident.
-- `title` names it in a few words: `"Unclear wish"`, `"Faulty update"` or `"Wrong gifts on sleigh"`.
+- `title` names it in a few words: `"Unclear wish"`, `"Faulty update"` or `"Santa's reputation at risk"`.
 - `text` is one short sentence of what happened, for example
   `"Timmy writes: 'A little train, please.' It could mean two things."`.
 - `facts` is `[{ label, value, primary }]`: the figures the decision turns on. At most three are
@@ -336,15 +336,21 @@ workshop are marked `suspect: "batch"`, so checking the risky ones checks them.
 
 ### Recall (`step` `"aboard"`)
 
-Raised once a game, when the wrong gifts aboard reach 5 (not while a faulty update is running).
-Facts: `"Wrong gifts"`, `"Big gifts"`, `"In your cost now"` (what they already add to the cost
-so far), `"Time left"`. Options: `"bringBack"` (the wrong gifts come off the sleigh at once and the
-checkers remake them, 4 seconds each and at most 20 in all; costs the recall price instead of what
-they count now; needs an elf at checking; `scope` "costs £395 instead of the £412 they count now;
-checkers busy about 20 s") and `"leave"` (they stay, and their price stays in the cost; `scope`
-"their £412 stays in your cost"). `goal` on each reads, when it applies, `"Few mistakes goal
-saved"`, `"Within budget goal lost"` or `"Few mistakes goal lost"`, and `scope` ends with the same
-words.
+Raised when wrong gifts aboard exceed the Few mistakes limit, including while a faulty update
+is running. At most two recall decisions per game. After leaving gifts aboard, another decision
+requires another wrong gift to arrive; answering does not repeat the same decision immediately.
+Facts: `"Wrong gifts aboard"`, `"To bring back"`, `"In your cost now"`, `"Time left"`.
+
+The affected gifts are just those above the limit, big gifts first. `"bringBack"` removes them from
+the sleigh immediately and sends them to the checkers to remake, 4 seconds each and at most 20
+in all. It costs the recall price, needs a checker, and is unavailable with a reason when too
+little time remains. The reputation decision still appears then. `"leave"` keeps them aboard.
+The options say how many gifts they cover and show `"Few mistakes star saved"` or
+`"Few mistakes star lost"`; the recall also says if its cost loses the budget star. The mistakes
+star still needs the normal minimum of right gifts to count.
+
+A successful recall adds a `recalled` action to the end report's response practice, with its gift
+count and price. Its cause and cost also remain in the account.
 
 ## Half-time
 

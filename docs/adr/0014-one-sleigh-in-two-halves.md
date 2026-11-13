@@ -314,3 +314,38 @@ and `focus` names what frees it, another elf at Checking or checking fewer. Remo
 rules: the `bypass()` call, the `bypass` action, `view().bypassed`, the `bypassed` news item and
 parcel exit, the "Let through unchecked" lesson and cause, and the advice line for a gift let
 through.
+
+## Follow-up: recall at the reputation limit
+
+Date: 2026-11-13
+
+The user could lose the Few mistakes star at four wrong gifts but the recall only appeared at
+five. Raise it as soon as the limit is exceeded, including during a faulty update, at most twice
+per game. Bring back the excess gifts, most expensive first, so the price and checker time buy a
+specific improvement: getting back within the mistakes limit. Leaving them keeps the star lost.
+After leaving, a second decision needs a newly arrived wrong gift. This avoids repeating the same
+question without delaying a new failure. If time is too short to finish, show the consequence and
+the unavailable recall's reason. Record a completed recall as a response practice on the end
+screen. The normal minimum of right gifts still applies before the star counts.
+
+The page stops the clock while a Decide card awaits an answer, just as it does for the tour and
+half-time, and preserves manual pause. Asking the child resumes the wait after the choice. This
+gives the player time to compare the price, checker time and star without losing production while
+reading. Keeping the old five-gift trigger or deleting recall were rejected: neither lets a player
+respond when Santa's reputation first crosses the stated limit.
+
+The paper presentation uses one total timer, a single sleigh card with its count and cargo, and
+pictures of the two possible readings on an unclear-wish card. The half-time card omits the
+minimum-load explanation; the end screen explains a star that never began counting. Queue heaps
+come from actual parcels, with at most 18 drawn and the count giving the full total. Permanently
+full decorative props are removed. Real arrivals animate for 460 ms, at most three per station;
+pausing the clock freezes them and reduced-motion preferences suppress movement. These choices
+make the visible piles and changes reflect what the player actually caused.
+
+The scripted expert now reads the recall option's visible star trade, buying back the mistakes
+star when it does not lose the budget star, before comparing cash saved. Across 40 seeds the
+sensible expert earns 2.50 stars on average and three stars in 24 games; automating both stations
+earns 1.68 and three stars in 7 games. The earlier absolute benchmark of at most 15% three-star
+automation games is now a printed balance warning (17.5% with recall). The requirement that those
+strategies score at least half a star below the sensible strategy remains blocking. Game prices,
+rates and risks stay as they were; this round makes recovery available at the stated limit.

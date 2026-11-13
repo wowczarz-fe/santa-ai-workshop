@@ -156,7 +156,8 @@ A parcel is `{ id, wish, big, unclear, wanted, made, suspect, result }`, for exa
   `unclear` marks one of the two unclear letters.
 - `suspect` is `false`, `"unsure"` (the AI flagged it) or `"batch"` (made during the faulty update,
   once the update is known).
-- `wanted` and `made` are `{ name, icon }` and `result` is `"right"` or `"wrong"`. All three are
+- `wanted` and `made` are `{ name, icon }` and `result` is `"right"` or `"wrong"`. A toy made in
+  the wrong size also has `made.base`, the name of the toy to draw. All three are
   `null` until a check or loading onto the sleigh reveals them.
 
 ### Vigilance

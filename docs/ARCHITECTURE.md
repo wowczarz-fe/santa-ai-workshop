@@ -237,7 +237,10 @@ else: the checkers when the checking or waiting-to-load pile is full (`{ station
 "elves", text: "needs another elf" }`, or `control: "checking", text: "check fewer"` while every
 gift is checked by three elves or more), else the toy makers or readers when their pile is full
 or nobody works there (`"elves"`, or `"ai0"`/`"ai1"` with `"try the AI"` while three elves work
-it by hand). While a rollback holds the toys up, the other hints apply.
+it by hand). While a rollback holds the toys up, the other hints apply. A station on Automate is
+never named with `"elves"`: the machine works alone there and another elf adds nothing. Its full
+pile raises no focus, and a growing pile there, or one held up by a full pile further along, is
+left out. The `behind` news line and a rested elf's walk follow the same rule.
 
 `actions` has a key for each of `ai0`, `ai1` and `checking`, each
 `{ available, why, cost }`, for example
@@ -415,29 +418,29 @@ count and price. Its cause and cost also remain in the account.
 Every item has `id`, `t`, `kind` and `text`; some carry more. During play no item suggests
 something only half-time sells.
 
-| Kind          | Extra fields                                                                               | When                                                  |
-| ------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `checked`     | `check: { wish, wanted, made, result, seconds, by }`                                       | A checker finished checking a gift                    |
-| `loaded`      | `check: { wish, wanted, made, result }`, `cause`, `control`, `action`, `caseId` (optional) | A wrong gift landed on the sleigh                     |
-| `consequence` | `about`, `facts: { seconds, checked, caught, estimatedAvoided, waiting, money }`           | A setting or decision reports what it did             |
-| `case`        | `caseId`                                                                                   | A decision was raised                                 |
-| `resolved`    | `caseId`, `option`, `outcome: { seconds, money, parcels }`                                 | A decision closed                                     |
-| `update`      |                                                                                            | An update was installed on the toy machine            |
-| `noticed`     | `by`: `"watcher"`, `"checker"` or `"sleigh"`                                               | The faulty update became known                        |
-| `rolledBack`  |                                                                                            | The rollback finished                                 |
-| `recalled`    | `count`                                                                                    | Wrong gifts came off the sleigh                       |
-| `relaxed`     | `elf`, `station`                                                                           | Checkers, or elves on Assist, started to trust the AI |
-| `trained`     |                                                                                            | Training was bought at half-time                      |
-| `tired`       | `elf`                                                                                      | An elf burnt out                                      |
-| `rested`      | `elf`, `station`                                                                           | A rested elf left cocoa for a station                 |
-| `blocked`     | `station`                                                                                  | A station stopped because the next pile is full       |
-| `lost`        | `count`                                                                                    | Letters were lost to a full pile                      |
-| `behind`      | `station`                                                                                  | The pace first falls short and a station holds it up  |
-| `milestone`   | `right`                                                                                    | The sleigh passed 25, 50, 75 or 110 right gifts       |
-| `cleared`     | `queue`                                                                                    | A pile that was more than half full has been emptied  |
-| `halftime`    | `right`, `wrong`                                                                           | Half-time began                                       |
-| `chose`       | `option`, `outcome: { money, seconds, gained }`                                            | The player picked a half-time option                  |
-| `departed`    | `right`, `wrong`, `target`, `stars`                                                        | The sleigh left; the game is over                     |
+| Kind          | Extra fields                                                                               | When                                                   |
+| ------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| `checked`     | `check: { wish, wanted, made, result, seconds, by }`                                       | A checker finished checking a gift                     |
+| `loaded`      | `check: { wish, wanted, made, result }`, `cause`, `control`, `action`, `caseId` (optional) | A wrong gift landed on the sleigh                      |
+| `consequence` | `about`, `facts: { seconds, checked, caught, estimatedAvoided, waiting, money }`           | A setting or decision reports what it did              |
+| `case`        | `caseId`                                                                                   | A decision was raised                                  |
+| `resolved`    | `caseId`, `option`, `outcome: { seconds, money, parcels }`                                 | A decision closed                                      |
+| `update`      |                                                                                            | An update was installed on the toy machine             |
+| `noticed`     | `by`: `"watcher"`, `"checker"` or `"sleigh"`                                               | The faulty update became known                         |
+| `rolledBack`  |                                                                                            | The rollback finished                                  |
+| `recalled`    | `count`                                                                                    | Wrong gifts came off the sleigh                        |
+| `relaxed`     | `elf`, `station`                                                                           | Checkers, or elves on Assist, started to trust the AI  |
+| `trained`     |                                                                                            | Training was bought at half-time                       |
+| `tired`       | `elf`                                                                                      | An elf burnt out                                       |
+| `rested`      | `elf`, `station`                                                                           | A rested elf left cocoa for a station                  |
+| `blocked`     | `station`                                                                                  | A station stopped because the next pile is full        |
+| `lost`        | `count`                                                                                    | Letters were lost to a full pile                       |
+| `behind`      | `station`                                                                                  | The pace falls short and elves at a station hold it up |
+| `milestone`   | `right`                                                                                    | The sleigh passed 25, 50, 75 or 110 right gifts        |
+| `cleared`     | `queue`                                                                                    | A pile that was more than half full has been emptied   |
+| `halftime`    | `right`, `wrong`                                                                           | Half-time began                                        |
+| `chose`       | `option`, `outcome: { money, seconds, gained }`                                            | The player picked a half-time option                   |
+| `departed`    | `right`, `wrong`, `target`, `stars`                                                        | The sleigh left; the game is over                      |
 
 A `relaxed` item names the elf who trusts the AI most and what to do now, for example
 `"Tinsel is trusting the AI and skipping checks. Send Tinsel for cocoa or swap in another elf."`

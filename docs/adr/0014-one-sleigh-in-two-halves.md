@@ -364,3 +364,16 @@ carries `money`, `instead` and `extra`, so the card can show the net effect ("£
 "nothing more") beside the star, and the recall says when its extra cost loses the budget star.
 The scripted players bring gifts back only when that saves the mistakes star without losing the
 budget star. Fixing a mistake after it has shipped now costs more than checking it would have.
+
+## Follow-up: no elf asked for at a station on Automate
+
+Date: 2026-11-13
+
+In the user's play Toys on Automate still showed "needs another elf". On Automate the machine
+works alone at its own speed, so an elf adds nothing there, but `focus` named the station whenever
+its pile was full or growing. A station on Automate is now never named with `elves`: its full pile
+raises no focus (there is no control that would free it), a growing pile there is left out, and so
+is a pile held up by a full pile further along. The "is holding things up. Move an elf there."
+line is not said for such a station, and the end lesson about lost letters drops "Move free elves
+there" when the station that held things up longest ended on Automate. `tests/focus-check.js`
+plays 192 seeded Automate games and checks the focus, that line and the rested-elf line.

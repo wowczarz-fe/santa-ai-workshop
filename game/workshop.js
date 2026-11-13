@@ -1960,11 +1960,13 @@ class Workshop {
     this.slowest = now.slowest;
     if (this.slowest !== null) this.stats.holding[this.slowest] += dt;
     const pace = this.pace();
-    // Said only when a station is holding things up, so the line always names a move to make.
+    // Said only when a station whose elves do the work is holding things up, so the line always
+    // names a move to make: an elf adds nothing at a station on Automate.
     if (
       this.t >= 20 &&
       pace.behind &&
       pace.slowest !== null &&
+      !(pace.slowest < 2 && this.ai[pace.slowest] === 2) &&
       !this.behindNoted
     ) {
       this.behindNoted = true;
@@ -2045,7 +2047,8 @@ class Workshop {
     return change >= 1 ? "growing" : change <= -1 ? "shrinking" : "steady";
   }
 
-  // More hands or more AI at a station: the AI while its elves work by hand, else another elf.
+  // More hands or more AI at a station whose elves do the work: the AI while they work by hand, else
+  // another elf. Never asked of a station on Automate, where the machine sets the pace.
   helpAt(s) {
     return s < 2 && this.ai[s] === 0 && this.staff(s).length >= 3
       ? { station: s, control: `ai${s}`, text: "try the AI" }
@@ -2066,21 +2069,30 @@ class Workshop {
         ? { station: 2, control: "checking", text: "check fewer" }
         : this.helpAt(2);
     if (this.incident?.rollingBack) return null;
-    for (const s of [1, 0])
-      if (
-        this.full(STATION_QUEUES[s][0]) ||
-        (this.ai[s] < 2 && !this.staff(s).length && waiting(s))
-      )
-        return this.helpAt(s);
+    for (const s of [1, 0]) {
+      const full = this.full(STATION_QUEUES[s][0]);
+      // On Automate the machine works alone at its own speed: another elf adds nothing, and its
+      // full pile is what holds the station before it, so there is no control to name.
+      if (this.ai[s] === 2) {
+        if (full) return null;
+        continue;
+      }
+      if (full || (!this.staff(s).length && waiting(s))) return this.helpAt(s);
+    }
     return null;
   }
 
-  // More hands or AI for the station whose pile is growing fastest towards full, or null.
+  // More hands or AI for the station whose pile is growing fastest towards full, or null. A pile
+  // at a station on Automate, or one held up by a full pile further along, is left out: another elf
+  // would not shrink it.
   growingPile() {
+    const helped = (s) =>
+      !(s < 2 && this.ai[s] === 2) && !this.stationBlocked(s);
     const piles = ["letters", "orders", "check"].filter(
       (id) =>
         this.trend(id) === "growing" &&
-        this.q[id].length >= QUEUES[id].limit * 0.3,
+        this.q[id].length >= QUEUES[id].limit * 0.3 &&
+        helped(QUEUES[id].station),
     );
     piles.sort(
       (x, y) =>
@@ -2096,7 +2108,6 @@ class Workshop {
     const need = this.unblock() ?? this.growingPile();
     if (need?.control !== "elves") return null;
     const s = need.station;
-    if (s < 2 && this.ai[s] === 2) return null;
     return this.t - (this.claimed[s] ?? -99) < NEED_CLAIM ? null : s;
   }
 
@@ -3065,7 +3076,7 @@ class Workshop {
           )
         : L(
             "Letters piled up",
-            `${this.lost} letters lost in full piles; ${where} held things up longest. Move free elves there.`,
+            `${this.lost} letters lost in full piles; ${where} held things up longest.${longest < 2 && this.ai[longest] === 2 ? "" : " Move free elves there."}`,
           );
     }
     // Wrong gifts that went aboard while the decision that would have stopped them waited.

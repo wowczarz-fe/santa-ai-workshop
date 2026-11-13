@@ -1369,8 +1369,9 @@
     const gained = aboard - observedRight;
     observedRight = aboard;
     if (started && gained > 0 && !view.end) {
-      // One bubble beside the sleigh count (or on the sleigh tab when the sleigh is a page away)
-      // with a running count: gifts that land while it shows add to it and restart it.
+      // One bubble beside the sleigh count (or on the sleigh tab when the sleigh is a page away).
+      // Gifts that land while it shows add to it, but it still goes after 1.5 s, so a steady
+      // flow shows small numbers and never a running total.
       const to = $("sleighRight").getBoundingClientRect(),
         column = $("sleigh").getBoundingClientRect();
       const visible = to.left >= 0 && to.right <= innerWidth;
@@ -1385,15 +1386,14 @@
         effect.classList.contains("in-slot") === !visible
       ) {
         giftBubbleCount += gained;
-        effect.style.animation = "none";
-        void effect.offsetWidth;
-        effect.style.animation = "";
-        clearTimeout(giftBubbleTimer);
       } else {
         effect?.remove();
+        clearTimeout(giftBubbleTimer);
         effect = giftBubble = make("span", "gift-flight");
         giftBubbleCount = gained;
         $("celebration").append(effect);
+        const shown = effect;
+        giftBubbleTimer = setTimeout(() => shown.remove(), 1500);
       }
       iconText(effect, "gift", `+${giftBubbleCount}`);
       effect.classList.toggle("in-slot", !visible);
@@ -1406,7 +1406,6 @@
       effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, top))}px`;
       effect.style.setProperty("--fly-x", "0px");
       effect.style.setProperty("--fly-y", visible ? "-14px" : "0px");
-      giftBubbleTimer = setTimeout(() => effect.remove(), 1500);
     }
     let caught = $("caughtToy");
     if (!caught) {

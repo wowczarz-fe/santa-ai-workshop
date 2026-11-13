@@ -1631,6 +1631,12 @@ body[data-look="paper"] .elf-card.swap-elf {
   outline-offset: 1px;
   border-radius: 3px;
 }
+body[data-look="paper"] .elf-card .swap-tag {
+  border: 1px solid #d2a447;
+  border-radius: 3px;
+  background: #f3e2b4;
+  color: #7a5514;
+}
 body[data-look="paper"] .elf-card.needs-rest .rest-cue {
   position: absolute;
   top: 0;

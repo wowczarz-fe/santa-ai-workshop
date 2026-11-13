@@ -920,11 +920,23 @@
           ),
         );
     }
-    $("vigilance").hidden = !swap;
+    // The banner belongs to Checking; at Letters or Toys the same words sit on the elf's card.
+    $("vigilance").hidden = !swap || swap.station !== 2;
     $("vigilance").dataset.state = view.vigilance.state;
-    elfNodes.forEach((wrap, i) =>
-      wrap.classList.toggle("swap-elf", swap?.elf === i),
-    );
+    elfNodes.forEach((wrap, i) => {
+      wrap.classList.toggle("swap-elf", swap?.elf === i);
+      const words =
+        swap?.elf === i && swap.station !== 2
+          ? `${swap.name} trusting the AI`
+          : "";
+      let tag = wrap.querySelector(".swap-tag");
+      if (!words) return tag?.remove();
+      if (!tag) {
+        tag = make("span", "swap-tag");
+        wrap.append(tag);
+      }
+      if (tag.textContent !== words) tag.textContent = words;
+    });
     // One outlined thing at a time: the control the tour points at, else the rules' focus, with
     // its reason as a tag on the outlined box. A tired elf gets its own card outlined.
     const walkTarget = tourStep === null ? null : tourSteps[tourStep].target();

@@ -770,6 +770,11 @@ body[data-look="polish"] .elf-card.swap-elf {
   outline-offset: 1px;
   border-radius: 9px;
 }
+body[data-look="polish"] .elf-card .swap-tag {
+  border: 1px solid #c99d39;
+  background: #fff4dc;
+  color: #74560f;
+}
 body[data-look="polish"] .elf-card.needs-rest .rest-cue {
   position: absolute;
   top: 0;

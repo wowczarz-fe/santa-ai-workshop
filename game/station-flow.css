@@ -1,0 +1,12 @@
+body[data-look="paper"] .queue-picture {
+  visibility: hidden;
+}
+.live-heap {
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px #2b1c1444);
+}
+@media (prefers-reduced-motion: reduce) {
+  .heap-item {
+    animation: none;
+  }
+}

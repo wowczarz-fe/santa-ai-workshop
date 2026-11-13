@@ -34,6 +34,12 @@ Use drawn stars for the end rating. Keep the checking dial below the practice ti
 
 Lead with the result, then real-world practices, the checking dial and Frontier's offer with both links. Follow with costliest causes, the money account and the blunder collection. Remove the separate checking-worth card and gift-kind disclosure: the dial and account already carry the trade-off. Both presentations use this order on desktop and phone.
 
+## Budget and reliability
+
+Show the rules' remaining budget in the running header, with a labelled low state. Desktop figures use the space released by the quieter status strip; phone figures stay compact. A budget ending shows the rules' headline, lesson, star count and time remaining. Unaffordable choices show their reason beside the disabled option.
+
+Place a two-row reliability table after the practices and before the dial. It reports the player's everyday and big-gift jobs: letters read and toys made, before checking, with AI drafts counted as AI and manual work as elves. Show raw wrong counts out of jobs and “None made” for an empty sample. The dial remains beside the Frontier offer in the reading order. The walkthrough explains that everyday reliability matches a fresh elf while big gifts need a person.
+
 ## Consequences
 
 Station floors and controls align on desktop while all six queues remain available. Phone users can switch stations without traversing a long vertical list. Layout checks must include eight elves at one station, cocoa, queue counts, actual tap and drag movement, and decision cards at narrow widths.

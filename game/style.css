@@ -3879,3 +3879,108 @@ body[data-look] .header-actions #helpMove {
     line-height: 1.2;
   }
 }
+
+.reliability-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.reliability-table th,
+.reliability-table td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--bc-line);
+}
+.reliability-table thead {
+  color: var(--bc-muted);
+}
+body[data-look] #goals .hud-slot.budget-low {
+  background: #fff0cf;
+  color: #9b2432;
+  border: 2px solid #b32b3c;
+}
+body[data-look] #goals .hud-slot.budget-low .hud-name::after {
+  content: "Low";
+  font-weight: bold;
+}
+.end-reason {
+  font-weight: bold;
+}
+@media (min-width: 1000px) {
+  body[data-look] main .dashboard {
+    align-items: center;
+  }
+  body[data-look] main .dashboard .hud-slot {
+    min-height: 76px;
+  }
+  body[data-look] main .dashboard .hud-name {
+    font-size: 13px;
+  }
+  body[data-look] main .dashboard .hud-figures b {
+    font-size: 30px;
+  }
+  body[data-look] main .dashboard .clock-box {
+    min-height: 76px;
+  }
+  body[data-look] main .dashboard #clock {
+    font-size: 34px;
+  }
+  body[data-look] main .status-row {
+    height: 25px;
+    min-height: 25px;
+  }
+}
+@media (max-width: 600px) {
+  .reliability-table {
+    font-size: 12px;
+  }
+  .reliability-table th,
+  .reliability-table td {
+    padding: 8px 4px;
+  }
+}
+
+body[data-look] #goals .hud-slot.budget-low .hud-name,
+body[data-look] #goals .hud-slot.budget-low .hud-figures,
+body[data-look] #goals .hud-slot.budget-low .hud-figures b {
+  color: #8e2330;
+  opacity: 1;
+}
+@media (min-width: 1000px) {
+  body[data-look] main .dashboard .hud-slot,
+  body[data-look] main .dashboard .clock-box {
+    height: 76px;
+    grid-template-rows: 17px 34px 0;
+    align-content: start;
+    padding-top: 9px;
+    padding-bottom: 8px;
+  }
+  body[data-look] main .dashboard .hud-figures b {
+    font-size: 30px;
+    line-height: 34px;
+    font-weight: bold;
+  }
+  body[data-look] main .dashboard #clockLabel {
+    font-size: 13px;
+    line-height: 17px;
+  }
+  body[data-look] main .dashboard #clock {
+    top: 0;
+    line-height: 34px;
+  }
+}
+
+@media (max-width: 600px) {
+  body[data-look] #goals [data-goal="cost"] .hud-name .ui-icon {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  body[data-look] #goals [data-goal="cost"] .hud-name > span[data-short] {
+    display: none;
+  }
+  body[data-look] #goals [data-goal="cost"] .hud-name::before {
+    content: "Budget";
+  }
+}

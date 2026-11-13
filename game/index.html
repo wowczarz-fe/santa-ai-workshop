@@ -293,6 +293,7 @@
             <strong id="endStars"></strong>
             <div class="end-score-copy">
               <h2 id="resultTitle"></h2>
+              <p id="endReason" class="end-reason" hidden></p>
               <p id="lessonText" class="end-lesson"></p>
               <p id="personalBest" class="end-best"></p>
             </div>
@@ -307,6 +308,25 @@
         >
           <h3 id="practicesTitle">Real-world practices in this game</h3>
           <div id="practiceTiles"></div>
+        </section>
+        <section
+          id="reliability"
+          class="end-card end-wide"
+          hidden
+          aria-labelledby="reliabilityTitle"
+        >
+          <h3 id="reliabilityTitle">Where the AI was reliable</h3>
+          <p>Letters read and toys made, before any check.</p>
+          <table class="reliability-table">
+            <thead>
+              <tr>
+                <th scope="col">Gift kind</th>
+                <th scope="col">AI</th>
+                <th scope="col">Elves</th>
+              </tr>
+            </thead>
+            <tbody id="reliabilityRows"></tbody>
+          </table>
         </section>
         <section
           id="assurance"

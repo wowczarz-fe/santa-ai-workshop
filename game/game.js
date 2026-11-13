@@ -1678,12 +1678,15 @@
       chips.push(["chip-why", "", o.why]);
     if (does) chips.push(["chip-does", "", does]);
     if (o.goal)
-      for (const part of o.goal.split(/,\s*/))
+      for (const part of o.goal.split(/,\s*/)) {
+        const star = /\bstar\b/i.test(part);
+        const lost = /lost/i.test(part);
         chips.push([
-          `chip-goal ${/lost/.test(part) ? "chip-goal-lost" : "chip-goal-saved"}`,
-          /lost/.test(part) ? "star-empty" : "star",
+          `chip-goal${star ? (lost ? " chip-goal-lost" : " chip-goal-saved") : ""}`,
+          star ? (lost ? "star-empty" : "star") : "",
           part,
         ]);
+      }
     // A price the rules' words already give (a recall's "costs £395 instead of ...") is not repeated.
     if (Number.isFinite(o.extra))
       chips.push([

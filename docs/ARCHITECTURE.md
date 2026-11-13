@@ -279,8 +279,8 @@ two unclear letters, at most one faulty update and at most two recalls.
 - `options` is `[{ id, label, seconds, money, risk, scope, why, goal, available }]`, and a recall's
   options also carry `instead` and `extra` (below). `seconds` is
   the time it takes, `money` what it costs, `risk` `null` or the chance (0 to 1) of a wrong gift or
-  toy it leaves, `scope` what it does in words (the part before the first semicolon is a few words
-  a chip can show), `goal` `null` or a few words on what it does to the goals, `available` `false`
+  toy it leaves, `scope` what it does in a few plain words with no semicolon (it may be empty, and
+  it never repeats `goal`: read the figures from the fields), `goal` `null` or a few words on what it does to the goals, `available` `false`
   with a short `why` when it cannot be chosen now.
 - `stake` (unclear letters only): what a wrong pick costs once aboard, a number of pounds: 12
   for an everyday wish, 100 for a big one, as `prices` shows them. Format it on the page, for
@@ -359,18 +359,18 @@ name. Both options carry three money fields: `money` is what the option adds to 
 recall's payment, remakes included), `instead` what those gifts count in the cost now and stop
 counting once recalled, and `extra` the difference, `money - instead`, which is the net rise in
 `cost.spent`. The recall's `money` is 1.5 times `instead` and at least `instead + 40`, rounded, so
-its `extra` is always above zero; leaving has all three at 0. The first part of `scope` says the
-same in words (`"£50 more"`, `"nothing more"`). `goal` shows `"Few mistakes star saved"` or
+its `extra` is always above zero; leaving has all three at 0. `scope` says the same in words
+(`"£50 more, checkers busy about 4 s"`, `"nothing more"`). `goal` shows `"Few mistakes star saved"` or
 `"Few mistakes star lost"`, and for the recall also `"Within budget star lost"` when its extra
 cost takes the cost over the limit. The mistakes star still needs the normal minimum of right
 gifts to count.
 
 ```
 options: [ { id: "bringBack", label: "Bring it back", seconds: 4, money: 150, risk: null,
-             scope: "£50 more; checkers busy about 4 s; Few mistakes star saved", why: null,
+             scope: "£50 more, checkers busy about 4 s", why: null,
              instead: 100, extra: 50, goal: "Few mistakes star saved", available: true },
            { id: "leave", label: "Leave it", seconds: 0, money: 0, risk: null,
-             scope: "nothing more; Few mistakes star lost", why: null,
+             scope: "nothing more", why: null,
              instead: 0, extra: 0, goal: "Few mistakes star lost", available: true } ]
 ```
 
@@ -387,7 +387,7 @@ count and price. Its cause and cost also remain in the account.
   report: { aboard: 63, wrong: 2, target: 110, cost: 356, limit: 850, tired: 12, burnouts: 1,
             goals: [ ...three goals as in run.goals... ], causes: [ ...up to three causes... ] },
   next: { cargo: { id: "big", name: "Big gifts", icon: "📦", text: "The AI slips more, and a wrong one costs £100." },
-          text: "Second half: mostly big gifts. A wrong one costs £100, so checks pay more." },
+          text: "Big gifts come next. A wrong one costs £100." },
   options: [ ...five options... ],
   openCase: { id: 2, title: "Unclear wish" } }
 ```
@@ -396,7 +396,9 @@ count and price. Its cause and cost also remain in the account.
   and its `limit`, `tired` (the share of the working elves' time so far that tiredness took, 0 to
   100), `burnouts` so far, `goals` (as `run.goals`) and `causes` (where the wrong gifts aboard came
   from, see Causes).
-- `next.text` is the one line on what changes in the second half; `next.cargo` its cargo.
+- `next.text` is one short sentence pair on what comes next, always `"Big gifts come next. A wrong
+one costs £N."` with N the price of a wrong big gift; the page supplies its own headline and
+  shows this as a small line. `next.cargo` is the cargo that comes next.
 - `options` is always these five, in this order, each `{ id, label, text, facts }` with `facts` at
   most three `{ label, value }`:
 
@@ -413,6 +415,8 @@ count and price. Its cause and cost also remain in the account.
   toys and installs the update 20 seconds into the second half only if they all pass. `train`
   keeps checkers and confirmers sharp for the rest of the game. `rest` halves every elf's
   tiredness and ends burnouts. `none` changes nothing. The price is added to the cost so far.
+  Each `text` is what the option's information button shows: one or two short plain sentences,
+  for example `"The AI makes toys 50% faster. It is a big change that was tested briefly."`.
 
 - `openCase` is `{ id, title }` for the first decision still waiting for an answer, or `null`; a
   decision can be answered while half-time is open.
@@ -501,7 +505,8 @@ for example `"Amir wrote back: a cuddly bat."` or
   lesson: { title: "Checking in the right places", text: "Checks went where mistakes were likeliest and dearest." },
   assurance: { ... }, checkingAnswer: "Yes: £126 of checks stopped about £900 of wrong gifts.",
   practices: [ ...five practices... ], causes: [ ...up to three... ],
-  blunders: [ { id: "pet-mouse", name: "pet mouse", icon: "🐭" } ], blunderTotal: 27 }
+  blunders: [ { id: "pet-mouse", name: "pet mouse", icon: "🐭" } ], blunderTotal: 27,
+  blunderIds: [ "pet-mouse", "oil-drum", ... ] }
 ```
 
 - `stars`: 0 to 3, one for each goal met. `goals`: the three goals as in `run.goals`, final.
@@ -539,6 +544,8 @@ for example `"Amir wrote back: a cuddly bat."` or
     Few mistakes goal.
 - `blunders` is `[{ id, name, icon }]`: the absurd wrong toys this game produced, caught or not.
   `blunderTotal` is how many different ones exist, so the page can keep a collection across games.
+  `blunderIds` lists the id of every one that exists now, so the page can drop a stored blunder
+  that an older build knew under another name and never count more found than exist.
 
 ### Practices
 

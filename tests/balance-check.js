@@ -499,9 +499,12 @@ function checkView(v) {
     const [bring, leave] = v.case.options;
     assert.strictEqual(bring.extra, bring.money - bring.instead);
     assert(bring.extra >= 40 && bring.money >= bring.instead * 1.5 - 1);
-    assert.strictEqual(bring.scope.split(";")[0], `${money(bring.extra)} more`);
+    assert(
+      bring.scope.startsWith(`${money(bring.extra)} more, checkers busy `),
+    );
+    assert(!/;|star/.test(bring.scope), "the goal is its own field");
     assert.deepStrictEqual(
-      [leave.money, leave.instead, leave.extra, leave.scope.split(";")[0]],
+      [leave.money, leave.instead, leave.extra, leave.scope],
       [0, 0, 0, "nothing more"],
     );
   }
@@ -880,9 +883,9 @@ console.log(
 // the headline praises care only without too many wrong gifts or too few checks. The headline
 // names the lesson's loss, and a lesson about a loss shows only when that loss cost a goal.
 const ANSWERS = {
-  "too much": /cost more than they saved|fewer checks would have done/,
+  "too much": /cost more than they saved|Fewer checks would have done/,
   "about right": /^(Yes|Mostly|Nothing|Not as run)/,
-  "too little": /more checks|^Too few: nothing was checked/,
+  "too little": /[Mm]ore checks|^Too few: nothing was checked/,
   bottleneck: /^Not as run/,
 };
 const HEADLINES = {
@@ -1006,7 +1009,7 @@ for (const name of IDLE)
   for (const r of results[name])
     assert.strictEqual(
       r.end.practices.find((p) => p.id === "escalate").actions[0].figure,
-      "decided 0 of 2, 0 right; 2 left unanswered",
+      "decided 0 of 2, 0 right, 2 left unanswered",
       "an untouched player read no unclear wish",
     );
 for (const r of results.expert) {
@@ -1030,10 +1033,14 @@ for (const r of results.expert) {
   assert(/trust/.test(r.end.practices.find((p) => p.id === "risk-check").note));
   assert.strictEqual(
     Object.keys(r.end).join(),
-    "stars,goals,right,wrong,lost,costs,headline,lesson,assurance,checkingAnswer,practices,causes,blunders,blunderTotal",
+    "stars,goals,right,wrong,lost,costs,headline,lesson,assurance,checkingAnswer,practices,causes,blunders,blunderTotal,blunderIds",
   );
-  for (const b of r.end.blunders)
+  // Every blunder a game shows is one the catalogue lists, so the page can drop stale stored ones.
+  assert.strictEqual(r.end.blunderIds.length, r.end.blunderTotal);
+  for (const b of r.end.blunders) {
     assert.strictEqual(Object.keys(b).join(), "id,name,icon");
+    assert(r.end.blunderIds.includes(b.id), b.id);
+  }
   assert(r.end.blunderTotal >= r.end.blunders.length);
 }
 for (const name of ["expert", "first", "firstFollows"])
@@ -1231,7 +1238,7 @@ for (const right of [true, false]) {
   assert.strictEqual(w.advice({ ...x, exit: "checked" }).control, "decide");
   while (!w.end) (w.step(1), w.choice && w.choose("none"));
   const act = w.end.practices.find((p) => p.id === "escalate").actions[0];
-  assert.match(act.figure, /^decided 1 of 2, 0 right; 1 left unanswered$/);
+  assert.match(act.figure, /^decided 1 of 2, 0 right, 1 left unanswered$/);
 }
 {
   const lazy = new Workshop({ seed: 5 });

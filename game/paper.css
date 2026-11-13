@@ -2697,3 +2697,132 @@ body[data-look="paper"] .sleigh-total .cargo-badge {
 body[data-look="paper"] .queue > progress {
   display: none;
 }
+
+/* Keep the score labels and figures on shared baselines. */
+body[data-look="paper"] .dashboard .hud-name .ui-icon {
+  order: 1;
+}
+@media (min-width: 1000px) {
+  body[data-look="paper"] .dashboard .clock-box {
+    display: grid;
+    grid-template-rows: 14px 28px 8px;
+    align-items: center;
+    box-sizing: border-box;
+    height: 61px;
+    padding: 5px 0 6px;
+  }
+  body[data-look="paper"] .dashboard #clockLabel {
+    line-height: 14px;
+  }
+  body[data-look="paper"] .dashboard #clock {
+    position: relative;
+    top: -2px;
+    font-size: 30px;
+    line-height: 26px;
+  }
+  body[data-look="paper"] .dashboard #pauseState {
+    height: 10px;
+    line-height: 10px;
+  }
+  body[data-look="paper"] .board[data-crowd="true"] {
+    grid-template-rows: 54px minmax(176px, 1fr) 25px 210px 133px;
+  }
+}
+
+/* The destination is the crew floor, with a strip kept inside its edges. */
+body[data-look="paper"] .station.destination {
+  outline: none;
+}
+body[data-look="paper"] .paper-floor .move-target {
+  left: 6px;
+  right: 6px;
+  width: auto;
+  top: 0;
+  box-sizing: border-box;
+}
+body[data-look="paper"] .elf-card .swap-tag {
+  top: -8px;
+  right: auto;
+  left: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  ) {
+  grid-auto-rows: 90px;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  .elf {
+  height: 90px;
+  min-height: 90px;
+}
+body[data-look="paper"]
+  :is(#elves0, #elves1, #elves2):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  )
+  .elf
+  svg {
+  height: 46px;
+  width: 40px;
+}
+body[data-look="paper"] .gift-flight:not(.in-slot) {
+  margin-top: 5px;
+  border-radius: 0;
+  --fly-y: 0px !important;
+}
+@media (max-width: 999px) {
+  body[data-look="paper"] .milestone-toast {
+    top: auto;
+    bottom: 8px;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    padding: 7px 12px;
+  }
+  body[data-look="paper"] .station.destination .paper-floor .crew {
+    padding-top: 44px;
+    box-sizing: border-box;
+  }
+  body[data-look="paper"]
+    .station.destination
+    .paper-floor
+    .crew:not(:has(:nth-child(4 of .elf-card))) {
+    grid-auto-rows: 108px;
+  }
+  body[data-look="paper"]
+    .station.destination
+    .paper-floor
+    .crew:not(:has(:nth-child(4 of .elf-card)))
+    .elf {
+    height: 108px;
+    min-height: 108px;
+  }
+  body[data-look="paper"]
+    .station.destination
+    .paper-floor
+    .crew:not(:has(:nth-child(4 of .elf-card)))
+    .elf
+    svg {
+    height: 66px;
+    width: 52px;
+  }
+  body[data-look="paper"] main .board[data-crowd="true"],
+  body[data-look="paper"]:has(#caseCue:not([hidden]))
+    main
+    .board[data-crowd="true"] {
+    grid-template-rows: 48px minmax(176px, 1fr) 16px 236px auto;
+  }
+}
+
+@media (max-width: 999px) {
+  body[data-look="paper"] main .board:not([data-crowd="true"]),
+  body[data-look="paper"]:has(#caseCue:not([hidden]))
+    main
+    .board:not([data-crowd="true"]) {
+    grid-template-rows: 48px minmax(176px, 1fr) 16px 160px auto;
+  }
+}

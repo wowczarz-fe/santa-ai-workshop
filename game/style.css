@@ -73,9 +73,6 @@ header {
   line-height: 0;
   flex-shrink: 0;
 }
-.wordmark svg {
-  width: 100%;
-}
 h1 {
   font:
     500 23px "Arial Narrow",
@@ -3982,5 +3979,24 @@ body[data-look] #goals .hud-slot.budget-low .hud-figures b {
   }
   body[data-look] #goals [data-goal="cost"] .hud-name::before {
     content: "Budget";
+  }
+}
+
+body[data-look] > header .wordmark {
+  width: auto;
+  height: 38px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+body[data-look] > header .wordmark img {
+  display: block;
+  width: auto;
+  height: 38px;
+}
+@media (max-width: 600px) {
+  body[data-look] > header .wordmark,
+  body[data-look] > header .wordmark img {
+    height: 24px;
   }
 }

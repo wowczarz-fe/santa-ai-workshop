@@ -93,11 +93,11 @@ const WRONG_LINE_GAP = 20; // seconds before a wrong-gift line repeats the same 
 
 // One sleigh, filled over two halves with a pause between them. The target sits where a first-time
 // player on the good strategy (reading on Automate, toys on Assist, the risky ones checked) fills it
-// in about four games in ten; checking everything is held back by its cost, not by this target.
+// in about one game in three; checking everything is held back by its cost, not by this target.
 const HALF_SECONDS = 75;
 const DURATION = 2 * HALF_SECONDS;
 const CLOSE = DURATION - 15; // letters stop coming, so the last ones can still reach the sleigh
-const TARGET = 108;
+const TARGET = 110;
 // Three goals for the game, one star each (ADR 0014). full: the right gifts aboard reach the
 // target. right: at most WRONG_ALLOWED wrong gifts aboard. cost: the cost so far, wrong gifts
 // aboard at what they will cost included, stays within COST_LIMIT. The right and cost goals count
@@ -2105,20 +2105,35 @@ class Workshop {
     return this.t - (this.claimed[s] ?? -99) < NEED_CLAIM ? null : s;
   }
 
-  // A fully rested elf leaves cocoa for the station that needs an elf, else the one it came from,
-  // and says where it went.
+  // A fully rested elf goes back to the station it came from, unless that station clearly does not
+  // need it and another one does; it says where it went.
   backFromCocoa(i) {
     const e = this.elves[i];
     const need = this.elfNeed();
-    e.station = need ?? e.home;
-    if (need !== null) this.claimed[need] = this.t;
+    const away = need !== null && need !== e.home && this.homeSpares(e.home);
+    e.station = away ? need : e.home;
+    if (away) this.claimed[need] = this.t;
     const where = STATION_NAMES[e.station];
     this.say(
       "rested",
-      need === null || need === e.home
-        ? `${e.name} is rested and back at ${where}.`
-        : `${e.name} is rested and goes to ${where}, which needs an elf.`,
+      away
+        ? `${e.name} is rested and goes to ${where}, which needs an elf.`
+        : `${e.name} is rested and back at ${where}.`,
       { elf: i, station: e.station },
+    );
+  }
+
+  // Whether station h clearly does not need an elf back: it works on Automate, or it keeps two
+  // elves or more and its piles are under half full; checking never while its pile is growing.
+  homeSpares(h) {
+    if (h < 2 && this.ai[h] === 2) return true;
+    const calm = STATION_QUEUES[h]
+      .filter((id) => id !== "rework")
+      .every((id) => this.q[id].length < QUEUES[id].limit / 2);
+    return (
+      this.staff(h).length >= 2 &&
+      calm &&
+      (h !== 2 || this.trend("check") !== "growing")
     );
   }
 

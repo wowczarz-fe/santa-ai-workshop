@@ -1078,6 +1078,29 @@ for (const k of NEWS_KINDS) warn(kinds.has(k), `news kind ${k} is emitted`);
     said.map((n) => n.text).join(" / "),
   );
 }
+// Rested checkers go back to Checking while its pile is half full, even when Toys needs an elf and
+// two checkers stay without them.
+{
+  const w = new Workshop({ seed: 61 });
+  w.step(10);
+  w.setAi(1, 1);
+  for (const i of [1, 2]) w.move(i, 2);
+  for (const i of [3, 4, 5]) w.move(i, 0);
+  for (const i of [6, 7]) {
+    w.move(i, 3);
+    w.elves[i].tired = 0;
+    w.elves[i].breakAt = w.t - 5;
+  }
+  w.q.orders.push({ ...w.q.letters[0], id: 1000 });
+  while (w.q.check.length < QUEUES.check.limit / 2 + 1)
+    w.q.check.push({ ...w.q.letters[0], id: 1100 + w.q.check.length });
+  w.step(0.1);
+  assert.deepStrictEqual(
+    [w.elves[6].station, w.elves[7].station],
+    [2, 2],
+    "rested checkers go back to a filling checking pile",
+  );
+}
 
 // A full cocoa break from tired is short. By hand, reading falls behind once letters speed up, and
 // the AI keeps the letter pile near empty.

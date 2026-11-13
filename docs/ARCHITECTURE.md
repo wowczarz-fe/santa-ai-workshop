@@ -47,10 +47,10 @@ One sleigh is filled over two halves of 75 seconds (`duration` 150). At t = 75 t
 - One unclear letter arrives in each half, at a seeded time 12 to 40 seconds into the half, from
   a pool of ten children and wishes (Timmy's little train among them). It raises a decision at once
   (below). All other letters are clear.
-- Three goals, one star each, for the whole game: `full` (Full sleigh, 108 right gifts aboard),
+- Three goals, one star each, for the whole game: `full` (Full sleigh, 110 right gifts aboard),
   `right` (Few mistakes, at most 3 wrong gifts aboard) and `cost` (Within budget, cost so far at
   most £850, wrong gifts aboard counted at what they cost). `right` and `cost` count only once the
-  sleigh holds 76 right gifts (`goalsCountFrom`), so a slow sleigh earns nothing for being cheap
+  sleigh holds 77 right gifts (`goalsCountFrom`), so a slow sleigh earns nothing for being cheap
   and clean.
 - There is one money figure, the cost so far (`cost.spent`). It counts up: the AI's running cost,
   checks, the half-time purchase, fixes (remakes, recalls, a rollback) and what the wrong gifts
@@ -60,7 +60,7 @@ One sleigh is filled over two halves of 75 seconds (`duration` 150). At t = 75 t
 
 ## What `view()` returns
 
-The target (108), the cost limit (£850) and `goalsCountFrom` (76) here are examples from the current balance; the page reads them from `view()`.
+The target (110), the cost limit (£850) and `goalsCountFrom` (77) here are examples from the current balance; the page reads them from `view()`.
 
 The page reads only `view()`. Whether an unrevealed parcel is wrong is left out of it. Money is in
 pounds, rounded to whole pounds unless said otherwise. Times are seconds.
@@ -69,7 +69,7 @@ pounds, rounded to whole pounds unless said otherwise. Times are seconds.
 | -------------- | -------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `t`            | number                           | `40.0000000001`                                      | Seconds played, unrounded                                                                                        |
 | `duration`     | number                           | `150`                                                | Seconds in the whole game                                                                                        |
-| `target`       | number                           | `108`                                                | Right gifts the sleigh needs for the Full sleigh star                                                            |
+| `target`       | number                           | `110`                                                | Right gifts the sleigh needs for the Full sleigh star                                                            |
 | `elves`        | array of elf                     | see below                                            | The eight elves, always in the same order                                                                        |
 | `ai`           | `[number, number]`               | `[2, 1]`                                             | AI level at reading and at toy making: 0 by hand, 1 Assist, 2 Automate                                           |
 | `checking`     | number                           | `1`                                                  | 0 a few, 1 the risky ones, 2 all                                                                                 |
@@ -191,7 +191,7 @@ example
 
 `run` is `{ half, halves, halfLeft, leavesIn, aboard, target, cargo, goals, goalsCountFrom }`, for
 example
-`{ half: 1, halves: 2, halfLeft: 35, leavesIn: 110, aboard: 36, target: 108, cargo: { id: "everyday", name: "Everyday gifts", icon: "🎁", text: "A wrong gift costs £12, a big one £100." }, goals: [...], goalsCountFrom: 76 }`.
+`{ half: 1, halves: 2, halfLeft: 35, leavesIn: 110, aboard: 36, target: 110, cargo: { id: "everyday", name: "Everyday gifts", icon: "🎁", text: "A wrong gift costs £12, a big one £100." }, goals: [...], goalsCountFrom: 77 }`.
 
 - `half`: 1 or 2. `halves`: 2. `halfLeft`: whole seconds left in the half under way. While the
   half-time card is up (`choice` set) the first half is over and the second has not begun: `half`
@@ -204,7 +204,7 @@ example
 
   | `id`    | `name`          | `now`                         | `need` | `text`                                 |
   | ------- | --------------- | ----------------------------- | ------ | -------------------------------------- |
-  | `full`  | `Full sleigh`   | right gifts aboard            | 108    | `108 right gifts`                      |
+  | `full`  | `Full sleigh`   | right gifts aboard            | 110    | `110 right gifts`                      |
   | `right` | `Few mistakes`  | wrong gifts aboard            | 3      | `at most 3 wrong gifts`                |
   | `cost`  | `Within budget` | cost so far (as `cost.spent`) | 850    | `cost at most £850, wrong gifts count` |
 
@@ -212,7 +212,7 @@ example
   `right` or `cost` goal whose figures are within its limit while the sleigh holds fewer than
   `goalsCountFrom` right gifts, so the star is not earned yet; `full` never waits.
 
-- `goalsCountFrom`: 76, the right gifts aboard from which the `right` and `cost` goals count.
+- `goalsCountFrom`: 77, the right gifts aboard from which the `right` and `cost` goals count.
 
 ### Cost
 
@@ -347,7 +347,7 @@ words.
 
 ```
 { title: "Half-time", text: "Pick one change for the second half, or none.",
-  report: { aboard: 63, wrong: 2, target: 108, cost: 356, limit: 850, tired: 12, burnouts: 1,
+  report: { aboard: 63, wrong: 2, target: 110, cost: 356, limit: 850, tired: 12, burnouts: 1,
             goals: [ ...three goals as in run.goals... ], causes: [ ...up to three causes... ] },
   next: { cargo: { id: "big", name: "Big gifts", icon: "📦", text: "The AI slips more, and a wrong one costs £100." },
           text: "Second half: mostly big gifts. A wrong one costs £100, so checks pay more." },
@@ -404,7 +404,7 @@ something only half-time sells.
 | `blocked`     | `station`                                                                                  | A station stopped because the next pile is full       |
 | `lost`        | `count`                                                                                    | Letters were lost to a full pile                      |
 | `behind`      | `station`                                                                                  | The pace first falls short and a station holds it up  |
-| `milestone`   | `right`                                                                                    | The sleigh passed 25, 50, 75 or 108 right gifts       |
+| `milestone`   | `right`                                                                                    | The sleigh passed 25, 50, 75 or 110 right gifts       |
 | `cleared`     | `queue`                                                                                    | A pile that was more than half full has been emptied  |
 | `halftime`    | `right`, `wrong`                                                                           | Half-time began                                       |
 | `chose`       | `option`, `outcome: { money, seconds, gained }`                                            | The player picked a half-time option                  |
@@ -625,10 +625,12 @@ beforehand: a risky batch can happen to come out clean.
   Gifts miss a check in two ways, both visible: the player calls `bypass()`, counted in
   `bypassed`, or relaxed checkers wave a gift through, counted in `vigilance.skipped`.
 - A cocoa break from tired to fresh takes about 3 seconds. Once fully rested (at least 3 seconds
-  after it sat down) an elf on cocoa leaves by itself: to the station that needs an elf, as
-  `focus` would name it, else back to the station it came from, with a `rested` news item saying
-  where. A need one rested elf has gone to is left to it for 5 seconds, so two elves rested
-  together do not both answer it. Nobody is left on a break. A `tired` news item means an elf burnt
+  after it sat down) an elf on cocoa leaves by itself, with a `rested` news item saying where. It
+  goes back to the station it came from unless that station clearly does not need it (it works on
+  Automate, or keeps two elves or more with every pile under half full, and for Checking the To
+  check pile is not growing) and another station needs an elf, as `focus` would name it. A need
+  one rested elf has gone to is left to it for 5 seconds, so two elves rested together do not both
+  answer it. Nobody is left on a break. A `tired` news item means an elf burnt
   out; it comes back by itself after 15 seconds, still tired. An elf working without rest burns out
   for the first time about 110 seconds in; a player who rests elves when they turn red sees about
   one burnout a game.

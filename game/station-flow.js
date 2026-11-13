@@ -137,15 +137,8 @@ const StationFlow = (() => {
     if (document.body.dataset.look !== "paper") return;
     const reset = view.t < previousTime;
     const reduced = document.body.classList.contains("reduce-motion");
-    if (reset || reduced) {
-      for (const animation of motion) animation.cancel();
-      motion.clear();
-    }
+    if (reset || reduced || !running) stop();
     if (reset) previous.clear();
-    for (const animation of motion) {
-      if (running) animation.play();
-      else animation.pause();
-    }
     for (const heap of heaps) {
       const { station } = heap;
       const pile = prepare(heap);

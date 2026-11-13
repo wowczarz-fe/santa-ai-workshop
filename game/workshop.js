@@ -112,7 +112,7 @@ const TARGET = 145;
 // COST_LIMIT is the budget (ADR 0020): the cost so far, wrong gifts aboard at what they will cost
 // included, counts down from it, and the game ends the moment nothing is left. A game that ends
 // that way has lost the cost star, so it earns two stars at most.
-const WRONG_ALLOWED = 3;
+const WRONG_ALLOWED = 2;
 const COST_LIMIT = 900;
 const GOALS_FROM = 0.7;
 const BUDGET_LOW = 0.25; // the share of the budget left at which it is said to be running low
@@ -517,6 +517,7 @@ class Workshop {
     this.lastCaseId = 0;
     this.recallsRaised = 0; // recall decisions raised so far
     this.recallWrongAtAnswer = 0;
+    this.firstRecallOffered = false; // the first wrong gift aboard has had its recall decision
     this.claimed = {}; // when a rested elf last went to answer each station's need
     this.recalled = { count: 0, cost: 0 }; // wrong gifts brought back off the sleigh, and what it cost
     this.lowSaid = false; // whether the line about the budget running low has gone out
@@ -1583,17 +1584,42 @@ class Workshop {
     this.openCase({ kind: "incident", step: "source" });
   }
 
+  // Raises a recall decision, at most RECALLS a game and one at a time: when wrong gifts aboard pass
+  // what the Few mistakes goal allows, for the excess; and the first time a wrong gift is aboard,
+  // everyday or big, for that one gift, so most players meet the choice. The single gift's card
+  // waits until it can be brought back: room on the remake pile, time before the sleigh leaves and
+  // budget for it.
   raiseAboard() {
-    const wrong = this.aboard.filter((x) => x.wrong).length;
     if (
+      this.end ||
       this.recallsRaised >= RECALLS ||
-      this.cases.some((c) => c.step === "aboard") ||
-      wrong <= this.recallWrongAtAnswer ||
-      !this.toRecall().length
+      this.cases.some((c) => c.step === "aboard")
+    )
+      return;
+    const wrong = this.aboard.filter((x) => x.wrong);
+    if (wrong.length > this.recallWrongAtAnswer && this.toRecall().length) {
+      this.recallsRaised++;
+      this.firstRecallOffered = true;
+      this.openCase({ kind: "incident", step: "aboard" });
+      return;
+    }
+    const first = !this.firstRecallOffered && wrong[0];
+    if (
+      !first ||
+      this.full("rework") ||
+      !this.recallFits([first]) ||
+      recallPrice([first]) - countedPrice([first]) >= this.budgetLeft()
     )
       return;
     this.recallsRaised++;
-    this.openCase({ kind: "incident", step: "aboard" });
+    this.firstRecallOffered = true;
+    this.openCase({ kind: "incident", step: "aboard", parcels: [first] });
+  }
+
+  // Whether more wrong gifts are aboard than the Few mistakes goal allows.
+  overAllowed() {
+    const right = this.goals().find((g) => g.id === "right");
+    return right.now > right.need;
   }
 
   // The wrong gifts aboard beyond what the Few mistakes goal allows, the big ones first: the fewest
@@ -1613,6 +1639,14 @@ class Workshop {
     return list.length * recallSeconds(list.length) <= this.timeLeft();
   }
 
+  // The gifts a recall decision covers: the excess over the Few mistakes goal, or, for the card the
+  // first wrong gift raised while the count is still within the goal, that one gift.
+  recallList(c) {
+    const x = c.parcels[0];
+    if (!x || this.overAllowed()) return this.toRecall();
+    return this.aboard.includes(x) && !this.full("rework") ? [x] : [];
+  }
+
   // "4 wrong gifts are aboard: one more than Santa's name can take."
   reputationText() {
     const wrong = this.aboard.filter((x) => x.wrong).length;
@@ -1625,15 +1659,17 @@ class Workshop {
     const x = c.parcels[0];
     if (c.kind === "unclear")
       return `${x.w.child} writes: '${x.w.wish}' It could mean two things.`;
-    return {
-      source: "The faulty update is making full-sized trains.",
-      aboard: this.reputationText(),
-    }[c.step];
+    if (c.step === "source")
+      return "The faulty update is making full-sized trains.";
+    // One wrong gift, the count still within the goal: "Jack got a full-sized galleon, not a toy pirate ship."
+    return x && !this.overAllowed()
+      ? `${this.mixUp(x)}.`
+      : this.reputationText();
   }
 
   // Parcels an option could cover.
   affected(c) {
-    if (c.step === "aboard") return this.toRecall();
+    if (c.step === "aboard") return this.recallList(c);
     return c.parcels;
   }
 
@@ -1799,6 +1835,12 @@ class Workshop {
   aboardGoals(list) {
     const [, right] = this.goals();
     const over = right.now > right.need;
+    // Within the goal no star is at stake: the choice is whether this gift counts as a mistake.
+    if (!over)
+      return {
+        bringBack: "No mistake counted",
+        leave: `Counts as ${right.now} of ${right.need} mistakes`,
+      };
     return {
       bringBack:
         over && right.now - list.length <= right.need
@@ -3520,6 +3562,19 @@ class Workshop {
       })),
       affected: { count: affected.length, ids: affected.map((x) => x.id) },
       options: this.options(c),
+      // A recall of one gift names it, so the card can draw what the child got and what they wanted.
+      ...(c.step === "aboard"
+        ? {
+            gift:
+              affected.length === 1
+                ? {
+                    child: affected[0].w.child,
+                    wanted: { name: affected[0].w.wanted.name },
+                    made: { name: affected[0].made.name },
+                  }
+                : null,
+          }
+        : {}),
       // An unclear letter: what a wrong pick costs once aboard, in pounds, and the two things the
       // wish could mean, as toy names and drawing keys, in an order that does not tell which is right.
       ...(c.kind === "unclear"

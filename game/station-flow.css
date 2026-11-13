@@ -10,3 +10,6 @@ body[data-look="paper"] .queue-picture {
     animation: none;
   }
 }
+body[data-look="paper"] #queue-check .queue-tag {
+  transform: translateY(-66px);
+}

@@ -239,3 +239,71 @@ body[data-look="paper"] main .board,
 body[data-look="paper"]:has(#caseCue:not([hidden])) main .board {
   background-color: #f4ead3;
 }
+/* The outline star carries goal status without a second ring or progress line. */
+body[data-look]
+  .dashboard
+  .hud-slot:is([data-goal="right"], [data-goal="cost"])
+  .hud-bar {
+  display: none;
+}
+body[data-look] .dashboard .hud-slot[data-state] .hud-star {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+}
+body[data-look] .dashboard .hud-slot[data-state] .hud-star svg {
+  stroke-dasharray: none;
+}
+body[data-look] .dashboard .hud-figures {
+  gap: 0;
+}
+body[data-look] .dashboard .hud-need {
+  white-space: pre;
+}
+#report #endStars {
+  font: inherit;
+  line-height: 1;
+}
+.end-rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.end-rating-stars > span {
+  display: block;
+  width: 52px;
+  height: 52px;
+}
+.end-rating-stars .ui-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.end-rating-stars .earned {
+  color: #f0cf6c;
+}
+.end-rating-stars .empty {
+  color: #97b4ad;
+}
+body[data-look="paper"] .end-rating-stars .earned {
+  color: #ae7d25;
+}
+body[data-look="paper"] .end-rating-stars .empty {
+  color: #7b7464;
+}
+@media (max-width: 600px) {
+  #report .end-score {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .end-rating-stars {
+    gap: 6px;
+  }
+  .end-rating-stars > span {
+    width: 40px;
+    height: 40px;
+  }
+}

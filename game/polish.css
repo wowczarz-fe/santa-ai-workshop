@@ -747,6 +747,12 @@ body[data-look="polish"] .focus-tag:empty {
 body[data-look="polish"] .elf-card .rest-cue {
   display: none;
 }
+/* The elf the rules want swapped out: a dashed amber outline while the banner names it */
+body[data-look="polish"] .elf-card.swap-elf {
+  outline: 2px dashed #c99d39;
+  outline-offset: 1px;
+  border-radius: 9px;
+}
 body[data-look="polish"] .elf-card.needs-rest .rest-cue {
   position: absolute;
   top: 0;

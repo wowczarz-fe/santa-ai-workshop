@@ -1617,6 +1617,12 @@ body[data-look="paper"] .crew-hint:empty {
 body[data-look="paper"] .elf-card .rest-cue {
   display: none;
 }
+/* The elf the rules want swapped out: a dashed gold outline while the banner names it */
+body[data-look="paper"] .elf-card.swap-elf {
+  outline: 2px dashed #d2a447;
+  outline-offset: 1px;
+  border-radius: 3px;
+}
 body[data-look="paper"] .elf-card.needs-rest .rest-cue {
   position: absolute;
   top: 0;

@@ -39,8 +39,6 @@
   const queueIds = [["letters"], ["orders"], ["check", "pass", "rework"]];
   const stationNames = ["LETTERS", "TOYS", "CHECKING"];
   const miniPiles = { pass: "let-through", rework: "fixing" };
-  // The straight-through gifts wait for a checker to load them, so the counter says that.
-  const queueLabel = (q) => (q.id === "pass" ? "Waiting to load" : q.name);
   let game,
     view,
     started = false,
@@ -419,9 +417,6 @@
     "ai:0": () => actionGroups.get("ai0"),
     "ai:1": () => actionGroups.get("ai1"),
     cocoa: () => $("cocoa"),
-    "elves:0": () => $("elves0"),
-    "elves:1": () => $("elves1"),
-    "elves:2": () => $("elves2"),
   };
   let mistakeHint = null;
   const hintLabel = make("span", "mistake-hint-label");
@@ -431,13 +426,18 @@
     !view.end &&
     tourStep === null;
   function showMistakeHint(news) {
-    if (!hintTargets[news.control]) return;
     // The rules' short tag when they send one, else the line's last sentence up to any colon.
     const action =
       news.action ??
       (/([^.]+)\.\s*$/.exec(news.text)?.[1] ?? "").split(":")[0].trim();
+    // A tag that names an elf ("Swap Pip") outlines that elf's card; "ask" has no control yet.
+    const elf = view.elves.findIndex((e) =>
+      new RegExp(`\\b${e.name}\\b`).test(action),
+    );
+    if (elf < 0 && !hintTargets[news.control]) return;
     mistakeHint = {
       control: news.control,
+      elf,
       words: /^Wrong gift/.test(action) ? "" : action,
       until: performance.now() + 5000,
     };
@@ -445,7 +445,11 @@
   }
   function paintMistakeHint() {
     // The tour's outline is the only one while the tour is up.
-    let target = mistakeHintOn() ? hintTargets[mistakeHint.control]() : null;
+    let target = !mistakeHintOn()
+      ? null
+      : mistakeHint.elf >= 0
+        ? elfNodes[mistakeHint.elf]
+        : hintTargets[mistakeHint.control]();
     if (!target?.getClientRects().length) target = null;
     document
       .querySelectorAll(".mistake-hint")
@@ -625,7 +629,7 @@
     paint();
   }
   const perMinute = (s) =>
-    `${["Reading", "Toy making", "Checking"][s]} ${Math.round(view.stations[s].rate)} a minute`;
+    `${["Letters", "Toys", "Checking"][s]}: ${Math.round(view.stations[s].rate)} a minute`;
   function paint() {
     view = game.view();
     paintGoals();
@@ -694,7 +698,7 @@
       for (const id of queueIds[s]) {
         const q = view.queues[id],
           node = $(`queue-${id}`);
-        node.querySelector(".queue-name").textContent = queueLabel(q);
+        node.querySelector(".queue-name").textContent = q.name;
         // A small counter shows the count alone; it turns red when its pile is full.
         node.querySelector(".queue-amount").textContent = miniPiles[id]
           ? String(q.parcels.length)
@@ -894,25 +898,33 @@
     skip.querySelector(".bypass-risk").textContent = bigSkipped
       ? `${bigSkipped} big`
       : "unchecked";
-    const attention = attentionOf(view.vigilance.state);
-    if ($("vigilance").dataset.attention !== attention) {
+    // The elf to swap out, while the rules name one: a banner with its name and an outline on
+    // its card, both gone once the station looks properly again.
+    const swap = view.vigilance.swap ?? null;
+    const attention = !swap
+      ? "sharp"
+      : swap.station === 2
+        ? attentionOf(view.vigilance.state)
+        : "drifting";
+    const banner = `${attention}:${swap?.name ?? ""}`;
+    if ($("vigilance").dataset.banner !== banner) {
+      $("vigilance").dataset.banner = banner;
       $("vigilance").dataset.attention = attention;
       $("vigilance").innerHTML = eyes[attention];
-      $("vigilance").append(
-        make(
-          "span",
-          "attention-label",
-          {
-            sharp: "Checkers sharp",
-            drifting: "Checkers trusting the AI",
-            closed: "Checkers not looking",
-          }[attention],
-        ),
-      );
+      if (swap)
+        $("vigilance").append(
+          make(
+            "span",
+            "attention-label",
+            `${swap.name} ${attention === "closed" ? "not looking" : "trusting the AI"}`,
+          ),
+        );
     }
-    // The checkers' eye shows only once they stop looking properly.
-    $("vigilance").hidden = attention === "sharp";
+    $("vigilance").hidden = !swap;
     $("vigilance").dataset.state = view.vigilance.state;
+    elfNodes.forEach((wrap, i) =>
+      wrap.classList.toggle("swap-elf", swap?.elf === i),
+    );
     // One outlined thing at a time: the control the tour points at, else the rules' focus, with
     // its reason as a tag on the outlined box. A tired elf gets its own card outlined.
     const walkTarget = tourStep === null ? null : tourSteps[tourStep].target();
@@ -993,7 +1005,7 @@
             ? 6
             : n.kind === "resolved"
               ? 3
-              : /noticed|relaxed/.test(n.kind)
+              : /noticed|relaxed|rested/.test(n.kind)
                 ? 4
                 : 1;
       say(n.text, priority);
@@ -1049,6 +1061,7 @@
     faulty: "update",
     tired: "role-tired",
     recalled: "rollback",
+    slip: "hand",
   };
   const optionIcons = {
     update: "update",
@@ -1309,14 +1322,6 @@
   function handleNews(news) {
     if (!started) return;
     if (news.kind === "loaded" && news.control) showMistakeHint(news);
-    // Elves starting to trust the AI: their station's crew is outlined with the line's action.
-    if (news.kind === "relaxed") {
-      const station = /^Checkers/.test(news.text)
-        ? 2
-        : view.ai.findIndex((level) => level === 1);
-      if (station >= 0)
-        showMistakeHint({ ...news, control: `elves:${station}` });
-    }
     if (news.kind === "loaded" && news.caseId != null)
       openedCases.delete(news.caseId);
     if (
@@ -1913,8 +1918,8 @@
       return [
         {
           bypass: "Skip checks",
-          ai0: "AI at reading",
-          ai1: "AI at toy-making",
+          ai0: "AI at Letters",
+          ai1: "AI at Toys",
           checking: "How much to check",
         }[parts[1]],
         [a.why ? `${cap(a.why)}.` : "", `${cap(a.cost)}.`].filter(Boolean),
@@ -1923,7 +1928,7 @@
     if (type === "queue") {
       const q = view.queues[parts[1]];
       return [
-        queueLabel(q),
+        q.name,
         [
           parts[1] === "pass"
             ? "Gifts not sent for a check, waiting for an elf here to load them onto the sleigh."
@@ -2012,9 +2017,11 @@
         ["Right gifts count towards the target; wrong ones cost money."],
       ],
       vigilance: [
-        "Checker attention",
+        "Trusting the AI",
         [
-          "After a long run of clean gifts, checkers start waving gifts through unchecked.",
+          view.vigilance.swap
+            ? `${view.vigilance.swap.name} has trusted a long run of clean AI gifts and now lets some through. Send ${view.vigilance.swap.name} for cocoa or swap in another elf.`
+            : "After a long run of clean AI gifts, elves stop looking properly.",
           view.vigilance.skipped
             ? `${view.vigilance.skipped} checks skipped so far.`
             : "",
@@ -2171,7 +2178,7 @@
       perform(() => game.setAi(s, l));
       if (view.ai[s] === l)
         sayResult(
-          `${["Reading", "Toy making"][s]} on ${["By hand", "Assist", "Automate"][l]}: ${Math.round(view.stations[s].rate)} a minute.`,
+          `${["Letters", "Toys"][s]} on ${["By hand", "Assist", "Automate"][l]}: ${Math.round(view.stations[s].rate)} a minute.`,
         );
       return;
     }

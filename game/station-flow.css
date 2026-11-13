@@ -14,42 +14,60 @@ body[data-look="paper"] .paper-scene :is(#piles0, #piles1, #piles2) {
 body[data-look="paper"] :is(#queue-letters, #queue-orders, #queue-check) {
   position: static;
 }
+body[data-look="paper"] :is(.queue-tag, .flow-queue-label) {
+  display: block;
+  width: 112px;
+  height: 44px;
+  padding: 4px 7px;
+  box-sizing: border-box;
+  background: #f4ead3f5;
+  border: 1px solid #bea47b;
+  border-radius: 0;
+  box-shadow: 1px 2px 3px #2b1c1433;
+}
 body[data-look="paper"]
   :is(#queue-letters, #queue-orders, #queue-check)
   .queue-tag {
   position: absolute;
   top: 0;
   left: 0;
-  width: 112px;
-  height: 44px;
-  padding: 4px 7px;
-  box-sizing: border-box;
   transform: none;
 }
+body[data-look="paper"] #piles2 .queue-mini .queue-name,
 body[data-look="paper"]
   :is(#queue-letters, #queue-orders, #queue-check)
   .queue-name {
+  display: block;
   min-height: 0;
+  white-space: nowrap;
+  text-align: left;
   font:
     10px/12px Arial,
     sans-serif;
 }
+body[data-look="paper"] #piles2 .queue-mini .queue-count,
 body[data-look="paper"]
   :is(#queue-letters, #queue-orders, #queue-check)
   .queue-count {
+  display: block;
+  text-align: left;
+  white-space: nowrap;
   font:
     18px/22px Georgia,
     serif;
 }
+body[data-look="paper"] .flow-queue-label > .ui-icon {
+  display: none;
+}
 body[data-look="paper"] #queue-orders .queue-picture {
   position: absolute;
   top: 50px;
-  bottom: 0;
+  bottom: -8px;
   left: 0;
   width: 112px;
   height: auto !important;
   visibility: visible;
-  align-items: flex-start;
+  align-items: flex-end;
   padding: 0;
 }
 body[data-look="paper"] #queue-orders .stack {
@@ -67,80 +85,40 @@ body[data-look="paper"] #piles2 .mini-piles {
   top: 0;
   bottom: 0;
   right: 0;
-  width: 134px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  width: 112px;
+  display: block;
 }
-/* Only the label is a chip; queued gifts sit in the scenery. */
 body[data-look="paper"] #piles2 .queue.queue-mini,
 body[data-look="paper"]
   #piles2
   .queue.queue-mini:is(.near-full, .full, :hover, :focus) {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: 28px minmax(0, 1fr);
-  align-items: end;
-  gap: 0;
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: block;
+  width: 112px;
+  height: 44px;
+  min-height: 44px;
   padding: 0;
   background: transparent;
   border: 0;
   box-shadow: none;
-  min-height: 0;
-}
-body[data-look="paper"] #piles2 #queue-pass {
-  flex: 1;
-  height: auto;
+  overflow: visible;
 }
 body[data-look="paper"] #piles2 #queue-rework {
-  flex: 0 0 55px;
-  height: 55px;
-}
-.flow-queue-label {
-  align-self: start;
-  display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 4px;
-  height: 28px;
-  box-sizing: border-box;
-  background: #f4ead3f5;
-  border: 1px solid #b59b72;
-  border-radius: 2px;
-  box-shadow: 1px 2px 2px #2b1c1429;
-}
-body[data-look="paper"] #piles2 .queue-mini .queue-name {
-  min-height: 0;
-  font:
-    10px/10px Arial,
-    sans-serif;
-  text-align: left;
-  white-space: normal;
-}
-body[data-look="paper"] #piles2 .queue-mini .queue-count {
-  font:
-    bold 13px/16px Arial,
-    sans-serif;
-  white-space: nowrap;
+  top: 52px;
 }
 .flow-small-heap {
-  grid-column: 1 / -1;
+  position: absolute;
   display: block;
-  width: 120px;
-  height: 100%;
-  max-height: 58px;
-  max-width: 100%;
   overflow: visible;
-  justify-self: center;
+  pointer-events: none;
 }
 body[data-look="paper"] #piles2 .queue-mini.near-full .flow-queue-label {
-  border-color: #b77c19;
   background: #ffe3a7;
   box-shadow: inset 3px 0 #b77c19;
 }
 body[data-look="paper"] #piles2 .queue-mini.full .flow-queue-label {
-  border-color: #a3263a;
   background: #f8d3ce;
   box-shadow: inset 3px 0 #a3263a;
 }
@@ -151,85 +129,11 @@ body[data-look="paper"] #piles2 .queue-mini:focus-visible .flow-queue-label {
   outline: 2px solid #245985;
   outline-offset: 2px;
 }
-body[data-look="paper"] .board[data-crowd="true"] #piles2 .mini-piles {
-  gap: 4px;
-}
-body[data-look="paper"] .board[data-crowd="true"] #piles2 .queue-mini {
-  grid-template-rows: 22px minmax(0, 1fr);
-}
-body[data-look="paper"] .board[data-crowd="true"] #piles2 #queue-rework {
-  flex-basis: 40px;
-  height: 40px;
-}
-body[data-look="paper"] .board[data-crowd="true"] .flow-queue-label {
-  height: 22px;
-  padding-top: 1px;
-  padding-bottom: 1px;
-}
-body[data-look="paper"]
-  .board[data-crowd="true"]
-  #piles2
-  .queue-mini
-  .queue-name {
-  font-size: 9px;
-  line-height: 9px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .heap-item {
-    animation: none;
-  }
-}
-body[data-look="paper"] #piles2 .queue.queue-mini {
-  position: static;
-}
-body[data-look="paper"] #piles2 .flow-queue-label {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 134px;
-}
-body[data-look="paper"] #queue-rework .flow-queue-label {
-  top: 34px;
-}
-body[data-look="paper"] #piles2 #queue-pass {
-  grid-template-rows: 62px minmax(0, 1fr);
-}
-body[data-look="paper"] #piles2 #queue-rework {
-  grid-template-rows: minmax(0, 1fr);
-}
-body[data-look="paper"] #queue-pass .flow-small-heap {
-  grid-row: 2;
-}
-body[data-look="paper"] #queue-rework .flow-small-heap {
-  grid-row: 1;
-}
-body[data-look="paper"]
-  .board[data-crowd="true"]
-  #queue-rework
-  .flow-queue-label {
-  top: 26px;
-}
-body[data-look="paper"] .board[data-crowd="true"] #piles2 .flow-small-heap {
-  position: absolute;
-  top: 52px;
-  bottom: 0;
-  width: 64px;
-  height: calc(100% - 52px);
-}
-body[data-look="paper"] .board[data-crowd="true"] #queue-pass .flow-small-heap {
-  right: 70px;
-}
-body[data-look="paper"]
-  .board[data-crowd="true"]
-  #queue-rework
-  .flow-small-heap {
-  right: 0;
-}
 body[data-look="paper"] .paper-scene #feedback2 {
   top: 58px !important;
   left: 8px;
   right: auto;
-  width: calc(100% - 158px);
+  width: calc(100% - 136px);
   max-width: 148px;
 }
 body[data-look="paper"] #feedback2 .caught-toy {
@@ -255,4 +159,14 @@ body[data-look="paper"] #feedback2 .caught-toy span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+body[data-look="paper"]
+  :is(.sleigh-total, .cargo-badge, .caught-toy, .gift-flight) {
+  border-color: #bea47b;
+  border-radius: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .heap-item {
+    animation: none;
+  }
 }

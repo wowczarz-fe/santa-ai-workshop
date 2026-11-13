@@ -3982,3 +3982,19 @@ dialog p {
 .case-panel .case-options[hidden] {
   display: none;
 }
+
+.queue-count .queue-held {
+  display: inline-block;
+  width: 38px;
+  margin-left: 3px;
+  font:
+    700 10px/11px Arial,
+    sans-serif;
+  vertical-align: middle;
+  white-space: normal;
+  text-align: center;
+  color: #8c3b15;
+}
+.queue-count .queue-held[hidden] {
+  display: none;
+}

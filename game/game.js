@@ -163,6 +163,11 @@
       q.innerHTML = mini
         ? `${icon(mini)}<span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span></strong>`
         : '<span class="queue-tag"><span class="queue-name"></span><strong class="queue-count"><span class="queue-amount"></span><span class="queue-trend" role="img"></span></strong></span><span class="queue-picture"><span class="stack"></span></span><progress max="1" value="0"></progress>';
+      if (id === "orders") {
+        const held = make("small", "queue-held");
+        held.hidden = true;
+        q.querySelector(".queue-count").append(held);
+      }
       if (!mini) $(`piles${s}`).append(q);
       else {
         if (!$(`minis${s}`)) {
@@ -398,6 +403,8 @@
     "ai:0": () => actionGroups.get("ai0"),
     "ai:1": () => actionGroups.get("ai1"),
     cocoa: () => $("cocoa"),
+    decide: () =>
+      caseOpen && view.case?.kind === "unclear" ? $("caseReadings") : null,
   };
   let mistakeHint = null;
   const hintLabel = make("span", "mistake-hint-label");
@@ -704,7 +711,7 @@
         node.querySelector(".queue-amount").textContent = `${count}/${q.limit}`;
         node.setAttribute(
           "aria-label",
-          `${q.name}: ${count} of ${q.limit} places filled${full ? ", full" : nearFull ? ", nearly full" : ""}`,
+          `${q.name}: ${count} of ${q.limit} places filled${full ? ", full" : nearFull ? ", nearly full" : ""}${q.held ? `, ${q.held} read letters waiting for room` : ""}`,
         );
         node.classList.toggle("blocked", !!q.blocked);
         node.classList.toggle("full", full);
@@ -713,7 +720,12 @@
         if (miniPiles[id]) continue;
         const trend = node.querySelector(".queue-trend");
         if (!trend.firstChild) trend.innerHTML = trendArrow;
-        trend.hidden = !q.trend;
+        trend.hidden = !q.trend || !!q.held;
+        const held = node.querySelector(".queue-held");
+        if (held) {
+          held.hidden = !q.held;
+          held.textContent = q.held ? `+${q.held} waiting` : "";
+        }
         trend.dataset.trend = q.trend || "";
         trend.setAttribute("aria-label", q.trend ? `Pile ${q.trend}` : "");
         node.querySelector("progress").value = q.progress;
@@ -1069,7 +1081,7 @@
       ? `${money(goal.now)} / ${money(goal.need)}`
       : `${goal.now} / ${goal.need}${goal.id === "right" ? " wrong" : ""}`;
   const causeIcons = {
-    guessed: "gift-unclear",
+    picked: "gift-unclear",
     big: "gift-big",
     misread: "letter",
     misMade: "toy",
@@ -2002,6 +2014,9 @@
           parts[1] === "pass"
             ? "Gifts not sent for a check, waiting for an elf here to load them onto the sleigh."
             : `${q.parcels.length} of ${q.limit} waiting, ${Math.round(q.rate)} a minute going out.`,
+          q.held
+            ? `${q.held} read letters are waiting for room in the toy pile.`
+            : "",
           q.blocked
             ? `${cap(q.blocked)}.`
             : parts[1] === "letters"
@@ -2837,7 +2852,7 @@
     "A decision waited too long": "faulty",
     "A faulty update ran unchecked": "faulty",
     "The faulty update ran too long": "faulty",
-    "Guesses went wrong": "guessed",
+    "Unclear wishes read wrongly": "picked",
     "Big gifts the AI got wrong": "big",
     "Checkers stopped looking": "waved",
     "Tired elves slipped": "tired",

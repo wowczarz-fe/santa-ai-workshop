@@ -450,7 +450,7 @@ body[data-look="paper"] #tour {
 body[data-look="paper"] #tour h3 {
   margin: 4px 0;
   color: var(--teal);
-  font: bold 18px/1.25 var(--font-heading);
+  font: 400 18px/1.25 var(--font-heading);
 }
 body[data-look="paper"] #tour p {
   margin: 0;

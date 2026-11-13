@@ -23,7 +23,7 @@ body[data-look="polish"] > header {
   padding: 8px 18px;
 }
 body[data-look="polish"] > header h1 {
-  font: 700 22px var(--font-heading);
+  font: 400 22px var(--font-heading);
 }
 body[data-look="polish"] .wordmark {
   background: none;
@@ -267,7 +267,7 @@ body[data-look="polish"] .column-heading::before {
   );
 }
 body[data-look="polish"] .column-heading h2 {
-  font: 700 16px var(--font-heading);
+  font: 400 16px var(--font-heading);
   white-space: nowrap;
 }
 body[data-look="polish"] .station-number {
@@ -368,7 +368,7 @@ body[data-look="polish"] .queue-name {
 body[data-look="polish"] .queue-count {
   grid-column: 2;
   grid-row: 1;
-  font: 700 22px var(--font-heading);
+  font: 400 22px var(--font-heading);
   line-height: 22px;
   align-self: center;
 }
@@ -998,7 +998,7 @@ body[data-look="polish"] .sleigh-total {
   border-radius: 8px;
 }
 body[data-look="polish"] .sleigh-total strong {
-  font: 700 35px var(--font-heading);
+  font: 400 35px var(--font-heading);
 }
 body[data-look="polish"] .sleigh-total span {
   font-size: 11px;

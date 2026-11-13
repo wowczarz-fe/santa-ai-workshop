@@ -4,3 +4,7 @@ https://www.npmjs.com/package/@fontsource/roboto-condensed/v/5.3.0
 Latin, normal WOFF2 subsets. Files copied without modification.
 Each family is distributed under SIL Open Font License 1.1.
 Copyright and license texts accompany these files.
+
+Franklin Gothic Medium Cond: supplied by the user and approved for distribution
+in this game on 2026-11-13. Bundled file: franklin-gothic-medium-cond.woff2.
+The SIL Open Font Licenses alongside this file apply only to the Roboto families.

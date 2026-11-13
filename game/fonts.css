@@ -1,12 +1,12 @@
-/* Enable when the licensed Franklin webfont is supplied.
 @font-face {
   font-family: "Franklin Gothic Medium Cond";
   font-style: normal;
-  font-weight: 500;
+  font-weight: 400;
   font-display: swap;
-  src: url("fonts/franklin-gothic-medium-cond.woff2") format("woff2");
+  src:
+    local("Franklin Gothic Medium Cond"),
+    url("fonts/franklin-gothic-medium-cond.woff2") format("woff2");
 }
-*/
 @font-face {
   font-family: "Roboto";
   font-style: normal;

@@ -72,7 +72,7 @@ header {
   flex-shrink: 0;
 }
 h1 {
-  font: 500 23px var(--font-heading);
+  font: 400 23px var(--font-heading);
   margin: 0;
   flex: 1;
 }
@@ -1076,7 +1076,7 @@ body[data-look] #vigilance {
   min-height: 22px;
   padding: 0;
   border-radius: 50%;
-  font: bold 12px/1 var(--font-heading);
+  font: 400 12px/1 var(--font-heading);
   vertical-align: middle;
 }
 .more-toggle[aria-expanded="true"] {
@@ -2517,7 +2517,7 @@ dialog p {
 #breakTitle {
   margin: 1px 0 0;
   font:
-    600 28px/1.1 var(--bc-serif),
+    400 28px/1.1 var(--bc-serif),
     serif;
   color: inherit;
 }
@@ -2631,7 +2631,7 @@ dialog p {
 .goal-figure {
   grid-area: figure;
   font:
-    600 22px/1.15 var(--bc-serif),
+    400 22px/1.15 var(--bc-serif),
     serif;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -2988,7 +2988,7 @@ dialog p {
   display: block;
   flex: none;
   font:
-    600 76px/0.9 var(--bc-serif),
+    400 76px/0.9 var(--bc-serif),
     serif;
   white-space: nowrap;
   font-variant-numeric: lining-nums;
@@ -3011,7 +3011,7 @@ dialog p {
 #resultTitle {
   margin: 0 0 6px;
   font:
-    700 22px/1.2 var(--bc-title-font),
+    400 22px/1.2 var(--bc-title-font),
     sans-serif;
   color: inherit;
 }
@@ -3053,7 +3053,7 @@ dialog p {
 #report #assuranceVerdict {
   margin: 2px 0 0;
   font:
-    700 26px/1.1 var(--bc-serif),
+    400 26px/1.1 var(--bc-serif),
     serif;
 }
 #assurance[data-verdict="too little"] #assuranceVerdict {
@@ -3184,7 +3184,7 @@ dialog p {
 }
 .assurance-costs strong {
   font:
-    600 24px/1.1 var(--bc-serif),
+    400 24px/1.1 var(--bc-serif),
     serif;
   font-variant-numeric: tabular-nums;
 }
@@ -3248,7 +3248,7 @@ dialog p {
 .account-item dd {
   margin: 0;
   font:
-    600 19px/1.15 var(--bc-serif),
+    400 19px/1.15 var(--bc-serif),
     serif;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -3451,7 +3451,7 @@ dialog p {
   place-items: center;
   height: 61px;
   font:
-    600 36px var(--bc-serif),
+    400 36px var(--bc-serif),
     serif;
   color: var(--bc-muted);
 }
@@ -4007,4 +4007,21 @@ body[data-look] .chip {
 }
 body[data-look] .upgrade-card > strong {
   font-family: var(--font-heading);
+}
+
+body[data-look] :is(h1, h2, h3, h4),
+body[data-look]
+  :is(
+    #clock,
+    .hud-figures b,
+    .queue-count,
+    .sleigh-count strong,
+    .upgrade-card > strong,
+    .case-title,
+    .goal-figure,
+    .assurance-costs strong,
+    .account-item dd
+  ) {
+  font-weight: 400 !important;
+  font-synthesis: none;
 }

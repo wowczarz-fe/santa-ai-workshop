@@ -42,7 +42,7 @@ Place a two-row reliability table after the practices and before the dial. It re
 
 ## Shared typography
 
-Use self-hosted Roboto 400, 500 and 700 for interface text. Headings and display figures prefer locally installed Franklin Gothic Medium Cond or Franklin Gothic Medium, then the bundled Roboto Condensed 500. One body and one heading custom property govern both looks, including inline SVG labels. Changing numbers use tabular figures. Fonts load from local WOFF2 files with swap display, so the game also works from disk. The bundled Fontsource 5.3.0 files carry their original SIL Open Font License 1.1 texts and source details beside the assets.
+Use self-hosted Roboto 400, 500 and 700 for interface text. Headings and display figures use Franklin Gothic Medium Cond at weight 400 without synthetic bold. The face prefers the local font, then the user-supplied webfont approved for distribution, with Franklin Gothic Medium and bundled Roboto Condensed 500 as fallbacks. One body and one heading custom property govern both looks, including inline SVG labels. Changing numbers use tabular figures. Fonts load from local WOFF2 files with swap display, so the game also works from disk. The bundled Fontsource 5.3.0 files carry their original SIL Open Font License 1.1 texts and source details beside the assets.
 
 ## Consequences
 

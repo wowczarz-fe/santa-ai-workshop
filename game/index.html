@@ -78,6 +78,12 @@
         ><button id="caseCue" class="case-cue" hidden>Decision waiting</button>
       </section>
       <div class="status-row">
+        <div
+          id="milestoneToast"
+          class="milestone-toast"
+          role="status"
+          hidden
+        ></div>
         <p id="status" role="status" aria-live="polite"></p>
         <button
           id="helpMove"
@@ -408,7 +414,6 @@
       </div>
     </dialog>
     <div id="celebration" class="celebration" aria-hidden="true"></div>
-    <div id="milestoneToast" class="milestone-toast" role="status" hidden></div>
     <div id="dragGhost" class="drag-ghost" hidden aria-hidden="true"></div>
     <script src="workshop.js?v=takeover7"></script>
     <script src="paper-art.js?v=takeover7"></script>

@@ -403,6 +403,13 @@ const CLEAR_WISHES = WISHES.filter((w) => !w.unclear);
 const BIG_WISHES = CLEAR_WISHES.filter((w) => w.big);
 const PLAIN_WISHES = CLEAR_WISHES.filter((w) => !w.big);
 const slug = (name) => name.toLowerCase().replace(/[^a-z]+/g, "-");
+// A well-mixed 32-bit number from two, for draws kept apart from the game's random sequence.
+const mix = (a, b) => {
+  let h = (Math.imul(a, 0x9e3779b1) ^ b) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+  return (h ^ (h >>> 16)) >>> 0;
+};
 const LOCOMOTIVE = { name: "full-sized locomotive", icon: "🚂" };
 
 const a = (name) => (/^[aeio]/.test(name) ? "an " : "a ") + name;
@@ -448,6 +455,7 @@ const DOING = {
 class Workshop {
   constructor({ seed = 1 } = {}) {
     this.seed = seed >>> 0;
+    this.firstSeed = this.seed; // kept for draws that must not move the game's own random sequence
     this.duration = DURATION;
     this.target = TARGET;
     this.t = 0;
@@ -1461,6 +1469,10 @@ class Workshop {
       opened: this.t,
       ...spec,
     };
+    // Which reading of an unclear wish the card shows first, drawn per case from the seed and kept
+    // apart from the game's random sequence, so the order never tells which is right.
+    if (c.kind === "unclear")
+      c.rightFirst = mix(this.firstSeed, c.parcels[0].id) % 2 === 0;
     this.cases.push(c);
     const order = (c) => CASE_ORDER[c.step] ?? 2;
     const [open, ...waiting] = this.cases;
@@ -3351,9 +3363,23 @@ class Workshop {
       affected: { count: affected.length, ids: affected.map((x) => x.id) },
       options: this.options(c),
       resolving: c.resolving && { ...c.resolving },
-      // An unclear letter: what a wrong guess costs once aboard, in pounds.
-      ...(c.kind === "unclear" ? { stake: this.price(c.parcels[0]) } : {}),
+      // An unclear letter: what a wrong guess costs once aboard, in pounds, and the two things the
+      // wish could mean, as toy names and drawing keys, in an order that does not tell which is right.
+      ...(c.kind === "unclear"
+        ? { stake: this.price(c.parcels[0]), readings: this.readings(c) }
+        : {}),
     };
+  }
+
+  // The two things an unclear wish could mean, each { name, art }: art is the key the page draws the
+  // toy by (its name in lower case with dashes, as in the blunders).
+  readings(c) {
+    const w = c.parcels[0].w;
+    const both = [w.wanted, w.wrong].map((t) => ({
+      name: t.name,
+      art: slug(t.name),
+    }));
+    return c.rightFirst ? both : both.reverse();
   }
 
   // The first decision still waiting for an answer, by id and name, or null.

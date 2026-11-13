@@ -443,10 +443,21 @@ function checkView(v) {
   assert.strictEqual(
     Object.keys(v.case).join(),
     "id,kind,step,title,text,facts,evidence,affected,options,resolving" +
-      (v.case.kind === "unclear" ? ",stake" : ""),
+      (v.case.kind === "unclear" ? ",stake,readings" : ""),
   );
-  if (v.case.kind === "unclear")
+  if (v.case.kind === "unclear") {
     assert([WRONG_PRICE.everyday, WRONG_PRICE.big].includes(v.case.stake));
+    // The two readings are the wish's right and wrong toys, each a name and a drawing key.
+    const w = UNCLEAR_WISHES.find((u) => u.wish === v.case.evidence[0].wish);
+    assert.strictEqual(
+      v.case.readings.map((r) => Object.keys(r).join()).join("|"),
+      "name,art|name,art",
+    );
+    assert.deepStrictEqual(
+      v.case.readings.map((r) => r.name).sort(),
+      [w.wanted.name, w.wrong.name].sort(),
+    );
+  }
   assert(["unclear", "incident"].includes(v.case.kind), v.case.kind);
   const primary = v.case.facts.filter((f) => f.primary).length;
   assert(primary >= 1 && primary <= 3, `${key(v.case)} primary facts`);
@@ -995,6 +1006,34 @@ for (const name of ["expert", "first", "firstFollows"])
     play(name, 3).hash,
     `${name}: same seed and calls give the same game`,
   );
+// The two readings of an unclear wish come in an order drawn per case that does not tell which is
+// right: over many seeds the right one comes first about half the time. Every reading has a drawing.
+{
+  let first = 0;
+  let all = 0;
+  for (let seed = 1; seed <= 300; seed++) {
+    const w = new Workshop({ seed });
+    while (!w.end) (w.step(5), w.choice && w.choose("none"));
+    for (const c of w.cases.filter((c) => c.kind === "unclear")) {
+      all++;
+      if (w.readings(c)[0].name === c.parcels[0].w.wanted.name) first++;
+    }
+  }
+  assert(
+    all >= 500 && first / all > 0.45 && first / all < 0.55,
+    `the right reading comes first in ${first} of ${all} cases`,
+  );
+  const drawn = ["shared-art.js", "paper-art.js"].flatMap((f) =>
+    fs
+      .readFileSync(path.join(__dirname, "../game", f), "utf8")
+      .match(/"toy-[a-z-]+"/g)
+      .map((id) => id.slice(5, -1)),
+  );
+  for (const u of UNCLEAR_WISHES)
+    for (const t of [u.wanted, u.wrong])
+      assert(drawn.includes(slug(t.name)), `no drawing for ${t.name}`);
+}
+
 // The unclear letters come from at least five children, Timmy among them.
 const children = new Set(
   SEEDS.flatMap((seed) => new Workshop({ seed }).unclear.map((u) => u.w.child)),

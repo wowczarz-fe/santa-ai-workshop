@@ -2090,3 +2090,64 @@ body[data-look="polish"] .sleigh-total .cargo-badge {
 body[data-look="polish"] .gift-flight:not(.in-slot) {
   margin-top: -36px;
 }
+
+/* Move targets belong to the crew floor, clear of the controls and the elves. */
+body[data-look="polish"] .station.destination {
+  outline: none;
+}
+body[data-look="polish"] .paper-floor .move-target {
+  left: 6px;
+  right: 6px;
+  width: auto;
+  top: 0;
+  box-sizing: border-box;
+}
+body[data-look="polish"] .elf-card .swap-tag {
+  top: -8px;
+  right: auto;
+  left: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+body[data-look="polish"] .dashboard .hud-name .ui-icon {
+  order: 1;
+}
+@media (max-width: 999px) {
+  body[data-look="polish"] .milestone-toast {
+    top: auto;
+    bottom: 8px;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    padding: 7px 12px;
+  }
+}
+
+@media (max-width: 999px) {
+  body[data-look="polish"] .station.destination .paper-floor .crew {
+    padding-top: 44px;
+    box-sizing: border-box;
+  }
+  body[data-look="polish"]
+    .station.destination
+    .paper-floor
+    .crew:not(:has(:nth-child(4 of .elf-card))) {
+    grid-auto-rows: 108px;
+  }
+  body[data-look="polish"]
+    .station.destination
+    .paper-floor
+    .crew:not(:has(:nth-child(4 of .elf-card)))
+    .elf {
+    height: 108px;
+    min-height: 108px;
+  }
+  body[data-look="polish"]
+    .station.destination
+    .paper-floor
+    .crew:not(:has(:nth-child(4 of .elf-card)))
+    .elf
+    svg {
+    height: 66px;
+    width: 52px;
+  }
+}

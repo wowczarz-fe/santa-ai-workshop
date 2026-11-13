@@ -95,8 +95,9 @@ const StationFlow = (() => {
     }
     if (station === 1) {
       svg = element("svg", {
-        viewBox: "0 0 120 70",
+        viewBox: "0 0 120 68",
         class: "orders-heap",
+        preserveAspectRatio: "xMidYMax meet",
         "aria-hidden": "true",
       });
       document.querySelector("#queue-orders .queue-picture").append(svg);
@@ -108,8 +109,9 @@ const StationFlow = (() => {
       label.append(...queueButton.childNodes);
       queueButton.append(label);
       svg = element("svg", {
-        viewBox: "0 0 120 64",
+        viewBox: "0 0 120 62",
         class: "flow-small-heap",
+        preserveAspectRatio: "xMidYMax meet",
         "aria-hidden": "true",
       });
       document.getElementById(`queue-${queue}`).append(svg);
@@ -169,12 +171,12 @@ const StationFlow = (() => {
       for (const [index, parcel] of parcels.slice(-18).entries()) {
         const row = Math.floor(index / 5);
         const x = heap.x + (index % 5) * 22 + (row % 2) * 5;
+        const size = parcel.big && station !== 0 ? 1.18 : 1;
         const y =
           heap.y -
-          heap.height -
+          heap.height * size -
           row * (station === 0 ? 5 : heap.small ? 9 : 12);
         const wrap = element("g", { class: "heap-item" });
-        const size = parcel.big && station !== 0 ? 1.18 : 1;
         const symbol =
           station === 0
             ? "env"
@@ -239,11 +241,34 @@ const StationFlow = (() => {
       }
       previous.set(heap.queue, ids);
     }
+    placeCheckingHeaps();
     previousTime = view.t;
+  }
+  function placeCheckingHeaps() {
+    const scene = document.querySelector("#station2 .paper-scene");
+    const art = scene.querySelector(".machine > svg");
+    const rect = scene.getBoundingClientRect();
+    const bench =
+      new DOMPoint(0, 212).matrixTransform(art.getScreenCTM()).y - rect.top;
+    const floor = rect.height;
+    const separateSurfaces = bench - 112 >= 32;
+    for (const queue of ["pass", "rework"]) {
+      const svg = groups.get(queue)?.ownerSVGElement;
+      if (!svg) continue;
+      const surface = queue === "pass" && separateSurfaces ? bench : floor;
+      const height = Math.max(0, Math.min(58, surface - 112));
+      svg.style.top = `${surface - height - 8 - (queue === "rework" ? 52 : 0)}px`;
+      svg.style.right = `${!separateSurfaces && queue === "pass" ? 60 : 0}px`;
+      svg.style.width = `${separateSurfaces ? 112 : 52}px`;
+      svg.style.height = `${height}px`;
+    }
   }
   function stop() {
     for (const animation of motion) animation.cancel();
     motion.clear();
   }
+  window.addEventListener("resize", () => {
+    if (groups.has("check")) placeCheckingHeaps();
+  });
   return { update, stop };
 })();

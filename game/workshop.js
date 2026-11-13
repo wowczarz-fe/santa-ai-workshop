@@ -770,6 +770,7 @@ class Workshop {
     return {
       name: `${x.w.wanted.name} in the wrong size`,
       icon: x.w.wanted.icon,
+      base: x.w.wanted.name, // the toy to draw: the wanted one, since only its size is wrong
     };
   }
 

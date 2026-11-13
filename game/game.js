@@ -959,7 +959,9 @@
     if (lastWrong) {
       if ($("wrongToy").dataset.toy !== lastWrong.made.name) {
         $("wrongToy").dataset.toy = lastWrong.made.name;
-        $("wrongToy").innerHTML = toyArt(lastWrong.made.name);
+        $("wrongToy").innerHTML = toyArt(
+          lastWrong.made.base || lastWrong.made.name,
+        );
       }
       $("wrongBig").hidden = !lastWrong.big;
       text("wrongName", lastWrong.made.name);
@@ -1416,7 +1418,10 @@
     if (caughtSnapshot && caught.dataset.toy !== caughtSnapshot.made.name) {
       caught.dataset.toy = caughtSnapshot.made.name;
       caught.replaceChildren(make("b", "", "Caught!"));
-      caught.insertAdjacentHTML("beforeend", toyArt(caughtSnapshot.made.name));
+      caught.insertAdjacentHTML(
+        "beforeend",
+        toyArt(caughtSnapshot.made.base || caughtSnapshot.made.name),
+      );
       caught.append(make("span", "", caughtSnapshot.made.name));
     }
   }

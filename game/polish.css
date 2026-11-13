@@ -467,52 +467,56 @@ body[data-look="polish"] .paper-floor .crew {
   gap: 4px 3px;
   align-items: start;
 }
-body[data-look="polish"] .crew:has(.elf-card:nth-child(7)) .elf-task {
+body[data-look="polish"] .crew:has(:nth-child(7 of .elf-card)) .elf-task {
   display: none;
 }
 /* The ids outrank the large-card rules both looks share */
 body[data-look="polish"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7)) {
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card)) {
   grid-auto-rows: 72px;
   align-items: start;
 }
 body[data-look="polish"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf {
   height: 72px;
 }
 body[data-look="polish"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf
   svg {
   width: 38px;
   height: 46px;
 }
 body[data-look="polish"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf-name {
   font-size: 11px;
   line-height: 12px;
 }
 /* The cocoa strip shares its room with its label, so two rows there are a little smaller */
-body[data-look="polish"] #cocoa #elves3:has(.elf-card:nth-child(7)) {
+body[data-look="polish"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) {
   grid-auto-rows: 62px;
   gap: 2px 3px;
 }
-body[data-look="polish"] #cocoa #elves3:has(.elf-card:nth-child(7)) .elf {
+body[data-look="polish"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) .elf {
   height: 62px;
   min-height: 62px;
   padding-bottom: 7px;
 }
-body[data-look="polish"] #cocoa #elves3:has(.elf-card:nth-child(7)) .elf svg {
+body[data-look="polish"]
+  #cocoa
+  #elves3:has(:nth-child(7 of .elf-card))
+  .elf
+  svg {
   width: 31px;
   height: 37px;
 }
 /* Four to six: two rows of cards that keep the task word and a readable energy bar; four stand
    two by two. The floor grows for them (.board[data-crowd]). */
 body[data-look="polish"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   ) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-auto-rows: 110px;
@@ -520,14 +524,14 @@ body[data-look="polish"]
   align-items: start;
 }
 body[data-look="polish"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(5))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(5 of .elf-card))
   ) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 body[data-look="polish"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   .elf {
   height: 110px;
@@ -535,8 +539,8 @@ body[data-look="polish"]
   padding: 2px 2px 10px;
 }
 body[data-look="polish"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   .elf
   svg {
@@ -544,16 +548,16 @@ body[data-look="polish"]
   height: 66px;
 }
 body[data-look="polish"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   .elf-name {
   font-size: 12px;
   line-height: 13px;
 }
 body[data-look="polish"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   .elf
   .energy {
@@ -564,12 +568,14 @@ body[data-look="polish"]
 }
 body[data-look="polish"]
   #cocoa
-  #elves3:has(.elf-card:nth-child(4)):not(:has(.elf-card:nth-child(7))) {
+  #elves3:has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  ) {
   grid-auto-rows: 104px;
 }
 body[data-look="polish"]
   #cocoa
-  #elves3:has(.elf-card:nth-child(4)):not(:has(.elf-card:nth-child(7)))
+  #elves3:has(:nth-child(4 of .elf-card)):not(:has(:nth-child(7 of .elf-card)))
   .elf {
   height: 104px;
   min-height: 104px;
@@ -608,7 +614,9 @@ body[data-look="polish"] :is(#station0, #station1) > .paper-scene {
   grid-row: 2 / 4;
   margin-top: 84px;
 }
-body[data-look="polish"] .paper-floor .crew:not(:has(.elf-card:nth-child(4))) {
+body[data-look="polish"]
+  .paper-floor
+  .crew:not(:has(:nth-child(4 of .elf-card))) {
   grid-template-columns: repeat(var(--crew-count, 3), minmax(0, 1fr));
   grid-auto-rows: 118px;
   align-items: end;
@@ -617,20 +625,20 @@ body[data-look="polish"] .paper-floor .crew:not(:has(.elf-card:nth-child(4))) {
 body[data-look="polish"]
   .station
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(4))) {
+  .crew:not(:has(:nth-child(4 of .elf-card))) {
   grid-auto-rows: 146px;
 }
 body[data-look="polish"]
   .station
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(4)))
+  .crew:not(:has(:nth-child(4 of .elf-card)))
   .elf {
   height: 146px;
 }
 body[data-look="polish"]
   .station
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(4)))
+  .crew:not(:has(:nth-child(4 of .elf-card)))
   .elf
   svg {
   width: 76px;
@@ -663,18 +671,18 @@ body[data-look="polish"] #cocoa .elf svg {
 }
 body[data-look="polish"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(4)))
+  .crew:not(:has(:nth-child(4 of .elf-card)))
   .elf {
   height: 118px;
 }
 body[data-look="polish"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(4)))
+  .crew:not(:has(:nth-child(4 of .elf-card)))
   .elf
   svg,
 body[data-look="polish"]
   #cocoa
-  .crew:not(:has(.elf-card:nth-child(4)))
+  .crew:not(:has(:nth-child(4 of .elf-card)))
   .elf
   svg {
   width: 62px;
@@ -696,14 +704,14 @@ body[data-look="polish"] .elf-task {
 }
 body[data-look="polish"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(4)))
+  .crew:not(:has(:nth-child(4 of .elf-card)))
   .elf-name {
   font-size: 12px;
   line-height: 13px;
 }
 body[data-look="polish"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(4)))
+  .crew:not(:has(:nth-child(4 of .elf-card)))
   .elf-task {
   font-size: 11px;
   line-height: 12px;
@@ -1244,7 +1252,7 @@ body[data-look="polish"] #cocoa .crew {
   grid-auto-rows: 72px;
   align-items: start;
 }
-body[data-look="polish"] #cocoa .crew:not(:has(.elf-card:nth-child(4))) {
+body[data-look="polish"] #cocoa .crew:not(:has(:nth-child(4 of .elf-card))) {
   grid-auto-rows: 118px;
   align-items: end;
 }
@@ -1523,13 +1531,13 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"]
     .station
     .paper-floor
-    .crew:not(:has(.elf-card:nth-child(4))) {
+    .crew:not(:has(:nth-child(4 of .elf-card))) {
     grid-auto-rows: 140px;
   }
   body[data-look="polish"]
     .station
     .paper-floor
-    .crew:not(:has(.elf-card:nth-child(4)))
+    .crew:not(:has(:nth-child(4 of .elf-card)))
     .elf
     svg {
     height: 96px;
@@ -1538,7 +1546,7 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"]
     .station
     .paper-floor
-    .crew:not(:has(.elf-card:nth-child(4)))
+    .crew:not(:has(:nth-child(4 of .elf-card)))
     .elf {
     height: 140px;
   }

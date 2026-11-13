@@ -850,22 +850,22 @@ dialog {
   right: auto;
   width: 110px;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) {
   grid-auto-rows: 112px;
   align-items: end;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) .elf {
   height: 108px;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf svg {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) .elf svg {
   height: 80px;
   width: 57px;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf-name {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) .elf-name {
   font-size: 11px;
   line-height: 13px;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf-task {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) .elf-task {
   font-size: 10px;
   line-height: 12px;
 }
@@ -905,13 +905,13 @@ dialog {
   font-size: 9px;
   line-height: 11px;
 }
-.paper-floor .crew:not(:has(.elf-card:nth-child(5))) .elf svg {
+.paper-floor .crew:not(:has(:nth-child(5 of .elf-card))) .elf svg {
   height: 76px;
 }
 #cocoa .elf svg {
   height: 38px;
 }
-#cocoa .crew:not(:has(.elf-card:nth-child(5))) .elf svg {
+#cocoa .crew:not(:has(:nth-child(5 of .elf-card))) .elf svg {
   height: 76px;
 }
 @media (max-width: 999px) {
@@ -1055,19 +1055,21 @@ dialog {
 body[data-look="paper"] .dashboard strong {
   font-size: 29px;
 }
-body[data-look="paper"] .paper-floor .crew:not(:has(.elf-card:nth-child(5))) {
+body[data-look="paper"]
+  .paper-floor
+  .crew:not(:has(:nth-child(5 of .elf-card))) {
   grid-template-columns: repeat(var(--crew-count, 4), minmax(0, 1fr));
   grid-auto-rows: 130px;
 }
 body[data-look="paper"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(:nth-child(5 of .elf-card)))
   .elf {
   height: 128px;
 }
 body[data-look="paper"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(:nth-child(5 of .elf-card)))
   .elf
   svg {
   height: 98px;
@@ -1673,11 +1675,11 @@ body[data-look="paper"] .elf-name,
 body[data-look="paper"] .elf-task,
 body[data-look="paper"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(:nth-child(5 of .elf-card)))
   .elf-name,
 body[data-look="paper"]
   .paper-floor
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(:nth-child(5 of .elf-card)))
   .elf-task {
   font-size: 11px;
   line-height: 13px;
@@ -2005,18 +2007,20 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
   body[data-look="paper"] .paper-floor {
     padding: 4px 6px;
   }
-  body[data-look="paper"] .paper-floor .crew:not(:has(.elf-card:nth-child(5))) {
+  body[data-look="paper"]
+    .paper-floor
+    .crew:not(:has(:nth-child(5 of .elf-card))) {
     grid-auto-rows: 126px;
   }
   body[data-look="paper"]
     .paper-floor
-    .crew:not(:has(.elf-card:nth-child(5)))
+    .crew:not(:has(:nth-child(5 of .elf-card)))
     .elf {
     height: 124px;
   }
   body[data-look="paper"]
     .paper-floor
-    .crew:not(:has(.elf-card:nth-child(5)))
+    .crew:not(:has(:nth-child(5 of .elf-card)))
     .elf
     svg {
     height: 86px;
@@ -2191,15 +2195,18 @@ body[data-look="paper"] .paper-sleigh-scene > .sleigh-total {
 }
 
 /* An elf on a cocoa break fits the floor beneath its label */
-body[data-look="paper"] #cocoa .crew:not(:has(.elf-card:nth-child(5))) {
+body[data-look="paper"] #cocoa .crew:not(:has(:nth-child(5 of .elf-card))) {
   grid-auto-rows: 104px;
 }
-body[data-look="paper"] #cocoa .crew:not(:has(.elf-card:nth-child(5))) .elf {
+body[data-look="paper"]
+  #cocoa
+  .crew:not(:has(:nth-child(5 of .elf-card)))
+  .elf {
   height: 102px;
 }
 body[data-look="paper"]
   #cocoa
-  .crew:not(:has(.elf-card:nth-child(5)))
+  .crew:not(:has(:nth-child(5 of .elf-card)))
   .elf
   svg {
   height: 70px;
@@ -2340,7 +2347,7 @@ body[data-look="paper"] .elf.selected {
    and energy bar; the task word and badges are left out so nothing runs into anything. The ids
    outrank the large-card rules. */
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7)) {
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card)) {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-auto-rows: 70px;
   gap: 4px;
@@ -2348,12 +2355,12 @@ body[data-look="paper"]
   align-content: end;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   :is(.elf-task, .rest-cue) {
   display: none;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf {
   box-sizing: border-box;
   height: 70px;
@@ -2365,21 +2372,21 @@ body[data-look="paper"]
   box-shadow: 1px 2px 2px #2b1c1429;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf[data-mood="tired"],
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf[data-mood="spent"] {
   border-color: #c98a7c;
   background: #f2d7cde6;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf.selected {
   border-color: var(--attention);
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf
   svg {
   width: 40px;
@@ -2388,7 +2395,7 @@ body[data-look="paper"]
   margin-top: -2px;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf-name {
   max-width: 100%;
   overflow: hidden;
@@ -2398,7 +2405,7 @@ body[data-look="paper"]
   white-space: nowrap;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(7 of .elf-card))
   .elf
   .energy {
   bottom: 4px;
@@ -2406,50 +2413,58 @@ body[data-look="paper"]
   width: 60%;
 }
 /* The cocoa floor shares its room with its label, so its cards are a little shorter */
-body[data-look="paper"] #cocoa #elves3:has(.elf-card:nth-child(7)) {
+body[data-look="paper"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) {
   grid-auto-rows: 60px;
   gap: 3px 4px;
 }
-body[data-look="paper"] #cocoa #elves3:has(.elf-card:nth-child(7)) .elf {
+body[data-look="paper"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) .elf {
   height: 60px;
   min-height: 60px;
   padding-bottom: 8px;
 }
-body[data-look="paper"] #cocoa #elves3:has(.elf-card:nth-child(7)) .elf svg {
+body[data-look="paper"]
+  #cocoa
+  #elves3:has(:nth-child(7 of .elf-card))
+  .elf
+  svg {
   width: 30px;
   height: 36px;
   margin-top: 0;
 }
 @media (max-width: 999px) {
   body[data-look="paper"]
-    :is(#elves0, #elves1, #elves2):has(.elf-card:nth-child(7)) {
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card)) {
     grid-auto-rows: 62px;
   }
   body[data-look="paper"]
-    :is(#elves0, #elves1, #elves2):has(.elf-card:nth-child(7))
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card))
     .elf {
     height: 62px;
     min-height: 62px;
     padding-bottom: 8px;
   }
   body[data-look="paper"]
-    :is(#elves0, #elves1, #elves2):has(.elf-card:nth-child(7))
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card))
     .elf
     svg {
     width: 32px;
     height: 39px;
     margin-top: -1px;
   }
-  body[data-look="paper"] #cocoa #elves3:has(.elf-card:nth-child(7)) {
+  body[data-look="paper"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) {
     grid-auto-rows: 52px;
     gap: 2px 4px;
   }
-  body[data-look="paper"] #cocoa #elves3:has(.elf-card:nth-child(7)) .elf {
+  body[data-look="paper"] #cocoa #elves3:has(:nth-child(7 of .elf-card)) .elf {
     height: 52px;
     min-height: 52px;
     padding: 1px 2px 9px;
   }
-  body[data-look="paper"] #cocoa #elves3:has(.elf-card:nth-child(7)) .elf svg {
+  body[data-look="paper"]
+    #cocoa
+    #elves3:has(:nth-child(7 of .elf-card))
+    .elf
+    svg {
     width: 24px;
     height: 28px;
     margin-top: 0;
@@ -2478,8 +2493,8 @@ body[data-look="paper"] .gift-flight.in-slot {
 /* Four to six elves at one place: two rows of paper cards that keep the task word and a readable
    energy bar, four standing two by two. The floor grows for them (.board[data-crowd]). */
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   ) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-auto-rows: 108px;
@@ -2488,14 +2503,14 @@ body[data-look="paper"]
   align-content: end;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(5))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(5 of .elf-card))
   ) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   .elf {
   box-sizing: border-box;
@@ -2508,28 +2523,28 @@ body[data-look="paper"]
   box-shadow: 1px 2px 2px #2b1c1429;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   .elf[data-mood="tired"],
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   .elf[data-mood="spent"] {
   border-color: #c98a7c;
   background: #f2d7cde6;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   .elf.selected {
   border-color: var(--attention);
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   .elf
   svg {
@@ -2538,8 +2553,8 @@ body[data-look="paper"]
   max-width: 100%;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   :is(.elf-name, .elf-task) {
   max-width: 100%;
@@ -2550,8 +2565,8 @@ body[data-look="paper"]
   white-space: nowrap;
 }
 body[data-look="paper"]
-  :is(#elves0, #elves1, #elves2, #elves3):has(.elf-card:nth-child(4)):not(
-    :has(.elf-card:nth-child(7))
+  :is(#elves0, #elves1, #elves2, #elves3):has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
   )
   .elf
   .energy {
@@ -2562,19 +2577,21 @@ body[data-look="paper"]
 }
 body[data-look="paper"]
   #cocoa
-  #elves3:has(.elf-card:nth-child(4)):not(:has(.elf-card:nth-child(7))) {
+  #elves3:has(:nth-child(4 of .elf-card)):not(
+    :has(:nth-child(7 of .elf-card))
+  ) {
   grid-auto-rows: 100px;
 }
 body[data-look="paper"]
   #cocoa
-  #elves3:has(.elf-card:nth-child(4)):not(:has(.elf-card:nth-child(7)))
+  #elves3:has(:nth-child(4 of .elf-card)):not(:has(:nth-child(7 of .elf-card)))
   .elf {
   height: 100px;
   min-height: 100px;
 }
 body[data-look="paper"]
   #cocoa
-  #elves3:has(.elf-card:nth-child(4)):not(:has(.elf-card:nth-child(7)))
+  #elves3:has(:nth-child(4 of .elf-card)):not(:has(:nth-child(7 of .elf-card)))
   .elf
   svg {
   width: 44px;

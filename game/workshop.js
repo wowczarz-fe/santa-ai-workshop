@@ -139,6 +139,14 @@ const WRONG_CAUSES = {
       ["check a few more", (w) => w.checking === 2],
     ],
   },
+  slip: {
+    name: "Elves' slips by hand",
+    control: "checking",
+    fix: [
+      ["check the risky ones", (w) => w.checking >= 1],
+      ["check a few more", (w) => w.checking === 2],
+    ],
+  },
   waved: {
     name: "Checkers stopped looking",
     control: "train",
@@ -751,6 +759,11 @@ class Workshop {
     return sum(team.map((e) => slipping(e.tired))) / Math.max(1, team.length);
   }
 
+  // Why an elf working by hand at station s slipped: tiredness, or an ordinary slip while fresh.
+  slipCause(s) {
+    return this.slipAt(s) > 0 ? "a tired elf" : "an elf's slip";
+  }
+
   // What a tired elf gets wrong: the right toy in the wrong size, not something absurd.
   slipToy(x) {
     return {
@@ -1005,7 +1018,7 @@ class Workshop {
         );
     } else if (level === 0) {
       if (x.roll.read < RISK.elfRead + this.slipAt(0) * RISK.perStrain)
-        this.wentWrong(x, 0, "a tired elf", this.slipToy(x));
+        this.wentWrong(x, 0, this.slipCause(0), this.slipToy(x));
     } else {
       x.byAi = true;
       const draftWrong = x.roll.read < (x.w.big ? RISK.aiReadBig : RISK.aiRead);
@@ -1032,7 +1045,8 @@ class Workshop {
     let slip;
     if (level === 0) {
       slip = x.roll.make < RISK.elfMake + this.slipAt(1) * RISK.perStrain;
-      if (slip && !before) this.wentWrong(x, 1, "a tired elf", this.slipToy(x));
+      if (slip && !before)
+        this.wentWrong(x, 1, this.slipCause(1), this.slipToy(x));
     } else {
       x.byAi = true;
       faulty = x.batch && x.roll.make < RISK.fault;
@@ -1160,26 +1174,43 @@ class Workshop {
         : e.trust + CONFIRM_TRUST;
   }
 
-  // Says once when checkers, or elves on Assist, start trusting the AI, and what to do about it now;
-  // quiet for the first DRIFT_QUIET seconds, and again once they look properly.
+  // The elf at station s who trusts the AI most, or null when the station is empty.
+  mostTrusting(s) {
+    return this.staff(s).sort((x, y) => y.trust - x.trust)[0] ?? null;
+  }
+
+  // The drifting station to fix now and the elf there who trusts the AI most, or null: the checkers
+  // first, then the Assist station that trusts the AI most. Null in the first DRIFT_QUIET seconds,
+  // when nobody there drifts, and once that station is empty.
+  drift() {
+    if (this.t < DRIFT_QUIET) return null;
+    const stations = [2, ...[0, 1].filter((s) => this.ai[s] === 1)];
+    const s = stations.find(
+      (s) => this.vigilance(this.trustAt(s)).state !== "careful",
+    );
+    const e = s === undefined ? null : this.mostTrusting(s);
+    return e && { elf: this.elves.indexOf(e), station: s, name: e.name };
+  }
+
+  // Says once each time a station starts trusting the AI, naming the elf to send for cocoa.
   noteDrift() {
-    const lines = {
-      relaxed: [
-        this.trustAt(2),
-        "Checkers are trusting the AI and skipping checks. Swap in a rested elf.",
-      ],
-      relaxedConfirm: [
-        this.confirmRun(),
-        "Elves on Assist are trusting the AI's drafts and missing mistakes. Swap in a rested elf.",
-      ],
-    };
-    for (const [key, [run, text]] of Object.entries(lines)) {
-      if (this.vigilance(run).state === "careful") this.driftSaid[key] = false;
-      else if (!this.driftSaid[key] && this.t >= DRIFT_QUIET) {
-        this.driftSaid[key] = true;
-        this.sayEvery(20, key, "relaxed", text);
-      }
-    }
+    const d = this.drift();
+    const key = d ? (d.station === 2 ? "relaxed" : "relaxedConfirm") : null;
+    for (const k of ["relaxed", "relaxedConfirm"])
+      if (k !== key) this.driftSaid[k] = false;
+    if (!d || this.driftSaid[key]) return;
+    this.driftSaid[key] = true;
+    const what =
+      d.station === 2
+        ? "trusting the AI and skipping checks"
+        : "trusting the AI's drafts and missing mistakes";
+    this.sayEvery(
+      20,
+      key,
+      "relaxed",
+      `${d.name} is ${what}. Send ${d.name} for cocoa or swap in another elf.`,
+      { elf: d.elf, station: d.station },
+    );
   }
 
   caught(x) {
@@ -1271,43 +1302,82 @@ class Workshop {
   }
 
   // The one thing the player can do now that would have stopped a wrong gift like this one: the
-  // control to highlight, a line naming it and a short tag for the control. In order: check the
-  // risky ones when a risky gift went out unchecked; cocoa when a tired elf slipped; Automate one
-  // step down to Assist at the station that made it; check all for a while when a gift went out
-  // unchecked; else rest the checkers, who miss more when tired. It never sends a station back to
-  // working by hand: that costs more right gifts than the mistakes it saves.
+  // control to highlight, a line naming it and a short tag for the control. It names the true
+  // cause: tiredness only when an elf at that station is tired, drift with the elf who trusts the
+  // AI most. It never sends a station back to working by hand: that costs more right gifts than
+  // the mistakes it saves.
   advice(x) {
     const checked = ["checked", "skipped"].includes(x.exit);
     const s = x.wrongAt;
-    if (!checked && this.checking === 0 && this.needsCheck(x, 1))
-      return {
-        control: "checking",
-        text: "Check the risky ones.",
-        action: "Check more",
-      };
-    if (x.cause === "a tired elf")
-      return {
-        control: "cocoa",
-        text: "Send tired elves for cocoa.",
-        action: "Rest tired elves",
-      };
-    if (s !== null && this.ai[s] === 2 && !x.guessed)
-      return {
-        control: `ai:${s}`,
-        text: `Put ${STATION_NAMES[s].toLowerCase()} on Assist: an elf confirms each.`,
-        action: "Drop to Assist",
-      };
-    if (!checked && this.checking < 2)
-      return {
-        control: "checking",
-        text: "Check all for a while.",
-        action: "Check all for now",
-      };
-    return {
-      control: "cocoa",
-      text: "Rest the checkers: tired ones miss more.",
-      action: "Rest the checkers",
+    const tiredAt = (st) => this.staff(st).some((e) => e.tired > SLIPS_FROM);
+    const say = (control, text, action) => ({ control, text, action });
+    const swap = (st, crew, what) => {
+      const e = this.mostTrusting(st);
+      return e
+        ? say(
+            "cocoa",
+            `Swap the ${crew}: ${e.name} had stopped ${what}.`,
+            `Swap ${e.name}`,
+          )
+        : say(
+            "cocoa",
+            `Swap the ${crew}: they had stopped ${what}.`,
+            `Swap the ${crew}`,
+          );
     };
+    if (!checked && this.checking === 0 && this.needsCheck(x, 1))
+      return say("checking", "Check the risky ones.", "Check more");
+    if (x.cause === "a tired elf")
+      return say("cocoa", "Send tired elves for cocoa.", "Rest tired elves");
+    if (s !== null && this.ai[s] === 2 && !x.guessed)
+      return say(
+        `ai:${s}`,
+        `Put ${STATION_NAMES[s].toLowerCase()} on Assist: an elf confirms each.`,
+        "Drop to Assist",
+      );
+    if (x.exit === "bypassed")
+      return say(
+        "checking",
+        "Check them instead of letting them through: move an elf to Checking.",
+        "Check them",
+      );
+    if (!checked) {
+      // An elf on Assist let a wrong draft through: it trusted the AI, or it was tired.
+      if (s !== null && this.ai[s] === 1 && !x.guessed) {
+        if (this.vigilance(this.trustAt(s)).state !== "careful")
+          return swap(
+            s,
+            ["readers", "toy makers"][s],
+            "checking the AI's drafts",
+          );
+        if (tiredAt(s))
+          return say(
+            "cocoa",
+            "Send tired elves for cocoa.",
+            "Rest tired elves",
+          );
+      }
+      if (this.checking < 2)
+        return say("checking", "Check all for a while.", "Check all for now");
+    }
+    if (x.exit === "skipped") return swap(2, "checkers", "checking properly");
+    if (tiredAt(2))
+      return say(
+        "cocoa",
+        "Rest the checkers: tired ones miss more.",
+        "Rest the checkers",
+      );
+    if (x.guessed)
+      return say(
+        "ask",
+        "Ask the child when a wish is unclear: checkers miss most wrong guesses.",
+        "Ask next time",
+      );
+    return say(
+      "checking",
+      "Keep checking the risky ones: even sharp checkers miss 1 in 10.",
+      "Keep checking",
+    );
   }
 
   // The waiting decision whose answer would have stopped this wrong gift, or null: the faulty update
@@ -2671,6 +2741,7 @@ class Workshop {
     if (x.made === LOCOMOTIVE) return "faulty";
     if (x.slipped || x.exit === "skipped") return "waved";
     if (x.cause === "a tired elf") return "tired";
+    if (x.cause === "an elf's slip") return "slip";
     if (x.guessed) return "guessed";
     if (x.w.big) return "big";
     return x.cause === "the AI made the wrong toy" ? "misMade" : "misread";
@@ -3279,6 +3350,7 @@ class Workshop {
         secondsPerCheck: Math.round(this.secondsPerCheck() * 10) / 10,
         skipped: this.vig.skipped,
         trained: this.vig.trained,
+        swap: this.drift(),
       },
       case: this.cases[0] ? this.caseView(this.cases[0]) : null,
       casesWaiting: Math.max(0, this.cases.length - 1),

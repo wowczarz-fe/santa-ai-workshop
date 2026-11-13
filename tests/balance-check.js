@@ -8,6 +8,23 @@ const vm = require("vm");
 vm.runInThisContext(
   fs.readFileSync(path.join(__dirname, "../game/workshop.js"), "utf8"),
 );
+// No wrong-gift line blames tiredness when every elf at that station was fresh: the checkers when
+// it says to rest them, the station that made the gift when it says to send tired elves for cocoa.
+{
+  const advice = Workshop.prototype.advice;
+  Workshop.prototype.advice = function (x) {
+    const said = advice.call(this, x);
+    const tired = (s) => this.staff(s).some((e) => e.tired > SLIPS_FROM);
+    if (said.action === "Rest the checkers")
+      assert(tired(2), `${said.text} with every checker fresh`);
+    if (said.action === "Rest tired elves")
+      assert(
+        x.cause === "a tired elf" || tired(x.wrongAt),
+        `${said.text} with every elf fresh`,
+      );
+    return said;
+  };
+}
 
 const SEEDS = Array.from({ length: 40 }, (_, i) => i + 1);
 // Orderings that guide tuning but do not block: printed at the end as warnings.
@@ -18,7 +35,7 @@ const NEWS_KINDS =
   "checked loaded consequence case resolved update noticed rolledBack recalled relaxed trained tired rested blocked lost behind milestone cleared halftime chose departed".split(
     " ",
   );
-const CONTROLS_NAMED = ["checking", "ai:0", "ai:1", "cocoa"];
+const CONTROLS_NAMED = ["checking", "ai:0", "ai:1", "cocoa", "ask"];
 const argmax = (list) => list.indexOf(Math.max(...list));
 const fill = (v, id) => v.queues[id].parcels.length / v.queues[id].limit;
 const mean = (list) => list.reduce((s, n) => s + n, 0) / list.length;
@@ -211,6 +228,7 @@ function decideSlowly(w, v, m, policy) {
 // Automate once letters pile up, as the tour says more AI is faster. With follows, it also does
 // what each wrong-gift line says, a look or two later.
 const meansWell = (c, m) =>
+  (key(c) === "unclear" && m.asks) ||
   m.r() < ({ unclear: 0.75, source: 0.75, aboard: 0.75 }[key(c)] ?? 0.5)
     ? { unclear: "ask", source: "rollback", aboard: "bringBack" }[key(c)]
     : { unclear: "guess", source: "keep", aboard: "leave" }[key(c)];
@@ -250,7 +268,8 @@ const firstTimer =
   };
 
 // Does what each new wrong-gift line says: checks the risky ones, checks all for 20 seconds, puts a
-// station on Assist, or sends the most tired elf (or checker) for cocoa.
+// station on Assist, sends the named elf or the most tired elf (or checker) for cocoa, or asks
+// the child next time. "Keep checking" asks for nothing new.
 function followAdvice(w, v, m) {
   const fresh = v.news.filter((n) => n.id > (m.seenNews ?? 0));
   m.seenNews = v.news[0]?.id ?? m.seenNews;
@@ -263,6 +282,10 @@ function followAdvice(w, v, m) {
     if (n.control === "checking" && n.action === "Check more") {
       m.checking = Math.max(m.checking, 1);
       if (!m.backAt) w.setChecking(m.checking);
+    } else if (n.action === "Keep checking") {
+      continue;
+    } else if (n.control === "ask") {
+      m.asks = true;
     } else if (n.control === "checking") {
       w.setChecking(2);
       m.backAt = v.t + 20;
@@ -272,10 +295,14 @@ function followAdvice(w, v, m) {
       w.setAi(s, 1);
     } else {
       const at = n.action === "Rest the checkers" ? [2] : [0, 1, 2];
-      const most = v.elves
-        .map((e, i) => ({ e, i }))
-        .filter(({ e }) => at.includes(e.station) && !e.resting)
-        .sort((x, y) => x.e.energy - y.e.energy)[0];
+      const named = v.elves.findIndex((e) => n.action === `Swap ${e.name}`);
+      const most =
+        named >= 0
+          ? { e: v.elves[named], i: named }
+          : v.elves
+              .map((e, i) => ({ e, i }))
+              .filter(({ e }) => at.includes(e.station) && !e.resting)
+              .sort((x, y) => x.e.energy - y.e.energy)[0];
       if (most && v.stations[most.e.station].staff > 1) {
         (m.home ??= {})[most.i] = most.e.station;
         w.move(most.i, 3);
@@ -339,6 +366,14 @@ const HALF_TIME = Object.fromEntries(
 
 // Nothing in view() may show what the player has not found out, and the shape holds.
 function checkView(v) {
+  // The drift to fix names an elf who is at that station now.
+  const swap = v.vigilance.swap;
+  if (swap)
+    assert(
+      v.elves[swap.elf].station === swap.station &&
+        v.elves[swap.elf].name === swap.name,
+      "the drift names an elf at its station",
+    );
   const all = [
     ...Object.values(v.queues).flatMap((q) => q.parcels),
     ...v.sleigh.parcels,
@@ -453,7 +488,10 @@ function checkNews(n) {
     );
   if (n.kind === "relaxed")
     assert(
-      n.t >= DRIFT_QUIET && /rested elf/.test(n.text),
+      n.t >= DRIFT_QUIET &&
+        n.text.startsWith(`${ELF_NAMES[n.elf]} is trusting`) &&
+        n.text.includes(`Send ${ELF_NAMES[n.elf]} for cocoa`) &&
+        [0, 1, 2].includes(n.station),
       `drift line at ${n.t} s: ${n.text}`,
     );
   if (n.kind === "loaded") {
@@ -462,7 +500,7 @@ function checkNews(n) {
       `wrong gift control ${n.control}`,
     );
     assert(
-      /(Check|Put|Send|Rest) [^.]*\.$/.test(n.text),
+      /(Check|Put|Send|Rest|Swap|Keep|Ask) [^.]*\.$/.test(n.text),
       `wrong gift line names an action: ${n.text}`,
     );
     assert(n.cause in WRONG_CAUSES, `cause ${n.cause}`);

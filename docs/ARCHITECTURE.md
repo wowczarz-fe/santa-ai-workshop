@@ -160,9 +160,9 @@ A parcel is `{ id, wish, big, unclear, wanted, made, suspect, result }`, for exa
 
 ### Vigilance
 
-`vigilance` is `{ state, name, cleanRun, confirming, secondsPerCheck, skipped, trained }`, for
+`vigilance` is `{ state, name, cleanRun, confirming, secondsPerCheck, skipped, trained, swap }`, for
 example
-`{ state: "careful", name: "sharp", cleanRun: 6, confirming: "sharp", secondsPerCheck: 4.5, skipped: 0, trained: false }`.
+`{ state: "careful", name: "sharp", cleanRun: 6, confirming: "sharp", secondsPerCheck: 4.5, skipped: 0, trained: false, swap: null }`.
 
 - `state` is the checkers' state, `"careful"`, `"relaxing"` or `"waving through"`, and `name` the
   word to show: `"sharp"`, `"drifting"` or `"not looking"`. Each elf keeps its own run of clean AI
@@ -177,6 +177,11 @@ example
 - `cleanRun` is the checkers' average run of clean AI gifts, `secondsPerCheck` what a check takes now,
   `skipped` how many checks they have skipped, `trained` whether half-time training was bought.
   Training keeps checkers and confirmers sharp for the rest of the game.
+- `swap` is the drift to fix now: `null`, or `{ elf, station, name }`, the elf (its index in
+  `elves`) who trusts the AI most at a drifting station, checkers first, then the Assist station
+  that trusts the AI most. Read it on every view to show the drift banner and outline that one
+  elf: it moves to the next elf when that elf leaves, and turns `null` once the station looks
+  properly again, empties, or training is bought, and in the first 20 seconds.
 
 ### Run
 
@@ -388,7 +393,7 @@ something only half-time sells.
 | `noticed`     | `by`: `"watcher"`, `"checker"` or `"sleigh"`                                               | The faulty update became known                        |
 | `rolledBack`  |                                                                                            | The rollback finished                                 |
 | `recalled`    | `count`                                                                                    | Wrong gifts came off the sleigh                       |
-| `relaxed`     |                                                                                            | Checkers, or elves on Assist, started to trust the AI |
+| `relaxed`     | `elf`, `station`                                                                           | Checkers, or elves on Assist, started to trust the AI |
 | `trained`     |                                                                                            | Training was bought at half-time                      |
 | `tired`       | `elf`                                                                                      | An elf burnt out                                      |
 | `rested`      | `elf`, `station`                                                                           | A rested elf left cocoa for a station                 |
@@ -401,9 +406,11 @@ something only half-time sells.
 | `chose`       | `option`, `outcome: { money, seconds, gained }`                                            | The player picked a half-time option                  |
 | `departed`    | `right`, `wrong`, `target`, `stars`                                                        | The sleigh left; the game is over                     |
 
-A `relaxed` item says in plain words what is happening and what to do now, for example
-`"Checkers are trusting the AI and skipping checks. Swap in a rested elf."`. It comes once each time
-the checkers, or the elves on Assist, start to drift, and never in the first 20 seconds.
+A `relaxed` item names the elf who trusts the AI most and what to do now, for example
+`"Tinsel is trusting the AI and skipping checks. Send Tinsel for cocoa or swap in another elf."`
+(on Assist: "trusting the AI's drafts and missing mistakes"). `elf` and `station` say who and
+where. It comes once each time the checkers, or the elves on an Assist station, start to drift,
+and never in the first 20 seconds; `vigilance.swap` says whether the drift is still there.
 
 ### A wrong gift says what to do now
 
@@ -412,18 +419,28 @@ for example `"Wrong gift: Jack got a full-sized galleon, not a toy pirate ship. 
 Its `control` is the control to highlight and `action` a few words naming the action, for a tag
 on that control. Following the advice never sends a station back to working by hand:
 
-| `control`      | When                                                         | Text                                           | `action`            |
-| -------------- | ------------------------------------------------------------ | ---------------------------------------------- | ------------------- |
-| `checking`     | A risky gift went out unchecked while checking was on a few  | `Check the risky ones.`                        | `Check more`        |
-| `cocoa`        | A tired elf slipped                                          | `Send tired elves for cocoa.`                  | `Rest tired elves`  |
-| `ai:0`, `ai:1` | The AI made the mistake on Automate at reading or toy making | `Put reading on Assist: an elf confirms each.` | `Drop to Assist`    |
-| `checking`     | Any other gift went out unchecked                            | `Check all for a while.`                       | `Check all for now` |
-| `cocoa`        | It went past a checker                                       | `Rest the checkers: tired ones miss more.`     | `Rest the checkers` |
+| `control`      | When                                                          | Text                                                                      | `action`            |
+| -------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------- |
+| `checking`     | A risky gift went out unchecked while checking was on a few   | `Check the risky ones.`                                                   | `Check more`        |
+| `cocoa`        | A tired elf working by hand slipped                           | `Send tired elves for cocoa.`                                             | `Rest tired elves`  |
+| `ai:0`, `ai:1` | The AI made the mistake on Automate at reading or toy making  | `Put reading on Assist: an elf confirms each.`                            | `Drop to Assist`    |
+| `checking`     | The player let it through unchecked                           | `Check them instead of letting them through: move an elf to Checking.`    | `Check them`        |
+| `cocoa`        | An elf on Assist passed the wrong draft while trusting the AI | `Swap the toy makers: Pip had stopped checking the AI's drafts.`          | `Swap Pip`          |
+| `cocoa`        | An elf on Assist passed it while tired                        | `Send tired elves for cocoa.`                                             | `Rest tired elves`  |
+| `checking`     | Any other gift went out unchecked                             | `Check all for a while.`                                                  | `Check all for now` |
+| `cocoa`        | A checker waved it through while trusting the AI              | `Swap the checkers: Tinsel had stopped checking properly.`                | `Swap Tinsel`       |
+| `cocoa`        | A checker missed it while a checker was tired                 | `Rest the checkers: tired ones miss more.`                                | `Rest the checkers` |
+| `ask`          | A sharp, rested checker missed a guessed wish                 | `Ask the child when a wish is unclear: checkers miss most wrong guesses.` | `Ask next time`     |
+| `checking`     | A sharp, rested checker missed it                             | `Keep checking the risky ones: even sharp checkers miss 1 in 10.`         | `Keep checking`     |
+
+The first that applies is used. Tiredness is named only when an elf at that station is tired
+(red), and drift names the elf there who trusts the AI most. `ask` is a new `control`: there is
+no control to outline until the next unclear wish, so the page shows only the line.
 
 A wrong gift whose advice was given in the last 20 seconds goes aboard without a new line, so the
 player is not asked twice for the same thing; it still shows on the sleigh.
 
-The first that applies is used. `cause` is the cause id (see Causes). `caseId` is set only when
+`cause` is the cause id (see Causes). `caseId` is set only when
 the faulty update's decision was still waiting for an answer as the gift went aboard.
 
 A `resolved` item's `text` says what the answer did, with the time, money and parcels involved,
@@ -508,6 +525,7 @@ of it). The end screen and the half-time card may mention half-time options.
 | `waved`    | checkers who skipped or missed them           | `train`    |
 | `faulty`   | the faulty update                             | `update`   |
 | `tired`    | tired elves working by hand                   | `cocoa`    |
+| `slip`     | ordinary slips by fresh elves working by hand | `checking` |
 | `recalled` | wrong gifts brought back off the sleigh       | `checking` |
 
 A gift that went past a checker counts under `waved` whatever made it wrong, and one from the

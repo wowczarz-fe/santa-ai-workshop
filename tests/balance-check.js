@@ -400,6 +400,14 @@ function checkView(v) {
         v.elves[swap.elf].name === swap.name,
       "the drift names an elf at its station",
     );
+  // No pile ever holds more than its limit; a read letter waiting for room is counted as held.
+  for (const q of Object.values(v.queues)) {
+    assert(
+      q.parcels.length <= q.limit,
+      `${q.name} holds ${q.parcels.length} of ${q.limit} at ${Math.round(v.t)} s`,
+    );
+    assert(q.held >= 0 && (q.id === "orders" || q.held === 0));
+  }
   const all = [
     ...Object.values(v.queues).flatMap((q) => q.parcels),
     ...v.sleigh.parcels,

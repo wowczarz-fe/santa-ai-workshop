@@ -377,3 +377,16 @@ is a pile held up by a full pile further along. The "is holding things up. Move 
 line is not said for such a station, and the end lesson about lost letters drops "Move free elves
 there" when the station that held things up longest ended on Automate. `tests/focus-check.js`
 plays 192 seeded Automate games and checks the focus, that line and the rested-elf line.
+
+## Follow-up: no pile above its limit
+
+Date: 2026-11-13
+
+The page showed "Toy orders 21/20": an answered unclear letter went straight into the toy pile
+with no check for room. Every pile now keeps to its limit whatever puts a parcel there. A letter
+the player has read waits for room when the toy pile is full: it is held (`queues.orders.held`),
+never dropped, and joins ahead of the letters being read as soon as a toy is made. A recall brings
+back no more gifts than the remake pile has room for, and checking waits while the remake pile is
+full, since a caught gift goes there. Half-time choices and the rollback put nothing on a pile.
+`tests/pile-check.js` covers the three cases, and the balance check asserts the limit on every
+pile at every look of every seeded game.

@@ -137,12 +137,13 @@ points at a station uses it ("Move an elf to Toys", "Pip is rested and back at L
 as `"the toy pile is full"`. `rate` is parcels a minute at its current staffing and AI level.
 
 A queue is `{ id, name, parcels, limit, rate, inflow, trend, progress, blocked }`, for example
-`{ id: "check", name: "To check", parcels: [...], limit: 10, rate: 51, inflow: 22, trend: "steady", progress: 0.42, blocked: null }`.
+`{ id: "check", name: "To check", parcels: [...], limit: 10, rate: 51, inflow: 22, trend: "steady", progress: 0.42, blocked: null, held: 0 }`.
 `parcels` are parcels (below), `limit` the pile's size, `rate` parcels a minute at the current
 staffing, `inflow` parcels a minute arriving, `trend` `"growing"`, `"steady"` or `"shrinking"`
 over the last ten seconds, `progress` 0 to 1 towards the next parcel (unrounded), `blocked` `null`
-or a short reason such as `"nobody reading"`. Limits: letters 24, orders 20, check 10, pass 12,
-rework 30. Names: `"Letters"`, `"Toy orders"`, `"To check"`, `"Waiting to load"` (the gifts that
+or a short reason such as `"nobody reading"`, `held` the unclear letters the player has read
+that wait for room in a full pile (toy orders only, else 0). Limits: letters 24, orders 20, check
+10, pass 12, rework 30; `parcels` never holds more than `limit`. Names: `"Letters"`, `"Toy orders"`, `"To check"`, `"Waiting to load"` (the gifts that
 need no check, which the checkers load onto the sleigh) and `"To remake"`; every line about the
 `pass` pile calls it the waiting-to-load pile.
 
@@ -322,6 +323,8 @@ two unclear letters, at most one faulty update and at most two recalls.
   gift. The wrong pick is made as the wrong one: a wrong gift like any other, caught by a check 9
   times in 10 if it is sent for one, else aboard under the cause `picked`. A letter the player has
   read is not flagged as risky, so "the risky ones" checks it only when it is a big gift.
+- When the toy pile is full the read letter waits for room: it shows as `queues.orders.held`, is
+  never dropped, and joins the pile ahead of the letters being read as soon as a toy is made.
 - The `resolved` news line says what went on, not whether it was right
   (`"Amir's letter goes on: a cuddly bat."`); a check or the sleigh shows that.
 - An unanswered card waits as long as the game lasts: it never answers itself. Its wait is game
@@ -345,7 +348,8 @@ is running. At most two recall decisions per game. After leaving gifts aboard, a
 requires another wrong gift to arrive; answering does not repeat the same decision immediately.
 Facts: `"Wrong gifts aboard"`, `"To bring back"`, `"In your cost now"`, `"Time left"`.
 
-The affected gifts are just those above the limit, big gifts first. `"bringBack"` removes them from
+The affected gifts are just those above the limit, big gifts first, and never more than the
+remake pile has room for. `"bringBack"` removes them from
 the sleigh immediately and sends them to the checkers to remake, 4 seconds each and at most 20
 in all. It needs a checker, and is unavailable with a reason when too little time remains. The
 reputation decision still appears then. `"leave"` keeps them aboard.

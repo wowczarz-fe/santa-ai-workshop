@@ -504,6 +504,7 @@ class Workshop {
     this.claimed = {}; // when a rested elf last went to answer each station's need
     this.recalled = { count: 0, cost: 0 }; // wrong gifts brought back off the sleigh, and what it cost
     this.undecided = 0; // unclear letters still waiting for a decision when the sleigh left
+    this.answered = []; // unclear letters the player has read, waiting for room in the toy pile
     this.testResult = null; // "passed" or "failed" once a tested update has been tried
     this.recent = [];
     this.report = { checking: this.fresh() };
@@ -820,7 +821,11 @@ class Workshop {
         if (this.full("check")) return "the checking pile is full";
         return this.full("pass") ? "the waiting-to-load pile is full" : null;
       default:
-        return nobody ? "no checkers here" : null;
+        if (nobody) return "no checkers here";
+        // A caught gift goes to the remake pile, so checking waits while that pile is full.
+        return id === "check" && this.full("rework")
+          ? "the remake pile is full"
+          : null;
     }
   }
 
@@ -953,6 +958,7 @@ class Workshop {
       }
     if (this.pendingTest && this.t >= this.pendingTest.at) this.finishTest();
     this.raiseIncident();
+    this.passAnswered();
   }
 
   run(s, pool, dt) {
@@ -1484,13 +1490,15 @@ class Workshop {
   }
 
   // The wrong gifts aboard beyond what the Few mistakes goal allows, the big ones first: the fewest
-  // that bring the count back within the goal, and the dearest to leave aboard.
+  // that bring the count back within the goal, and the dearest to leave aboard. Never more than the
+  // remake pile has room for.
   toRecall() {
     const allowed = this.goals().find((g) => g.id === "right").need;
+    const room = QUEUES.rework.limit - this.q.rework.length;
     const wrong = this.aboard
       .filter((x) => x.wrong)
       .sort((x, y) => y.w.big - x.w.big);
-    return wrong.slice(0, Math.max(0, wrong.length - allowed));
+    return wrong.slice(0, Math.max(0, Math.min(wrong.length - allowed, room)));
   }
 
   // Whether the checkers can bring these gifts back and remake them before the sleigh leaves.
@@ -1643,11 +1651,13 @@ class Workshop {
             recallPrice(list),
             null,
             `${money(extra)} more; checkers busy ${this.span(n * recallSeconds(n))}`,
-            !this.staff(2).length
-              ? "no elf at Checking"
-              : !this.recallFits(list)
-                ? "no time before the sleigh leaves"
-                : null,
+            !n
+              ? "the remake pile is full"
+              : !this.staff(2).length
+                ? "no elf at Checking"
+                : !this.recallFits(list)
+                  ? "no time before the sleigh leaves"
+                  : null,
           ),
           instead: counted,
           extra,
@@ -1696,6 +1706,13 @@ class Workshop {
     };
   }
 
+  // A letter the player has read joins the toy pile as soon as the pile has room, ahead of the
+  // letters being read, and never above its limit.
+  passAnswered() {
+    while (this.answered.length && !this.full("orders"))
+      this.q.orders.push(this.answered.shift());
+  }
+
   resolve(caseId, optionId) {
     const c = this.cases[0];
     if (this.end || !c || c.id !== caseId) return false;
@@ -1726,7 +1743,8 @@ class Workshop {
       this.used.picked++;
       if (right) this.used.pickedRight++;
       else this.wentWrong(x, 0, PICKED_WRONG, x.w.wrong);
-      this.q.orders.push(x);
+      this.answered.push(x);
+      this.passAnswered();
       text = `${x.w.child}'s letter goes on: ${a(reading.name)}.`;
       outcome = { parcels: 1 };
     } else
@@ -2217,7 +2235,10 @@ class Workshop {
     const rates = this.rates();
     const slowest = this.holdingUp();
     const letters = this.lettersBetween(this.t, CLOSE);
-    const supply = sum(Object.values(this.q).map((q) => q.length)) + letters;
+    const supply =
+      sum(Object.values(this.q).map((q) => q.length)) +
+      this.answered.length +
+      letters;
     const right = this.rightSoFar();
     const rightShare =
       this.aboard.length >= 10 ? right / this.aboard.length : 0.95;
@@ -3301,6 +3322,7 @@ class Workshop {
       progress:
         head && next === id ? Math.min(1, (this.work[key] ?? 0) / seconds) : 0,
       blocked: head ? this.queueBlocked(id) : null,
+      held: id === "orders" ? this.answered.length : 0,
     };
   }
 

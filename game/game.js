@@ -490,7 +490,8 @@
         const page = Number(tab.dataset.stationPage);
         tab.querySelector(".tab-focus").hidden = !(
           tab.classList.contains("focus-tab") ||
-          tab.classList.contains("mistake-hint-tab")
+          tab.classList.contains("mistake-hint-tab") ||
+          view.vigilance.swap?.station === page
         );
         tab.querySelector(".tab-tired").hidden = !view.elves.some(
           (elf) =>
@@ -1038,13 +1039,13 @@
           ? 0
           : n.kind === "loaded" && n.check?.result === "wrong"
             ? 7
-            : // An elf walking back from cocoa by itself is news the player's own last move
-              // must not hide.
-              n.kind === "rested"
+            : // An elf walking back from cocoa by itself, or an elf starting to trust the AI, is
+              // news the player's own last move must not hide.
+              /rested|relaxed/.test(n.kind)
               ? 6
               : n.kind === "resolved"
                 ? 3
-                : /noticed|relaxed/.test(n.kind)
+                : n.kind === "noticed"
                   ? 4
                   : 1;
       say(n.text, priority);

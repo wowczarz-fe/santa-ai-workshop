@@ -72,7 +72,7 @@ function reading(c, right = true) {
 }
 
 // Weighs what a decision shows and what the workshop can spare.
-function conditional(c) {
+function conditional(c, v) {
   const left = num(fact(c, "Time left"));
   switch (key(c)) {
     case "unclear":
@@ -86,7 +86,15 @@ function conditional(c) {
       const savesStar =
         /Few mistakes star saved/.test(bring.goal) &&
         !/Within budget star lost/.test(bring.goal);
-      return bring.available && savesStar ? "bringBack" : "leave";
+      if (!bring.available) return "leave";
+      if (savesStar) return "bringBack";
+      // One wrong gift with no star at stake yet: worth fetching back while the margin for
+      // mistakes is thin, or while it costs little of the budget that is left.
+      const single = bring.goal === "No mistake counted";
+      const wrong = num(fact(c, "Wrong gifts aboard"));
+      return single && (wrong >= 2 || bring.extra <= 0.12 * v.cost.left)
+        ? "bringBack"
+        : "leave";
     }
   }
 }
@@ -388,7 +396,7 @@ const players = {
   expertNeverRests: active({ rest: false }),
   // Picks the first picture without reading the child's line: right about half the time.
   expertPicksBlind: active({
-    policy: (c) => (c.kind === "unclear" ? "pick:0" : conditional(c)),
+    policy: (c, v) => (c.kind === "unclear" ? "pick:0" : conditional(c, v)),
   }),
   first: firstTimer(),
   firstCheckAll: firstTimer({ plan: goodWithChecking(2) }),
@@ -498,7 +506,11 @@ function checkView(v) {
   assert.strictEqual(
     Object.keys(v.case).join(),
     "id,kind,step,title,text,facts,evidence,affected,options" +
-      (v.case.kind === "unclear" ? ",stake,readings" : ""),
+      (v.case.kind === "unclear"
+        ? ",stake,readings"
+        : v.case.step === "aboard"
+          ? ",gift"
+          : ""),
   );
   if (v.case.kind === "unclear") {
     assert([WRONG_PRICE.everyday, WRONG_PRICE.big].includes(v.case.stake));
@@ -537,6 +549,37 @@ function checkView(v) {
   // A recall costs more than leaving the gifts aboard; leaving costs nothing more.
   if (v.case.step === "aboard") {
     const [bring, leave] = v.case.options;
+    // The card says how many gifts a recall takes off the sleigh, names a single one, and speaks
+    // of a star only when the Few mistakes goal is passed.
+    const c = v.case;
+    const wrong = v.end ? 0 : v.sleigh.wrong;
+    const allowed = v.run.goals.find((g) => g.id === "right").need;
+    assert(c.affected.count === c.affected.ids.length);
+    assert(c.affected.count <= Math.max(1, wrong - allowed));
+    assert.strictEqual(c.gift === null, c.affected.count !== 1);
+    if (c.gift)
+      assert.strictEqual(
+        Object.keys(c.gift).join() +
+          Object.keys(c.gift.wanted) +
+          Object.keys(c.gift.made),
+        "child,wanted,madenamename",
+      );
+    if (wrong <= allowed) {
+      assert.strictEqual(c.affected.count <= 1, true);
+      assert.strictEqual(bring.goal, "No mistake counted");
+      assert.strictEqual(
+        leave.goal,
+        `Counts as ${wrong} of ${allowed} mistakes`,
+      );
+      if (c.gift)
+        assert.strictEqual(
+          c.text,
+          `${c.gift.child} got ${a(c.gift.made.name)}, not ${a(c.gift.wanted.name)}.`,
+        );
+    } else {
+      assert.match(leave.goal, /star lost/);
+      assert(bring.goal === null || /star saved/.test(bring.goal));
+    }
     assert.strictEqual(bring.extra, bring.money - bring.instead);
     assert(bring.extra >= 40 && bring.money >= bring.instead * 1.5 - 1);
     assert(
@@ -727,6 +770,7 @@ function play(name, seed) {
       }
       players[name](w, v, memo);
     }
+    r.anyWrong ||= w.aboard.some((x) => x.wrong);
     w.step(0.1);
   }
   checkGate(w);
@@ -736,6 +780,7 @@ function play(name, seed) {
   r.stars = v.end.stars;
   r.met = Object.fromEntries(v.end.goals.map((g) => [g.id, g.met]));
   r.choices = memo.choices ?? [];
+  r.recalls = w.recallsRaised;
   r.followed = memo.followed ?? [];
   r.hash = r.hash.digest("hex");
   return r;
@@ -771,6 +816,21 @@ for (const [name, rs] of Object.entries(results)) {
 // extremes lose, the good plan wins, and a first game on it fills the sleigh now and then. The
 // good plan lets the AI work alone on the everyday gifts of the first half and puts people on the
 // big gifts of the second.
+// How often each player meets the reputation card: in all its games, and in those where a wrong gift
+// got aboard.
+const cardShare = (name, rs = results[name]) =>
+  rs.length ? shareOf(rs, (r) => r.recalls > 0) : 0;
+console.log(
+  "\nplayer             card  two cards  wrong gift aboard  card when one was",
+);
+for (const name of Object.keys(results)) {
+  const rs = results[name];
+  const big = rs.filter((r) => r.anyWrong);
+  const p = (x) => `${Math.round(x * 100)}%`;
+  console.log(
+    `  ${name.padEnd(17)}${p(cardShare(name)).padStart(5)}${p(shareOf(rs, (r) => r.recalls > 1)).padStart(11)}${p(big.length / rs.length).padStart(18)}${p(cardShare(name, big)).padStart(19)}`,
+  );
+}
 const starShare = (name, test) => shareOf(starsOf(name), test);
 const avgStars = (name) => mean(starsOf(name));
 const pc = (x) => `${Math.round(x * 100)}%`;

@@ -50,10 +50,10 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
 - One unclear letter arrives in each half, at a seeded time 12 to 40 seconds into the half, from
   a pool of ten children and wishes (Timmy's little train among them). It raises a decision at once
   (below). All other letters are clear.
-- Three goals, one star each, for the whole game: `full` (Full sleigh, 145 right gifts aboard),
-  `right` (Few mistakes, at most 3 wrong gifts aboard) and `cost` (Within budget, some of the
+- Three goals, one star each, for the whole game: `full` (Full sleigh, 147 right gifts aboard),
+  `right` (Few mistakes, at most 2 wrong gifts aboard) and `cost` (Within budget, some of the
   £900 budget left when the sleigh leaves). `right` and `cost` count only once the sleigh holds
-  102 right gifts (`goalsCountFrom`), so a slow sleigh earns nothing for being cheap and clean.
+  103 right gifts (`goalsCountFrom`), so a slow sleigh earns nothing for being cheap and clean.
 - There is one money figure, the cost so far (`cost.spent`), counted against a budget of £900
   (`cost.limit`). It counts up: the AI's running cost, checks, the half-time purchase, fixes
   (remakes, recalls, a rollback) and what the wrong gifts aboard will cost. The moment it reaches
@@ -66,7 +66,7 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
 
 ## What `view()` returns
 
-The target (145), the budget (£900) and `goalsCountFrom` (102) here are examples from the current
+The target (147), the budget (£900) and `goalsCountFrom` (103) here are examples from the current
 balance; the page reads them from `view()`.
 
 The page reads only `view()`. Whether an unrevealed parcel is wrong is left out of it. Money is in
@@ -76,7 +76,7 @@ pounds, rounded to whole pounds unless said otherwise. Times are seconds.
 | -------------- | -------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `t`            | number                           | `40.0000000001`                                      | Seconds played, unrounded                                                                                        |
 | `duration`     | number                           | `150`                                                | Seconds in the whole game                                                                                        |
-| `target`       | number                           | `145`                                                | Right gifts the sleigh needs for the Full sleigh star                                                            |
+| `target`       | number                           | `147`                                                | Right gifts the sleigh needs for the Full sleigh star                                                            |
 | `elves`        | array of elf                     | see below                                            | The eight elves, always in the same order                                                                        |
 | `ai`           | `[number, number]`               | `[2, 1]`                                             | AI level at reading and at toy making: 0 by hand, 1 Assist, 2 Automate                                           |
 | `checking`     | number                           | `1`                                                  | 0 a few, 1 the risky ones, 2 all                                                                                 |
@@ -206,7 +206,7 @@ example
 
 `run` is `{ half, halves, halfLeft, leavesIn, aboard, target, cargo, goals, goalsCountFrom }`, for
 example
-`{ half: 1, halves: 2, halfLeft: 35, leavesIn: 110, aboard: 36, target: 145, cargo: { id: "everyday", name: "Everyday gifts", icon: "🎁", text: "The AI matches a fresh elf here. A wrong one costs £12." }, goals: [...], goalsCountFrom: 102 }`.
+`{ half: 1, halves: 2, halfLeft: 35, leavesIn: 110, aboard: 36, target: 147, cargo: { id: "everyday", name: "Everyday gifts", icon: "🎁", text: "The AI matches a fresh elf here. A wrong one costs £12." }, goals: [...], goalsCountFrom: 102 }`.
 
 - `half`: 1 or 2. `halves`: 2. `halfLeft`: whole seconds left in the half under way. While the
   half-time card is up (`choice` set) the first half is over and the second has not begun: `half`
@@ -220,15 +220,15 @@ example
 
   | `id`    | `name`          | `now`                         | `need` | `text`                                            |
   | ------- | --------------- | ----------------------------- | ------ | ------------------------------------------------- |
-  | `full`  | `Full sleigh`   | right gifts aboard            | 145    | `145 right gifts`                                 |
-  | `right` | `Few mistakes`  | wrong gifts aboard            | 3      | `at most 3 wrong gifts`                           |
+  | `full`  | `Full sleigh`   | right gifts aboard            | 147    | `147 right gifts`                                 |
+  | `right` | `Few mistakes`  | wrong gifts aboard            | 2      | `at most 2 wrong gifts`                           |
   | `cost`  | `Within budget` | cost so far (as `cost.spent`) | 900    | `some of the £900 budget left, wrong gifts count` |
 
   `met` is whether the star would be earned if the sleigh left now. `waiting` is `true` for a
   `right` or `cost` goal whose figures are within its limit while the sleigh holds fewer than
   `goalsCountFrom` right gifts, so the star is not earned yet; `full` never waits.
 
-- `goalsCountFrom`: 102, the right gifts aboard from which the `right` and `cost` goals count.
+- `goalsCountFrom`: 103, the right gifts aboard from which the `right` and `cost` goals count.
 
 ### Cost
 
@@ -286,8 +286,8 @@ parcels still in the workshop. A good update never sets it.
 ## Decisions
 
 A decision ("case") is
-`{ id, kind, step, title, text, facts, evidence, affected, options }`, and an unclear
-letter also has `stake` and `readings`. At most one is
+`{ id, kind, step, title, text, facts, evidence, affected, options }`, an unclear
+letter also has `stake` and `readings`, and a recall also has `gift`. At most one is
 open (`case`); the others wait (`casesWaiting`) in this order: the faulty update, the recall, the
 unclear letters. The page pauses the clock while a Decide card awaits an answer, preserving any
 manual pause. Every answer closes its decision at once. A game has two to five decisions:
@@ -300,9 +300,10 @@ two unclear letters, at most one faulty update and at most two recalls.
   `"Timmy writes: 'A little train for my toy track.' It could mean two things."`.
 - `facts` is `[{ label, value, primary }]`: the figures the decision turns on. At most three are
   `primary`; show those on the card and the rest behind the info pop-up.
-- `evidence` is `[{ parcelId, child, wish, made }]`: the letter for an unclear wish, empty for an
-  incident. `child` is the child's name, `made` is `null` until a toy is made.
-- `affected` is `{ count, ids }`: the parcels an option could cover.
+- `evidence` is `[{ parcelId, child, wish, made }]`: the letter for an unclear wish, the gift for a
+  recall raised by one wrong gift, empty for any other incident. `child` is the child's name, `made` is `null` until a toy is made.
+- `affected` is `{ count, ids }`: the parcels an option could cover. For a recall, `count` is the
+  number of gifts `bringBack` takes off the sleigh and `ids` those gifts.
 - `options` is `[{ id, label, seconds, money, risk, scope, why, goal, available }]`, and a recall's
   options also carry `instead` and `extra` (below). `seconds` is
   the time it takes, `money` what it costs, `risk` `null` or the chance (0 to 1) of a wrong gift or
@@ -370,16 +371,33 @@ workshop are marked `suspect: "batch"`, so checking the risky ones checks them.
 
 ### Recall (`step` `"aboard"`)
 
-Raised when wrong gifts aboard exceed the Few mistakes limit, including while a faulty update
-is running. At most two recall decisions per game. After leaving gifts aboard, another decision
-requires another wrong gift to arrive; answering does not repeat the same decision immediately.
-Facts: `"Wrong gifts aboard"`, `"To bring back"`, `"In your cost now"`, `"Time left"`.
+Raised in two ways, at most two recall decisions per game between them, one at a time, including
+while a faulty update is running:
 
-The affected gifts are just those above the limit, big gifts first, and never more than the
-remake pile has room for. `"bringBack"` removes them from
+- The first time a wrong gift is aboard, everyday or big, for that one gift, while the wrong gifts aboard are
+  still within the Few mistakes limit. No star is at stake: the choice is whether the gift counts
+  as a mistake. This card waits until the gift can be brought back (room on the remake pile, time
+  before the sleigh leaves, budget for it) and is not raised at all if it never can.
+- When wrong gifts aboard exceed the Few mistakes limit, for the excess. This can be the first
+  card, when the first wrong gift's card could not be raised. After leaving
+  gifts aboard, another decision requires another wrong gift to arrive.
+
+A card open for one gift follows the count: once the limit is passed it covers the excess and
+reads as the second kind. Facts: `"Wrong gifts aboard"`, `"To bring back"`,
+`"In your cost now"`, `"Time left"`.
+
+`text` names the gift when one wrong gift raised the card
+(`"Mia got a blue bike, not a red bike."`), and the count otherwise
+(`"3 wrong gifts are aboard: one more than Santa's name can take."`).
+
+`affected.count` is the number of gifts `"bringBack"` takes off the sleigh and `affected.ids`
+those gifts: the one gift, or the gifts above the limit, big gifts first, and never more than the
+remake pile has room for. `gift` is `{ child, wanted: { name }, made: { name } }` when exactly one
+gift is affected, so the card can draw what the child got and what they wanted, and `null`
+otherwise. `"bringBack"` removes the gifts from
 the sleigh immediately and sends them to the checkers to remake, 4 seconds each and at most 20
-in all. It needs a checker, and is unavailable with a reason when too little time remains. The
-reputation decision still appears then. `"leave"` keeps them aboard.
+in all. It needs a checker, and is unavailable with a reason when too little time remains.
+`"leave"` keeps them aboard.
 
 Bringing gifts back always costs more than leaving them, so the player pays to protect Santa's
 name. Both options carry three money fields: `money` is what the option adds to the cost (the
@@ -387,7 +405,12 @@ recall's payment, remakes included), `instead` what those gifts count in the cos
 counting once recalled, and `extra` the difference, `money - instead`, which is the net rise in
 `cost.spent`. The recall's `money` is 1.5 times `instead` and at least `instead + 40`, rounded, so
 its `extra` is always above zero; leaving has all three at 0. `scope` says the same in words
-(`"£50 more, checkers busy about 4 s"`, `"nothing more"`). `goal` shows `"Few mistakes star saved"` or
+(`"£50 more, checkers busy about 4 s"`, `"nothing more"`).
+
+`goal` mentions a star only when one is saved or lost. Within the limit it is
+`"No mistake counted"` for bringing the gift back and `"Counts as N of 2 mistakes"` for leaving
+it, N being the wrong gifts aboard if it stays. Past the limit it is `"Few mistakes star saved"`
+(or `null` when the recall does not bring the count back within the limit) and
 `"Few mistakes star lost"`. The mistakes star still needs the normal minimum of right gifts to
 count.
 
@@ -397,12 +420,15 @@ rollback too): nothing the player chooses ends the game by itself. Leaving the g
 every option that costs nothing, is always available.
 
 ```
+text: "Mia got a blue bike, not a red bike."
+affected: { count: 1, ids: [109] }
+gift: { child: "Mia", wanted: { name: "red bike" }, made: { name: "blue bike" } }
 options: [ { id: "bringBack", label: "Bring it back", seconds: 4, money: 150, risk: null,
              scope: "£50 more, checkers busy about 4 s", why: null,
-             instead: 100, extra: 50, goal: "Few mistakes star saved", available: true },
+             instead: 100, extra: 50, goal: "No mistake counted", available: true },
            { id: "leave", label: "Leave it", seconds: 0, money: 0, risk: null,
              scope: "nothing more", why: null,
-             instead: 0, extra: 0, goal: "Few mistakes star lost", available: true } ]
+             instead: 0, extra: 0, goal: "Counts as 1 of 2 mistakes", available: true } ]
 ```
 
 A successful recall adds a `recalled` action to the end report's response practice, with its gift
@@ -415,7 +441,7 @@ count and price. Its cause and cost also remain in the account.
 
 ```
 { title: "Half-time", text: "Pick one change before you carry on, or none.",
-  report: { aboard: 78, wrong: 0, target: 145, cost: 140, limit: 900, tired: 2, burnouts: 0,
+  report: { aboard: 78, wrong: 0, target: 147, cost: 140, limit: 900, tired: 2, burnouts: 0,
             goals: [ ...three goals as in run.goals... ], causes: [ ...up to three causes... ] },
   next: { cargo: { id: "big", name: "Big gifts", icon: "📦", text: "The AI gets many of these wrong, and each costs £100." },
           text: "Big gifts come next. The AI gets many of these wrong, and each costs £100." },

@@ -138,6 +138,7 @@ for (let seed = 1; seed <= 12; seed++)
   w.step(2);
   const ch = w.view().choice;
   assert(ch, "half-time is open");
+  checkOffers(w, w.view(), "half-time with little budget");
   assert.deepStrictEqual(
     ch.options.map((o) => [o.id, o.available]),
     [
@@ -174,6 +175,7 @@ for (let seed = 1; seed <= 12; seed++)
   w.track(0);
   const c = w.view().case;
   assert.strictEqual(c.step, "aboard");
+  checkOffers(w, w.view(), "a recall with little budget");
   const [bring, leave] = c.options;
   assert(bring.extra >= 30 && !bring.available);
   assert.strictEqual(bring.why, "not enough budget left");
@@ -181,6 +183,7 @@ for (let seed = 1; seed <= 12; seed++)
   assert(!w.resolve(c.id, "bringBack") && w.resolve(c.id, "leave") && !w.end);
 }
 
+// The seeded games and the two scenes above between them reach each ending and a refused choice.
 for (const [what, count] of Object.entries(seen))
   assert(count > 0, `the games reached no ${what}`);
 console.log(

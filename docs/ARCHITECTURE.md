@@ -130,8 +130,10 @@ An elf is `{ name, station, tired, energy, mood, resting, doing }`, for example
 
 ### Stations and queues
 
-A station is `{ staff, working, idle, queues, blocked, rate }`, for example
-`{ staff: 4, working: 4, idle: 0, queues: ["check", "pass", "rework"], blocked: null, rate: 101 }`.
+A station is `{ name, staff, working, idle, queues, blocked, rate }`, for example
+`{ name: "Checking", staff: 4, working: 4, idle: 0, queues: ["check", "pass", "rework"], blocked: null, rate: 101 }`.
+`name` is the station's heading word, `"Letters"`, `"Toys"` or `"Checking"`; every rules line that
+points at a station uses it ("Move an elf to Toys", "Pip is rested and back at Letters").
 `queues` lists the ids it works on in the order to draw them: station 0 `["letters"]`, station 1
 `["orders"]`, station 2 `["check", "pass", "rework"]`. `blocked` is `null` or a short reason such
 as `"the toy pile is full"`. `rate` is parcels a minute at its current staffing and AI level.
@@ -319,7 +321,7 @@ recall.
 Raised once, when a faulty update installed at half-time becomes known, which takes at least one
 full-sized train. Facts: `"Trains so far"` (every train it has made, caught or not),
 `"Rolling back"` (`"8 s, £65"`), `"Toys a minute"` (`"112 now, 80 after"`), `"Time left"`.
-Options: `"rollback"` (toy making stops 8 seconds, £65, then the machine is back to its old speed)
+Options: `"rollback"` (the toy machine stops 8 seconds, £65, then the machine is back to its old speed)
 and `"keep"` (risk 0.65: the machine keeps making full-sized trains until the sleigh leaves). Both
 close at once; the rollback runs in `incident.rollingBack`. Known faulty parcels still in the
 workshop are marked `suspect: "batch"`, so checking the risky ones checks them.
@@ -415,7 +417,7 @@ and never in the first 20 seconds; `vigilance.swap` says whether the drift is st
 ### A wrong gift says what to do now
 
 A `loaded` item's `text` is the wrong gift and then one action open to the player at that moment,
-for example `"Wrong gift: Jack got a full-sized galleon, not a toy pirate ship. Put reading on Assist: an elf confirms each."`.
+for example `"Wrong gift: Jack got a full-sized galleon, not a toy pirate ship. Put Letters on Assist: an elf confirms each."`.
 Its `control` is the control to highlight and `action` a few words naming the action, for a tag
 on that control. Following the advice never sends a station back to working by hand:
 
@@ -423,9 +425,9 @@ on that control. Following the advice never sends a station back to working by h
 | -------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------- |
 | `checking`     | A risky gift went out unchecked while checking was on a few   | `Check the risky ones.`                                                   | `Check more`        |
 | `cocoa`        | A tired elf working by hand slipped                           | `Send tired elves for cocoa.`                                             | `Rest tired elves`  |
-| `ai:0`, `ai:1` | The AI made the mistake on Automate at reading or toy making  | `Put reading on Assist: an elf confirms each.`                            | `Drop to Assist`    |
+| `ai:0`, `ai:1` | The AI made the mistake on Automate at reading or toy making  | `Put Letters on Assist: an elf confirms each.`                            | `Drop to Assist`    |
 | `checking`     | The player let it through unchecked                           | `Check them instead of letting them through: move an elf to Checking.`    | `Check them`        |
-| `cocoa`        | An elf on Assist passed the wrong draft while trusting the AI | `Swap the toy makers: Pip had stopped checking the AI's drafts.`          | `Swap Pip`          |
+| `cocoa`        | An elf on Assist passed the wrong draft while trusting the AI | `Swap the elves at Toys: Pip had stopped checking the AI's drafts.`       | `Swap Pip`          |
 | `cocoa`        | An elf on Assist passed it while tired                        | `Send tired elves for cocoa.`                                             | `Rest tired elves`  |
 | `checking`     | Any other gift went out unchecked                             | `Check all for a while.`                                                  | `Check all for now` |
 | `cocoa`        | A checker waved it through while trusting the AI              | `Swap the checkers: Tinsel had stopped checking properly.`                | `Swap Tinsel`       |
@@ -445,7 +447,7 @@ the faulty update's decision was still waiting for an answer as the gift went ab
 
 A `resolved` item's `text` says what the answer did, with the time, money and parcels involved,
 for example `"Amir wrote back: a cuddly bat."` or
-`"Rolling back for £65: toy making stops 8 s."`. A `check` is a copy taken when the check finished.
+`"Rolling back for £65: the toy machine stops 8 s."`. A `check` is a copy taken when the check finished.
 `by` is `"elf"`. A `consequence` leaves out the facts that do not apply; `about` is `"checking"`,
 `"bypass"`, `"tested"` or `"case"`.
 

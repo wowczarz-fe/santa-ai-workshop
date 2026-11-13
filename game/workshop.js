@@ -3,7 +3,8 @@
 const ELF_NAMES = "Pip Holly Jingle Noel Ivy Fig Tinsel Coco".split(" ");
 const CONTROLS = "ai0 ai1 checking bypass".split(" ");
 const BREAK = 3;
-const STATION_NAMES = ["Reading", "Toy making", "Checking"];
+// The stations by the words on the page's headings, used wherever a line points at a place.
+const STATION_NAMES = ["Letters", "Toys", "Checking"];
 const LEVELS = ["By hand", "Assist", "Automate"];
 
 const QUEUES = {
@@ -127,7 +128,7 @@ const WRONG_CAUSES = {
     name: "AI misreadings of everyday letters",
     control: "ai:0",
     fix: [
-      ["put reading on Assist so an elf confirms", (w) => w.ai[0] <= 1],
+      ["put Letters on Assist so an elf confirms", (w) => w.ai[0] <= 1],
       ["check a few more", (w) => w.checking === 2],
     ],
   },
@@ -135,7 +136,7 @@ const WRONG_CAUSES = {
     name: "AI slips making everyday toys",
     control: "ai:1",
     fix: [
-      ["put toys on Assist so an elf confirms", (w) => w.ai[1] <= 1],
+      ["put Toys on Assist so an elf confirms", (w) => w.ai[1] <= 1],
       ["check a few more", (w) => w.checking === 2],
     ],
   },
@@ -1314,7 +1315,7 @@ class Workshop {
         : say(
             "cocoa",
             `Swap the ${crew}: they had stopped ${what}.`,
-            `Swap the ${crew}`,
+            "Swap an elf",
           );
     };
     if (!checked && this.checking === 0 && this.needsCheck(x, 1))
@@ -1324,7 +1325,7 @@ class Workshop {
     if (s !== null && this.ai[s] === 2 && !x.guessed)
       return say(
         `ai:${s}`,
-        `Put ${STATION_NAMES[s].toLowerCase()} on Assist: an elf confirms each.`,
+        `Put ${STATION_NAMES[s]} on Assist: an elf confirms each.`,
         "Drop to Assist",
       );
     if (x.exit === "bypassed")
@@ -1339,7 +1340,7 @@ class Workshop {
         if (this.vigilance(this.trustAt(s)).state !== "careful")
           return swap(
             s,
-            ["readers", "toy makers"][s],
+            `elves at ${STATION_NAMES[s]}`,
             "checking the AI's drafts",
           );
         if (tiredAt(s))
@@ -1598,7 +1599,7 @@ class Workshop {
           ROLLBACK_SECONDS,
           PRICE.rollback,
           null,
-          `toy making stops ${ROLLBACK_SECONDS} s; then ${this.toyRate(this.incident?.speedBefore)} toys a minute`,
+          `the toy machine stops ${ROLLBACK_SECONDS} s; then ${this.toyRate(this.incident?.speedBefore)} toys a minute`,
         ),
         o(
           "keep",
@@ -1618,7 +1619,7 @@ class Workshop {
           recallPrice(list),
           null,
           `costs ${money(recallPrice(list))} instead of the ${money(sum(list.map((x) => this.price(x))))} they count now; checkers busy ${this.span(n * recallSeconds(n))}`,
-          this.staff(2).length ? null : "no elf at checking",
+          this.staff(2).length ? null : "no elf at Checking",
         ),
         o(
           "leave",
@@ -1742,7 +1743,7 @@ class Workshop {
         this.used.rolledBack = true;
         this.pay("fixing", PRICE.rollback);
         tell(
-          `Rolling back for ${money(PRICE.rollback)}: toy making stops ${ROLLBACK_SECONDS} s.`,
+          `Rolling back for ${money(PRICE.rollback)}: the toy machine stops ${ROLLBACK_SECONDS} s.`,
           { seconds: ROLLBACK_SECONDS, money: PRICE.rollback },
         );
         break;
@@ -1907,7 +1908,7 @@ class Workshop {
         10,
         "blocked0",
         "blocked",
-        "Reading stopped: the toy pile is full. Move an elf to Toy making.",
+        "Letters has stopped: the toy pile is full. Move an elf to Toys.",
         { station: 0 },
       );
     if (this.stationBlocked(1))
@@ -1915,7 +1916,7 @@ class Workshop {
         10,
         "blocked1",
         "blocked",
-        `Toy making stopped: the ${this.full("check") ? "checking" : "waiting-to-load"} pile is full. Move an elf to Checking.`,
+        `Toys has stopped: the ${this.full("check") ? "checking" : "waiting-to-load"} pile is full. Move an elf to Checking.`,
         { station: 1 },
       );
     const count = this.unreportedLost;
@@ -2642,7 +2643,7 @@ class Workshop {
       "too much": `Too much checking: ${over}, against ${under}.`,
       bottleneck: tired
         ? `Tired checkers held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh: rest them with cocoa before they burn out.`
-        : `Checking held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh: move an elf to checking when its pile fills.`,
+        : `Checking held back ${plural(held, "gift")} that missed ${held === 1 ? "its" : "their"} sleigh: move an elf to Checking when its pile fills.`,
     }[verdict];
     return {
       verdict,
@@ -2982,7 +2983,7 @@ class Workshop {
       return L("Too much checking", "");
     if (short && biggest === "lost") {
       const longest = this.longestHolding();
-      const where = STATION_NAMES[longest].toLowerCase();
+      const where = STATION_NAMES[longest];
       return this.tiredAt(longest)
         ? L(
             "Tired elves let letters pile up",
@@ -3320,6 +3321,7 @@ class Workshop {
           (e) => e.doing !== "nothing to do",
         ).length;
         return {
+          name: STATION_NAMES[s],
           staff: this.staff(s).length,
           working,
           idle: this.staff(s).length - working,

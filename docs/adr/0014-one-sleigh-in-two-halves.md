@@ -406,3 +406,17 @@ its `goal`: the page reads `extra`, `seconds` and `goal` as fields.
 The end screen could show more blunders found than exist ("28 of 27"), because the page keeps its
 collection across games and builds while wishes were reworded. `end.blunderIds` now lists every
 blunder that exists, so the page can drop the stale ones.
+
+## Follow-up: a reliable AI and a budget that can run out
+
+Two decisions by the user changed the goal lines of this ADR. They are recorded in ADR 0019 (the
+AI is as reliable as a fresh elf on everyday gifts and poor on big ones, and the first half
+carries everyday gifts only) and ADR 0020 (the game ends when the budget runs out). What moved
+here: the Full sleigh target from 110 to 145 right gifts, so the mistakes and budget stars count
+from 102 aboard; the cost limit from £850 to a budget of £900; a caught mistake sharpens the
+checkers by 10 clean gifts where it was 5; remaking a big gift costs £15; and the first big letter
+arrives 8 seconds into the second half. The mistakes limit stays at 3 and the goals still count
+from 0.7 of the target.
+
+A tired elf's slip is now a mix-up with another child's toy of the same kind. The user could not
+tell what was wrong with "a doll in a pink dress in the wrong size".

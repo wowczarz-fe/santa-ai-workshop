@@ -101,6 +101,11 @@ const StationFlow = (() => {
       document.querySelector("#queue-orders .queue-picture").append(svg);
     }
     if (heap.small) {
+      const queueButton = document.getElementById(`queue-${queue}`);
+      const label = document.createElement("span");
+      label.className = "flow-queue-label";
+      label.append(...queueButton.childNodes);
+      queueButton.append(label);
       svg = element("svg", {
         viewBox: "0 0 120 64",
         class: "flow-small-heap",

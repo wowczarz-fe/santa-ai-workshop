@@ -741,6 +741,10 @@ for (const name of ["expertCheckAll", "expertAutomate", "expertCheckFew"]) {
     `${name}: three stars in ${pc(starShare(name, (s) => s === 3))} of games, above the earlier 15% benchmark after reputation recalls`,
   );
 }
+assert(
+  starShare("expertAutomate", (s) => s === 3) <= expertThree * 0.5,
+  "automation everywhere earns three stars at most half as often as the good strategy",
+);
 for (const name of ["firstCheckAll", "firstCheckFew"])
   assert(
     avgStars(name) <= avgStars("first") - 0.4,

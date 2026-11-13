@@ -1277,11 +1277,6 @@
         make("span", "upgrade-gives", gives?.value ?? option.text),
       );
       const chips = make("span", "upgrade-chips");
-      if (costs) {
-        const chip = make("span", "upgrade-cost");
-        chip.append(iconNode("budget", ""), costs.value);
-        chips.append(chip);
-      }
       // The install risk is how likely the update is faulty; testing is what stops a bad one.
       if (risk) {
         const odds = risk.value.match(/\d+ in \d+/);
@@ -1295,6 +1290,11 @@
       }
       if (stops)
         chips.append(make("span", "upgrade-stops", `stops ${stops.value}`));
+      if (costs) {
+        const chip = make("span", "upgrade-cost");
+        chip.append(iconNode("budget", ""), costs.value);
+        chips.append(chip);
+      }
       card.append(chips);
       const wrap = make("div", "upgrade-wrap");
       wrap.append(card);
@@ -1692,7 +1692,14 @@
       hidePopupPointer("tour");
       return;
     }
-    positionPanel($("tour"), anchor, [anchor]);
+    if (tourStep === tourSteps.length - 1 && innerWidth >= 1000) {
+      const panel = $("tour");
+      const board = $("board").getBoundingClientRect();
+      const sleigh = $("sleigh").getBoundingClientRect();
+      panel.style.left = `${Math.max(board.left + 8, sleigh.left - panel.offsetWidth - 12)}px`;
+      panel.style.top = `${Math.max(board.top + 8, Math.min(anchor.getBoundingClientRect().top, board.bottom - panel.offsetHeight - 8))}px`;
+      drawPopupPointer(panel, anchor);
+    } else positionPanel($("tour"), anchor, [anchor]);
   }
   // How many wrong gifts an option brings off the sleigh, from its scope words.
   function recallCount(c, o) {

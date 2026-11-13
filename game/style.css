@@ -2866,6 +2866,8 @@ dialog p {
 }
 .upgrade-chips {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   flex-wrap: wrap;
   gap: 5px;
   margin-top: auto;
@@ -3094,9 +3096,7 @@ dialog p {
   color: var(--bc-gold-ink);
 }
 /* A bottleneck: the zones fade and a full-pile mark sits where the needle would be. */
-.dial-stuck .dial-zone,
-.dial-stuck .dial-word,
-.dial-stuck .dial-end {
+.dial-stuck .dial-zone {
   opacity: 0.35;
 }
 .dial-stuck-mark circle {
@@ -3245,9 +3245,9 @@ dialog p {
   font-size: 13px;
   line-height: 1.45;
 }
-/* The costliest causes side by side, so the card stays one row high. */
+/* Each cause keeps its amount at the far edge of its row. */
 #endCauses {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px 18px;
 }
 #endCauses .cause + .cause {
@@ -3533,7 +3533,7 @@ dialog p {
 #report .practice-figure {
   display: block;
   font-weight: normal;
-  opacity: 0.85;
+  opacity: 1;
 }
 #report .practice-note {
   margin: 4px 0 0;

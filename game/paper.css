@@ -2771,17 +2771,28 @@ body[data-look="paper"]
   width: 40px;
 }
 body[data-look="paper"] .gift-flight:not(.in-slot) {
-  margin-top: 5px;
+  margin-top: 0;
   border-radius: 0;
-  --fly-y: 0px !important;
+  transform: none;
+  animation: paper-count-arrival 1.3s ease-out forwards;
 }
 @media (max-width: 999px) {
   body[data-look="paper"] .milestone-toast {
-    top: auto;
-    bottom: 8px;
-    width: max-content;
-    max-width: calc(100vw - 32px);
-    padding: 7px 12px;
+    position: absolute;
+    top: 0;
+    right: 28px;
+    bottom: auto;
+    left: 0;
+    width: auto;
+    max-width: none;
+    min-height: 30px;
+    padding: 2px 7px;
+    transform: none;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 16px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   body[data-look="paper"] .station.destination .paper-floor .crew {
     padding-top: 44px;
@@ -2824,5 +2835,43 @@ body[data-look="paper"] .gift-flight:not(.in-slot) {
     main
     .board:not([data-crowd="true"]) {
     grid-template-rows: 48px minmax(176px, 1fr) 16px 160px auto;
+  }
+}
+
+@media (max-width: 999px) {
+  body[data-look="paper"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card)) {
+    grid-auto-rows: 52px;
+  }
+  body[data-look="paper"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card))
+    .elf {
+    height: 52px;
+    min-height: 52px;
+  }
+  body[data-look="paper"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card))
+    .elf
+    svg {
+    height: 28px;
+    width: 24px;
+  }
+}
+
+body[data-look="paper"] .status-row {
+  position: relative;
+}
+
+@keyframes paper-count-arrival {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 1;
   }
 }

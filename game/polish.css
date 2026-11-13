@@ -2114,11 +2114,21 @@ body[data-look="polish"] .dashboard .hud-name .ui-icon {
 }
 @media (max-width: 999px) {
   body[data-look="polish"] .milestone-toast {
-    top: auto;
-    bottom: 8px;
-    width: max-content;
-    max-width: calc(100vw - 32px);
-    padding: 7px 12px;
+    position: absolute;
+    top: 0;
+    right: 28px;
+    bottom: auto;
+    left: 0;
+    width: auto;
+    max-width: none;
+    min-height: 30px;
+    padding: 2px 7px;
+    transform: none;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 16px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 }
 
@@ -2150,4 +2160,60 @@ body[data-look="polish"] .dashboard .hud-name .ui-icon {
     height: 66px;
     width: 52px;
   }
+}
+
+@media (max-width: 999px) {
+  body[data-look="polish"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(4 of .elf-card)):not(
+      :has(:nth-child(7 of .elf-card))
+    ) {
+    grid-auto-rows: 90px;
+  }
+  body[data-look="polish"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(4 of .elf-card)):not(
+      :has(:nth-child(7 of .elf-card))
+    )
+    .elf {
+    height: 90px;
+    min-height: 90px;
+  }
+  body[data-look="polish"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(4 of .elf-card)):not(
+      :has(:nth-child(7 of .elf-card))
+    )
+    .elf
+    svg {
+    height: 46px;
+    width: 40px;
+  }
+}
+
+@media (max-width: 999px) {
+  body[data-look="polish"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card)) {
+    grid-auto-rows: 52px;
+  }
+  body[data-look="polish"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card))
+    .elf {
+    height: 52px;
+    min-height: 52px;
+  }
+  body[data-look="polish"]
+    .station.destination
+    :is(#elves0, #elves1, #elves2):has(:nth-child(7 of .elf-card))
+    .elf
+    svg {
+    height: 28px;
+    width: 24px;
+  }
+}
+
+body[data-look="polish"] .status-row {
+  position: relative;
 }

@@ -15,7 +15,7 @@ const warnings = [];
 const warn = (ok, message) => ok || warnings.push(message);
 const PARCEL_KEYS = "id,wish,big,unclear,wanted,made,suspect,result";
 const NEWS_KINDS =
-  "checked loaded consequence case resolved update noticed rolledBack recalled relaxed trained tired blocked lost behind milestone cleared halftime chose departed".split(
+  "checked loaded consequence case resolved update noticed rolledBack recalled relaxed trained tired rested blocked lost behind milestone cleared halftime chose departed".split(
     " ",
   );
 const CONTROLS_NAMED = ["checking", "ai:0", "ai:1", "cocoa"];
@@ -952,6 +952,36 @@ for (const k of NEWS_KINDS) warn(kinds.has(k), `news kind ${k} is emitted`);
   assert(w.setAi(0, 2) && w.setAi(1, 1) && w.setChecking(2) && w.move(3, 0));
   assert(
     Object.values(w.view().actions).every((a) => a.why !== "Unlocks later"),
+  );
+}
+
+// A rested elf goes where an elf is needed, else back where it came from, and says so; two elves
+// rested together do not both answer one need.
+{
+  const w = new Workshop({ seed: 23 });
+  w.step(10);
+  w.setAi(1, 1);
+  w.move(3, 0);
+  w.move(4, 0);
+  for (const i of [0, 1]) {
+    w.move(i, 3);
+    w.elves[i].tired = 0;
+    w.elves[i].breakAt = w.t - 5;
+  }
+  // Nobody left making toys while orders wait: toy making needs an elf.
+  w.move(5, 0);
+  w.q.orders.push({ ...w.q.letters[0], id: 1000 });
+  w.step(0.1);
+  assert.deepStrictEqual(
+    [w.elves[0].station, w.elves[1].station],
+    [1, 0],
+    "one rested elf answers the need, the other goes home",
+  );
+  const said = w.view().news.filter((n) => n.kind === "rested");
+  assert(
+    said.length === 2 &&
+      said.every((n) => n.text.startsWith(w.elves[n.elf].name)),
+    said.map((n) => n.text).join(" / "),
   );
 }
 

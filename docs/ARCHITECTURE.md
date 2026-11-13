@@ -391,6 +391,7 @@ something only half-time sells.
 | `relaxed`     |                                                                                            | Checkers, or elves on Assist, started to trust the AI |
 | `trained`     |                                                                                            | Training was bought at half-time                      |
 | `tired`       | `elf`                                                                                      | An elf burnt out                                      |
+| `rested`      | `elf`, `station`                                                                           | A rested elf left cocoa for a station                 |
 | `blocked`     | `station`                                                                                  | A station stopped because the next pile is full       |
 | `lost`        | `count`                                                                                    | Letters were lost to a full pile                      |
 | `behind`      | `station`                                                                                  | The pace first falls short and a station holds it up  |
@@ -585,9 +586,11 @@ beforehand: a risky batch can happen to come out clean.
 - When the checking pile is full the line waits; a full pile never lets gifts through by itself.
   Gifts miss a check in two ways, both visible: the player calls `bypass()`, counted in
   `bypassed`, or relaxed checkers wave a gift through, counted in `vigilance.skipped`.
-- A cocoa break from tired to fresh takes about 3 seconds. An elf on cocoa walks back to the
-  station it came from once fully rested (at least 3 seconds after it sat down), so nobody is left
-  on a break. A `tired` news item means an elf burnt
+- A cocoa break from tired to fresh takes about 3 seconds. Once fully rested (at least 3 seconds
+  after it sat down) an elf on cocoa leaves by itself: to the station that needs an elf, as
+  `focus` would name it, else back to the station it came from, with a `rested` news item saying
+  where. A need one rested elf has gone to is left to it for 5 seconds, so two elves rested
+  together do not both answer it. Nobody is left on a break. A `tired` news item means an elf burnt
   out; it comes back by itself after 15 seconds, still tired. An elf working without rest burns out
   for the first time about 110 seconds in; a player who rests elves when they turn red sees about
   one burnout a game.

@@ -86,6 +86,7 @@ const TEST_TOYS = 4;
 const ABOARD_AT = 5; // wrong gifts aboard that raise the one recall decision
 const DRIFT_QUIET = 20; // seconds at the start with no line about elves trusting the AI
 const COCOA_LEAST = 3; // seconds a cocoa break lasts at least, however rested the elf
+const NEED_CLAIM = 5; // seconds a need answered by one rested elf is left to it
 const WRONG_LINE_GAP = 20; // seconds before a wrong-gift line repeats the same advice
 
 // One sleigh, filled over two halves with a pause between them. The target sits where a first-time
@@ -492,6 +493,7 @@ class Workshop {
     this.cases = [];
     this.lastCaseId = 0;
     this.aboardRaised = false;
+    this.claimed = {}; // when a rested elf last went to answer each station's need
     this.recalled = { count: 0, cost: 0 }; // wrong gifts brought back off the sleigh, and what it cost
     this.undecided = 0; // unclear letters still waiting for a decision when the sleigh left
     this.testResult = null; // "passed" or "failed" once a tested update has been tried
@@ -1797,7 +1799,7 @@ class Workshop {
           e.station = e.home;
         // A cocoa break ends by itself once the elf is fully rested, so nobody is left on a break.
         else if (!e.rest && !e.tired && this.t - e.breakAt >= COCOA_LEAST)
-          e.station = e.home;
+          this.backFromCocoa(i);
         return;
       }
       const s = e.station;
@@ -1989,6 +1991,48 @@ class Workshop {
     return null;
   }
 
+  // More hands or AI for the station whose pile is growing fastest towards full, or null.
+  growingPile() {
+    const piles = ["letters", "orders", "check"].filter(
+      (id) =>
+        this.trend(id) === "growing" &&
+        this.q[id].length >= QUEUES[id].limit * 0.3,
+    );
+    piles.sort(
+      (x, y) =>
+        this.q[y].length / QUEUES[y].limit - this.q[x].length / QUEUES[x].limit,
+    );
+    return piles.length ? this.helpAt(QUEUES[piles[0]].station) : null;
+  }
+
+  // The station another elf would help now, as focus() would name it, or null. A need one returning
+  // elf has just gone to is left alone for NEED_CLAIM seconds, so two elves rested together do not
+  // both answer it.
+  elfNeed() {
+    const need = this.unblock() ?? this.growingPile();
+    if (need?.control !== "elves") return null;
+    const s = need.station;
+    if (s < 2 && this.ai[s] === 2) return null;
+    return this.t - (this.claimed[s] ?? -99) < NEED_CLAIM ? null : s;
+  }
+
+  // A fully rested elf leaves cocoa for the station that needs an elf, else the one it came from,
+  // and says where it went.
+  backFromCocoa(i) {
+    const e = this.elves[i];
+    const need = this.elfNeed();
+    e.station = need ?? e.home;
+    if (need !== null) this.claimed[need] = this.t;
+    const where = STATION_NAMES[e.station];
+    this.say(
+      "rested",
+      need === null || need === e.home
+        ? `${e.name} is rested and back at ${where}.`
+        : `${e.name} is rested and goes to ${where}, which needs an elf.`,
+      { elf: i, station: e.station },
+    );
+  }
+
   // The one thing that most needs the player now, in four words at most, or null. A stopped line
   // comes first, since nothing else counts while it stands.
   focus() {
@@ -1999,16 +2043,8 @@ class Workshop {
       .sort((x, y) => y.tired - x.tired)[0];
     if (tired)
       return { station: BREAK, control: "cocoa", text: `rest ${tired.name}` };
-    const piles = ["letters", "orders", "check"].filter(
-      (id) =>
-        this.trend(id) === "growing" &&
-        this.q[id].length >= QUEUES[id].limit * 0.3,
-    );
-    piles.sort(
-      (x, y) =>
-        this.q[y].length / QUEUES[y].limit - this.q[x].length / QUEUES[x].limit,
-    );
-    if (piles.length) return this.helpAt(QUEUES[piles[0]].station);
+    const growing = this.growingPile();
+    if (growing) return growing;
     const recentWrong = this.aboard.filter(
       (x) => x.wrong && this.t - x.loadedAt <= 30,
     ).length;

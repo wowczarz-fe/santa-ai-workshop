@@ -32,7 +32,7 @@ The player can compare causes, costs and upgrades before the next run. Replays h
 
 ## Article link pending
 
-Keep the end-screen article link hidden until the user supplies its final URL. The current
-`#article` value is a placeholder. Retain the link markup and styling so the URL and visibility
-can be updated together when the article is ready. The Frontier Data Science & AI link remains
-available in the meantime.
+Show the end-screen article link and point it at the Frontier Economics home page
+(`https://www.frontier-economics.com/uk/en/home/`) until the article has its own address. The
+user chose a visible link to the home page over a hidden one. Replace the address in
+`game/index.html` when the article is published.

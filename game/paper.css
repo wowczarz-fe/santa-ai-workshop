@@ -1694,7 +1694,6 @@ body[data-look="paper"] .mode-caption.spare {
   font-weight: bold;
 }
 body[data-look="paper"] .small-action,
-body[data-look="paper"] #controls2 [data-control="bypass"] button,
 body[data-look="paper"] .vigilance {
   font-size: 11px;
 }
@@ -1782,10 +1781,6 @@ body[data-look="paper"] .sleigh-total span {
   font-size: 11px;
   line-height: 13px;
 }
-/* Room under the bar for the number on its tick */
-body[data-look="paper"] .sleigh-total .sleigh-bar {
-  margin-bottom: 11px;
-}
 /* The gift bubble lands beside the count card, not on it */
 body[data-look="paper"] .gift-flight:not(.in-slot) {
   margin-left: 116px;
@@ -1861,13 +1856,9 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     grid-template-columns: auto auto;
     column-gap: 7px;
   }
-  /* Which half: a small word under the digits, which leaves the decision cue room for its title */
+  /* On a phone the digits stand alone, which leaves the decision cue room for its title */
   body[data-look="paper"] main .dashboard .clock-box > span {
-    grid-column: 2;
-    grid-row: 2;
-    align-self: start;
-    font-size: 10px;
-    line-height: 11px;
+    display: none;
   }
   body[data-look="paper"] main .dashboard #countdownRing {
     grid-row: 1 / 3;
@@ -2022,7 +2013,6 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     height: 46px;
   }
   body[data-look="paper"] .small-action,
-  body[data-look="paper"] #controls2 [data-control="bypass"] button,
   body[data-look="paper"] #controls2 .vigilance {
     min-height: 40px;
   }
@@ -2675,4 +2665,30 @@ body[data-look="paper"] #cocoa #elves3 {
     margin: 0;
     padding: 0;
   }
+}
+
+/* The cargo belongs to the same card as its count and target. */
+body[data-look="paper"] .sleigh-total {
+  width: 148px;
+}
+body[data-look="paper"] .sleigh-total .sleigh-count {
+  gap: 5px;
+}
+body[data-look="paper"] .sleigh-total #sleighTarget {
+  font-size: 17px;
+}
+body[data-look="paper"] .sleigh-total .sleigh-bar {
+  margin-bottom: 4px;
+}
+body[data-look="paper"] .sleigh-total .cargo-badge {
+  position: static;
+  width: 100%;
+  min-height: 22px;
+  margin: 5px 0 0;
+  padding: 2px 0 0;
+  border: 0;
+  border-top: 1px solid #bea47b;
+  box-shadow: none;
+  background: transparent;
+  justify-content: center;
 }

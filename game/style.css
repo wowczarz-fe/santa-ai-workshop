@@ -754,6 +754,53 @@ main {
   flex: none;
   margin-top: 2px;
 }
+/* The decision card stops the clock while it is open, and says so */
+.case-panel .case-paused {
+  display: inline-block;
+  margin: 2px 0 6px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #eef3ee;
+  color: #4b6250;
+  font-size: 11px;
+  font-weight: 700;
+}
+/* An unclear wish as a picture: the two things it could mean, side by side, with "or" between */
+.case-panel .case-readings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 10px;
+}
+.case-panel .case-readings[hidden] {
+  display: none;
+}
+.case-reading {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 6px 4px 5px;
+  border: 1px solid #d6ddd5;
+  border-radius: 10px;
+  background: #f7f9f5;
+}
+.case-reading svg {
+  width: 84px;
+  height: 67px;
+}
+.case-reading figcaption {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+.case-or {
+  font-size: 14px;
+  font-weight: 700;
+  color: #6b776d;
+}
 .case-panel .case-text {
   margin: 6px 0 10px;
   font-size: 13px;
@@ -1231,33 +1278,6 @@ progress {
 .control-row[hidden] {
   display: none;
 }
-/* Skip checks: only while the To check pile is full, with a chip for the risk it takes */
-.bypass-risk {
-  margin-left: 4px;
-  padding: 0 5px;
-  border-radius: 8px;
-  background: #fbe9e5;
-  color: #9a3326;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 15px;
-  white-space: nowrap;
-}
-body[data-look] #controls2:has(#vigilance[hidden]) [data-control="bypass"] {
-  grid-column: 1 / -1;
-}
-[data-action="bypass"] {
-  min-width: 0;
-}
-.bypass-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-[data-action="bypass"][data-armed="true"] {
-  border-color: #c64235;
-  background: #fff3f0;
-}
 .control-row .control-label {
   font-size: 10px;
   flex: 1;
@@ -1399,8 +1419,7 @@ body[data-look] #controls2:has(#vigilance[hidden]) [data-control="bypass"] {
   font-size: 10px;
   margin-top: 3px;
 }
-/* The sleigh count: the full-sleigh star, gifts aboard against the target, and a bar marked where
-   the mistakes and spend stars start counting */
+/* The sleigh count and progress towards its target. */
 .sleigh-total .sleigh-count {
   display: flex;
   align-items: baseline;
@@ -1442,25 +1461,7 @@ body[data-look] #controls2:has(#vigilance[hidden]) [data-control="bypass"] {
   border-radius: 2px;
   background: #d9a636;
 }
-/* The tick where the mistakes and cost stars start to count, with that number under it */
-.sleigh-bar b {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  left: calc(var(--tick, 0) * 100%);
-  display: flex;
-  justify-content: center;
-  width: 2px;
-  margin-left: -1px;
-  padding-top: 11px;
-  border-radius: 1px;
-  background: var(--ink);
-  font:
-    700 9px/10px Arial,
-    sans-serif;
-  color: var(--ink);
-  white-space: nowrap;
-}
+
 @keyframes arrive {
   from {
     transform: translateX(-15px);

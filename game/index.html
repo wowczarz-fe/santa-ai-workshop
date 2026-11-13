@@ -70,8 +70,8 @@
               pathLength="1"
             />
           </svg>
-          <span id="halfLabel"></span><strong id="clock"></strong
-          ><small id="pauseState"></small>
+          <span id="clockLabel">Sleigh leaves in</span
+          ><strong id="clock"></strong><small id="pauseState"></small>
         </div>
         <button id="pause" disabled>Pause</button
         ><button id="caseCue" class="case-cue" hidden>Decision waiting</button>
@@ -117,8 +117,7 @@
               ></span
               ><strong id="sleighRight">0</strong
               ><span id="sleighTarget"></span></span
-            ><span class="sleigh-bar" aria-hidden="true"
-              ><i></i><b id="sleighTick"></b></span
+            ><span class="sleigh-bar" aria-hidden="true"><i></i></span
             ><span>right gifts aboard</span>
           </div>
           <button id="wrongDelivery" class="wrong-delivery" hidden>
@@ -227,7 +226,9 @@
           </svg>
         </button>
       </div>
+      <span class="case-paused">Clock stopped</span>
       <p id="caseText" class="case-text"></p>
+      <div id="caseReadings" class="case-readings" role="img" hidden></div>
       <p id="caseFact" class="case-fact"></p>
       <div id="caseOptions" class="case-options"></div>
       <div id="caseResolving" hidden>

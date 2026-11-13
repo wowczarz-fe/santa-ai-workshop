@@ -980,7 +980,6 @@ body[data-look="polish"] .small-action {
 body[data-look="polish"] #controls2 {
   padding-top: 7px;
 }
-body[data-look="polish"] #controls2 [data-control="bypass"],
 body[data-look="polish"] #controls2 .vigilance {
   position: relative;
   z-index: 2;
@@ -1576,13 +1575,9 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
     grid-template-columns: auto auto;
     column-gap: 6px;
   }
-  /* Which half: a small word under the digits, which leaves the decision cue room for its title */
+  /* On a phone the digits stand alone, which leaves the decision cue room for its title */
   body[data-look="polish"] main .dashboard .clock-box > span {
-    grid-column: 2;
-    grid-row: 2;
-    align-self: start;
-    font-size: 10px;
-    line-height: 11px;
+    display: none;
   }
   body[data-look="polish"] main .dashboard .clock-box > strong {
     grid-column: 2;
@@ -1690,7 +1685,6 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
     height: 34px;
   }
   body[data-look="polish"] main .small-action,
-  body[data-look="polish"] main #controls2 [data-control="bypass"] button,
   body[data-look="polish"] main #controls2 .vigilance {
     height: auto;
     min-height: 40px;
@@ -1780,7 +1774,6 @@ body[data-look="polish"] [data-control="checking"] .switch-button {
 body[data-look="polish"] [data-control="checking"] .switch-label {
   line-height: 18px;
 }
-body[data-look="polish"] #controls2 [data-control="bypass"] button,
 body[data-look="polish"] #controls2 .vigilance {
   height: 20px;
   min-height: 20px;
@@ -1925,7 +1918,6 @@ body[data-look="polish"] .wrong-delivery {
 
 /* Text never below 11px on the play screen */
 body[data-look="polish"] .dashboard .clock-box > span,
-body[data-look="polish"] #controls2 [data-control="bypass"] button,
 body[data-look="polish"] main .dashboard .hud-slot .hud-need {
   font-size: 11px;
 }
@@ -2083,4 +2075,13 @@ body[data-look="polish"] .mistake-hint:has(> .mistake-hint-label) > .focus-tag {
     height: calc(100dvh - 316px);
     grid-template-columns: repeat(4, calc(50vw - 18px));
   }
+}
+
+body[data-look="polish"] .sleigh-total .cargo-badge {
+  position: static;
+  width: 100%;
+  margin: 5px 0 0;
+  justify-content: center;
+  border: 0;
+  background: transparent;
 }

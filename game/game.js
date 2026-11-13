@@ -64,8 +64,7 @@
     nativeDragElf = null;
   let openedCases = new Set(),
     // Where and until when the second click of a double-click on a decision's answer is held back.
-    answered = null,
-    bypassArmedUntil = 0;
+    answered = null;
   let lastChoice = null,
     observedRight = 0,
     caughtSnapshot = null,
@@ -218,13 +217,6 @@
       }
       sw.dataset.kind = "checking";
       addGroup("checking", sw);
-      // Skipping checks shows only while the To check pile is full, with how many big gifts it
-      // would send out unchecked.
-      const b = make("button", "small-action");
-      b.innerHTML = `${icon("let-through")}<span class="bypass-label"></span><span class="bypass-risk"></span>`;
-      b.dataset.action = "bypass";
-      b.dataset.info = "action:bypass";
-      addGroup("bypass", b);
       const vigilance = make("button", "vigilance");
       vigilance.id = "vigilance";
       vigilance.dataset.help = "vigilance";
@@ -257,8 +249,8 @@
   cargoBadge.dataset.info = "cargo";
   const sleigh = $("sleigh"),
     sleighScene = make("div", "paper-scene paper-sleigh-scene");
-  // The cargo sits on the sleigh picture, so the four column headings match.
-  sleighScene.append(cargoBadge);
+  // Keep the cargo and the target together in the sleigh card.
+  $("sleighTotal").append(cargoBadge);
   sleigh.querySelector(".sleigh-art").innerHTML = Art.scene(3);
   sleighScene.append(
     sleigh.querySelector(".sleigh-art"),
@@ -358,7 +350,6 @@
     goalSlots.right.classList.toggle("hud-previewing", after !== null);
     goalSlots.right.querySelector(".hud-preview").textContent =
       after !== null ? `${after} after recall` : "";
-    const from = view.run.goalsCountFrom;
     for (const goal of view.run.goals) {
       const slot = goalSlots[goal.id];
       if (!slot) continue;
@@ -396,7 +387,7 @@
         .style.setProperty("--fill", Math.min(1, now / Math.max(1, need)));
       slot.setAttribute(
         "aria-label",
-        `${name}: ${figure(now)} of ${figure(need)}, ${{ met: "star earned so far", waiting: `counts from ${from} right gifts`, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
+        `${name}: ${figure(now)} of ${figure(need)}, ${{ met: "star earned so far", waiting: "not counted yet", failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,
       );
     }
   }
@@ -647,6 +638,8 @@
     notice = { text: words, priority: 5, since: now, until: now + 4000 };
     paint();
   }
+  const clockText = (seconds) =>
+    `${Math.floor(seconds / 60)}:${String(Math.round(seconds) % 60).padStart(2, "0")}`;
   const perMinute = (s) =>
     `${view.stations[s].name}: ${Math.round(view.stations[s].rate)} a minute`;
   function paint() {
@@ -661,29 +654,16 @@
         `${cargo.name}. About this cargo.`,
       );
     }
-    // The clock counts down the half under way; its label says which half.
-    const halves = view.run.halves ?? 1,
-      halfLength = view.duration / halves;
-    const left = Math.ceil(view.run.halfLeft ?? view.run.leavesIn ?? 0);
+    // One clock for the whole game: the time until the sleigh leaves.
+    const left = Math.ceil(view.run.leavesIn ?? view.duration - view.t);
     $("countdownRing").style.setProperty(
       "--remaining",
-      Math.max(0, Math.min(1, left / halfLength)),
+      Math.max(0, Math.min(1, left / view.duration)),
     );
-    text(
-      "clock",
-      `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`,
-    );
-    text(
-      "halfLabel",
-      view.choice
-        ? "Half-time"
-        : halves > 1
-          ? `${["1st", "2nd"][view.run.half - 1] ?? view.run.half} half`
-          : "",
-    );
+    text("clock", clockText(left));
     text(
       "mission",
-      `Elves and AI must fill Santa's sleigh with ${view.run.target} right gifts in ${halves === 2 ? "two" : halves} halves of ${Math.round(halfLength)} seconds.`,
+      `Load ${view.run.target} right gifts before the sleigh leaves in ${clockText(view.duration)}.`,
     );
     $("pause").disabled = !started || !!view.end || tourStep !== null;
     document.querySelector("main > footer").hidden = started && !view.end;
@@ -693,7 +673,11 @@
       // One word: the Pause button, the card or half-time already says why.
       started &&
         !view.end &&
-        (manualPaused || view.choice || tourStep !== null || document.hidden)
+        (manualPaused ||
+          view.choice ||
+          tourStep !== null ||
+          caseStopsClock() ||
+          document.hidden)
         ? "Paused"
         : "",
     );
@@ -902,21 +886,6 @@
           String(view.checking === Number(b.dataset.checking)),
         ),
       );
-    const checkPile = view.queues.check,
-      skippable = checkPile.parcels.length,
-      bigSkipped = checkPile.parcels.filter((p) => p.big).length;
-    actionGroups.get("bypass").hidden =
-      !started || !!view.end || skippable < checkPile.limit;
-    if (actionGroups.get("bypass").hidden) bypassArmedUntil = 0;
-    const skip = document.querySelector('[data-action="bypass"]');
-    skip.dataset.armed = String(bypassArmedUntil > performance.now());
-    skip.querySelector(".bypass-label").textContent =
-      bypassArmedUntil > performance.now()
-        ? `Tap again to skip ${skippable}`
-        : `Skip ${skippable} checks`;
-    skip.querySelector(".bypass-risk").textContent = bigSkipped
-      ? `${bigSkipped} big`
-      : "unchecked";
     // The elf to swap out, while the rules name one: a banner with its name and an outline on
     // its card, both gone once the station looks properly again.
     const swap = view.vigilance.swap ?? null;
@@ -1142,7 +1111,9 @@
       `<span class="header-icon">${uiIcon(icon)}</span><span class="header-word">${words}</span>`;
     $(id).title = words;
   }
-  function goalSlot(goal, countsFrom) {
+  // The end screen shows the counts-from line under a goal that never counted; the half-time card
+  // keeps only the dashed star and the hover text.
+  function goalSlot(goal, countsFrom, withNote = true) {
     const slot = make("div", "goal-slot");
     slot.dataset.goal = goal.id;
     slot.dataset.met = String(goal.met);
@@ -1159,13 +1130,13 @@
       make("strong", "goal-figure", goalFigure(goal)),
     );
     // Inside its limit but not counted: the sleigh holds fewer gifts than the goal counts from.
-    if (goal.waiting && countsFrom)
+    if (goal.waiting && countsFrom && withNote)
       slot.append(
         make("small", "goal-note", `Counts from ${countsFrom} gifts aboard`),
       );
     // Within its limit but never counted: the sleigh stayed under the share where this goal starts.
     const why =
-      goal.waiting && countsFrom
+      goal.waiting && countsFrom && withNote
         ? `, counts from ${countsFrom} right gifts`
         : "";
     slot.title = goal.text + why;
@@ -1331,7 +1302,9 @@
       text("breakText", choice.next.text);
       text("nextCargoText", choice.text);
       $("breakGoals").replaceChildren(
-        ...choice.report.goals.map((g) => goalSlot(g, view.run.goalsCountFrom)),
+        ...choice.report.goals.map((g) =>
+          goalSlot(g, view.run.goalsCountFrom, false),
+        ),
       );
       paintBreakLines(choice);
       paintBreakOptions(choice);
@@ -1389,21 +1362,14 @@
       setTimeout(() => sleigh.classList.remove("departing"), 1600);
     }
   }
-  // The sleigh count against its target, with the full-sleigh star and, on its bar, the mark from
-  // which the mistakes and spend stars count.
+  // The sleigh count and progress towards its target.
   function paintSleighCount() {
     const full = view.run.goals?.find((g) => g.id === "full"),
       target = Math.max(1, view.run.target);
     const aboard = view.run.aboard ?? view.sleigh.right;
     text("sleighRight", aboard);
-    text("sleighTarget", `/ ${view.run.target}`);
+    text("sleighTarget", `of ${view.run.target}`);
     $("sleighTotal").style.setProperty("--fill", Math.min(1, aboard / target));
-    $("sleighTotal").style.setProperty(
-      "--tick",
-      Math.min(1, (view.run.goalsCountFrom ?? 0) / target),
-    );
-    // The tick marks where the mistakes and cost stars start to count.
-    text("sleighTick", view.run.goalsCountFrom ?? "");
     const met = String(!!full?.met);
     if ($("sleighTotal").dataset.met !== met) {
       $("sleighTotal").dataset.met = met;
@@ -1632,7 +1598,7 @@
     {
       title: "Elves",
       text: () =>
-        "Move elves where work piles up. Tired elves slip: send them for cocoa.",
+        "Move elves to where work piles up. Send tired elves for a cocoa break.",
       target: () => $("elves0"),
     },
     {
@@ -1650,7 +1616,7 @@
     {
       title: "Sleigh",
       text: () =>
-        `Get ${view.run.target} of the right gifts aboard to earn a star. The mistakes and cost stars need ${view.run.goalsCountFrom} aboard first.`,
+        `Get ${view.run.target} right gifts aboard. Keep mistakes and costs low for the other two stars.`,
       target: () => $("sleighTotal"),
     },
   ];
@@ -1807,9 +1773,39 @@
       delete $("casePanel").dataset.anchorVisit;
       return;
     }
-    text("caseTitle", caseHeading(c));
-    text("caseText", c.text);
     $("casePanel").dataset.kind = c.kind;
+    // An unclear wish is a picture: the child and the wish as the heading, then the two things it
+    // could mean, drawn side by side in the rules' order. Other decisions keep their sentence.
+    const letter = c.kind === "unclear" ? c.evidence?.[0] : null;
+    const readings = letter ? (c.readings ?? []) : [];
+    text(
+      "caseTitle",
+      letter ? `${letter.child}: "${letter.wish}"` : caseHeading(c),
+    );
+    text("caseText", readings.length === 2 ? "" : c.text);
+    $("caseText").hidden = readings.length === 2;
+    const readingsKey = readings.map((r) => r.art).join("|");
+    if ($("caseReadings").dataset.key !== readingsKey) {
+      $("caseReadings").dataset.key = readingsKey;
+      const drawn = readings.map((r) => {
+        const figure = make("figure", "case-reading");
+        figure.innerHTML = toyArt(r.name);
+        figure.append(make("figcaption", "", r.name));
+        return figure;
+      });
+      $("caseReadings").replaceChildren(
+        ...(drawn.length === 2
+          ? [drawn[0], make("span", "case-or", "or"), drawn[1]]
+          : []),
+      );
+      $("caseReadings").setAttribute(
+        "aria-label",
+        readings.length === 2
+          ? `It could mean ${readings[0].name} or ${readings[1].name}`
+          : "",
+      );
+    }
+    $("caseReadings").hidden = readings.length !== 2;
     // The figure the decision turns on most: for an unclear wish what the gift costs if it comes
     // out wrong (the rules' stake, in pounds), else the first primary fact. The rest are behind
     // the info button.
@@ -1850,7 +1846,10 @@
         optionIcon.innerHTML = icon(icons[o.id] || "info");
       }
       b.querySelector(".option-label").textContent = o.label;
-      const chips = optionChips(c, o);
+      // On an unclear wish each option carries one figure: the wait, or the chance it is wrong.
+      const chips = optionChips(c, o).filter(
+        ([cls]) => c.kind !== "unclear" || /chip-(time|risk|why)/.test(cls),
+      );
       const chipsNode = b.querySelector(".option-chips");
       const chipsSignature = JSON.stringify(chips);
       if (chipsNode.dataset.value !== chipsSignature) {
@@ -1934,9 +1933,9 @@
         cost ? "Cost so far" : goal.name,
         [
           cost
-            ? "AI, checks, fixes, the half-time change and wrong gifts aboard all add to it."
+            ? "AI, checks, fixes, any change you buy and wrong gifts aboard all add to it."
             : "",
-          `${cap(goal.text)}. The star counts once ${view.run.goalsCountFrom} right gifts are aboard.`,
+          `${cap(goal.text)}.`,
         ].filter(Boolean),
       ];
     }
@@ -1952,7 +1951,6 @@
       const a = view.actions[parts[1]];
       return [
         {
-          bypass: "Skip checks",
           ai0: `AI at ${view.stations[0].name}`,
           ai1: `AI at ${view.stations[1].name}`,
           checking: "How much to check",
@@ -2033,8 +2031,8 @@
       clock: [
         "The clock",
         [
-          `Two halves of ${Math.round(view.duration / (view.run.halves ?? 1))} s. At half-time the clock stops and you pick one change; the sleigh leaves at the end of the second.`,
-          "Pause and the walkthrough stop it too.",
+          "Time until the sleigh leaves.",
+          "Pause, an open decision card and the walkthrough stop it.",
         ],
       ],
       movement: [
@@ -2223,21 +2221,6 @@
       perform(() => game.setChecking(Number(target.dataset.checking)));
       const lever = view.levers.checking[view.checking];
       sayResult(`Checking ${lever.per100} in 100 gifts.`);
-      return;
-    }
-    if (target.dataset.action === "bypass") {
-      // On touch the first tap says what skipping does; a second tap within 4 s does it.
-      const touch = performance.now() < recentTouchUntil;
-      if (touch && bypassArmedUntil < performance.now()) {
-        bypassArmedUntil = performance.now() + 4000;
-        openInfo(target, "action:bypass", true);
-        setTimeout(paint, 4100);
-        paint();
-        return;
-      }
-      bypassArmedUntil = 0;
-      closeInfo();
-      perform(() => game.bypass());
       return;
     }
     if (target.dataset.choose && view.choice) {
@@ -2512,6 +2495,10 @@
   };
   let lastTime = performance.now(),
     accumulated = 0;
+  // An open decision card stops the clock while the player reads it; the gold cue alone does not.
+  function caseStopsClock() {
+    return caseOpen && !!view.case && started && !view.end;
+  }
   function frame(now) {
     const dt = Math.min(0.25, (now - lastTime) / 1000);
     lastTime = now;
@@ -2521,6 +2508,7 @@
       !restartOpen &&
       !document.hidden &&
       tourStep === null &&
+      !caseStopsClock() &&
       !view.choice &&
       !view.end
     ) {

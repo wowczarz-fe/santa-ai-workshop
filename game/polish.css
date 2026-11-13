@@ -1358,16 +1358,12 @@ body[data-look="polish"] .dashboard .hud-slot {
   grid-template-rows: 14px 26px 8px;
   border-style: solid;
 }
-body[data-look="polish"] .dashboard .hud-slot .hud-note {
-  display: none;
-}
 body[data-look="polish"] .dashboard .hud-slot[data-state] .hud-bar {
   display: block;
   position: relative;
   overflow: visible;
 }
-/* A goal that does not count yet: a dashed star, and the line saying from when it counts in
-   place of its bar */
+/* A goal that does not count yet: a dashed star; it turns gold once the goal counts */
 body[data-look="polish"] .dashboard .hud-slot[data-state="waiting"] .hud-star {
   background: transparent;
   color: #f0cf6c;
@@ -1380,17 +1376,6 @@ body[data-look="polish"]
   .hud-star
   svg {
   stroke-dasharray: 2.6 1.9;
-}
-body[data-look="polish"] .dashboard .hud-slot[data-state="waiting"] .hud-bar {
-  display: none;
-}
-body[data-look="polish"] .dashboard .hud-slot[data-state="waiting"] .hud-note {
-  display: block;
-  margin: 0;
-  line-height: 8px;
-}
-body[data-look="polish"] .dashboard .hud-note {
-  color: #f0cf6c;
 }
 body[data-look="polish"] .dashboard .hud-figures b {
   color: #fff;

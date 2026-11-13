@@ -327,7 +327,7 @@
     slot.dataset.short = short;
     slot.dataset.help = `goal:${id}`;
     slot.dataset.info = `goal:${id}`;
-    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i></span><span class="hud-note"></span>`;
+    slot.innerHTML = `<span class="hud-star">${icon("star")}</span><span class="hud-name">${icon(art)}<span></span></span><span class="hud-figures"><b></b><small><span class="hud-need"></span><span class="hud-unit"></span></small><span class="hud-preview"></span></span><span class="hud-bar" aria-hidden="true"><i></i></span>`;
     $("goals").append(slot);
     slot.querySelector(".hud-name > span").dataset.short = short;
     goalSlots[id] = slot;
@@ -394,11 +394,6 @@
       slot
         .querySelector(".hud-bar i")
         .style.setProperty("--fill", Math.min(1, now / Math.max(1, need)));
-      // A goal inside its limit that does not count yet says from when it counts.
-      slot.querySelector(".hud-note").textContent =
-        state === "waiting"
-          ? `Counts from ${from}${innerWidth < 1000 ? "" : " gifts aboard"}`
-          : "";
       slot.setAttribute(
         "aria-label",
         `${name}: ${figure(now)} of ${figure(need)}, ${{ met: "star earned so far", waiting: `counts from ${from} right gifts`, failed: "no star", open: "no star yet" }[state]}. ${goal.text}.`,

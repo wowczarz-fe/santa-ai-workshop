@@ -513,8 +513,7 @@ body[data-look="paper"] .dashboard .hud-name {
 body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] {
   border-color: #d2a447;
 }
-/* A goal that does not count yet: a dashed star, and the line saying from when it counts in
-   place of its bar */
+/* A goal that does not count yet: a dashed star; it turns gold once the goal counts */
 body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] .hud-star {
   background: transparent;
   color: #e7bd5c;
@@ -527,20 +526,6 @@ body[data-look="paper"]
   .hud-star
   svg {
   stroke-dasharray: 2.6 1.9;
-}
-body[data-look="paper"]
-  .dashboard
-  .hud-slot[data-state="waiting"][data-goal]
-  .hud-bar {
-  display: none;
-}
-body[data-look="paper"] .dashboard .hud-slot[data-state="waiting"] .hud-note {
-  display: block;
-  margin: 0;
-  line-height: 8px;
-}
-body[data-look="paper"] .dashboard .hud-note {
-  color: #e7bd5c;
 }
 body[data-look="paper"] .dashboard .hud-figures b {
   color: var(--paper);
@@ -1380,9 +1365,6 @@ body[data-look="paper"] .dashboard #pauseState:empty {
 body[data-look="paper"] .dashboard .hud-slot {
   grid-template-rows: 14px 28px 8px;
   border-style: solid;
-}
-body[data-look="paper"] .dashboard .hud-slot .hud-note {
-  display: none;
 }
 body[data-look="paper"] .dashboard .hud-slot[data-state] .hud-bar {
   display: block;

@@ -656,25 +656,6 @@ main {
   overflow: hidden;
   background: #0000001f;
 }
-.dashboard .hud-note {
-  display: none;
-  grid-area: auto;
-  grid-row: 3;
-  grid-column: 1 / -1;
-  font-weight: normal;
-  margin-top: 2px;
-  font-size: 9.5px;
-  line-height: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dashboard .hud-slot[data-state="waiting"] .hud-note {
-  display: block;
-}
-.dashboard .hud-slot[data-state="waiting"] .hud-bar {
-  display: none;
-}
 .dashboard .hud-slot[data-state="waiting"] {
   border-style: dashed;
 }
@@ -692,8 +673,7 @@ main {
     height: 13px;
   }
   .dashboard .hud-slot .hud-name > span,
-  .dashboard .hud-slot .hud-unit,
-  .dashboard .hud-slot[data-state] .hud-note {
+  .dashboard .hud-slot .hud-unit {
     display: none;
   }
   .dashboard .hud-slot[data-state] .hud-bar {

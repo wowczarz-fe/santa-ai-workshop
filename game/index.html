@@ -169,15 +169,14 @@
         it right.
       </p>
 
-      <!-- The look chooser is hidden: the polished look is the published one. ?look=paper still
-           shows the paper look. -->
+      <!-- The look chooser stays hidden. Paper is the default; ?look=polish opens the alternative. -->
       <fieldset class="look-choice" hidden>
         <legend>Choose a look</legend>
         <label
-          ><input type="radio" name="look" value="paper" /> Paper
+          ><input type="radio" name="look" value="paper" checked /> Paper
           workshop</label
         ><label
-          ><input type="radio" name="look" value="polish" checked /> Polished
+          ><input type="radio" name="look" value="polish" /> Polished
           workshop</label
         >
       </fieldset>

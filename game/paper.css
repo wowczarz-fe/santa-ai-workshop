@@ -1270,7 +1270,7 @@ body[data-look="paper"] #report #copyStatus {
   color: #f4ead3;
 }
 body[data-look="paper"] #report #replay {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-size: 19px;
   box-shadow: 0 3px 0 #6e1726;
 }

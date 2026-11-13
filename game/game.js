@@ -66,7 +66,8 @@
     suppressClick = { elf: null, until: 0 },
     nativeDragElf = null;
   let openedCases = new Set(),
-    ignoreClicksUntil = 0,
+    // Where and until when the second click of a double-click on a decision's answer is held back.
+    answered = null,
     bypassArmedUntil = 0;
   let lastChoice = null,
     observedRight = 0,
@@ -2201,7 +2202,7 @@
     }
     if (target.dataset.resolve) {
       // A double-click must not land on whatever sits under the closed panel.
-      ignoreClicksUntil = performance.now() + 400;
+      answered = { x: e.clientX, y: e.clientY, until: performance.now() + 300 };
       const c = view.case,
         option = c?.options.find((o) => o.id === target.dataset.resolve);
       // The card closes on an answer; the cue counts down an answer that takes time.
@@ -2222,7 +2223,14 @@
   document.addEventListener(
     "click",
     (e) => {
-      if (performance.now() < ignoreClicksUntil) {
+      // Only the second click of a double-click (or double tap) on the same spot as an answer is
+      // held back; any other click right after an answer acts at once.
+      if (
+        answered &&
+        e.detail >= 2 &&
+        performance.now() < answered.until &&
+        Math.hypot(e.clientX - answered.x, e.clientY - answered.y) < 24
+      ) {
         e.stopPropagation();
         e.preventDefault();
       }

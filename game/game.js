@@ -1637,7 +1637,7 @@
     tourStep = step;
     caseOpen = false;
     const { title, text: words, target } = tourSteps[step];
-    text("tourCount", `Clock stopped · ${step + 1} of ${tourSteps.length}`);
+    text("tourCount", `Walkthrough ${step + 1} of ${tourSteps.length}`);
     text("tourTitle", title);
     text("tourText", words());
     text("tourNext", step === tourSteps.length - 1 ? "Start" : "Next");

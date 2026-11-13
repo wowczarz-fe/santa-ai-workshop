@@ -179,3 +179,80 @@ body[data-look="paper"]
     animation: none;
   }
 }
+body[data-look="paper"] #piles2 .queue.queue-mini {
+  position: static;
+}
+body[data-look="paper"] #piles2 .flow-queue-label {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 134px;
+}
+body[data-look="paper"] #queue-rework .flow-queue-label {
+  top: 34px;
+}
+body[data-look="paper"] #piles2 #queue-pass {
+  grid-template-rows: 62px minmax(0, 1fr);
+}
+body[data-look="paper"] #piles2 #queue-rework {
+  grid-template-rows: minmax(0, 1fr);
+}
+body[data-look="paper"] #queue-pass .flow-small-heap {
+  grid-row: 2;
+}
+body[data-look="paper"] #queue-rework .flow-small-heap {
+  grid-row: 1;
+}
+body[data-look="paper"]
+  .board[data-crowd="true"]
+  #queue-rework
+  .flow-queue-label {
+  top: 26px;
+}
+body[data-look="paper"] .board[data-crowd="true"] #piles2 .flow-small-heap {
+  position: absolute;
+  top: 52px;
+  bottom: 0;
+  width: 64px;
+  height: calc(100% - 52px);
+}
+body[data-look="paper"] .board[data-crowd="true"] #queue-pass .flow-small-heap {
+  right: 70px;
+}
+body[data-look="paper"]
+  .board[data-crowd="true"]
+  #queue-rework
+  .flow-small-heap {
+  right: 0;
+}
+body[data-look="paper"] .paper-scene #feedback2 {
+  top: 58px !important;
+  left: 8px;
+  right: auto;
+  width: calc(100% - 158px);
+  max-width: 148px;
+}
+body[data-look="paper"] #feedback2 .caught-toy {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  height: 26px;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  font-size: 10px;
+  line-height: 18px;
+}
+body[data-look="paper"] #feedback2 .caught-toy[hidden] {
+  display: none;
+}
+body[data-look="paper"] #feedback2 .caught-toy b,
+body[data-look="paper"] #feedback2 .caught-toy .paper-toy {
+  flex: none;
+}
+body[data-look="paper"] #feedback2 .caught-toy span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

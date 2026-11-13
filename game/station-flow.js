@@ -84,6 +84,7 @@ const StationFlow = (() => {
         letter.remove();
     }
     if (queue === "check") {
+      svg.closest(".paper-scene").append(document.getElementById("feedback2"));
       for (const parcel of svg.querySelectorAll('use[href^="#parcel-"]'))
         parcel.remove();
       // The mock's chimney parcel is a prop, not a gift in the checking queue.

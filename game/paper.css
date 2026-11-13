@@ -2692,3 +2692,8 @@ body[data-look="paper"] .sleigh-total .cargo-badge {
   background: transparent;
   justify-content: center;
 }
+
+/* The piles and counts show the work waiting at each station. */
+body[data-look="paper"] .queue > progress {
+  display: none;
+}

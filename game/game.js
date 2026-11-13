@@ -1380,6 +1380,12 @@
     const aboard = view.run.aboard ?? view.sleigh.right;
     text("sleighRight", aboard);
     text("sleighTarget", `of ${view.run.target}`);
+    const count = $("sleighTotal").querySelector(".sleigh-count");
+    count.setAttribute("role", "img");
+    count.setAttribute(
+      "aria-label",
+      `${aboard} right gifts aboard out of ${view.run.target} needed`,
+    );
     $("sleighTotal").style.setProperty("--fill", Math.min(1, aboard / target));
     const met = String(!!full?.met);
     if ($("sleighTotal").dataset.met !== met) {

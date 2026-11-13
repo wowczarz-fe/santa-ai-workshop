@@ -497,6 +497,11 @@ for example `"Amir wrote back: a cuddly bat."` or
   - "too much": "Mostly: ..., but the checks on everyday gifts cost more than they saved." or "No:
     ...; fewer checks would have done."
   - "bottleneck": "Not as run: ..., but the pile held back 23 gifts."
+  - A game that lost the Few mistakes goal with wrong gifts that went past trusting or tired
+    checkers reads "Not as run: £172 of checks stopped about £0 of wrong gifts, because trusting
+    checkers waved 3 wrong gifts through." (or "tired checkers missed 2"); the dial then reads
+    "about right" or "too little". The answer never advises fewer checks on a game that lost the
+    Few mistakes goal.
 - `blunders` is `[{ id, name, icon }]`: the absurd wrong toys this game produced, caught or not.
   `blunderTotal` is how many different ones exist, so the page can keep a collection across games.
 
@@ -526,7 +531,7 @@ A cause is `{ id, name, wrong, cost, control, fix }`: up to three, dearest first
 `end.causes` (the whole game) and `choice.report.causes` (the first half). `wrong` and `cost` count
 the wrong gifts it accounts for, `control` is what would have stopped them, and `fix` one short
 sentence saying how, leaving out any part the settings already follow (`""` when they follow all
-of it). The end screen and the half-time card may mention half-time options.
+of it), and on the end screen any part that asks for more checks while the dial reads too much. The end screen and the half-time card may mention half-time options.
 
 | `id`       | Wrong gifts from                              | `control`  |
 | ---------- | --------------------------------------------- | ---------- |
@@ -575,8 +580,10 @@ beforehand: a risky batch can happen to come out clean.
 - A gift is held back by checking when it is in the checking pile as the sleigh leaves, or a toy
   order stuck behind a full checking pile then, or a letter lost to a full letter pile while
   checking was the station holding up the line (`pace.slowest` 2). Each is worth £6.
-- `overCost` is the checking money spent on kinds of gift where checks cost more than the mistakes
-  they stopped, plus £6 for each gift held back while every gift was being checked.
+- `overCost` is the checking money spent on checks actually done, on kinds of gift where they cost
+  more than the mistakes they stopped, plus £6 for each gift held back while every gift was being
+  checked. Checks paid for but waved through by trusting checkers are checking not done properly,
+  not too much checking, and are left out.
 - `position` is `overCost / (underCost + overCost)`, pulled toward 0.5 when the two together are
   small against all the money spent: `0.5 + (share - 0.5) * lost / (lost + 0.1 * spent)`, rounded
   to two places. Below `thresholds.little` the verdict is `"too little"`, above
@@ -595,7 +602,8 @@ beforehand: a risky batch can happen to come out clean.
 - The dial measures checking by its own two figures and is never moved to fit the headline. When
   one of `underCost` and `overCost` is three times the other and at least £100, the verdict is that
   side ("too little" or "too much") whatever the rest of the bill. On three stars it reads "about
-  right": neither too much nor too little checking cost a star. The words follow the dial instead.
+  right": neither too much nor too little checking cost a star. On a game that lost the Few mistakes
+  goal to too many wrong gifts it never reads "too much". The words follow the dial instead.
 - The one figure for what wrong gifts cost is `costs.mistakes` (the wrong gifts aboard at
   departure, the same as in `cost.spent`). `underCost` and `overCost` are estimates of something
   else and are named so: "Lost to too few checks (estimate)" and "Spent on extra checks

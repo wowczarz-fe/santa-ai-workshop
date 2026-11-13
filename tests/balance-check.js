@@ -837,9 +837,9 @@ console.log(
 // the headline praises care only without too many wrong gifts or too few checks. The headline
 // names the lesson's loss, and a lesson about a loss shows only when that loss cost a goal.
 const ANSWERS = {
-  "too little": /more checks|^Too few: nothing was checked/,
   "too much": /cost more than they saved|fewer checks would have done/,
-  "about right": /^(Yes|Mostly|Nothing)/,
+  "about right": /^(Yes|Mostly|Nothing|Not as run)/,
+  "too little": /more checks|^Too few: nothing was checked/,
   bottleneck: /^Not as run/,
 };
 const HEADLINES = {
@@ -880,7 +880,11 @@ for (const [name, rs] of Object.entries(results))
     if (a.verdict !== "bottleneck" && e.stars < 3) {
       if (clear(a.underCost, a.overCost))
         assert.strictEqual(a.verdict, "too little", why);
-      if (clear(a.overCost, a.underCost) && !STAYED_ON_A_FEW.includes(name))
+      if (
+        clear(a.overCost, a.underCost) &&
+        !STAYED_ON_A_FEW.includes(name) &&
+        e.wrong <= WRONG_ALLOWED
+      )
         assert.strictEqual(a.verdict, "too much", why);
     }
     if (e.lesson.title === "Checking in the right places")
@@ -894,6 +898,16 @@ for (const [name, rs] of Object.entries(results))
     }
     if (e.wrong > WRONG_ALLOWED || a.verdict === "too little")
       assert(!/careful/i.test(e.headline), why);
+    // Cause advice never asks for more checks while the dial reads too much.
+    if (a.verdict === "too much")
+      for (const c of e.causes)
+        assert(!/(^|or )check\b/i.test(c.fix), `${why}; cause fix: ${c.fix}`);
+    // A game that lost the mistakes star never reads too much checking or advises fewer checks.
+    if (e.wrong > WRONG_ALLOWED)
+      assert(
+        a.verdict !== "too much" && !/fewer checks/.test(e.checkingAnswer),
+        why,
+      );
     const loss = losses.find((l) => HEADLINES[l].includes(e.headline));
     assert(loss, why);
     if (loss === "slow" || loss === "tired") assert(!r.met.full, why);

@@ -547,6 +547,8 @@ class Workshop {
       heldBy: { all: 0, some: 0 },
       lostAtCheck: 0,
       recallCost: 0,
+      // What the checks waved through by trusting checkers cost, by kind of gift: paid, not done.
+      wavedCost: Object.fromEntries(GROUPS.map((g) => [g.id, 0])),
       trainCost: 0,
     };
     // What the player has done, for the practices on the end screen.
@@ -1099,6 +1101,7 @@ class Workshop {
     const v = this.vigilance();
     if (x.byAi && x.roll.skip < v.skip) {
       this.vig.skipped++;
+      this.assure.wavedCost[groupOf(x.w)] += PRICE.check;
       x.exit = "skipped";
       if (x.wrong) {
         this.stats.waved++;
@@ -1112,6 +1115,7 @@ class Workshop {
     x.exit = "checked";
     if (x.wrong && x.roll.catch >= this.checkCatch(x)) {
       x.slipped = true;
+      x.slippedTired = this.slipAt(2) > 0;
       return this.load(x);
     }
     this.reveal(x);
@@ -2358,7 +2362,7 @@ class Workshop {
       assurance,
       checkingAnswer: this.checkingAnswer(assurance, stars),
       practices: this.practices(assurance),
-      causes: this.causes(wrongGifts),
+      causes: this.causes(wrongGifts, assurance.verdict),
       blunders: [...this.blunders.values()].map((b) => ({ ...b })),
       blunderTotal: BLUNDER_TOTAL,
     };
@@ -2535,6 +2539,22 @@ class Workshop {
         : paid
           ? `Yes, but too few: ${stopped}, and more checks${on(exposed)} would have paid too.`
           : `Too few: ${stopped}; more checks${on(exposed)} would have paid.`;
+    // Wrong gifts that went past trusting or tired checkers: the checks were not done properly.
+    const waved = this.aboard.filter(
+      (x) => x.wrong && x.exit === "skipped",
+    ).length;
+    const missed = this.aboard.filter((x) => x.wrong && x.slippedTired).length;
+    if (wrong > WRONG_ALLOWED && waved + missed > 0) {
+      const how = [
+        waved &&
+          `trusting checkers waved ${plural(waved, "wrong gift")} through`,
+        missed && `tired ones missed ${missed}`,
+      ]
+        .filter(Boolean)
+        .join(" and ")
+        .replace(/^tired ones/, "tired checkers");
+      return `Not as run: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts, because ${how}.`;
+    }
     if (a.verdict === "too much")
       return paid
         ? `Mostly: ${stopped}, but the checks${on(wasted) || " on the rest"} cost more than they saved.`
@@ -2621,11 +2641,14 @@ class Workshop {
           ),
         ),
       ) + a.recallCost;
+    // Checks waved through by trusting checkers were paid for but not done: checking not done
+    // properly, not too much of it.
+    const doneCost = (id) => a.groups[id].checkCost - a.wavedCost[id];
     const overCost =
       sum(
-        Object.values(a.groups)
-          .filter((t) => t.checkCost > t.prevented)
-          .map((t) => t.checkCost),
+        Object.keys(a.groups)
+          .filter((id) => doneCost(id) > a.groups[id].prevented)
+          .map(doneCost),
       ) +
       a.heldBy.all * LATE_PRICE;
     const lost = underCost + overCost;
@@ -2644,6 +2667,9 @@ class Workshop {
     // On a few checks all game the player checked as little as the game allows; on three stars
     // neither too much nor too little checking cost a star.
     if (lowest) to = Math.min(to, ASSURANCE.much);
+    // A game that lost the mistakes star did not check too much, whatever the checks cost.
+    if (this.aboard.filter((x) => x.wrong).length > WRONG_ALLOWED)
+      to = Math.min(to, ASSURANCE.much);
     if (stars === 3)
       to = Math.min(Math.max(to, ASSURANCE.little), ASSURANCE.much);
     const position = Math.round(to * 100) / 100;
@@ -2754,9 +2780,11 @@ class Workshop {
   }
 
   // A cause's advice without the parts the settings already follow, or "" when they follow it all.
-  causeFix(id) {
+  // While the dial reads too much checking it never asks for more checks.
+  causeFix(id, verdict = null) {
     const left = WRONG_CAUSES[id].fix
       .filter(([, done]) => !done(this))
+      .filter(([text]) => verdict !== "too much" || !/^check\b/.test(text))
       .map(([text]) => text)
       .join(", or ");
     return left ? left[0].toUpperCase() + left.slice(1) + "." : "";
@@ -2764,14 +2792,14 @@ class Workshop {
 
   // Up to three causes of the wrong gifts given, dearest first. Wrong gifts brought back off the
   // sleigh are a cause of their own, at what fetching them back cost.
-  causes(list) {
+  causes(list, verdict = null) {
     const cause = (id, wrong, cost) => ({
       id,
       name: WRONG_CAUSES[id].name,
       wrong,
       cost,
       control: WRONG_CAUSES[id].control,
-      fix: this.causeFix(id),
+      fix: this.causeFix(id, verdict),
     });
     const recalled = this.recalled.count
       ? [cause("recalled", this.recalled.count, this.recalled.cost)]

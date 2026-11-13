@@ -133,32 +133,44 @@ body[data-look="paper"] .paper-scene #feedback2 {
   top: 58px !important;
   left: 8px;
   right: auto;
-  width: calc(100% - 136px);
-  max-width: 148px;
+  width: 128px;
+  max-width: calc(100% - 136px);
 }
 body[data-look="paper"] #feedback2 .caught-toy {
-  display: flex;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 3px;
+  gap: 0 4px;
   width: 100%;
-  height: 26px;
-  padding: 2px 4px;
+  height: auto;
+  min-height: 36px;
+  padding: 3px 4px;
   box-sizing: border-box;
   font-size: 10px;
-  line-height: 18px;
+  line-height: 11px;
 }
 body[data-look="paper"] #feedback2 .caught-toy[hidden] {
   display: none;
 }
-body[data-look="paper"] #feedback2 .caught-toy b,
+body[data-look="paper"] #feedback2 .caught-toy b {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: left;
+}
 body[data-look="paper"] #feedback2 .caught-toy .paper-toy {
-  flex: none;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 26px;
+  height: 24px;
 }
 body[data-look="paper"] #feedback2 .caught-toy span {
+  grid-column: 2;
+  grid-row: 2;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  white-space: normal;
+  text-align: left;
 }
 body[data-look="paper"]
   :is(.sleigh-total, .cargo-badge, .caught-toy, .gift-flight) {

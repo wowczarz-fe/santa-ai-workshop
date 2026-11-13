@@ -86,6 +86,7 @@ const SIGN_IF_GOOD = 0.3;
 const TEST_TOYS = 4;
 const ABOARD_AT = 5; // wrong gifts aboard that raise the one recall decision
 const DRIFT_QUIET = 20; // seconds at the start with no line about elves trusting the AI
+const DRIFT_GAP = 20; // seconds at least between two lines about elves trusting the AI
 const COCOA_LEAST = 3; // seconds a cocoa break lasts at least, however rested the elf
 const NEED_CLAIM = 5; // seconds a need answered by one rested elf is left to it
 const WRONG_LINE_GAP = 20; // seconds before a wrong-gift line repeats the same advice
@@ -473,7 +474,8 @@ class Workshop {
     // Checks skipped by relaxed checkers, and whether training at half-time keeps every elf sharp for
     // good. How far each elf trusts the AI is its own (`trust`).
     this.vig = { skipped: 0, trained: false };
-    this.driftSaid = { relaxed: false, relaxedConfirm: false };
+    this.swapNow = null; // the drift prompt: the elf to send for cocoa, and its station
+    this.driftSaid = null; // the prompt the last drift line named
     this.machineSpeed = 1;
     this.update = this.planUpdate();
     // One unclear letter in each half: two different children, each at a time drawn in its half.
@@ -1172,34 +1174,54 @@ class Workshop {
     return this.staff(s).sort((x, y) => y.trust - x.trust)[0] ?? null;
   }
 
-  // The drifting station to fix now and the elf there who trusts the AI most, or null: the checkers
-  // first, then the Assist station that trusts the AI most. Null in the first DRIFT_QUIET seconds,
-  // when nobody there drifts, and once that station is empty.
-  drift() {
-    if (this.t < DRIFT_QUIET) return null;
-    const stations = [2, ...[0, 1].filter((s) => this.ai[s] === 1)];
-    const s = stations.find(
-      (s) => this.vigilance(this.trustAt(s)).state !== "careful",
+  // Whether a drift prompt still holds: its elf is at that station and the station still drifts.
+  driftHolds(d) {
+    return Boolean(
+      d &&
+      this.elves[d.elf].station === d.station &&
+      (d.station === 2 || this.ai[d.station] === 1) &&
+      this.vigilance(this.trustAt(d.station)).state !== "careful",
     );
-    const e = s === undefined ? null : this.mostTrusting(s);
-    return e && { elf: this.elves.indexOf(e), station: s, name: e.name };
   }
 
-  // Says once each time a station starts trusting the AI, naming the elf to send for cocoa.
+  // The one drift prompt now, as the page shows it: the elf named stays named while it holds;
+  // otherwise null. Null in the first DRIFT_QUIET seconds.
+  drift() {
+    return this.t >= DRIFT_QUIET && this.driftHolds(this.swapNow)
+      ? { ...this.swapNow }
+      : null;
+  }
+
+  // Keeps the drift prompt: the elf named stays while it holds, else the checkers first, then the
+  // Assist station that trusts the AI most, and the elf there who trusts the AI most. A line names
+  // that same elf when the prompt first names it, at most one line every DRIFT_GAP seconds.
   noteDrift() {
-    const d = this.drift();
-    const key = d ? (d.station === 2 ? "relaxed" : "relaxedConfirm") : null;
-    for (const k of ["relaxed", "relaxedConfirm"])
-      if (k !== key) this.driftSaid[k] = false;
-    if (!d || this.driftSaid[key]) return;
-    this.driftSaid[key] = true;
+    if (this.t < DRIFT_QUIET) return;
+    if (!this.driftHolds(this.swapNow)) {
+      const stations = [2, ...[0, 1].filter((s) => this.ai[s] === 1)];
+      const s = stations.find(
+        (s) => this.vigilance(this.trustAt(s)).state !== "careful",
+      );
+      const e = s === undefined ? null : this.mostTrusting(s);
+      this.swapNow = e && {
+        elf: this.elves.indexOf(e),
+        station: s,
+        name: e.name,
+      };
+    }
+    const d = this.swapNow;
+    const id = d && `${d.elf}@${d.station}`;
+    if (!d) this.driftSaid = null;
+    if (!d || id === this.driftSaid) return;
+    if (this.t - (this.newsAt.relaxed ?? -99) < DRIFT_GAP) return;
+    this.driftSaid = id;
     const what =
       d.station === 2
         ? "trusting the AI and skipping checks"
         : "trusting the AI's drafts and missing mistakes";
     this.sayEvery(
-      20,
-      key,
+      DRIFT_GAP,
+      "relaxed",
       "relaxed",
       `${d.name} is ${what}. Send ${d.name} for cocoa or swap in another elf.`,
       { elf: d.elf, station: d.station },

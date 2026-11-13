@@ -8,6 +8,20 @@ const vm = require("vm");
 vm.runInThisContext(
   fs.readFileSync(path.join(__dirname, "../game/workshop.js"), "utf8"),
 );
+// A drift line names the same elf and station as the drift prompt the page shows at that moment.
+{
+  const say = Workshop.prototype.say;
+  Workshop.prototype.say = function (kind, text, extra = {}) {
+    if (kind === "relaxed") {
+      const swap = this.view().vigilance.swap;
+      assert(
+        swap && swap.elf === extra.elf && swap.station === extra.station,
+        `drift line "${text}" while the prompt names ${JSON.stringify(swap)}`,
+      );
+    }
+    return say.call(this, kind, text, extra);
+  };
+}
 // No wrong-gift line blames tiredness when every elf at that station was fresh: the checkers when
 // it says to rest them, the station that made the gift when it says to send tired elves for cocoa.
 {

@@ -179,11 +179,13 @@ example
 - `cleanRun` is the checkers' average run of clean AI gifts, `secondsPerCheck` what a check takes now,
   `skipped` how many checks they have skipped, `trained` whether half-time training was bought.
   Training keeps checkers and confirmers sharp for the rest of the game.
-- `swap` is the drift to fix now: `null`, or `{ elf, station, name }`, the elf (its index in
-  `elves`) who trusts the AI most at a drifting station, checkers first, then the Assist station
-  that trusts the AI most. Read it on every view to show the drift banner and outline that one
-  elf: it moves to the next elf when that elf leaves, and turns `null` once the station looks
-  properly again, empties, or training is bought, and in the first 20 seconds.
+- `swap` is the one drift prompt now: `null`, or `{ elf, station, name }`, an elf (its index in
+  `elves`) at a drifting station. When a prompt is needed it names the elf who trusts the AI most
+  at the checkers if they drift, else at the Assist station that trusts the AI most, and it keeps
+  naming that elf while the elf stays there and the station still drifts. It turns `null` the
+  moment that elf leaves or the station looks properly again, empties, or is trained, and in the
+  first 20 seconds; a new prompt may follow on the next step. Read it on every view to show the
+  drift banner, the outline and the card tag on that one elf.
 
 ### Run
 
@@ -411,8 +413,9 @@ something only half-time sells.
 A `relaxed` item names the elf who trusts the AI most and what to do now, for example
 `"Tinsel is trusting the AI and skipping checks. Send Tinsel for cocoa or swap in another elf."`
 (on Assist: "trusting the AI's drafts and missing mistakes"). `elf` and `station` say who and
-where. It comes once each time the checkers, or the elves on an Assist station, start to drift,
-and never in the first 20 seconds; `vigilance.swap` says whether the drift is still there.
+where. It always names the elf and station `vigilance.swap` names at that moment: it is said when
+the prompt first names an elf, at most one every 20 seconds, and never in the first 20 seconds.
+`vigilance.swap` says whether the drift is still there.
 
 ### A wrong gift says what to do now
 

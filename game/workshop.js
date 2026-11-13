@@ -2941,7 +2941,7 @@ class Workshop {
       {
         id: "tested",
         label: "Test the update first",
-        text: `The update is tried on ${TEST_TOYS} toys and goes in after ${TEST_DELAY} s if they pass. A good update fails 1 time in ${Math.round(1 / (1 - (1 - RISK.aiMake) ** TEST_TOYS))}.`,
+        text: `The update is tried on ${TEST_TOYS} toys first. It goes in only if they pass.`,
         facts: [
           fact("Gives", `installs at ${TEST_DELAY} s if it passes`),
           fact("Stops", "a bad update"),

@@ -1214,7 +1214,6 @@ body[data-look="paper"] .end-tile {
 body[data-look="paper"] .next-cargo-icon,
 body[data-look="paper"] .upgrade-icon,
 body[data-look="paper"] .cause-icon,
-body[data-look="paper"] .group-icon,
 body[data-look="paper"] .practice-icon {
   border-radius: 50%;
 }

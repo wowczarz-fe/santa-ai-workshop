@@ -2606,90 +2606,9 @@
       `</svg>`
     );
   }
-  const groupVerdicts = {
-    paid: "Worth it",
-    "cost more than it saved": "Cost more than it saved",
-    "left exposed": "Left exposed",
-  };
-  function paintGroups(a) {
-    $("assuranceGroups").replaceChildren();
-    // One shared scale, so a long bar means the same money on every card.
-    const scale = Math.max(
-      1,
-      ...a.groups.flatMap((g) => [
-        g.checkCost,
-        g.prevented,
-        g.shippedUnchecked ? g.shippedUncheckedCost : 0,
-      ]),
-    );
-    for (const group of a.groups) {
-      const row = make("article", "assurance-group");
-      row.dataset.group = group.id;
-      row.dataset.verdict = group.verdict;
-      row.title = group.text;
-      const none = !group.parcels;
-      row.dataset.none = String(none);
-      const head = make("div", "group-head");
-      head.append(
-        iconNode(`gift-${group.id}`, "group-icon"),
-        make("b", "", group.name),
-      );
-      // A verdict on a few pounds of checks says little: those groups show only their bars.
-      if (none) head.append(make("span", "group-verdict", "none this game"));
-      else if (
-        group.verdict !== "cost more than it saved" ||
-        group.checkCost >= 20
-      )
-        head.append(
-          make(
-            "span",
-            "group-verdict",
-            groupVerdicts[group.verdict] || group.verdict,
-          ),
-        );
-      row.append(head, make("p", "group-text", group.text));
-      if (!none) {
-        const bars = make("div", "group-bars");
-        for (const [cls, label, amount, value] of [
-          ["spent", "Spent on checks", group.checkCost, money(group.checkCost)],
-          [
-            "stopped",
-            "Mistakes stopped",
-            group.prevented,
-            `${money(group.prevented)} (estimate)`,
-          ],
-          ...(group.shippedUnchecked
-            ? [
-                [
-                  "through",
-                  "Wrong gifts that skipped a check",
-                  group.shippedUncheckedCost,
-                  money(group.shippedUncheckedCost),
-                ],
-              ]
-            : []),
-        ]) {
-          const bar = make("div", `group-bar bar-${cls}`);
-          const track = make("span", "bar-track");
-          const fill = make("span", "bar-fill");
-          fill.style.width = `${amount > 0 ? Math.max(2, (amount / scale) * 100) : 0}%`;
-          track.append(fill);
-          bar.append(
-            make("span", "bar-label", label),
-            make("b", "bar-value", value),
-            track,
-          );
-          bars.append(bar);
-        }
-        row.append(bars);
-      }
-      $("assuranceGroups").append(row);
-    }
-  }
   function paintAssurance(end) {
     const a = end.assurance;
     $("assurance").hidden = !a;
-    $("checkingPaid").hidden = !a;
     if (a) {
       const heading = dialHeadings[a.verdict] || a.verdict;
       $("assuranceDial").setAttribute("aria-label", `${heading}. ${a.text}`);
@@ -2713,9 +2632,6 @@
       // The two figures above already say how much each side cost; only a bottleneck needs words.
       text("assuranceText", a.verdict === "bottleneck" ? a.text : "");
       $("assuranceText").hidden = a.verdict !== "bottleneck";
-      text("checkingAnswer", end.checkingAnswer);
-      $("checkingPaid").querySelector("details").open = false;
-      paintGroups(a);
     }
     // One tile per practice, each line with the player's own figure so it ties back to the game.
     const practices = end.practices || [];

@@ -1,0 +1,6 @@
+Roboto and Roboto Condensed, Fontsource packages version 5.3.0.
+Sources: https://www.npmjs.com/package/@fontsource/roboto/v/5.3.0
+https://www.npmjs.com/package/@fontsource/roboto-condensed/v/5.3.0
+Latin, normal WOFF2 subsets. Files copied without modification.
+Each family is distributed under SIL Open Font License 1.1.
+Copyright and license texts accompany these files.

@@ -1,0 +1,43 @@
+/* Enable when the licensed Franklin webfont is supplied.
+@font-face {
+  font-family: "Franklin Gothic Medium Cond";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/franklin-gothic-medium-cond.woff2") format("woff2");
+}
+*/
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/roboto-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/roboto-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/roboto-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Roboto Condensed";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/roboto-condensed-latin-500-normal.woff2") format("woff2");
+}
+:root {
+  --font-body: "Roboto", sans-serif;
+  --font-heading:
+    "Franklin Gothic Medium Cond", "Franklin Gothic Medium", "Roboto Condensed",
+    sans-serif;
+}

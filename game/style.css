@@ -15,9 +15,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font:
-    14px/1.35 Arial,
-    sans-serif;
+  font: 14px/1.35 var(--font-body);
 }
 button,
 input {
@@ -74,10 +72,7 @@ header {
   flex-shrink: 0;
 }
 h1 {
-  font:
-    500 23px "Arial Narrow",
-    Arial,
-    sans-serif;
+  font: 500 23px var(--font-heading);
   margin: 0;
   flex: 1;
 }
@@ -268,9 +263,7 @@ main {
   border-radius: 50%;
   background: #a82420;
   color: #fff;
-  font:
-    bold 15px/22px Arial,
-    sans-serif;
+  font: bold 15px/22px var(--font-body);
   text-align: center;
 }
 @keyframes belt {
@@ -521,9 +514,7 @@ main {
   border-radius: 8px;
   background: #8a5a1c;
   color: #fff;
-  font:
-    700 10px/15px Arial,
-    sans-serif;
+  font: 700 10px/15px var(--font-body);
 }
 .tab-cocoa .ui-icon {
   width: 11px;
@@ -955,9 +946,7 @@ main {
   border-radius: 3px;
   background: #8a6416;
   color: #fff;
-  font:
-    bold 8px/10px Arial,
-    sans-serif;
+  font: bold 8px/10px var(--font-body);
   letter-spacing: 0.3px;
   text-transform: uppercase;
 }
@@ -1000,9 +989,7 @@ body[data-look] .queue-mini .queue-name {
   white-space: normal;
 }
 body[data-look] .queue-mini .queue-count {
-  font:
-    700 13px/16px Arial,
-    sans-serif;
+  font: 700 13px/16px var(--font-body);
 }
 body[data-look] #piles2 .queue.queue-mini.near-full {
   border-color: #a56a16;
@@ -1030,9 +1017,7 @@ body[data-look] .queue-mini .queue-count {
   border-radius: 4px;
   background: #8a6416;
   color: #fff;
-  font:
-    bold 9px/14px Arial,
-    sans-serif;
+  font: bold 9px/14px var(--font-body);
   letter-spacing: 0.4px;
   text-transform: uppercase;
 }
@@ -1091,9 +1076,7 @@ body[data-look] #vigilance {
   min-height: 22px;
   padding: 0;
   border-radius: 50%;
-  font:
-    bold 12px/1 Georgia,
-    serif;
+  font: bold 12px/1 var(--font-heading);
   vertical-align: middle;
 }
 .more-toggle[aria-expanded="true"] {
@@ -1413,9 +1396,7 @@ progress {
   text-align: center;
 }
 .sleigh-total strong {
-  font:
-    42px/1 Georgia,
-    serif;
+  font: 42px/1 var(--font-heading);
   color: var(--teal);
 }
 .sleigh-total span {
@@ -1722,9 +1703,7 @@ dialog::backdrop {
   background: #183a30a0;
 }
 dialog h2 {
-  font:
-    27px Georgia,
-    serif;
+  font: 27px var(--font-heading);
   margin: 10px 0;
 }
 dialog p {
@@ -2410,8 +2389,8 @@ dialog p {
   --bc-frost: #edf4f0;
   --bc-off: #d3dad1;
   --bc-press: #c9d6cd;
-  --bc-serif: Georgia, serif;
-  --bc-sans: Arial, sans-serif;
+  --bc-serif: var(--font-heading);
+  --bc-sans: var(--font-body);
   --bc-zone-little: #efb9ae;
   --bc-zone-right: #a9d6b3;
   --bc-zone-much: #b6cfdf;
@@ -2424,7 +2403,7 @@ dialog p {
   --bc-scene-moon: #fbf0d3;
   --bc-snow: #fff;
   --bc-sleigh: var(--bc-scene-moon);
-  --bc-title-font: var(--bc-sans);
+  --bc-title-font: var(--font-heading);
   color: var(--bc-ink);
   font-family: var(--bc-sans);
 }
@@ -3801,9 +3780,7 @@ dialog p {
   margin-inline: auto;
   padding: 1px 6px;
   border-radius: 8px;
-  font:
-    700 10px/13px Arial,
-    sans-serif;
+  font: 700 10px/13px var(--font-body);
   text-align: center;
   pointer-events: none;
 }
@@ -3838,9 +3815,7 @@ dialog p {
   display: inline-block;
   width: 38px;
   margin-left: 3px;
-  font:
-    700 10px/11px Arial,
-    sans-serif;
+  font: 700 10px/11px var(--font-body);
   vertical-align: middle;
   white-space: normal;
   text-align: center;
@@ -3999,4 +3974,37 @@ body[data-look] > header .wordmark img {
   body[data-look] > header .wordmark img {
     height: 24px;
   }
+}
+
+body[data-look] :is(h1, h2, h3, h4):not(.body-copy),
+body[data-look]
+  :is(
+    #clock,
+    .hud-figures b,
+    .sleigh-count strong,
+    .end-score,
+    .upgrade-card > strong,
+    .case-title
+  ) {
+  font-family: var(--font-heading);
+}
+body[data-look]
+  :is(
+    #clock,
+    .hud-figures,
+    .queue-amount,
+    .sleigh-count,
+    .chip-money,
+    .account-row
+  ) {
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-look] button,
+body[data-look] #report #replay,
+body[data-look] .chip {
+  font-family: var(--font-body);
+}
+body[data-look] .upgrade-card > strong {
+  font-family: var(--font-heading);
 }

@@ -40,6 +40,10 @@ Show the rules' remaining budget in the running header, with a labelled low stat
 
 Place a two-row reliability table after the practices and before the dial. It reports the player's everyday and big-gift jobs: letters read and toys made, before checking, with AI drafts counted as AI and manual work as elves. Show raw wrong counts out of jobs and “None made” for an empty sample. The dial remains beside the Frontier offer in the reading order. The walkthrough explains that everyday reliability matches a fresh elf while big gifts need a person.
 
+## Shared typography
+
+Use self-hosted Roboto 400, 500 and 700 for interface text. Headings and display figures prefer locally installed Franklin Gothic Medium Cond or Franklin Gothic Medium, then the bundled Roboto Condensed 500. One body and one heading custom property govern both looks, including inline SVG labels. Changing numbers use tabular figures. Fonts load from local WOFF2 files with swap display, so the game also works from disk. The bundled Fontsource 5.3.0 files carry their original SIL Open Font License 1.1 texts and source details beside the assets.
+
 ## Consequences
 
 Station floors and controls align on desktop while all six queues remain available. Phone users can switch stations without traversing a long vertical list. Layout checks must include eight elves at one station, cocoa, queue counts, actual tap and drag movement, and decision cards at narrow widths.

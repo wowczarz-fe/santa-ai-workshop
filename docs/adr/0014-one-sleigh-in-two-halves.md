@@ -303,3 +303,14 @@ Date: 2026-11-13
 - The Full sleigh target is 110 (was 108): with rested elves going home the first-timer's
   three-star share rose to 33%, and 110 brings it back to 30% while it still fills the sleigh in
   35% of games. No other row moved by more than 0.2 of a star.
+
+## Follow-up: no letting gifts through unchecked
+
+Date: 2026-11-13
+
+The user ruled that the "let through" control ("Skip N checks"), which let the gifts waiting for a
+check go to the sleigh unchecked, goes: it was no longer used. A full checking pile stops the line
+and `focus` names what frees it, another elf at Checking or checking fewer. Removed from the
+rules: the `bypass()` call, the `bypass` action, `view().bypassed`, the `bypassed` news item and
+parcel exit, the "Let through unchecked" lesson and cause, and the advice line for a gift let
+through.

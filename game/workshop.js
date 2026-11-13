@@ -1,7 +1,7 @@
 // The rules of one game. It never touches the page, so it also runs in Node for balance checks.
 
 const ELF_NAMES = "Pip Holly Jingle Noel Ivy Fig Tinsel Coco".split(" ");
-const CONTROLS = "ai0 ai1 checking bypass".split(" ");
+const CONTROLS = "ai0 ai1 checking".split(" ");
 const BREAK = 3;
 // The stations by the words on the page's headings, used wherever a line points at a place.
 const STATION_NAMES = ["Letters", "Toys", "Checking"];
@@ -202,7 +202,6 @@ const LOSSES = {
   "Big gifts the AI got wrong": "wrong",
   "A faulty update ran unchecked": "wrong",
   "Checkers stopped looking": "wrong",
-  "Let through unchecked": "wrong",
   "Tired elves slipped": "wrong",
   "Too little checking": "wrong",
   "The faulty update ran too long": "wrong",
@@ -440,9 +439,6 @@ const BLUNDERS = new Map(
   ),
 );
 const BLUNDER_TOTAL = BLUNDERS.size;
-const AVERAGE_PRICE =
-  share((w) => !w.big) * WRONG_PRICE.everyday +
-  share((w) => w.big) * WRONG_PRICE.big;
 
 const DOING = {
   letters: ["reading letters", "confirming the AI's readings"],
@@ -478,7 +474,6 @@ class Workshop {
     this.aboard = [];
     this.ai = [0, 0];
     this.checking = 0;
-    this.bypassed = 0;
     // Checks skipped by relaxed checkers, and whether training at half-time keeps every elf sharp for
     // good. How far each elf trusts the AI is its own (`trust`).
     this.vig = { skipped: 0, trained: false };
@@ -1361,12 +1356,6 @@ class Workshop {
         `ai:${s}`,
         `Put ${STATION_NAMES[s]} on Assist: an elf confirms each.`,
         "Drop to Assist",
-      );
-    if (x.exit === "bypassed")
-      return say(
-        "checking",
-        "Check them instead of letting them through: move an elf to Checking.",
-        "Check them",
       );
     if (!checked) {
       // An elf on Assist let a wrong draft through: it trusted the AI, or it was tired.
@@ -2315,7 +2304,7 @@ class Workshop {
     for (const x of wrongGifts) {
       this.assured(x, "shipped");
       this.assured(x, "shippedCost", this.price(x));
-      // Unchecked: never sent for a check, or let through by the player. One sent for a check that
+      // Unchecked: never sent for a check. One sent for a check that
       // relaxed checkers waved through counts against the checkers, not against how much was checked.
       if (!["checked", "skipped"].includes(x.exit)) {
         this.assured(x, "shippedUnchecked");
@@ -2597,7 +2586,7 @@ class Workshop {
 
   // Whether checking was too little, about right or too much, in the game's own money.
   //   underCost: what under-checking lost: for each kind of gift, what its wrong gifts that reached
-  //     children without a check (never sent for one, or let through by the player) cost beyond
+  //     children without a check (never sent for one) cost beyond
   //     what checking every unchecked parcel of that kind would have cost, plus the recalls and
   //     remakes of unchecked gifts brought back off the sleigh. Leaving cheap mistakes unchecked when
   //     checking them all would cost more is not under-checking, and a mistake that slipped past a
@@ -2850,7 +2839,6 @@ class Workshop {
   // What let a wrong gift reach a child: how it went past dispatch, or else how it was made wrong.
   causeOf(x) {
     if (x.exit === "skipped") return "waved through by relaxed checkers";
-    if (x.exit === "bypassed") return "let through unchecked";
     return x.cause;
   }
 
@@ -3115,10 +3103,6 @@ class Workshop {
         "Checkers stopped looking",
         "Most of the wrong-gift cost came from gifts the checkers waved through. Training them at half-time keeps them sharp.",
       ],
-      "let through unchecked": [
-        "Let through unchecked",
-        "Most of the wrong-gift cost came from gifts let through without a check. One more checker would have kept the pile moving.",
-      ],
       "a tired elf": [
         "Tired elves slipped",
         "Most of the wrong-gift cost came from slips by tired elves. A short cocoa break keeps them sharp.",
@@ -3154,11 +3138,6 @@ class Workshop {
       return L(
         "Too little checking",
         `Wrong gifts cost ${money(costs.mistakes)}, far more than the ${money(costs.checking)} spent on checking; wrong big gifts alone cost ${money(bigWrong)}. The more the AI does, the more its work needs checking, most of all on the big gifts.`,
-      );
-    if (wrongHurt && this.bypassed >= 15)
-      return L(
-        "Let through unchecked",
-        `You let ${this.bypassed} gifts skip the checking pile, and wrong gifts cost ${money(costs.mistakes)}. One more checker would have kept them checked.`,
       );
     if ((wrongHurt || !missed) && st.faulty >= 15)
       return L(
@@ -3243,11 +3222,7 @@ class Workshop {
   }
 
   setAi(station, level) {
-    if (
-      ![0, 1].includes(station) ||
-      ![0, 1, 2].includes(level) ||
-      this.why(`ai${station}`)
-    )
+    if (![0, 1].includes(station) || ![0, 1, 2].includes(level) || this.why())
       return false;
     this.ai[station] = level;
     this.did();
@@ -3255,54 +3230,24 @@ class Workshop {
   }
 
   setChecking(level) {
-    if (![0, 1, 2].includes(level) || this.why("checking")) return false;
+    if (![0, 1, 2].includes(level) || this.why()) return false;
     if (level !== this.checking) this.reportChecking();
     this.checking = level;
     this.did();
     return true;
   }
 
-  bypass() {
-    if (this.why("bypass")) return false;
-    const waiting = this.q.check.splice(0);
-    const rate = this.stats.caught / Math.max(1, this.stats.checked);
-    this.bypassed += waiting.length;
-    this.say(
-      "bypassed",
-      `${plural(waiting.length, "gift")} went through without a check.`,
-      { count: waiting.length },
-    );
-    this.consequence(
-      "bypass",
-      `Let ${plural(waiting.length, "gift")} through unchecked: about ${Math.round(waiting.length * rate)} may be wrong, ${money(waiting.length * rate * AVERAGE_PRICE)} at risk.`,
-      { checked: 0, waiting: 0 },
-    );
-    // Straight onto the sleigh: whatever was wrong in them, a faulty batch included, ships.
-    for (const x of waiting) {
-      x.exit = "bypassed";
-      this.stats.passed++;
-      this.load(x);
-    }
-    this.did();
-    return true;
-  }
-
   // Why a control cannot be used now, or null when it can.
-  why(name) {
-    if (this.end) return "The sleigh has left";
-    if (name === "bypass")
-      return this.q.check.length ? null : "Nothing waiting for a check";
-    return null;
+  why() {
+    return this.end ? "The sleigh has left" : null;
   }
 
   costText(name) {
     const perMinute = (level) => money(AI_PRICE[level] * 60);
-    const waiting = this.q.check.length;
     return {
       ai0: `${perMinute(1)} a minute on Assist, ${perMinute(2)} on Automate`,
       ai1: `${perMinute(1)} a minute on Assist, ${perMinute(2)} on Automate`,
       checking: `each check takes a checker about ${Math.round(this.secondsPerCheck())} seconds and costs ${money(PRICE.check)}`,
-      bypass: `lets ${plural(waiting, "waiting gift")} through unchecked; free, but nobody looks at them`,
     }[name];
   }
 
@@ -3428,7 +3373,6 @@ class Workshop {
       queues: Object.fromEntries(
         Object.keys(QUEUES).map((id) => [id, this.queueView(id)]),
       ),
-      bypassed: this.bypassed,
       vigilance: {
         state: v.state,
         name: v.name,
@@ -3490,7 +3434,7 @@ class Workshop {
       },
       actions: Object.fromEntries(
         CONTROLS.map((name) => {
-          const why = this.why(name);
+          const why = this.why();
           return [name, { available: !why, why, cost: this.costText(name) }];
         }),
       ),

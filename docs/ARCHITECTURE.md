@@ -24,7 +24,6 @@ view()                            // everything the page may draw, as plain data
 move(elf, station)                // 0 read letters, 1 make toys, 2 check and dispatch, 3 cocoa break
 setAi(station, level)             // station 0 or 1; level 0 by hand, 1 assist, 2 automate
 setChecking(level)                // which gifts go to the checking pile: 0 a few, 1 the risky ones, 2 all
-bypass()                          // let the gifts waiting for a check go through unchecked
 resolve(caseId, optionId)         // answer the open decision
 choose(optionId)                  // pick one option at half-time: "update", "tested", "train", "rest" or "none"
 ```
@@ -76,7 +75,6 @@ pounds, rounded to whole pounds unless said otherwise. Times are seconds.
 | `levers`       | object                           | see below                                            | What each lever position does now                                                                                |
 | `stations`     | array of 3 station               | see below                                            | Reading, toy making, checking                                                                                    |
 | `queues`       | object of queue                  | see below                                            | `letters`, `orders`, `check`, `pass`, `rework`                                                                   |
-| `bypassed`     | number                           | `0`                                                  | Gifts the player has let through unchecked                                                                       |
 | `vigilance`    | object                           | see below                                            | How far the elves have come to trust the AI                                                                      |
 | `case`         | decision or `null`               | see Decisions                                        | The open decision                                                                                                |
 | `casesWaiting` | number                           | `1`                                                  | Decisions waiting behind the open one                                                                            |
@@ -89,7 +87,7 @@ pounds, rounded to whole pounds unless said otherwise. Times are seconds.
 | `prices`       | `{ wrongEveryday, wrongBig }`    | `{ wrongEveryday: 12, wrongBig: 100 }`               | What a wrong everyday and a wrong big gift cost                                                                  |
 | `pace`         | `{ projected, behind, slowest }` | `{ projected: 137, behind: true, slowest: null }`    | Right gifts expected at departure, whether short of the target, the station holding things up (0 to 2) or `null` |
 | `incident`     | object or `null`                 | `{ known: true, rollingBack: 0, suspectWaiting: 2 }` | Set once a faulty update is installed (below)                                                                    |
-| `actions`      | object                           | see below                                            | For `ai0`, `ai1`, `checking`, `bypass`: whether it works now and what it costs                                   |
+| `actions`      | object                           | see below                                            | For `ai0`, `ai1`, `checking`: whether it works now and what it costs                                             |
 | `news`         | array of news                    | see News                                             | Up to 30 items, newest first                                                                                     |
 | `end`          | end or `null`                    | see The end                                          | Set when the sleigh has left                                                                                     |
 
@@ -241,11 +239,10 @@ gift is checked by three elves or more), else the toy makers or readers when the
 or nobody works there (`"elves"`, or `"ai0"`/`"ai1"` with `"try the AI"` while three elves work
 it by hand). While a rollback holds the toys up, the other hints apply.
 
-`actions` has a key for each of `ai0`, `ai1`, `checking` and `bypass`, each
+`actions` has a key for each of `ai0`, `ai1` and `checking`, each
 `{ available, why, cost }`, for example
 `{ available: true, why: null, cost: "£13 a minute on Assist, £43 on Automate" }`. `available` is
-`false` only after the end, or for `bypass` while nothing waits for a check; `why` then says why in
-a few words (`"The sleigh has left"`, `"Nothing waiting for a check"`). `cost` is what using it
+`false` only after the end; `why` then says why in a few words (`"The sleigh has left"`). `cost` is what using it
 costs, in the player's words.
 
 ### Incident
@@ -401,7 +398,6 @@ something only half-time sells.
 | `consequence` | `about`, `facts: { seconds, checked, caught, estimatedAvoided, waiting, money }`           | A setting or decision reports what it did             |
 | `case`        | `caseId`                                                                                   | A decision was raised                                 |
 | `resolved`    | `caseId`, `option`, `outcome: { seconds, money, parcels }`                                 | A decision closed                                     |
-| `bypassed`    | `count`                                                                                    | The player let waiting gifts through unchecked        |
 | `update`      |                                                                                            | An update was installed on the toy machine            |
 | `noticed`     | `by`: `"watcher"`, `"checker"` or `"sleigh"`                                               | The faulty update became known                        |
 | `rolledBack`  |                                                                                            | The rollback finished                                 |
@@ -438,7 +434,6 @@ on that control. Following the advice never sends a station back to working by h
 | `checking`     | A risky gift went out unchecked while checking was on a few   | `Check the risky ones.`                                                   | `Check more`        |
 | `cocoa`        | A tired elf working by hand slipped                           | `Send tired elves for cocoa.`                                             | `Rest tired elves`  |
 | `ai:0`, `ai:1` | The AI made the mistake on Automate at reading or toy making  | `Put Letters on Assist: an elf confirms each.`                            | `Drop to Assist`    |
-| `checking`     | The player let it through unchecked                           | `Check them instead of letting them through: move an elf to Checking.`    | `Check them`        |
 | `cocoa`        | An elf on Assist passed the wrong draft while trusting the AI | `Swap the elves at Toys: Pip had stopped checking the AI's drafts.`       | `Swap Pip`          |
 | `cocoa`        | An elf on Assist passed it while tired                        | `Send tired elves for cocoa.`                                             | `Rest tired elves`  |
 | `checking`     | Any other gift went out unchecked                             | `Check all for a while.`                                                  | `Check all for now` |
@@ -461,7 +456,7 @@ A `resolved` item's `text` says what the answer did, with the time, money and pa
 for example `"Amir wrote back: a cuddly bat."` or
 `"Rolling back for £65: the toy machine stops 8 s."`. A `check` is a copy taken when the check finished.
 `by` is `"elf"`. A `consequence` leaves out the facts that do not apply; `about` is `"checking"`,
-`"bypass"`, `"tested"` or `"case"`.
+`"tested"` or `"case"`.
 
 ## The end
 
@@ -584,7 +579,7 @@ beforehand: a risky batch can happen to come out clean.
 | `text`                   | string  |                              | One sentence: the verdict with the two estimates                                        |
 
 - `underCost` is the avoidable part of the wrong gifts that reached children without a check
-  (never sent for one, or let through by the player), plus the recalls of such gifts. For each
+  (never sent for one), plus the recalls of such gifts. For each
   kind of gift, the avoidable part is what its unchecked wrong gifts cost beyond what checking
   every unchecked parcel of that kind would have cost. A mistake that slipped past a checker who
   did look, or that relaxed checkers waved through, is not counted here.
@@ -633,9 +628,9 @@ beforehand: a risky batch can happen to come out clean.
 
 ## Behaviour the page relies on
 
-- When the checking pile is full the line waits; a full pile never lets gifts through by itself.
-  Gifts miss a check in two ways, both visible: the player calls `bypass()`, counted in
-  `bypassed`, or relaxed checkers wave a gift through, counted in `vigilance.skipped`.
+- When the checking pile is full the line waits; nothing lets gifts past it, and `focus` names
+  what frees it: another elf at Checking, or checking fewer when every gift is checked by three
+  elves or more. Relaxed checkers who wave a gift through are counted in `vigilance.skipped`.
 - A cocoa break from tired to fresh takes about 3 seconds. Once fully rested (at least 3 seconds
   after it sat down) an elf on cocoa leaves by itself, with a `rested` news item saying where. It
   goes back to the station it came from unless that station clearly does not need it (it works on

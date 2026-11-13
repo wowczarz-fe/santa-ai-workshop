@@ -661,10 +661,6 @@
       Math.max(0, Math.min(1, left / view.duration)),
     );
     text("clock", clockText(left));
-    text(
-      "mission",
-      `Load ${view.run.target} right gifts before the sleigh leaves in ${clockText(view.duration)}.`,
-    );
     $("pause").disabled = !started || !!view.end || tourStep !== null;
     document.querySelector("main > footer").hidden = started && !view.end;
     text("pause", manualPaused ? "Resume" : "Pause");

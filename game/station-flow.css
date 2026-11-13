@@ -41,9 +41,7 @@ body[data-look="paper"]
   min-height: 0;
   white-space: nowrap;
   text-align: left;
-  font:
-    10px/12px Arial,
-    sans-serif;
+  font: 10px/12px var(--font-body);
 }
 body[data-look="paper"] #piles2 .queue-mini .queue-count,
 body[data-look="paper"]
@@ -52,9 +50,7 @@ body[data-look="paper"]
   display: block;
   text-align: left;
   white-space: nowrap;
-  font:
-    18px/22px Georgia,
-    serif;
+  font: 18px/22px var(--font-heading);
 }
 body[data-look="paper"] .flow-queue-label > .ui-icon {
   display: none;

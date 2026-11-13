@@ -1,4 +1,6 @@
 // No text the page can show holds a semicolon: every line is short plain sentences or fragments.
+// None says or implies that more AI means more mistakes in general (ADR 0019): the AI is as
+// reliable as a fresh elf on everyday gifts and poor on big ones, and the words say where.
 // Seeded games are played with different habits, through half-time and to the end screen, and
 // every string anywhere in view() is read at each step.
 const assert = require("assert");
@@ -9,11 +11,26 @@ vm.runInThisContext(
   fs.readFileSync(path.join(__dirname, "../game/workshop.js"), "utf8"),
 );
 
+// The old framing, and words that are gone: more AI as more mistakes, the AI as careless, Assist
+// asked for as a general remedy, and a slip shown as the right toy in the wrong size.
+const BANNED = [
+  /;/,
+  /more mistakes/i,
+  /the more the AI/i,
+  /AI slips more/i,
+  /AI (is|was) (stupid|dumb|careless|sloppy)/i,
+  /check what it makes/i,
+  /Drop to Assist/,
+  /an elf confirms each\.$/,
+  /wrong size/i,
+  /cost limit/i,
+];
 let read = 0;
 function strings(value, where, name) {
   if (typeof value === "string") {
     read++;
-    assert(!value.includes(";"), `${name}, ${where}: ${value}`);
+    for (const banned of BANNED)
+      assert(!banned.test(value), `${name}, ${where}: ${value}`);
   } else if (value && typeof value === "object")
     for (const [key, inner] of Object.entries(value))
       strings(inner, `${where}.${key}`, name);
@@ -39,9 +56,24 @@ const players = [
     rests: true,
   },
   { name: "automate, leaves cards", ai: [2, 1], checking: 0, pick: null },
+  {
+    name: "automate, then assist and risky checks",
+    ai: [2, 2],
+    checking: 0,
+    pick: 0,
+    rests: true,
+    second: { ai: [1, 1], checking: 1 },
+  },
 ];
 
-const seen = { halfTime: 0, unclear: 0, recall: 0, incident: 0, end: 0 };
+const seen = {
+  halfTime: 0,
+  unclear: 0,
+  recall: 0,
+  incident: 0,
+  end: 0,
+  budget: 0,
+};
 for (let seed = 1; seed <= 10; seed++)
   for (const [n, p] of players.entries()) {
     const w = new Workshop({ seed });
@@ -57,7 +89,13 @@ for (let seed = 1; seed <= 10; seed++)
       strings(v, "view", name);
       if (v.choice) {
         seen.halfTime++;
-        w.choose(HALF_TIME[(seed + n) % HALF_TIME.length]);
+        w.choose(HALF_TIME[(seed + n) % HALF_TIME.length]) || w.choose("none");
+        if (p.second) {
+          w.setAi(0, p.second.ai[0]);
+          w.setAi(1, p.second.ai[1]);
+          w.setChecking(p.second.checking);
+          w.elves.forEach((e, i) => i < 6 && w.move(i, i < 3 ? 0 : 1));
+        }
         strings(w.view(), "after half-time", name);
       }
       if (v.case && p.pick !== null) {
@@ -80,6 +118,7 @@ for (let seed = 1; seed <= 10; seed++)
         );
     }
     seen.end++;
+    if (w.view().end.reason === "budget") seen.budget++;
     strings(w.view(), "end", name);
   }
 

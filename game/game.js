@@ -1040,7 +1040,7 @@
         tourStep === null &&
         !view.choice &&
         !view.end &&
-        !caseOpen,
+        !caseStopsClock(),
     );
     paintMistakeHint();
     paintTabMarks();
@@ -2463,14 +2463,17 @@
     }
     restartOpen = true;
     $("restartDialog").showModal();
+    paint();
   };
   $("confirmRestart").onclick = () => reset();
   $("cancelRestart").onclick = () => {
     restartOpen = false;
     $("restartDialog").close();
+    paint();
   };
   $("restartDialog").addEventListener("cancel", () => {
     restartOpen = false;
+    paint();
   });
   // The opening card is the only way in, so Escape cannot close it before the run starts.
   $("intro").addEventListener("cancel", (event) => event.preventDefault());

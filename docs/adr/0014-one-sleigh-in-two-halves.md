@@ -339,7 +339,7 @@ pictures of the two possible readings on an unclear-wish card. The half-time car
 minimum-load explanation; the end screen explains a star that never began counting. Queue heaps
 come from actual parcels, with at most 18 drawn and the count giving the full total. Permanently
 full decorative props are removed. Real arrivals animate for 460 ms, at most three per station;
-pausing the clock freezes them and reduced-motion preferences suppress movement. These choices
+pausing the clock settles in-flight gifts into their piles, and reduced-motion preferences suppress movement. These choices
 make the visible piles and changes reflect what the player actually caused.
 
 The scripted expert now reads the recall option's visible star trade, buying back the mistakes

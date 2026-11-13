@@ -962,9 +962,7 @@
     if (lastWrong) {
       if ($("wrongToy").dataset.toy !== lastWrong.made.name) {
         $("wrongToy").dataset.toy = lastWrong.made.name;
-        $("wrongToy").innerHTML = toyArt(
-          lastWrong.made.base || lastWrong.made.name,
-        );
+        $("wrongToy").innerHTML = toyArt(lastWrong.made.name);
       }
       $("wrongBig").hidden = !lastWrong.big;
       text("wrongName", lastWrong.made.name);
@@ -1148,7 +1146,8 @@
             `${cause.wrong} wrong · ${money(cause.cost)}`,
           ),
         );
-        body.append(head, make("p", "cause-fix", cause.fix));
+        body.append(head);
+        if (cause.fix) body.append(make("p", "cause-fix", cause.fix));
         item.append(
           iconNode(causeIcons[cause.id] || "mistakes", "cause-icon"),
           body,
@@ -1426,10 +1425,7 @@
     if (caughtSnapshot && caught.dataset.toy !== caughtSnapshot.made.name) {
       caught.dataset.toy = caughtSnapshot.made.name;
       caught.replaceChildren(make("b", "", "Caught!"));
-      caught.insertAdjacentHTML(
-        "beforeend",
-        toyArt(caughtSnapshot.made.base || caughtSnapshot.made.name),
-      );
+      caught.insertAdjacentHTML("beforeend", toyArt(caughtSnapshot.made.name));
       caught.append(make("span", "", caughtSnapshot.made.name));
     }
   }
@@ -1955,7 +1951,15 @@
     }
     if (type === "ai") {
       const l = view.levers[`ai${parts[1]}`][Number(parts[2])];
-      return [l.name, [`${cap(l.risk)}.`, `${cap(l.who)}, ${l.speed}.`]];
+      return [
+        l.name,
+        [
+          `Everyday: ${l.everyday}.`,
+          `Big gifts: ${l.big}.`,
+          `${cap(l.who)}, ${l.speed}.`,
+          ...(!l.risk.startsWith("big gifts:") ? [`${cap(l.risk)}.`] : []),
+        ],
+      ];
     }
     if (type === "checking") {
       const l = view.levers.checking[Number(parts[1])];

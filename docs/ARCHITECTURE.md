@@ -125,21 +125,13 @@ An elf is `{ name, station, tired, energy, mood, resting, doing }`, for example
 `levers` is `{ ai0, ai1, checking }`.
 
 - `ai0` (reading) and `ai1` (toy making) each hold three entries, one per level, of
-  `{ name, who, speed, risk, everyday, big, perMinute, costPerMinute }`, for example
-  `{ name: "Automate", who: "The AI works alone", speed: "about 9.2 times as fast as by hand", risk: "big gifts: 1 in 7 misread", everyday: "the AI misreads about 1 in 200 letters, the same as a fresh elf", big: "the AI misreads about 1 in 7 letters", perMinute: 100, costPerMinute: 43 }`.
-  `name` is "By hand", "Assist" or "Automate". `who` and `speed` are two clauses the page joins
-  with a comma into one sentence ("The AI works alone, about 9.2 times as fast as by hand.").
-  `risk` says what to watch for now, from the current state, in one or two complete sentences
-  ("Tired elves make more mistakes. Tiredness here is 9."); on Automate with no faulty update it
-  is a `"big gifts: ..."` figure that the page does not show, since `big` says the same.
-  `everyday` and `big` say how often a job goes wrong at that level on each kind of gift, as a
-  clause the page puts after "On everyday gifts," or "On big gifts,": by hand
-  `"fresh elves make about 1 in 200 toys wrong"` on both; on Assist and Automate
-  `"the AI makes about 1 in 200 toys wrong, the same as a fresh elf"` on everyday gifts, and on
-  big gifts `"the AI makes about 1 in 2 toys wrong, and the confirming elf catches most of these"`
-  (Assist) or `"the AI makes about 1 in 2 toys wrong"` (Automate). Reading says "misread about 1
-  in 200 letters" where toy making says "make about 1 in 200 toys wrong". `perMinute` is parcels a minute at the
-  current staffing, `costPerMinute` the AI's running cost in pounds a minute (0, 13 or 43).
+  `{ name, summary, perMinute, costPerMinute }`, for example
+  `{ name: "Automate", summary: "The AI works alone and needs no elves. It rarely slips on everyday letters, but misreads about 1 in 7 letters for big gifts.", perMinute: 100, costPerMinute: 43 }`.
+  `name` is "By hand", "Assist" or "Automate". `summary` is the tooltip on the level's button:
+  two complete sentences of about twenty words, what the level does and then how fast or how
+  reliable it is. The figures come from `RISK`, and Assist's speed against by hand from the
+  seconds per job ("about twice as fast", "about three times as fast" after an update). On
+  Automate at Toys, once a faulty update is known, the second sentence names it instead.
 - `checking` holds three entries `{ name, sends, per100 }`, for example
   `{ name: "Risky gifts", sends: "checkers look at the big gifts and the ones the AI flagged", per100: 37 }`:
   which gifts the checkers look at, as a clause the page starts a sentence with, and how many in
@@ -778,7 +770,7 @@ The rules send each text in the form the player reads, so the page adds nothing 
 
 - Whole sentences, with their capital and full stop: every news `text`, a decision's `text`, the
   lesson, a cause's `fix`, the dial's `text`, a half-time option's `text`, `blocked` on stations and
-  queues, a lever's `risk`, and the AI switches' `cost` under `actions`.
+  queues, a lever's `summary`, and the AI switches' `cost` under `actions`.
 - Labels and chips, with a capital and no full stop: option `why`, a recall's `goal`, the faulty
   update options' `scope`, the half-time `Gives` value, practice names, labels and figures, cause
   names, fact labels and the `action` tag of a wrong gift. `focus.text` is a tag in lower case
@@ -788,8 +780,6 @@ A few are clauses in lower case that the page builds a sentence around:
 
 | Field                               | Example                                                          | The page makes                                   |
 | ----------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------ |
-| lever `who` and `speed`             | "The AI works alone", "about 4 times as fast as by hand"         | "{who}, {speed}."                                |
-| lever `everyday`, `big`             | "the AI makes about 1 in 2 toys wrong"                           | "On everyday gifts, {everyday}." and for `big`   |
 | lever `sends`                       | "checkers look at every gift"                                    | "{Sends}. That is {per100} in 100 gifts."        |
 | recall `scope`                      | "costs £50 more and keeps the checkers busy for about 4 seconds" | "{label}: {scope}."                              |
 | goal `text`                         | "keep some of the £900 budget, counting the cost of wrong gifts" | a sentence, or a clause after a comma            |

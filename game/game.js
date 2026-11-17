@@ -1973,15 +1973,7 @@
     }
     if (type === "ai") {
       const l = view.levers[`ai${parts[1]}`][Number(parts[2])];
-      return [
-        l.name,
-        [
-          `On everyday gifts, ${stop(l.everyday)}`,
-          `On big gifts, ${stop(l.big)}`,
-          sentence(`${l.who}, ${l.speed}`),
-          ...(l.risk && !/^big gifts:/i.test(l.risk) ? [sentence(l.risk)] : []),
-        ],
-      ];
+      return [l.name, [l.summary]];
     }
     if (type === "checking") {
       const l = view.levers.checking[Number(parts[1])];

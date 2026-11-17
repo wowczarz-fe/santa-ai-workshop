@@ -67,3 +67,6 @@ have a line of their own where it read "waved 0 AI gifts through".
   on the reputation card and the practice figures most of all.
 - No rule, number or balance figure changed: the scripted games give the same table as before.
 - A new text is written to the style sheet and added to the inventory, not cut to fit a space.
+- A tooltip is two sentences at most. The AI level buttons say what the level does and how fast
+  or how reliable it is, about twenty words, read while the clock runs; the exact speed
+  multiplier and the elves' tiredness number are left to the screen.

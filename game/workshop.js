@@ -2426,13 +2426,10 @@ class Workshop {
     };
   }
 
-  // What each lever position does now, in words read at a glance.
+  // What each lever position does now, in two short sentences read at a glance while the clock
+  // runs (ADR 0021): what the level does, then how fast or how reliable it is. The AI is as good as
+  // a fresh elf on everyday gifts and poor on big ones (ADR 0019), and the figures come from RISK.
   levers() {
-    const tired = (s) =>
-      Math.round(
-        sum(this.staff(s).map((e) => e.tired)) /
-          Math.max(1, this.staff(s).length),
-      );
     const fault = this.incident?.known && this.incident.fault;
     const ai = (s) => {
       const kind = s === 0 ? "read" : "make";
@@ -2442,68 +2439,31 @@ class Workshop {
           : (this.power(s) * 60) /
             (s === 0 ? ELF_SECONDS.read[level] : this.makeSeconds(level)),
       );
-      return LEVELS.map((name, level) => {
-        const who = [
-          "Elves do the work",
-          "The AI drafts each one and an elf confirms it",
-          "The AI works alone",
-        ][level];
-        const ratio = perMinute[level] / perMinute[0];
-        const speed =
-          level === 0
-            ? "slowly and steadily"
-            : !perMinute[0]
-              ? level === 2
-                ? "with no elves needed"
-                : "so this needs elves here"
-              : `about ${Math.round(ratio * 10) / 10} times as fast as by hand`;
-        const here = this.staff(s).length ? tired(s) : null;
-        const risk =
-          level === 0
-            ? here === null
-              ? "There are no elves here to do the work."
-              : `Tired elves make more mistakes. Tiredness here is ${here}.`
-            : level === 1
-              ? here === null
-                ? "There are no elves here to confirm the AI's work."
-                : `Tired elves miss more of the AI's mistakes. Tiredness here is ${here}.`
-              : s === 0
-                ? `big gifts: ${oneIn(RISK.aiReadBig).replace("about ", "")} misread`
-                : fault
-                  ? "The faulty update makes the AI keep making the same wrong toy."
-                  : `big gifts: ${oneIn(RISK.aiMakeBig).replace("about ", "")} wrong`;
-        // How often a job goes wrong at this level, by kind of gift: the same for an elf by hand on
-        // both kinds, and for the AI as good as a fresh elf on everyday gifts and poor on big ones.
-        // On Assist a fresh elf catches most of the AI's wrong drafts.
-        const elf = s === 0 ? RISK.elfRead : RISK.elfMake;
-        const aiBig = s === 0 ? RISK.aiReadBig : RISK.aiMakeBig;
-        // "fresh elves misread about 1 in 200 letters", "the AI makes about 1 in 2 toys wrong": a
-        // clause that follows "On everyday gifts," or "On big gifts," on the page.
-        const rate = (who, p) =>
-          s === 0
-            ? `${who} ${who === "the AI" ? "misreads" : "misread"} ${oneIn(p)} letters`
-            : `${who} ${who === "the AI" ? "makes" : "make"} ${oneIn(p)} toys wrong`;
-        const everyday =
-          level === 0
-            ? rate("fresh elves", elf)
-            : `${rate("the AI", s === 0 ? RISK.aiRead : RISK.aiMake)}, the same as a fresh elf`;
-        const big =
-          level === 0
-            ? rate("fresh elves", elf)
-            : level === 1
-              ? `${rate("the AI", aiBig)}, and the confirming elf catches most of these`
-              : rate("the AI", aiBig);
-        return {
-          name,
-          who,
-          speed,
-          risk,
-          everyday,
-          big,
-          perMinute: Math.round(perMinute[level]),
-          costPerMinute: Math.round(AI_PRICE[level] * 60),
-        };
-      });
+      // Assist against by hand with the same elves: about twice as fast, more after an update.
+      const assistRatio =
+        ELF_SECONDS[kind][0] /
+        (s === 0 ? ELF_SECONDS.read[1] : this.makeSeconds(1));
+      const times =
+        ["", "", "about twice", "about three times", "about four times"][
+          Math.round(assistRatio)
+        ] || `about ${Math.round(assistRatio)} times`;
+      const bigSlip =
+        s === 0
+          ? `misreads ${oneIn(RISK.aiReadBig)} letters for big gifts`
+          : `gets ${oneIn(RISK.aiMakeBig)} big gifts wrong`;
+      const summaries = [
+        "Elves do all the work. It is slow, but fresh elves rarely make mistakes.",
+        `The AI drafts and an elf confirms each one. It is ${times} as fast, and the elf catches most mistakes on big gifts.`,
+        s === 1 && fault
+          ? "The AI works alone and needs no elves. The faulty update makes it keep making the same wrong toy."
+          : `The AI works alone and needs no elves. It rarely slips on everyday ${s === 0 ? "letters" : "gifts"}, but ${bigSlip}.`,
+      ];
+      return LEVELS.map((name, level) => ({
+        name,
+        summary: summaries[level],
+        perMinute: Math.round(perMinute[level]),
+        costPerMinute: Math.round(AI_PRICE[level] * 60),
+      }));
     };
     const checking = [
       ["A few", "checkers look at a few gifts at random"],

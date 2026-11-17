@@ -81,7 +81,7 @@ const reading = (c, right = true) =>
   within(w, "after a recall");
   assert(w.full("rework"));
   // While the remake pile is full, checking waits: a caught gift would have nowhere to go.
-  assert.strictEqual(w.queueBlocked("check"), "the remake pile is full");
+  assert.strictEqual(w.queueBlocked("check"), "The remake pile is full.");
   for (let i = 0; i < 40; i++) (w.step(0.5), within(w, "remaking"));
 }
 console.log("pile checks passed");

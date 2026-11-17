@@ -1663,7 +1663,7 @@ footer {
 .info-popover {
   position: fixed;
   z-index: 40;
-  width: 275px;
+  width: 300px;
   max-width: calc(100vw - 20px);
   max-height: calc(100dvh - 24px);
   overflow: auto;
@@ -3916,6 +3916,14 @@ body[data-look] #goals .hud-slot.budget-low .hud-figures b {
   body[data-look] main .dashboard #clock {
     top: 0;
     line-height: 34px;
+  }
+  /* The clock keeps a row of its own for the Paused word, so it never sits on the digits */
+  body[data-look] main .dashboard .clock-box {
+    grid-template-rows: 17px 34px 10px;
+    padding-bottom: 6px;
+  }
+  body[data-look] main .dashboard #pauseState {
+    align-self: start;
   }
 }
 

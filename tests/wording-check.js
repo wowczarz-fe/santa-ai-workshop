@@ -15,6 +15,7 @@ vm.runInThisContext(
 // The old framing, and words that are gone: more AI as more mistakes, the AI as careless, Assist
 // asked for as a general remedy, and a slip shown as the right toy in the wrong size.
 const BANNED = [
+  /Tiredness here is/,
   /;/,
   /\bAI\b[^.]*\bmakes? more mistakes/i,
   /more AI\b[^.]*\bmistakes/i,
@@ -162,6 +163,8 @@ const OLD_WORDING = [
 const SECONDS_SHORT = /\d s\b/;
 const COUNTER = /^view\.end\.practices\.\d+\.actions\.\d+\.figure$/;
 let read = 0;
+// Every level tooltip text met in play, to show the check reached them.
+const levelTips = new Set();
 // A text already read in the same kind of place is not read again: the games repeat most of them.
 const passed = new Set();
 const ALL_BANNED = [...BANNED, ...OLD_WORDING];
@@ -177,6 +180,16 @@ function strings(value, where, name) {
       !SECONDS_SHORT.test(value) || counter,
       `${name}, ${where}: "s" for seconds in: ${value}`,
     );
+    // A level button's tooltip is two short sentences, read while the clock runs.
+    if (/\.levers\.ai[01]\.\d+\.summary$/.test(where)) {
+      assert(
+        value.split(/(?<=[.!?])\s+/).length <= 2 &&
+          value.split(/\s+/).length <= 25 &&
+          !/Tiredness here/.test(value),
+        `${name}, ${where}: a level tooltip of two sentences and about twenty words: ${value}`,
+      );
+      levelTips.add(value);
+    }
     passed.add(key);
   } else if (value && typeof value === "object")
     for (const [key, inner] of Object.entries(value))
@@ -269,6 +282,10 @@ for (let seed = 1; seed <= 10; seed++)
     strings(w.view(), "end", name);
   }
 
+assert(
+  levelTips.size >= 5,
+  `only ${levelTips.size} level tooltip texts were read`,
+);
 for (const [what, count] of Object.entries(seen))
   assert(count > 0, `the games reached no ${what}`);
 console.log(

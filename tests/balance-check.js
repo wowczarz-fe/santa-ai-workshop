@@ -1524,17 +1524,12 @@ for (const right of [true, false]) {
   );
   warn(Math.abs(did - promised) <= 0.15 * promised, "reading lever is honest");
   const v = new Workshop({ seed: 1 }).view();
-  // The words on each AI level stay short: a clause for who and how fast, which the page joins
-  // into one sentence, and one or two short sentences for the risk.
+  // The words on each AI level stay short: two sentences, about twenty words (ADR 0021).
   for (const entry of [...v.levers.ai0, ...v.levers.ai1]) {
-    for (const k of ["who", "speed"])
-      warn(
-        entry[k].split(/\s+/).length <= 10 && !/[.:](\s|$)/.test(entry[k]),
-        `lever ${k} "${entry[k]}" is one clause of ten words at most`,
-      );
-    warn(
-      entry.risk.split(/\s+/).length <= 14,
-      `lever risk "${entry.risk}" is fourteen words at most`,
+    const sentences = entry.summary.split(/(?<=[.!?])\s+/);
+    assert(
+      sentences.length <= 2 && entry.summary.split(/\s+/).length <= 25,
+      `lever "${entry.name}" says "${entry.summary}": two sentences of about twenty words at most`,
     );
   }
 }

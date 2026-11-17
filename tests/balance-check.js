@@ -83,14 +83,12 @@ function conditional(c, v) {
       // Read the stated star trade first; otherwise compare money saved with checker time at £1 a second.
       const bring = c.options.find((o) => o.id === "bringBack");
       // A recall costs more than leaving the gifts aboard, so it is worth it only for the star.
-      const savesStar =
-        /Few mistakes star saved/.test(bring.goal) &&
-        !/Within budget star lost/.test(bring.goal);
+      const savesStar = /Keeps the Few mistakes star/.test(bring.goal);
       if (!bring.available) return "leave";
       if (savesStar) return "bringBack";
       // One wrong gift with no star at stake yet: worth fetching back while the margin for
       // mistakes is thin, or while it costs little of the budget that is left.
-      const single = bring.goal === "No mistake counted";
+      const single = bring.goal === "Not counted as a mistake";
       const wrong = num(fact(c, "Wrong gifts aboard"));
       return single && (wrong >= 2 || bring.extra <= 0.12 * v.cost.left)
         ? "bringBack"
@@ -119,7 +117,10 @@ function chooseWell(ch, v) {
   const p = odds(value(by("update"), "Risk"));
   if (v.vigilance.state !== "careful") return "train";
   if (p <= 0.25 && v.ai[1] > 0) return "update";
-  if (num(value(by("rest"), "Energy now")) < 45) return "rest";
+  // The elves' energy is the last sentence of the cocoa option's text.
+  const energyNow = by("rest").text.match(/average energy is now (\d+)\./);
+  assert(energyNow, "the cocoa option says the elves' average energy");
+  if (Number(energyNow[1]) < 45) return "rest";
   if (p < 0.75 && v.ai[1] > 0) return "tested";
   return "none";
 }
@@ -566,10 +567,10 @@ function checkView(v) {
       );
     if (wrong <= allowed) {
       assert.strictEqual(c.affected.count <= 1, true);
-      assert.strictEqual(bring.goal, "No mistake counted");
+      assert.strictEqual(bring.goal, "Not counted as a mistake");
       assert.strictEqual(
         leave.goal,
-        `Counts as ${wrong} of ${allowed} mistakes`,
+        `Counts as mistake ${wrong} of ${allowed}`,
       );
       if (c.gift)
         assert.strictEqual(
@@ -577,18 +578,20 @@ function checkView(v) {
           `${c.gift.child} got ${a(c.gift.made.name)}, not ${a(c.gift.wanted.name)}.`,
         );
     } else {
-      assert.match(leave.goal, /star lost/);
-      assert(bring.goal === null || /star saved/.test(bring.goal));
+      assert.match(leave.goal, /^Loses the .* star$/);
+      assert(bring.goal === null || /^Keeps the .* star$/.test(bring.goal));
     }
     assert.strictEqual(bring.extra, bring.money - bring.instead);
     assert(bring.extra >= 40 && bring.money >= bring.instead * 1.5 - 1);
     assert(
-      bring.scope.startsWith(`${money(bring.extra)} more, checkers busy `),
+      bring.scope.startsWith(
+        `costs ${money(bring.extra)} more and keeps the checkers busy for `,
+      ),
     );
     assert(!/;|star/.test(bring.scope), "the goal is its own field");
     assert.deepStrictEqual(
       [leave.money, leave.instead, leave.extra, leave.scope],
-      [0, 0, 0, "nothing more"],
+      [0, 0, 0, "costs nothing more"],
     );
   }
 }
@@ -628,7 +631,7 @@ function checkChoice(v, w) {
       covered,
       `${o.id} with ${v.cost.left} left`,
     );
-    assert.strictEqual(o.why, covered ? null : "not enough budget left");
+    assert.strictEqual(o.why, covered ? null : "Not enough budget left");
     if (!covered) assert(!w.choose(o.id), `${o.id} chosen without the budget`);
   }
   assert(ch.options.at(-1).available, "carrying on is always on offer");
@@ -643,7 +646,7 @@ function checkChoice(v, w) {
 function checkNews(n) {
   // A caught gift never reached the child, and a drift line waits for the first DRIFT_QUIET seconds
   // and names what to do now.
-  if (n.kind === "checked" && /^Caught/.test(n.text))
+  if (n.kind === "checked" && /^A checker spotted/.test(n.text))
     assert(
       !/ got /.test(n.text) && /remade/.test(n.text),
       `a caught line says the child got it: ${n.text}`,
@@ -652,7 +655,7 @@ function checkNews(n) {
     assert(
       n.t >= DRIFT_QUIET &&
         n.text.startsWith(`${ELF_NAMES[n.elf]} is trusting`) &&
-        n.text.includes(`Send ${ELF_NAMES[n.elf]} for cocoa`) &&
+        n.text.includes(`Send ${ELF_NAMES[n.elf]} for a cocoa break`) &&
         [0, 1, 2].includes(n.station),
       `drift line at ${n.t} s: ${n.text}`,
     );
@@ -661,8 +664,12 @@ function checkNews(n) {
       CONTROLS_NAMED.includes(n.control),
       `wrong gift control ${n.control}`,
     );
+    // The advice follows the sentence that names the two toys.
+    const advice = n.text.split(`${a(n.check.wanted.name)}. `)[1] ?? "";
     assert(
-      /(check|put|send|rest|swap|keep|read) [^.]*\.$/i.test(n.text),
+      n.text.startsWith("A wrong gift is aboard. ") &&
+        /\b(check|put|send|rest|swap|keep|read|set)\b/i.test(advice) &&
+        advice.endsWith("."),
       `wrong gift line names an action: ${n.text}`,
     );
     // Assist is asked for only where the AI is poor: a big gift.
@@ -675,7 +682,7 @@ function checkNews(n) {
     assert(!/wrong size/.test(n.text + n.check.made.name), n.text);
     assert(n.cause in WRONG_CAUSES, `cause ${n.cause}`);
     assert(
-      n.action && n.action.split(/\s+/).length <= 4,
+      n.action && n.action.split(/\s+/).length <= 5,
       `wrong gift action tag ${n.action}`,
     );
     assert(
@@ -1055,11 +1062,7 @@ const ANSWERS = {
   bottleneck: /^Not as run/,
 };
 const HEADLINES = {
-  slow: [
-    "Careful, but slow.",
-    "Slow, and wrong.",
-    "Slow, with too few checks.",
-  ],
+  slow: ["Careful, but slow.", "Slow and wrong.", "Slow, with too few checks."],
   tired: ["Too tired to keep up."],
   wrong: [
     "Fast, but wrong.",
@@ -1174,7 +1177,7 @@ for (const [name, rs] of Object.entries(results))
     );
     assert.strictEqual(
       acts.decided.used,
-      !/^decided 0 /.test(acts.decided.figure),
+      !/^Answered 0 /.test(acts.decided.figure),
       why,
     );
     for (const p of r.end.practices)
@@ -1197,14 +1200,16 @@ for (const name of IDLE)
   for (const r of results[name])
     assert.match(
       r.end.practices.find((p) => p.id === "escalate").actions[0].figure,
-      /^decided 0 of ([12]), 0 right, \1 left unanswered$/,
+      /^Answered 0 of ([12]), 0 of them right, \1 left unanswered$/,
       "an untouched player read no unclear wish",
     );
 for (const r of results.expert) {
   const escalate = r.end.practices.find((p) => p.id === "escalate");
   assert(
     escalate.used &&
-      /^decided ([12]) of [12], \1 right/.test(escalate.actions[0].figure),
+      /^Answered ([12]) of [12], \1 of them right/.test(
+        escalate.actions[0].figure,
+      ),
     escalate.actions[0].figure,
   );
   assert.strictEqual(
@@ -1215,10 +1220,12 @@ for (const r of results.expert) {
     r.end.practices
       .find((p) => p.id === "oversight")
       .actions.some(
-        (a) => a.label === "Trained the checkers not to just defer to AI",
+        (a) => a.label === "Trained the checkers not to simply trust the AI",
       ),
   );
-  assert(/trust/.test(r.end.practices.find((p) => p.id === "risk-check").note));
+  assert(
+    /reputation/.test(r.end.practices.find((p) => p.id === "risk-check").note),
+  );
   assert.strictEqual(
     Object.keys(r.end).join(),
     "stars,goals,right,wrong,lost,costs,headline,lesson,assurance,checkingAnswer,practices,causes,blunders,blunderTotal,blunderIds,reason,leftAt,reliability",
@@ -1431,7 +1438,10 @@ for (const right of [true, false]) {
   assert.strictEqual(w.advice({ ...x, exit: "checked" }).control, "decide");
   while (!w.end) (w.step(1), w.choice && w.choose("none"));
   const act = w.end.practices.find((p) => p.id === "escalate").actions[0];
-  assert.match(act.figure, /^decided 1 of 2, 0 right, 1 left unanswered$/);
+  assert.match(
+    act.figure,
+    /^Answered 1 of 2, 0 of them right, 1 left unanswered$/,
+  );
 }
 {
   const lazy = new Workshop({ seed: 5 });
@@ -1454,8 +1464,8 @@ for (const right of [true, false]) {
       assert.strictEqual(
         v.queues.orders.parcels.length
           ? v.queues.orders.blocked
-          : "the checking pile is full",
-        "the checking pile is full",
+          : "The checking pile is full.",
+        "The checking pile is full.",
       );
       waited++;
     }
@@ -1514,12 +1524,19 @@ for (const right of [true, false]) {
   );
   warn(Math.abs(did - promised) <= 0.15 * promised, "reading lever is honest");
   const v = new Workshop({ seed: 1 }).view();
-  for (const entry of [...v.levers.ai0, ...v.levers.ai1])
-    for (const k of ["who", "speed", "risk"])
+  // The words on each AI level stay short: a clause for who and how fast, which the page joins
+  // into one sentence, and one or two short sentences for the risk.
+  for (const entry of [...v.levers.ai0, ...v.levers.ai1]) {
+    for (const k of ["who", "speed"])
       warn(
-        entry[k].split(/\s+/).length <= 6,
-        `lever ${k} "${entry[k]}" is six words at most`,
+        entry[k].split(/\s+/).length <= 10 && !/[.:](\s|$)/.test(entry[k]),
+        `lever ${k} "${entry[k]}" is one clause of ten words at most`,
       );
+    warn(
+      entry.risk.split(/\s+/).length <= 14,
+      `lever risk "${entry.risk}" is fourteen words at most`,
+    );
+  }
 }
 
 for (const w of warnings) console.log(`warning: ${w}`);

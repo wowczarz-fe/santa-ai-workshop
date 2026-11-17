@@ -91,8 +91,8 @@ for (const big of [false, true]) {
     bring.instead,
     big ? WRONG_PRICE.big : WRONG_PRICE.everyday,
   );
-  assert.strictEqual(bring.goal, "No mistake counted");
-  assert.strictEqual(leave.goal, `Counts as 1 of ${need} mistakes`);
+  assert.strictEqual(bring.goal, "Not counted as a mistake");
+  assert.strictEqual(leave.goal, `Counts as mistake 1 of ${need}`);
   assert(!/star/.test(bring.goal + leave.goal), "no star is at stake yet");
   assert(leave.available && leave.extra === 0 && leave.money === 0);
   assert(mistakes(w).met);
@@ -118,9 +118,12 @@ for (const big of [false, true]) {
   const second = w.view().case;
   assert.strictEqual(second.step, "aboard");
   assert.strictEqual(second.affected.count, 1);
-  assert.match(second.text, /more than Santa's name can take\.$/);
-  assert.match(option(second, "bringBack").goal, /Few mistakes star saved/);
-  assert.match(option(second, "leave").goal, /Few mistakes star lost/);
+  assert.match(second.text, /, \w+ more than Santa's reputation can take\.$/);
+  assert.match(
+    option(second, "bringBack").goal,
+    /^Keeps the Few mistakes star$/,
+  );
+  assert.match(option(second, "leave").goal, /^Loses the Few mistakes star$/);
   assert(!mistakes(w).met);
   bringBack(w);
   assert(mistakes(w).met);
@@ -152,7 +155,7 @@ for (const big of [false, true]) {
   gift(w, true);
   const c = w.view().case;
   assert.strictEqual(c.affected.count, 1);
-  assert.match(option(c, "leave").goal, /star lost/);
+  assert.match(option(c, "leave").goal, /^Loses the .* star$/);
   assert(w.resolve(c.id, "leave"));
   w.track(0);
   assert.strictEqual(
@@ -176,7 +179,7 @@ for (const big of [false, true]) {
   assert.strictEqual(c.affected.count, wrongAboard(w) - need);
   assert.strictEqual(c.affected.count, 2);
   assert.strictEqual(c.gift, null, "more than one gift: none is named");
-  assert.match(option(c, "bringBack").goal, /star saved/);
+  assert.match(option(c, "bringBack").goal, /^Keeps the .* star$/);
   bringBack(w);
   assert.strictEqual(wrongAboard(w), need);
 }
@@ -243,7 +246,10 @@ for (const big of [false, true]) {
     "late mistakes still show their reputation consequence",
   );
   assert(!option(c, "bringBack").available);
-  assert.match(option(c, "bringBack").why, /no time/);
+  assert.match(
+    option(c, "bringBack").why,
+    /^Not enough time before the sleigh leaves$/,
+  );
   assert(option(c, "leave").available);
 }
 // Another decision open: the card waits its turn, and a faulty update does not suppress it.

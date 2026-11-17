@@ -1113,17 +1113,18 @@ body[data-look] #vigilance {
   width: 100%;
   padding-right: 30px;
 }
-/* An option's longer words open over the foot of its own card, under its title, and scroll there
-   when they are long, so they never spill past the card */
+/* An option's longer words open as a foot joined to its own card. The card keeps its height and
+   the foot grows with the words, so nothing is covered or cut off however long they are */
 .upgrade-wrap > .more-text {
-  position: absolute;
+  position: relative;
   z-index: 1;
-  inset: 76px 2px 5px;
-  margin: 0;
-  padding: 6px 10px;
-  overflow: auto;
-  border-radius: 0 0 10px 10px;
+  margin: -7px 0 0;
+  padding: 9px 11px 8px;
+  border: 1.5px solid var(--bc-press);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
   background: var(--bc-card, #fff);
+  box-shadow: 0 3px 0 var(--bc-press);
 }
 .elf[data-role="waiting"] .elf-task {
   color: inherit;
@@ -1663,7 +1664,7 @@ footer {
 .info-popover {
   position: fixed;
   z-index: 40;
-  width: 275px;
+  width: 300px;
   max-width: calc(100vw - 20px);
   max-height: calc(100dvh - 24px);
   overflow: auto;
@@ -3916,6 +3917,14 @@ body[data-look] #goals .hud-slot.budget-low .hud-figures b {
   body[data-look] main .dashboard #clock {
     top: 0;
     line-height: 34px;
+  }
+  /* The clock keeps a row of its own for the Paused word, so it never sits on the digits */
+  body[data-look] main .dashboard .clock-box {
+    grid-template-rows: 17px 34px 10px;
+    padding-bottom: 6px;
+  }
+  body[data-look] main .dashboard #pauseState {
+    align-self: start;
   }
 }
 

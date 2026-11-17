@@ -41,7 +41,7 @@ function checkOffers(w, v, name) {
     const adds = o.extra ?? o.money;
     if (o.available)
       assert(adds === 0 || adds < v.cost.left, `${name}: ${o.id}`);
-    else if (o.why === "not enough budget left") {
+    else if (o.why === "Not enough budget left") {
       assert(
         adds >= v.cost.left,
         `${name}: ${o.id} refused with budget to spare`,
@@ -53,7 +53,7 @@ function checkOffers(w, v, name) {
   for (const o of v.choice?.options ?? []) {
     const price = HALF_TIME_PRICE[o.id];
     assert.strictEqual(o.available, price === 0 || price < v.cost.left);
-    assert.strictEqual(o.why, o.available ? null : "not enough budget left");
+    assert.strictEqual(o.why, o.available ? null : "Not enough budget left");
     if (!o.available) {
       assert(!w.choose(o.id), `${name}: ${o.id} chosen anyway`);
       seen.refused++;
@@ -178,7 +178,7 @@ for (let seed = 1; seed <= 12; seed++)
   checkOffers(w, w.view(), "a recall with little budget");
   const [bring, leave] = c.options;
   assert(bring.extra >= 30 && !bring.available);
-  assert.strictEqual(bring.why, "not enough budget left");
+  assert.strictEqual(bring.why, "Not enough budget left");
   assert(leave.available && leave.why === null);
   assert(!w.resolve(c.id, "bringBack") && w.resolve(c.id, "leave") && !w.end);
 }

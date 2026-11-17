@@ -1226,22 +1226,12 @@
       );
     $("breakLines").replaceChildren(...lines);
   }
-  // A fact behind an option's (i), as a sentence. The rules may send a finished sentence, or a
-  // label with a value: the checkers' state and the elves' energy get sentences of their own.
-  const checkerStates = {
-    sharp: "Your checkers are sharp now.",
-    drifting: "Your checkers are starting to skip checks.",
-    "not looking": "Your checkers have stopped looking.",
-  };
-  function factSentence(f) {
-    const value = String(f.value ?? "");
-    if (/[.!?]$/.test(value)) return cap(value);
-    if (/^checkers now$/i.test(f.label) && checkerStates[value.toLowerCase()])
-      return checkerStates[value.toLowerCase()];
-    const energy = /^energy now$/i.test(f.label) && /\d+/.exec(value);
-    if (energy) return `The elves' average energy is now ${energy[0]}.`;
-    return `${f.label}: ${value}.`;
-  }
+  // A fact behind an option's (i) that has no chip of its own: a finished sentence as it stands,
+  // else its label and value.
+  const factSentence = (f) =>
+    /[.!?]$/.test(String(f.value))
+      ? cap(String(f.value))
+      : `${f.label}: ${f.value}.`;
   function paintBreakOptions(choice) {
     $("breakOptions").replaceChildren();
     $("breakOptions").style.setProperty("--choices", choice.options.length);
@@ -1277,14 +1267,7 @@
         );
       }
       if (stops)
-        chips.append(
-          make(
-            "span",
-            "upgrade-stops",
-            // The chip names the update as the Faulty update card does.
-            `Stops ${stops.value.replace(/^stops /i, "").replace(/\bbad update\b/, "faulty update")}`,
-          ),
-        );
+        chips.append(make("span", "upgrade-stops", `Stops ${stops.value}`));
       if (costs) {
         const chip = make("span", "upgrade-cost");
         chip.append(iconNode("budget", ""), costs.value);

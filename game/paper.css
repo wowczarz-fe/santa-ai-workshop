@@ -1910,10 +1910,11 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
   body[data-look="paper"] .dashboard .hud-slot .hud-figures small {
     font-size: 11px;
   }
+  /* The preview rides on the box's top edge, clear of the label under it */
   body[data-look="paper"] .dashboard .hud-slot .hud-preview {
     display: block;
     position: absolute;
-    top: -7px;
+    top: -12px;
     right: 4px;
     margin: 0;
     font-size: 11px;

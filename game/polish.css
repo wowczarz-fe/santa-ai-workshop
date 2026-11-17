@@ -1597,10 +1597,11 @@ body[data-look="polish"] .dashboard .hud-slot[data-state="failed"] .hud-bar {
   body[data-look="polish"] .dashboard .hud-slot {
     position: relative;
   }
+  /* The preview rides on the box's top edge, clear of the label under it */
   body[data-look="polish"] .dashboard .hud-slot .hud-preview {
     display: block;
     position: absolute;
-    top: -7px;
+    top: -12px;
     right: 4px;
     margin: 0;
     font-size: 10px;

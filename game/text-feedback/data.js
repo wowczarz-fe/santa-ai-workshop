@@ -988,9 +988,9 @@ window.TEXT_FEEDBACK = {
       kind: "tooltip",
       examples: [],
       texts: [
-        "Now reading {n} letters a minute.",
-        "Now making {n} toys a minute.",
-        "Now checking {n} gifts a minute.",
+        "Now reading {n} {letter|letters} a minute.",
+        "Now making {n} {toy|toys} a minute.",
+        "Now checking {n} {gift|gifts} a minute.",
       ],
     },
     {
@@ -1066,6 +1066,7 @@ window.TEXT_FEEDBACK = {
       examples: [],
       texts: [
         "{n} letters have been read and are waiting for room in the toy pile.",
+        "1 letter has been read and is waiting for room in the toy pile.",
       ],
     },
     {
@@ -1230,7 +1231,10 @@ window.TEXT_FEEDBACK = {
       where: "Same pop-up, second line once checks have been skipped",
       kind: "tooltip",
       examples: [],
-      texts: ["{n} checks have been skipped so far."],
+      texts: [
+        "{n} checks have been skipped so far.",
+        "1 check has been skipped so far.",
+      ],
     },
     {
       id: "info.elf",
@@ -1264,7 +1268,9 @@ window.TEXT_FEEDBACK = {
         "Same pop-up, first line: the child's wish in quotation marks, then what was wanted and what was sent",
       kind: "tooltip",
       examples: [],
-      texts: ['"{wish}" The child wanted a {wanted toy} but got a {made toy}.'],
+      texts: [
+        '"{wish}" The child wanted {a or an} {wanted toy} but got {a or an} {made toy}.',
+      ],
     },
     {
       id: "info.lastWrong.big",
@@ -1289,7 +1295,7 @@ window.TEXT_FEEDBACK = {
       kind: "tooltip",
       examples: [],
       texts: [
-        '"{wish}" The child wanted a {wanted toy}, but this was a {made toy}.',
+        '"{wish}" The child wanted {a or an} {wanted toy}, but this was {a or an} {made toy}.',
       ],
     },
     {
@@ -1748,7 +1754,7 @@ window.TEXT_FEEDBACK = {
         "After the player picks a reading on an unclear-wish card. Read out by screen readers (hidden live line under the top bar). Not shown on screen",
       kind: "sentence",
       examples: [],
-      texts: ["You chose a {toy} for {child}."],
+      texts: ["You chose {a or an} {toy} for {child}."],
     },
     {
       id: "news.behind",

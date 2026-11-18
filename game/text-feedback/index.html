@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Text feedback · Santa's AI Workshop</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../fonts.css" />
+    <link rel="stylesheet" href="feedback.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <img
+        class="masthead-logo"
+        src="../frontier-logo-white.png"
+        alt="Frontier Economics"
+        width="502"
+        height="205"
+      />
+      <div class="masthead-title">
+        <h1>Feedback on the game's text</h1>
+        <p id="buildLine">Santa's AI Workshop</p>
+      </div>
+      <label class="reviewer">
+        <span>Your name</span>
+        <input
+          id="reviewer"
+          type="text"
+          autocomplete="name"
+          placeholder="So we know whose feedback this is"
+        />
+      </label>
+    </header>
+
+    <div class="intro">
+      <details class="how" id="how" open>
+        <summary>About this page</summary>
+        <p>
+          Santa's AI Workshop is a short Christmas game in which the player runs
+          Santa's workshop and decides how much to trust the AI and how much to
+          check its work.
+          <a href="../" target="_blank" rel="noopener"
+            >Open the game in a new tab</a
+          >
+          to see the texts where they appear.
+        </p>
+        <p>
+          Below is every text in the game, screen by screen. Please tell us
+          wherever something is unclear, clumsy or wrong: suggest a better
+          wording, leave a comment, or both. You do not need to touch every
+          text. A text you leave alone counts as fine.
+        </p>
+        <p>
+          Reading everything takes about an hour. You can look only at the
+          screens you care about, and you can stop and come back at any time.
+          Words in braces, such as <span class="ph">{child}</span>, are filled
+          in by the game, so please keep them in your suggestions.
+        </p>
+        <p>
+          When you are done, choose <strong>Send your feedback</strong>, copy
+          your feedback and paste it into an email to the person who gave you
+          this link.
+        </p>
+        <p id="savedNote" class="saved-note">
+          Your feedback is saved in this browser as you type, so you can close
+          the page and carry on later on the same computer.
+        </p>
+      </details>
+      <label class="overall">
+        <span>Overall comments, if you have any</span>
+        <textarea
+          id="overall"
+          rows="4"
+          lang="en-GB"
+          spellcheck="true"
+          placeholder="Anything about the text as a whole: tone, length, words that keep coming back."
+        ></textarea>
+      </label>
+    </div>
+
+    <div class="toolbar" id="toolbar">
+      <p class="progress" id="progress" aria-live="polite">
+        Loading the texts.
+      </p>
+      <div class="filters" role="group" aria-label="Show">
+        <button type="button" data-filter="all" aria-pressed="true">
+          All texts
+        </button>
+        <button type="button" data-filter="mine" aria-pressed="false">
+          Texts with my feedback
+        </button>
+      </div>
+      <label class="search">
+        <span class="visually-hidden">Search the texts</span>
+        <input id="search" type="search" placeholder="Search the texts" />
+      </label>
+      <button type="button" id="sendButton" class="primary send-button">
+        Send your feedback
+      </button>
+    </div>
+
+    <div class="layout">
+      <nav class="sections" id="sections" aria-label="Screens"></nav>
+      <main id="main">
+        <p id="empty" class="empty" hidden>
+          No text matches. Change the filter or the search to see more.
+        </p>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+      <span id="toastText"></span>
+      <button type="button" id="toastUndo">Undo</button>
+      <button type="button" id="toastClose" aria-label="Dismiss this message">
+        Close
+      </button>
+    </div>
+
+    <dialog id="sendDialog" aria-labelledby="sendTitle">
+      <h2 id="sendTitle">Send your feedback</h2>
+      <p id="sendSummary"></p>
+      <p class="send-how">
+        Copy your feedback and paste it into an email to the person who gave you
+        this link.
+      </p>
+      <div class="dialog-actions">
+        <button type="button" id="copyText" class="primary">
+          Copy as text
+        </button>
+        <a id="mailLink" class="mail-link" href="mailto:">Open an email</a>
+      </div>
+      <p id="sendStatus" class="dialog-status" role="status"></p>
+      <label class="plain">
+        <span
+          >Your feedback as text. You can also select it and copy it
+          yourself.</span
+        >
+        <textarea id="plainText" readonly rows="12"></textarea>
+      </label>
+      <p class="secondary-links">
+        To carry on on another computer,
+        <button type="button" class="link" id="downloadFile">
+          download a file
+        </button>
+        here and
+        <button type="button" class="link" id="importButton">
+          import the file
+        </button>
+        there.
+        <input
+          id="importFile"
+          type="file"
+          accept="application/json,.json"
+          hidden
+        />
+      </p>
+      <div class="dialog-close">
+        <button type="button" id="sendClose">Close</button>
+      </div>
+    </dialog>
+
+    <script src="data.js"></script>
+    <script src="feedback.js"></script>
+  </body>
+</html>

@@ -24,8 +24,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/configure-pages@v6
+      # The game at the site root, the reviewers' text feedback page at /text-feedback/. The
+      # feedback page borrows the game's fonts.css, fonts and logo through ../, so the two keep
+      # this layout.
+      - name: Stage the site
+        run: |
+          mkdir _site
+          cp -R game/. _site/
+          cp -R review/text-feedback _site/text-feedback
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: game
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v5

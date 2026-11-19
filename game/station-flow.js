@@ -134,7 +134,6 @@ const StationFlow = (() => {
   }
 
   function update(view, running) {
-    if (document.body.dataset.look !== "paper") return;
     const reset = view.t < previousTime;
     const reduced = document.body.classList.contains("reduce-motion");
     if (reset || reduced || !running) stop();

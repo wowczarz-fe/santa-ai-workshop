@@ -1,5 +1,6 @@
 (() => {
   "use strict";
+  // The paper stylesheets are scoped to this mark (docs/adr/0022-ship-the-paper-look-only.md).
   document.body.dataset.look = "paper";
   document.body.insertAdjacentHTML(
     "afterbegin",

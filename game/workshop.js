@@ -876,14 +876,6 @@ class Workshop {
     return team.length ? sum(team.map((e) => e.trust)) / team.length : 0;
   }
 
-  // The station on Assist whose confirmers trust the AI most, as a run of clean drafts.
-  confirmRun() {
-    return Math.max(
-      0,
-      ...[0, 1].filter((s) => this.ai[s] === 1).map((s) => this.trustAt(s)),
-    );
-  }
-
   vigilance(run = this.trustAt(2)) {
     if (this.vig.trained) return VIGILANCE[0];
     return VIGILANCE.findLast((v) => run >= v.from);
@@ -915,13 +907,6 @@ class Workshop {
     const sample = x.roll.sample < SAMPLE;
     const risky = x.w.big || this.suspect(x);
     return [sample, sample || Boolean(risky), true][level];
-  }
-
-  // Parcels from a known faulty update still in the workshop.
-  marked() {
-    return this.incident?.known
-      ? [...this.q.check, ...this.q.pass].filter((x) => x.batch)
-      : [];
   }
 
   pay(kind, amount) {
@@ -1687,16 +1672,6 @@ class Workshop {
     return c.parcels;
   }
 
-  failChance(u) {
-    const signs = Number(u.bigChange) + Number(u.briefTesting);
-    const lean = (p) => p ** signs * (1 - p) ** (2 - signs);
-    const prior = 0.5; // half the planned updates are faulty
-    return (
-      (prior * lean(SIGN_IF_FAULTY)) /
-      (prior * lean(SIGN_IF_FAULTY) + (1 - prior) * lean(SIGN_IF_GOOD))
-    );
-  }
-
   // Seconds per toy: the machine alone, or each elf confirming its drafts, goes faster with a faster
   // machine; by hand does not.
   makeSeconds(level, speed = this.machineSpeed) {
@@ -2224,13 +2199,6 @@ class Workshop {
     }
   }
 
-  inflowOf(id) {
-    return (
-      sum(this.flow[id].seconds.map((s) => s.arrived)) *
-      (60 / Math.max(1, this.flow[id].seconds.length))
-    );
-  }
-
   // Compares the pile now with ten seconds ago, a few seconds averaged at each end so it does not flicker.
   trend(id) {
     const seconds = this.flow[id].seconds;
@@ -2462,7 +2430,6 @@ class Workshop {
         name,
         summary: summaries[level],
         perMinute: Math.round(perMinute[level]),
-        costPerMinute: Math.round(AI_PRICE[level] * 60),
       }));
     };
     const checking = [
@@ -3534,7 +3501,6 @@ class Workshop {
       parcels: this.q[id].map((x) => this.parcel(x)),
       limit: QUEUES[id].limit,
       rate: Math.round((this.capacity(s, pool) * 60) / seconds),
-      inflow: Math.round(this.inflowOf(id)),
       trend: this.trend(id),
       progress:
         head && next === id ? Math.min(1, (this.work[key] ?? 0) / seconds) : 0,
@@ -3608,11 +3574,9 @@ class Workshop {
     return {
       t: this.t,
       duration: this.duration,
-      target: TARGET,
       elves: this.elves.map((e) => ({
         name: e.name,
         station: e.station,
-        tired: Math.round(e.tired),
         energy: energy(e.tired),
         mood: mood(e),
         resting: e.rest > 0,
@@ -3630,7 +3594,6 @@ class Workshop {
           staff: this.staff(s).length,
           working,
           idle: this.staff(s).length - working,
-          queues: [...STATION_QUEUES[s]],
           blocked: this.stationBlocked(s),
           rate: Math.round(rate * 60),
         };
@@ -3640,12 +3603,7 @@ class Workshop {
       ),
       vigilance: {
         state: v.state,
-        name: v.name,
-        cleanRun: Math.round(this.trustAt(2)),
-        confirming: this.vigilance(this.confirmRun()).name,
-        secondsPerCheck: Math.round(this.secondsPerCheck() * 10) / 10,
         skipped: this.vig.skipped,
-        trained: this.vig.trained,
         swap: this.drift(),
       },
       case: this.cases[0] ? this.caseView(this.cases[0]) : null,
@@ -3695,7 +3653,6 @@ class Workshop {
       incident: inc && {
         known: inc.known,
         rollingBack: inc.rollingBack,
-        suspectWaiting: this.marked().length,
       },
       actions: Object.fromEntries(
         CONTROLS.map((name) => {

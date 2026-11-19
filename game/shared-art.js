@@ -1,4 +1,4 @@
-// Drawings shared by every look: interface icons (ui-*) and the toys children asked for (toy-*).
+// Drawings used across the page: interface icons (ui-*) and the toys children asked for (toy-*).
 // Generated from the designers' SVG files; edit those and regenerate.
 const SharedArt = (() => {
   const defs =

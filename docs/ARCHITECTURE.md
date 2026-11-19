@@ -72,37 +72,36 @@ balance; the page reads them from `view()`.
 The page reads only `view()`. Whether an unrevealed parcel is wrong is left out of it. Money is in
 pounds, rounded to whole pounds unless said otherwise. Times are seconds.
 
-| Field          | Type                             | Example                                              | Meaning                                                                                                          |
-| -------------- | -------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `t`            | number                           | `40.0000000001`                                      | Seconds played, unrounded                                                                                        |
-| `duration`     | number                           | `150`                                                | Seconds in the whole game                                                                                        |
-| `target`       | number                           | `145`                                                | Right gifts the sleigh needs for the Full sleigh star                                                            |
-| `elves`        | array of elf                     | see below                                            | The eight elves, always in the same order                                                                        |
-| `ai`           | `[number, number]`               | `[2, 1]`                                             | AI level at reading and at toy making: 0 by hand, 1 Assist, 2 Automate                                           |
-| `checking`     | number                           | `1`                                                  | 0 a few, 1 the risky ones, 2 all                                                                                 |
-| `levers`       | object                           | see below                                            | What each lever position does now                                                                                |
-| `stations`     | array of 3 station               | see below                                            | Reading, toy making, checking                                                                                    |
-| `queues`       | object of queue                  | see below                                            | `letters`, `orders`, `check`, `pass`, `rework`                                                                   |
-| `vigilance`    | object                           | see below                                            | How far the elves have come to trust the AI                                                                      |
-| `case`         | decision or `null`               | see Decisions                                        | The open decision                                                                                                |
-| `casesWaiting` | number                           | `1`                                                  | Decisions waiting behind the open one                                                                            |
-| `choice`       | half-time or `null`              | see Half-time                                        | Set only while half-time is open                                                                                 |
-| `run`          | object                           | see below                                            | The one sleigh: half, clock, gifts aboard, goals                                                                 |
-| `cost`         | `{ spent, limit, left, low }`    | `{ spent: 79, limit: 900, left: 821, low: false }`   | The budget: cost so far, wrong gifts aboard included, what is left, and whether it runs low                      |
-| `focus`        | object or `null`                 | see below                                            | The one thing that most needs the player now                                                                     |
-| `sleigh`       | `{ right, wrong, parcels }`      | `{ right: 36, wrong: 1, parcels: [...] }`            | Gifts aboard; `parcels` is every parcel aboard, each with `result`                                               |
-| `lost`         | number                           | `0`                                                  | Letters lost: to a full letter pile, or unclear letters undecided at the end                                     |
-| `prices`       | `{ wrongEveryday, wrongBig }`    | `{ wrongEveryday: 12, wrongBig: 100 }`               | What a wrong everyday and a wrong big gift cost                                                                  |
-| `pace`         | `{ projected, behind, slowest }` | `{ projected: 137, behind: true, slowest: null }`    | Right gifts expected at departure, whether short of the target, the station holding things up (0 to 2) or `null` |
-| `incident`     | object or `null`                 | `{ known: true, rollingBack: 0, suspectWaiting: 2 }` | Set once a faulty update is installed (below)                                                                    |
-| `actions`      | object                           | see below                                            | For `ai0`, `ai1`, `checking`: whether it works now and what it costs                                             |
-| `news`         | array of news                    | see News                                             | Up to 30 items, newest first                                                                                     |
-| `end`          | end or `null`                    | see The end                                          | Set when the sleigh has left                                                                                     |
+| Field          | Type                             | Example                                            | Meaning                                                                                                          |
+| -------------- | -------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `t`            | number                           | `40.0000000001`                                    | Seconds played, unrounded                                                                                        |
+| `duration`     | number                           | `150`                                              | Seconds in the whole game                                                                                        |
+| `elves`        | array of elf                     | see below                                          | The eight elves, always in the same order                                                                        |
+| `ai`           | `[number, number]`               | `[2, 1]`                                           | AI level at reading and at toy making: 0 by hand, 1 Assist, 2 Automate                                           |
+| `checking`     | number                           | `1`                                                | 0 a few, 1 the risky ones, 2 all                                                                                 |
+| `levers`       | object                           | see below                                          | What each lever position does now                                                                                |
+| `stations`     | array of 3 station               | see below                                          | Reading, toy making, checking                                                                                    |
+| `queues`       | object of queue                  | see below                                          | `letters`, `orders`, `check`, `pass`, `rework`                                                                   |
+| `vigilance`    | object                           | see below                                          | How far the elves have come to trust the AI                                                                      |
+| `case`         | decision or `null`               | see Decisions                                      | The open decision                                                                                                |
+| `casesWaiting` | number                           | `1`                                                | Decisions waiting behind the open one                                                                            |
+| `choice`       | half-time or `null`              | see Half-time                                      | Set only while half-time is open                                                                                 |
+| `run`          | object                           | see below                                          | The one sleigh: half, clock, gifts aboard, goals                                                                 |
+| `cost`         | `{ spent, limit, left, low }`    | `{ spent: 79, limit: 900, left: 821, low: false }` | The budget: cost so far, wrong gifts aboard included, what is left, and whether it runs low                      |
+| `focus`        | object or `null`                 | see below                                          | The one thing that most needs the player now                                                                     |
+| `sleigh`       | `{ right, wrong, parcels }`      | `{ right: 36, wrong: 1, parcels: [...] }`          | Gifts aboard; `parcels` is every parcel aboard, each with `result`                                               |
+| `lost`         | number                           | `0`                                                | Letters lost: to a full letter pile, or unclear letters undecided at the end                                     |
+| `prices`       | `{ wrongEveryday, wrongBig }`    | `{ wrongEveryday: 12, wrongBig: 100 }`             | What a wrong everyday and a wrong big gift cost                                                                  |
+| `pace`         | `{ projected, behind, slowest }` | `{ projected: 137, behind: true, slowest: null }`  | Right gifts expected at departure, whether short of the target, the station holding things up (0 to 2) or `null` |
+| `incident`     | object or `null`                 | `{ known: true, rollingBack: 0 }`                  | Set once a faulty update is installed (below)                                                                    |
+| `actions`      | object                           | see below                                          | For `ai0`, `ai1`, `checking`: whether it works now and what it costs                                             |
+| `news`         | array of news                    | see News                                           | Up to 30 items, newest first                                                                                     |
+| `end`          | end or `null`                    | see The end                                        | Set when the sleigh has left                                                                                     |
 
 ### Elves
 
-An elf is `{ name, station, tired, energy, mood, resting, doing }`, for example
-`{ name: "Pip", station: 2, tired: 30, energy: 66, mood: "fresh", resting: false, doing: "checking gifts" }`.
+An elf is `{ name, station, energy, mood, resting, doing }`, for example
+`{ name: "Pip", station: 2, energy: 66, mood: "fresh", resting: false, doing: "checking gifts" }`.
 
 - `name`: string. `station`: 0 to 3 (3 the cocoa break).
 - `energy`: number, 0 to 100. 100 is fresh, 0 is burnout; it falls as the elf works and rises on
@@ -110,8 +109,6 @@ An elf is `{ name, station, tired, energy, mood, resting, doing }`, for example
 - `mood`: `"fresh"` (energy 66 or more: full speed), `"tiring"` (energy 43 to 65: slower),
   `"tired"` (energy 42 or less: slower and slipping) or `"spent"` (burnt out, on a long break).
   Use it for the bar's colour (green, amber, red, empty) and the face.
-- `tired`: number, 0 to 100, the same state the other way round: tiredness, with burnout at 88.
-  The page should read `energy` and `mood`.
 - `resting`: `true` while a burnt-out elf is on its long break, which cannot be cut short. It comes
   back to its station by itself after 15 seconds.
 - `doing`: a short phrase: `"reading letters"`, `"confirming the AI's readings"`, `"making toys"`,
@@ -125,8 +122,8 @@ An elf is `{ name, station, tired, energy, mood, resting, doing }`, for example
 `levers` is `{ ai0, ai1, checking }`.
 
 - `ai0` (reading) and `ai1` (toy making) each hold three entries, one per level, of
-  `{ name, summary, perMinute, costPerMinute }`, for example
-  `{ name: "Automate", summary: "The AI works alone and needs no elves. It rarely slips on everyday letters, but misreads about 1 in 7 letters for big gifts.", perMinute: 100, costPerMinute: 43 }`.
+  `{ name, summary, perMinute }`, for example
+  `{ name: "Automate", summary: "The AI works alone and needs no elves. It rarely slips on everyday letters, but misreads about 1 in 7 letters for big gifts.", perMinute: 100 }`.
   `name` is "By hand", "Assist" or "Automate". `summary` is the tooltip on the level's button:
   two complete sentences of about twenty words, what the level does and then how fast or how
   reliable it is. The figures come from `RISK`, and Assist's speed against by hand from the
@@ -139,18 +136,17 @@ An elf is `{ name, station, tired, energy, mood, resting, doing }`, for example
 
 ### Stations and queues
 
-A station is `{ name, staff, working, idle, queues, blocked, rate }`, for example
-`{ name: "Checking", staff: 4, working: 4, idle: 0, queues: ["check", "pass", "rework"], blocked: null, rate: 101 }`.
+A station is `{ name, staff, working, idle, blocked, rate }`, for example
+`{ name: "Checking", staff: 4, working: 4, idle: 0, blocked: null, rate: 101 }`.
 `name` is the station's heading word, `"Letters"`, `"Toys"` or `"Checking"`; every rules line that
 points at a station uses it ("Move an elf to Toys", "Pip is rested and back at Letters").
-`queues` lists the ids it works on in the order to draw them: station 0 `["letters"]`, station 1
-`["orders"]`, station 2 `["check", "pass", "rework"]`. `blocked` is `null` or the reason as a
+`blocked` is `null` or the reason as a
 sentence, such as `"The toy pile is full."`. `rate` is parcels a minute at its current staffing and AI level.
 
-A queue is `{ id, name, parcels, limit, rate, inflow, trend, progress, blocked }`, for example
-`{ id: "check", name: "To check", parcels: [...], limit: 10, rate: 51, inflow: 22, trend: "steady", progress: 0.42, blocked: null, held: 0 }`.
+A queue is `{ id, name, parcels, limit, rate, trend, progress, blocked, held }`, for example
+`{ id: "check", name: "To check", parcels: [...], limit: 10, rate: 51, trend: "steady", progress: 0.42, blocked: null, held: 0 }`.
 `parcels` are parcels (below), `limit` the pile's size, `rate` parcels a minute at the current
-staffing, `inflow` parcels a minute arriving, `trend` `"growing"`, `"steady"` or `"shrinking"`
+staffing, `trend` `"growing"`, `"steady"` or `"shrinking"`
 over the last ten seconds, `progress` 0 to 1 towards the next parcel (unrounded), `blocked` `null`
 or the reason as a sentence, such as `"Nobody is reading the letters."`, `held` the unclear letters the player has read
 that wait for room in a full pile (toy orders only, else 0). Limits: letters 24, orders 20, check
@@ -175,23 +171,18 @@ A parcel is `{ id, wish, big, unclear, wanted, made, suspect, result }`, for exa
 
 ### Vigilance
 
-`vigilance` is `{ state, name, cleanRun, confirming, secondsPerCheck, skipped, trained, swap }`, for
-example
-`{ state: "careful", name: "sharp", cleanRun: 6, confirming: "sharp", secondsPerCheck: 4.5, skipped: 0, trained: false, swap: null }`.
+`vigilance` is `{ state, skipped, swap }`, for example `{ state: "careful", skipped: 0, swap: null }`.
 
-- `state` is the checkers' state, `"careful"`, `"relaxing"` or `"waving through"`, and `name` the
-  word to show: `"sharp"`, `"drifting"` or `"not looking"`. Each elf keeps its own run of clean AI
+- `state` is the checkers' state, `"careful"`, `"relaxing"` or `"waving through"`. Each elf keeps its own run of clean AI
   gifts seen at its station, and a station reads from the average of its elves. Checkers drift
   after 8 (they check faster and skip half the AI gifts) and stop looking after 20 (they skip nine
   in ten). A caught mistake takes 5 off each checker's run. A cocoa break, a burnout or a move to
   another station starts an elf's run afresh, so swapping in a rested elf pulls a drifting station
   back; training at half-time keeps every elf sharp for the rest of the game.
-- `confirming` is the same word for the elves who confirm AI drafts on Assist, at the Assist
-  station that trusts the AI most. Every clean draft counts as a clean gift for each confirmer at
-  that station; a drifting confirmer passes more wrong drafts.
-- `cleanRun` is the checkers' average run of clean AI gifts, `secondsPerCheck` what a check takes now,
-  `skipped` how many checks they have skipped, `trained` whether half-time training was bought.
-  Training keeps checkers and confirmers sharp for the rest of the game.
+- Elves who confirm AI drafts on Assist drift the same way: every clean draft counts as a clean
+  gift for each confirmer at that station, and a drifting confirmer passes more wrong drafts.
+- `skipped` is how many checks the checkers have skipped. Training keeps checkers and confirmers
+  sharp for the rest of the game.
 - `swap` is the one drift prompt now: `null`, or `{ elf, station, name }`, an elf (its index in
   `elves`) at a drifting station. When a prompt is needed it names the elf who trusts the AI most
   at the checkers if they drift, else at the Assist station that trusts the AI most, and it keeps
@@ -276,10 +267,9 @@ costs, in the player's words.
 
 ### Incident
 
-`incident` is `null` until a faulty update is installed, then `{ known, rollingBack, suspectWaiting }`:
-`known` once an elf confirming toys, the checkers or the sleigh crew spot its full-sized trains,
-`rollingBack` seconds of rollback left (0 when not rolling back), `suspectWaiting` known faulty
-parcels still in the workshop. A good update never sets it.
+`incident` is `null` until a faulty update is installed, then `{ known, rollingBack }`: `known`
+once an elf confirming toys, the checkers or the sleigh crew spot its full-sized trains,
+`rollingBack` seconds of rollback left (0 when not rolling back). A good update never sets it.
 
 ## Decisions
 

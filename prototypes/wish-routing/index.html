@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wish routing · Santa’s workshop</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="eyebrow">North Pole postal service · Experiment D</span
+        ><button id="restart">Start again</button>
+      </header>
+      <section class="heading">
+        <div>
+          <h1>The right wish.<br /><em>The right hands.</em></h1>
+          <p>
+            Santa needs AI’s speed. Pip the elf can ask the questions AI misses.
+          </p>
+        </div>
+        <div class="score">
+          <strong id="score">0 <small>/ 24</small></strong
+          ><span>correct gifts delivered</span>
+        </div>
+      </section>
+      <section id="intro" class="intro">
+        <p>
+          <b>Send the first clear wish to AI.</b> Save Pip for wishes that need
+          a question or a careful check. You have 90 seconds to deliver 24
+          correct gifts.
+        </p>
+        <button id="start" class="primary">Open the postbag →</button>
+      </section>
+      <section id="play" hidden>
+        <div class="timeline">
+          <span id="time">90s until departure</span
+          ><progress id="clock" max="90" value="90"></progress
+          ><button id="pause">Pause</button>
+        </div>
+        <p id="bulletin" class="bulletin"></p>
+        <div class="workbench">
+          <section class="postbag">
+            <div class="section-title">
+              <h2>Waiting wishes</h2>
+              <span id="queue-count"></span>
+            </div>
+            <p class="hint">
+              Pick a letter, then choose its maker. Letters wait 18 seconds.
+            </p>
+            <div id="queue"></div>
+          </section>
+          <section class="desk">
+            <article id="letter" class="letter"></article>
+            <div class="routes">
+              <button id="ai" class="route">
+                <span>✦ AI toy machine</span><b>Fast · 2 seconds</b
+                ><small id="ai-state"></small></button
+              ><button id="elf" class="route human">
+                <span>✉ Pip the elf</span><b>Ask & check · 7 seconds</b
+                ><small id="elf-state"></small>
+              </button>
+            </div>
+            <p
+              id="response"
+              class="response"
+              role="status"
+              aria-live="polite"
+            ></p>
+          </section>
+        </div>
+        <section class="deliveries">
+          <h2>At the doorstep <span>Gifts open here.</span></h2>
+          <div id="deliveries" aria-live="polite"></div>
+        </section>
+      </section>
+      <section id="result" class="result" hidden></section>
+      <footer>
+        Frontier Economics · AI assurance at the North Pole
+        <span id="seed"></span>
+      </footer>
+    </main>
+    <script src="rules.js"></script>
+    <script src="game.js"></script>
+  </body>
+</html>

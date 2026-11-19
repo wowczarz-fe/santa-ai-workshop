@@ -2363,7 +2363,7 @@ dialog p {
 }
 
 /* ==== Half-time card and end screen: shared layout ====
-   Colours and type come from the --bc-* tokens, which polish.css and paper.css set per look. */
+   Colours and type come from the --bc-* tokens, which paper.css sets. */
 #breakDialog,
 #report {
   --bc-paper: #f8f8f4;

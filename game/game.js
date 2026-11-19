@@ -1,20 +1,10 @@
 (() => {
   "use strict";
-  const look =
-    new URLSearchParams(location.search).get("look") === "polish"
-      ? "polish"
-      : "paper";
-  document.body.dataset.look = look;
-  const Art =
-    look === "polish" && typeof PolishArt !== "undefined"
-      ? PolishArt
-      : PaperArt;
+  document.body.dataset.look = "paper";
   document.body.insertAdjacentHTML(
     "afterbegin",
-    PaperArt.defs + (Art === PaperArt ? "" : Art.defs) + SharedArt.defs,
+    PaperArt.defs + SharedArt.defs,
   );
-  const elfSVG = Art.elf;
-  const artSymbol = (id) => Art.symbol?.(id) || id;
 
   const $ = (id) => document.getElementById(id);
   const text = (id, value) => {
@@ -138,22 +128,12 @@
     b.setAttribute("aria-label", label);
     return b;
   };
-  document.querySelectorAll("[name=look]").forEach((radio) => {
-    radio.checked = radio.value === look;
-    radio.disabled =
-      radio.value === "polish" && typeof PolishArt === "undefined";
-    radio.addEventListener("change", () => {
-      const url = new URL(location.href);
-      url.searchParams.set("look", radio.value);
-      location.replace(url);
-    });
-  });
   const actionGroups = new Map();
   for (let s = 0; s < 3; s++) {
     const station = make("section", "station");
     station.id = `station${s}`;
     station.dataset.destination = s;
-    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2></h2></div><div class="machine">${Art.scene(s)}<span class="station-bottleneck" id="bottleneck${s}"></span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
+    station.innerHTML = `<div class="column-heading"><span class="station-number">0${s + 1}</span><h2></h2></div><div class="machine">${PaperArt.scene(s)}<span class="station-bottleneck" id="bottleneck${s}"></span><span class="focus-note" id="focus${s}"></span></div><div class="queue-piles" id="piles${s}"></div><div class="crew-heading"><span>Elves</span><span id="staff${s}" data-info="staff:${s}" tabindex="0"></span></div><div class="crew" id="elves${s}"></div><span class="crew-hint" id="spare${s}"></span><button class="move-target" data-move="${s}" hidden>Move here</button><div class="controls" id="controls${s}"></div><div class="feedback-slot" id="feedback${s}"></div>`;
     station.querySelector(".column-heading").append(infoButton(`station:${s}`));
     $("board").insertBefore(station, $("sleigh"));
     // One pile per station; at checking the straight-through and remake piles are two small
@@ -197,7 +177,7 @@
         const b = make("button", "switch-button");
         b.dataset.ai = `${s},${level}`;
         b.dataset.info = `ai:${s}:${level}`;
-        b.innerHTML = `<span class="switch-art" aria-hidden="true">${Art.icon(["ic-hand", "ic-assist", "ic-cog"][level])}</span><span class="switch-label">${["By hand", "Assist", "Automate"][level]}</span>`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${PaperArt.icon(["ic-hand", "ic-assist", "ic-cog"][level])}</span><span class="switch-label">${["By hand", "Assist", "Automate"][level]}</span>`;
         position.append(
           b,
           infoButton(
@@ -217,7 +197,7 @@
         const b = make("button", "switch-button");
         b.dataset.checking = level;
         b.dataset.info = `checking:${level}`;
-        b.innerHTML = `<span class="switch-art" aria-hidden="true">${Art.icon(["ic-few", "ic-risky", "ic-all"][level])}</span><span class="switch-label">${["A few", "Risky", "All"][level]}</span>`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${PaperArt.icon(["ic-few", "ic-risky", "ic-all"][level])}</span><span class="switch-label">${["A few", "Risky", "All"][level]}</span>`;
         position.append(b, infoButton(`checking:${level}`));
         sw.append(position);
       }
@@ -257,7 +237,7 @@
     sleighScene = make("div", "paper-scene paper-sleigh-scene");
   // Keep the cargo and the target together in the sleigh card.
   $("sleighTotal").append(cargoBadge);
-  sleigh.querySelector(".sleigh-art").innerHTML = Art.scene(3);
+  sleigh.querySelector(".sleigh-art").innerHTML = PaperArt.scene(3);
   sleighScene.append(
     sleigh.querySelector(".sleigh-art"),
     sleigh.querySelector(".sleigh-total"),
@@ -269,9 +249,7 @@
   sleigh.append(sleighScene, sleighBelt, $("cocoa"), sleighControls);
   $("cocoa").classList.add("paper-floor");
   $("cocoa").querySelector(".cocoa-label > span").innerHTML =
-    Art !== PaperArt
-      ? Art.icon("mug")
-      : '<svg viewBox="0 0 80 80" aria-hidden="true"><use href="#mug"/></svg>';
+    '<svg viewBox="0 0 80 80" aria-hidden="true"><use href="#mug"/></svg>';
   $("stationPicker").addEventListener("click", (event) => {
     const button = event.target.closest("[data-station-page]");
     if (!button) return;
@@ -541,7 +519,7 @@
       b.draggable = true;
       b.dataset.elf = i;
       b.dataset.info = `elf:${i}`;
-      b.innerHTML = `${elfSVG(i)}<span class="elf-name"></span><span class="elf-task"></span><span class="energy" aria-hidden="true"><i></i></span>`;
+      b.innerHTML = `${PaperArt.elf(i)}<span class="elf-name"></span><span class="elf-task"></span><span class="energy" aria-hidden="true"><i></i></span>`;
       // On a phone the cocoa strip is a page away, so a selected elf can be sent from its card.
       const rest = make("button", "rest-button");
       rest.dataset.rest = i;
@@ -738,9 +716,8 @@
             );
             // Parcels: a big gift is the gold parcel with a "big" tag; others red or green.
             item.innerHTML = ["letters", "orders"].includes(id)
-              ? Art.pile?.(id, index) ||
-                Art.icon(id === "orders" ? "parcel-r" : "env")
-              : Art.icon(
+              ? PaperArt.icon(id === "orders" ? "parcel-r" : "env")
+              : PaperArt.icon(
                   p.big ? "parcel-k" : index % 2 ? "parcel-g" : "parcel-r",
                 );
             item.setAttribute("aria-hidden", "true");
@@ -792,24 +769,19 @@
       b.dataset.role = role;
       b.querySelector(".elf-eyes").setAttribute(
         "href",
-        "#" +
-          artSymbol(
-            { fresh: "eyes", tiring: "eyes-drowsy" }[mood] || "eyes-tired",
-          ),
+        "#" + ({ fresh: "eyes", tiring: "eyes-drowsy" }[mood] || "eyes-tired"),
       );
       b.querySelector(".elf-prop").setAttribute(
         "href",
         "#" +
-          artSymbol(
-            {
-              reading: "p-letter",
-              making: "p-hammer",
-              remaking: "p-hammer",
-              checking: "p-glass",
-              confirming: "p-confirming",
-              resting: "p-resting",
-            }[role] || "",
-          ),
+          ({
+            reading: "p-letter",
+            making: "p-hammer",
+            remaking: "p-hammer",
+            checking: "p-glass",
+            confirming: "p-confirming",
+            resting: "p-resting",
+          }[role] || ""),
       );
     });
     // Four to six elves in one place stand in two rows of full cards, so the floor grows.
@@ -1079,10 +1051,6 @@
     node.setAttribute("aria-hidden", "true");
     return node;
   };
-  const sleighArt = () =>
-    look === "polish"
-      ? '<svg viewBox="0 0 280 150" aria-hidden="true"><use href="#polish-sleigh"/></svg>'
-      : uiIcon("sleigh");
   const breakScene =
     '<svg viewBox="0 0 940 120" preserveAspectRatio="xMidYMax slice" aria-hidden="true">' +
     '<circle class="scene-moon" cx="760" cy="44" r="20"/><circle class="scene-moon-shade" cx="769" cy="38" r="17"/>' +
@@ -1093,9 +1061,10 @@
     '<path class="scene-roof-line" d="M0 104 L40 96 L80 104 V100 L120 92 L160 100 V108 L200 108 V100 L250 90 L300 100 V104 L360 94 L420 104 V105.6 L470 93.6 L520 105.6 V97.2 L580 80.4 L640 97.2 V102 L700 87.6 L760 102 V94.8 L820 79.2 L880 94.8 V104.4 L940 90"/>' +
     "</svg>";
   $("breakScene").innerHTML = breakScene;
-  $("breakDeparture").innerHTML = sleighArt();
+  $("breakDeparture").innerHTML = uiIcon("sleigh");
   // The end hero keeps its sleigh but no snow: dots there read as smudges on the figures.
-  $("endScene").innerHTML = `<span class="end-sleigh">${sleighArt()}</span>`;
+  $("endScene").innerHTML =
+    `<span class="end-sleigh">${uiIcon("sleigh")}</span>`;
   $("replay").innerHTML = `${uiIcon("restart")}<span>Play again</span>`;
   // Header buttons carry an icon too: a phone shows the icon alone, at a full-sized tap target.
   for (const [id, icon] of [
@@ -1415,9 +1384,7 @@
       effect.classList.toggle("in-slot", !visible);
       effect.style.left = `${Math.max(12, Math.min(innerWidth - 100, visible ? column.left + 12 : target.left + 4))}px`;
       const top = visible
-        ? look === "paper"
-          ? $("sleighTotal").getBoundingClientRect().top
-          : to.top - 6
+        ? $("sleighTotal").getBoundingClientRect().top
         : target.top - 14;
       effect.style.top = `${Math.max(4, Math.min(innerHeight - 40, top))}px`;
       effect.style.setProperty("--fly-x", "0px");
@@ -2360,7 +2327,7 @@
       drag.active = true;
       closeInfo();
       selected = drag.id;
-      $("dragGhost").innerHTML = elfSVG(drag.id);
+      $("dragGhost").innerHTML = PaperArt.elf(drag.id);
       $("dragGhost").hidden = false;
       paint();
     }

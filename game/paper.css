@@ -977,21 +977,6 @@ dialog {
     min-width: 0;
   }
 }
-.look-choice {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 10px;
-  margin: 15px 0;
-}
-.look-choice label {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  cursor: pointer;
-}
 #countdownRing {
   width: 35px;
   height: 35px;
@@ -1283,11 +1268,7 @@ body[data-look="paper"] .dial-word {
 }
 /* ==== End of half-time card and end screen: paper look ==== */
 
-.look-choice[hidden] {
-  display: none;
-}
-
-/* ==== Play screen, review pass: the paper look brought level with the polished one ====
+/* ==== Play screen, review pass ====
    Every rule here is scoped to the paper look. Colours: gold is the decision cue's alone; ink
    blue marks what needs the player (walkthrough targets, the rules' tags, keyboard focus); red
    stays a wrong gift's. */

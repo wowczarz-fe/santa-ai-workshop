@@ -2,6 +2,7 @@
   "name": "santa-ai-workshop",
   "private": true,
   "scripts": {
+    "package": "node scripts/package-website.js",
     "prepare": "git config core.hooksPath .githooks",
     "test": "for f in tests/*.js; do echo \"== $f\"; node \"$f\" || exit 1; done"
   },

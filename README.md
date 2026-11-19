@@ -52,3 +52,23 @@ Hosting notes:
 - "Copy result" shares a link to the game file itself, not the article page around it.
 
 Working on the game with an agent: start at [`AGENTS.md`](AGENTS.md).
+
+## Publish on the Frontier website
+
+The Frontier website shows the game in an Interactive block. Its editor uploads the files into a
+folder under Media › Interactives.
+
+1. Run `npm run package`. It writes three versions to `dist/website/`, each with a zip beside it,
+   and stops with an error if a file the page names is missing.
+2. Send the editor `dist/website/single/index.html`, one file that holds the whole game. If the
+   website's security policy blocks fonts written into the page, send
+   `single-with-font-files/` instead: `index.html` plus a `fonts/` folder. `folder/` is a plain
+   copy of the game's files, for when one large file is a problem.
+3. Send `website/preview-800x600.png` separately, as the picture phone visitors see.
+4. Ask for these block settings: title "Santa's AI Workshop", Display Mode `fullScreenButton`,
+   Aspect Ratio `fixed` at about 800 px high, Lazy Load off if the block sits at the top of the
+   page, Mobile Breakpoint left empty.
+
+To update the game, run `npm run package` again and send the new file or files. Every upload
+gets a new address, so the page needs no cache tags. Why the website gets a packed copy:
+[ADR 0023](docs/adr/0023-package-a-single-file-for-the-frontier-website.md).

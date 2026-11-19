@@ -7,20 +7,30 @@ npm ci                                                # once per clone or worktr
 uv run python -m http.server 8000 --directory game    # serve the game at http://localhost:8000/
 npx prettier --write .                                # format
 npx prettier --check .                                # the check; the pre-commit hook runs it on staged files
+npm test                                              # every check in tests/ on the rules
 ```
 
-There are no tests, so play the part you changed. With a browser on the same machine as the files,
-opening `game/index.html` from disk works too.
+`npm test` checks the rules only, so play the part of the page you changed. With a browser on the
+same machine as the files, opening `game/index.html` from disk works too.
 
 ## Layout
 
 ```
-game/
-  index.html     # the page
-  style.css      # the styles
-  workshop.js    # the rules: class Workshop holds the state of one run and advances it over time
-  game.js        # the page: draws a Workshop on screen and turns clicks into Workshop calls
-docs/adr/        # decisions
+game/                  # the bundle: its contents are what a website copies
+  index.html           # the page
+  fonts.css, fonts/    # self-hosted fonts
+  style.css            # base styles
+  paper.css            # the paper look, scoped to body[data-look="paper"]
+  station-flow.css     # parcels flowing onto the station piles
+  workshop.js          # the rules: class Workshop holds the state of one run and advances it over time
+  paper-art.js         # paper drawings: station scenes, elves, wrong toys
+  shared-art.js        # interface icons and the toys children asked for
+  station-flow.js      # draws parcels arriving on the piles
+  game.js              # the page: draws a Workshop on screen and turns clicks into Workshop calls
+review/text-feedback/  # reviewers' text feedback page, published at /text-feedback/, not in the bundle
+tests/                 # Node checks on the rules
+docs/ARCHITECTURE.md   # the view() contract between the rules and the page
+docs/adr/              # decisions
 ```
 
 `workshop.js` never reads or changes the page. A new rule goes in `workshop.js`; anything the

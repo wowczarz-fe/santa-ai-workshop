@@ -2,6 +2,9 @@
 status: accepted
 ---
 
+> The look-sharing part (the hidden chooser, `?look=paper|polish`, both presentations sharing one
+> page script) is superseded by `docs/adr/0022-ship-the-paper-look-only.md`: paper is the only look.
+
 # Use a paper workshop with shared station slots
 
 ## Context

@@ -2,7 +2,8 @@
   "name": "santa-ai-workshop",
   "private": true,
   "scripts": {
-    "prepare": "git config core.hooksPath .githooks"
+    "prepare": "git config core.hooksPath .githooks",
+    "test": "for f in tests/*.js; do echo \"== $f\"; node \"$f\" || exit 1; done"
   },
   "devDependencies": {
     "prettier": "3.9.10"

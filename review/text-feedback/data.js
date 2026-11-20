@@ -2670,11 +2670,11 @@ window.TEXT_FEEDBACK = {
       kind: "heading",
       examples: [],
       texts: [
-        "Keep a human in the loop",
-        "Define the right risk approach",
-        "Maintain trust by checking sources",
-        "Always test, and have a rollback plan",
-        "Keep people in control of outputs",
+        "Augmentation not automation",
+        "Proportionate inspections",
+        "Human in the loop",
+        "Test, monitor and feedback",
+        "Don't lose focus on your people",
       ],
     },
     {
@@ -2799,7 +2799,7 @@ window.TEXT_FEEDBACK = {
       id: "practices.note",
       screen: "End screen",
       where:
-        "Italic note at the foot of the Define the right risk approach tile when wrong gifts reached children",
+        "Italic note at the foot of the Proportionate inspections tile when wrong gifts reached children",
       kind: "sentence",
       examples: [],
       texts: [

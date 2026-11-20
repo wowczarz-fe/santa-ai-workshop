@@ -187,12 +187,17 @@ const OLD_WORDING = [
   /fresh elf on these gifts/,
   /of these wrong, and each wrong one/,
   /(checked and is|brought back was|checked gift was) right\b/,
-  // The practice names the same round replaced.
-  /^Human in the loop$/,
+  // The practice names the same round replaced, twice. "Human in the loop" came back as the name
+  // of the unclear-wishes practice, so it is checked below instead.
   /^Risk-based checking$/,
   /^Ask a person when unsure$/,
   /^Test before release and keep a way back$/,
   /^Keep human oversight sharp$/,
+  /^Keep a human in the loop$/,
+  /^Define the right risk approach$/,
+  /^Maintain trust by checking sources$/,
+  /^Always test, and have a rollback plan$/,
+  /^Keep people in control of outputs$/,
   // Wordings the user settled after the round: "wrong", not "incorrect", and the hot-fix update's
   // signs as its makers' word.
   /\bincorrect\b/i,
@@ -369,6 +374,13 @@ for (let seed = 1; seed <= 10; seed++)
     seen.end++;
     if (w.view().end.reason === "budget") seen.budget++;
     strings(w.view(), "end", name);
+    // "Human in the loop" names the practice of reading unclear wishes yourself, not Assist's.
+    for (const practice of w.view().end.practices || [])
+      assert(
+        (practice.name === "Human in the loop") ===
+          (practice.id === "escalate"),
+        `${name}: practice ${practice.id} is named ${practice.name}`,
+      );
   }
 
 assert(

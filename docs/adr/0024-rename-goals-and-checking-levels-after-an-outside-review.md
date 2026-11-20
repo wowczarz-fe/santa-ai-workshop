@@ -34,10 +34,15 @@ name changed in one place has to change everywhere.
   article ADR 0021 asks for before AI. The user chose these wordings.
 
 The half-time card gains a line under its title, "Check your progress.", the end screen's
-practice tiles take the user's own names, and the toy machine loses its "AI" badge.
+practice tiles take the user's own names: Augmentation not automation (Assist), Proportionate
+inspections (Riskiest checking), Human in the loop (reading unclear wishes yourself), Test,
+monitor and feedback (updates), and Don't lose focus on your people (checkers and cocoa). The
+toy machine loses its "AI" badge.
 
 ## Consequences
 
+- "Human in the loop" moved from the Assist tile to the unclear-wishes tile. The wording check
+  fails if it names any practice but `escalate`.
 - `tests/wording-check.js` bans the replaced wordings in the rules' texts, and reads
   `game/game.js` and `game/index.html` for the page's own, so the old names cannot come back.
 - Some labels grew. The decision cue shows the card title only when the cue is wide enough, and

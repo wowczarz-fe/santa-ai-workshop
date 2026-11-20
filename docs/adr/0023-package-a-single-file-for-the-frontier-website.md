@@ -22,10 +22,9 @@ company prefers one self-contained HTML file. The game is built as many plain fi
 ## Decision
 
 `npm run package` runs `scripts/package-website.js`, plain Node with no dependencies. It reads the
-stylesheet and script tags in `game/index.html` and writes three versions to `dist/website/`: one
-file with every stylesheet, script, font and image inside it; the same with the fonts left as
-files, in case the website's policy blocks fonts written into a page; and a plain copy of only the
-files the page uses. It fails when the page names a file it cannot find. `game/height.js`, the
+stylesheet and script tags in `game/index.html` and writes one file, `dist/website/index.html`,
+with every stylesheet, script, font and image inside it. The website's policy allows inline styles
+and `data:` fonts, so no other version is needed. It fails when the page names a file it cannot find. `game/height.js`, the
 hosting company's script, tells the website the game's height and does nothing outside a frame.
 
 ## Consequences

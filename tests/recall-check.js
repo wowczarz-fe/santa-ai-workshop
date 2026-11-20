@@ -121,9 +121,12 @@ for (const big of [false, true]) {
   assert.match(second.text, /, \w+ more than Santa's reputation can take\.$/);
   assert.match(
     option(second, "bringBack").goal,
-    /^Keeps the Few mistakes star$/,
+    /^Keeps the Minimal mistakes star$/,
   );
-  assert.match(option(second, "leave").goal, /^Loses the Few mistakes star$/);
+  assert.match(
+    option(second, "leave").goal,
+    /^Loses the Minimal mistakes star$/,
+  );
   assert(!mistakes(w).met);
   bringBack(w);
   assert(mistakes(w).met);

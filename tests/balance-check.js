@@ -83,7 +83,7 @@ function conditional(c, v) {
       // Read the stated star trade first; otherwise compare money saved with checker time at £1 a second.
       const bring = c.options.find((o) => o.id === "bringBack");
       // A recall costs more than leaving the gifts aboard, so it is worth it only for the star.
-      const savesStar = /Keeps the Few mistakes star/.test(bring.goal);
+      const savesStar = /Keeps the Minimal mistakes star/.test(bring.goal);
       if (!bring.available) return "leave";
       if (savesStar) return "bringBack";
       // One wrong gift with no star at stake yet: worth fetching back while the margin for
@@ -551,7 +551,7 @@ function checkView(v) {
   if (v.case.step === "aboard") {
     const [bring, leave] = v.case.options;
     // The card says how many gifts a recall takes off the sleigh, names a single one, and speaks
-    // of a star only when the Few mistakes goal is passed.
+    // of a star only when the Minimal mistakes goal is passed.
     const c = v.case;
     const wrong = v.end ? 0 : v.sleigh.wrong;
     const allowed = v.run.goals.find((g) => g.id === "right").need;
@@ -667,7 +667,7 @@ function checkNews(n) {
     // The advice follows the sentence that names the two toys.
     const advice = n.text.split(`${a(n.check.wanted.name)}. `)[1] ?? "";
     assert(
-      n.text.startsWith("A wrong gift is aboard. ") &&
+      n.text.startsWith("A wrong gift is on the sleigh. ") &&
         /\b(check|put|send|rest|swap|keep|read|set)\b/i.test(advice) &&
         advice.endsWith("."),
       `wrong gift line names an action: ${n.text}`,
@@ -676,7 +676,7 @@ function checkNews(n) {
     if (n.control.startsWith("ai:"))
       assert(
         WISHES.find((w) => w.wish === n.check.wish).big &&
-          /Big gifts need a person/.test(n.text),
+          /Big gifts need an elf/.test(n.text),
         `Assist asked for an everyday gift: ${n.text}`,
       );
     assert(!/wrong size/.test(n.text + n.check.made.name), n.text);

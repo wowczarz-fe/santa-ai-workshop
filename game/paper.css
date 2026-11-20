@@ -1357,6 +1357,7 @@ body[data-look="paper"] .dashboard .case-cue {
   display: inline-flex;
   align-items: center;
   height: 40px;
+  min-width: 0;
   max-width: 380px;
   padding: 0 14px 0 11px;
   gap: 0;
@@ -1389,11 +1390,20 @@ body[data-look="paper"] .dashboard .case-cue .cue-icon svg {
   width: 19px;
   height: 19px;
 }
+/* When the bar is short of room the card title gives way first, then the cue, never the goals */
+@media (min-width: 1000px) {
+  body[data-look="paper"] .dashboard .goals {
+    flex-shrink: 0;
+  }
+}
 body[data-look="paper"] .dashboard .case-cue .cue-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: normal;
+}
+body[data-look="paper"] .dashboard .case-cue .cue-name:not(:empty)::before {
+  content: ": ";
 }
 body[data-look="paper"] .dashboard .case-cue .cue-count {
   margin-left: 7px;
@@ -1857,20 +1867,44 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     height: 40px;
     container-type: inline-size;
   }
-  /* The decision's title shows beside "Decision needed" whenever the cue is wide enough for both */
-  body[data-look="paper"] main .dashboard .case-cue .cue-name {
+  /* A narrow cue shows the decision's title alone; a wide one puts "Decision needed" before it */
+  body[data-look="paper"] main .dashboard .case-cue :is(.cue-verb, .cue-name) {
+    font-size: 12.5px;
+  }
+  body[data-look="paper"]
+    main
+    .dashboard
+    .case-cue[data-resolving="false"]
+    .cue-verb {
     display: none;
+  }
+  body[data-look="paper"] main .dashboard .case-cue .cue-name {
+    font-weight: bold;
+  }
+  body[data-look="paper"]
+    main
+    .dashboard
+    .case-cue
+    .cue-name:not(:empty)::before {
+    content: none;
   }
   @container (min-width: 300px) {
     body[data-look="paper"]
       main
       .dashboard
-      .case-cue
-      :is(.cue-verb, .cue-name) {
-      font-size: 12.5px;
+      .case-cue[data-resolving="false"]
+      .cue-verb {
+      display: inline;
     }
     body[data-look="paper"] main .dashboard .case-cue .cue-name {
-      display: inline;
+      font-weight: normal;
+    }
+    body[data-look="paper"]
+      main
+      .dashboard
+      .case-cue
+      .cue-name:not(:empty)::before {
+      content: ": ";
     }
   }
   body[data-look="paper"] main .dashboard #pause {

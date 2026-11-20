@@ -1716,7 +1716,8 @@
     }
     const left = resolving ? Math.ceil(c.resolving.remaining) : 0;
     const verb = resolving ? `Done in ${left} s` : "Decision needed";
-    const name = resolving ? "" : `: ${caseHeading(c)}`;
+    // The stylesheet puts ": " between the two, or shows the title alone on a narrow cue.
+    const name = resolving ? "" : caseHeading(c);
     if (cue.querySelector(".cue-verb").textContent !== verb)
       cue.querySelector(".cue-verb").textContent = verb;
     if (cue.querySelector(".cue-name").textContent !== name)

@@ -1729,7 +1729,7 @@
       "aria-label",
       resolving
         ? `Decision in progress, ${counted(left, "second", "seconds")} left`
-        : `Decision waiting: ${caseHeading(c)}${waiting > 1 ? `, ${waiting} in all` : ""}`,
+        : `Decision needed: ${caseHeading(c)}${waiting > 1 ? `, ${waiting} in all` : ""}`,
     );
   }
   function focusCase() {

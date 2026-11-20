@@ -157,11 +157,85 @@ const OLD_WORDING = [
   /real queen\.$/,
   /budget left, wrong gifts count/,
   /^(loading|remaking)$/,
+  // The wordings an outside reviewer's round of November 2026 replaced, and the names it changed:
+  // "correct gifts", Minimal mistakes, the Random and Riskiest checking levels, the elf Candy.
+  /\bright gifts?\b/i,
+  /Few mistakes/,
+  /^A few$/,
+  /\bRisky\b/,
+  /\brisky gifts\b/i,
+  /checking a few,/,
+  /\bCoco\b/,
+  /needs? a person/i,
+  /no person looking/,
+  /Put a person on/,
+  /It goes back to be remade/,
+  /^A wrong gift is aboard\./,
+  /On everyday gifts, the AI slips/,
+  /^The faulty update is making/,
+  /^Bring \d+ back$/,
+  /makes proper toys again/,
+  /^(Letters|Toys) has stopped/,
+  /^try the AI$/,
+  /the ones the AI flagged/,
+  /putting them right/,
+  /keep some of the £/,
+  /counting the cost of wrong gifts/,
+  /^Install the update$/,
+  /^Test the update first$/,
+  /confirming the AI's readings/,
+  /fresh elf on these gifts/,
+  /of these wrong, and each wrong one/,
+  /(checked and is|brought back was|checked gift was) right\b/,
+];
+// Page texts the same round replaced. The page builds them in game.js and index.html, outside
+// view(), so the two files are read as they stand, with line breaks folded to single spaces.
+const PAGE_OLD_WORDING = [
+  /Find the balance\./,
+  /checks keep it right/,
+  /Show the walkthrough/,
+  /Open the workshop/,
+  /Christmas Eve at the workshop/,
+  /Start this Christmas again\?/,
+  /"AI switch"/,
+  /"Checking",\s+text:/,
+  /"Sleigh",\s+text:/,
+  /big gifts need a person/i,
+  /Tired checkers miss more\./,
+  /right gifts? aboard/,
+  /: "Decide"/,
+  /"The AI works alone"/,
+  /"The clock"/,
+  /It shows the time left before the sleigh leaves/,
+  /The sleigh may carry/,
+  /and now lets some wrong ones through/,
+  /Right gifts count towards/,
+  /makes them fresh again/,
+  /They wait here for an elf/,
+  /Elves here check gifts/,
+  /The pile here is growing/,
+  /Checking a few gifts/,
+  /"risky gifts"/,
+  /\["A few", "Risky"/,
+  /\bright gifts?\b/i,
+  /Few mistakes/,
+  /\^keep\\b/,
+  /<span class="eyebrow">Christmas morning</,
 ];
 // "4 s" for four seconds is a counter's shorthand. It stays on the end screen's practice figures,
 // which are counters, and nowhere else: a sentence says "seconds".
 const SECONDS_SHORT = /\d s\b/;
 const COUNTER = /^view\.end\.practices\.\d+\.actions\.\d+\.figure$/;
+for (const file of ["game.js", "index.html"]) {
+  const source = fs
+    .readFileSync(path.join(__dirname, "../game", file), "utf8")
+    .replace(/\s+/g, " ");
+  for (const old of PAGE_OLD_WORDING)
+    assert(
+      !old.test(source),
+      `game/${file} still has a replaced text (${old})`,
+    );
+}
 let read = 0;
 // Every level tooltip text met in play, to show the check reached them.
 const levelTips = new Set();

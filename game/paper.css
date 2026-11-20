@@ -1357,7 +1357,7 @@ body[data-look="paper"] .dashboard .case-cue {
   display: inline-flex;
   align-items: center;
   height: 40px;
-  max-width: 290px;
+  max-width: 380px;
   padding: 0 14px 0 11px;
   gap: 0;
   border: 2px solid #f6d98a;
@@ -1857,11 +1857,11 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     height: 40px;
     container-type: inline-size;
   }
-  /* The decision's title shows beside Decide whenever the cue is wide enough for it */
+  /* The decision's title shows beside "Decision needed" whenever the cue is wide enough for both */
   body[data-look="paper"] main .dashboard .case-cue .cue-name {
     display: none;
   }
-  @container (min-width: 150px) {
+  @container (min-width: 300px) {
     body[data-look="paper"]
       main
       .dashboard

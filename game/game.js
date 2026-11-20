@@ -2004,7 +2004,7 @@
           [
             "Elves read the letters, with or without the AI's help.",
             "Elves or the toy machine make the toys.",
-            "Elves check gifts, remake incorrect ones and load the sleigh.",
+            "Elves check gifts, remake wrong ones and load the sleigh.",
           ][s],
           `Now ${["reading", "making", "checking"][s]} ${counted(Math.round(v.rate), ["letter", "toy", "gift"][s], ["letters", "toys", "gifts"][s])} a minute.`,
           v.blocked
@@ -2224,7 +2224,7 @@
       if (view.ai[s] === l)
         sayResult(
           `You set the ${view.stations[s].name} station to ${["By hand", "Assist", "Automate"][l]}. It now handles ${Math.round(view.stations[s].rate)} a minute.`,
-          `${view.stations[s].name} switched to ${["by hand", "Assist", "Automate"][l]}`,
+          `${view.stations[s].name} switched to ${["By hand", "Assist", "Automate"][l]}`,
         );
       return;
     }

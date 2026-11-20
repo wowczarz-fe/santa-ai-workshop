@@ -203,7 +203,7 @@ example
 - `aboard`: correct gifts on the sleigh, the figure the Full sleigh star counts. Show the sleigh
   count once, from here.
 - `cargo`: the half's cargo `{ id, name, icon, text }`: `"everyday"` ("Everyday gifts") in the
-  first half, `"big"` ("Big gifts", "The AI gets many of these wrong, and each wrong one costs £100.") in the
+  first half, `"big"` ("Big gifts", "The AI gets many of these wrong. Each wrong one costs £100.") in the
   second.
 - `goals`: always three, in this order, each `{ id, name, now, need, text, met, waiting }`:
 
@@ -435,8 +435,8 @@ count and price. Its cause and cost also remain in the account.
 { title: "Half-time", text: "Pick one change before you carry on, or none.",
   report: { aboard: 78, wrong: 0, target: 145, cost: 140, limit: 900, tired: 2, burnouts: 0,
             goals: [ ...three goals as in run.goals... ], causes: [ ...up to three causes... ] },
-  next: { cargo: { id: "big", name: "Big gifts", icon: "📦", text: "The AI gets many of these wrong, and each wrong one costs £100." },
-          text: "Big gifts come next. The AI gets many of them wrong, and each wrong one costs £100." },
+  next: { cargo: { id: "big", name: "Big gifts", icon: "📦", text: "The AI gets many of these wrong. Each wrong one costs £100." },
+          text: "Big gifts come next. The AI gets many of them wrong. Each wrong one costs £100." },
   options: [ ...five options... ],
   openCase: { id: 2, title: "Unclear wish" } }
 ```
@@ -446,7 +446,7 @@ count and price. Its cause and cost also remain in the account.
   100), `burnouts` so far, `goals` (as `run.goals`) and `causes` (where the wrong gifts aboard came
   from, see Causes).
 - `next.text` is one short sentence pair on what comes next, always
-  `"Big gifts come next. The AI gets many of them wrong, and each wrong one costs £N."` with N the price of
+  `"Big gifts come next. The AI gets many of them wrong. Each wrong one costs £N."` with N the price of
   a wrong big gift; the page supplies its own headline and shows this as a small line.
   `next.cargo` is the cargo that comes next.
 - `options` is always these five, in this order, each `{ id, label, text, facts, available, why }`
@@ -469,7 +469,7 @@ count and price. Its cause and cost also remain in the account.
   keeps checkers and confirmers sharp for the rest of the game. `rest` halves every elf's
   tiredness and ends burnouts. `none` changes nothing. The price is added to the cost so far.
   Each `text` is everything the option's information button shows, in short plain sentences, for
-  example `"The AI makes toys 50% faster. It is a big change that was tested briefly."`. The
+  example `"The AI makes toys 50% faster. Its makers say it is a big change and tested it briefly."`. The
   `train` text ends with the checkers' state as a sentence (`"Your checkers are sharp now."`,
   `"Your checkers are starting to skip checks."` or `"Your checkers have stopped looking."`) and
   the `rest` text with the elves' energy (`"The elves' average energy is now 47."`), so neither
@@ -582,7 +582,7 @@ for example `"Amir wrote back: a cuddly bat."` or
   budget ended earns two stars at most, reads `headline: "Out of money."` and its `lesson` is
   `{ title: "Out of money", text }` with `text` one sentence naming where most of the budget went:
   `"Wrong big gifts took £400 of your £900 budget."`, `"The faulty update's trains took £N..."`,
-  `"Making and fixing incorrect gifts took £N..."`, `"Checks took £N..."`,
+  `"Making and fixing wrong gifts took £N..."`, `"Checks took £N..."`,
   `"Running the AI took £N..."` or `"The half-time change took £N..."`. Wrong gifts and fixing them
   (recalls, remakes, a rollback) are weighed together. Gifts such a game did not reach are not
   counted against the checkers: the dial reads its money figures only, never a bottleneck.

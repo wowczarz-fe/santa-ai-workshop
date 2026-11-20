@@ -657,7 +657,7 @@ class Workshop {
     const c = CARGO[half - 1];
     const text = {
       everyday: `The AI is as accurate as a fresh elf with these gifts. A wrong one costs ${money(WRONG_PRICE.everyday)}.`,
-      big: `The AI gets many of these wrong. Each one costs ${money(WRONG_PRICE.big)}.`,
+      big: `The AI gets many of these wrong. Each wrong one costs ${money(WRONG_PRICE.big)}.`,
     }[c.id];
     return { id: c.id, name: c.name, icon: c.icon, text };
   }
@@ -2509,7 +2509,7 @@ class Workshop {
           ? ["Wrong big gifts", big]
           : trains * 2 >= mistakes
             ? ["The faulty update's trains", trains]
-            : ["Making and fixing incorrect gifts", mistakes],
+            : ["Making and fixing wrong gifts", mistakes],
         mistakes,
       ],
       [["Checking", costs.checking], costs.checking],
@@ -3093,7 +3093,7 @@ class Workshop {
       report,
       next: {
         cargo: this.cargoView(2),
-        text: `Big gifts come next. The AI gets many of them wrong, and each wrong one costs ${money(WRONG_PRICE.big)}.`,
+        text: `Big gifts come next. The AI gets many of them wrong. Each wrong one costs ${money(WRONG_PRICE.big)}.`,
       },
       options: this.halfTimeOptions(),
     };
@@ -3110,7 +3110,7 @@ class Workshop {
     const fact = (label, value) => ({ label, value: String(value) });
     const costs = (id) => fact("Costs", money(HALF_TIME_PRICE[id]));
     const pct = Math.round(u.promise * 100);
-    const signs = `It is a ${u.bigChange ? "big" : "small"} change that was tested ${u.briefTesting ? "briefly" : "thoroughly"}.`;
+    const signs = `Its makers say it is a ${u.bigChange ? "big" : "small"} change and tested it ${u.briefTesting ? "briefly" : "thoroughly"}.`;
     // The checkers' state as a sentence for the pop-up: sharp, drifting or not looking.
     const checkersNow = {
       careful: "Your checkers are sharp now.",

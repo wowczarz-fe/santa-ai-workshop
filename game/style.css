@@ -2440,7 +2440,7 @@ dialog p {
 }
 .break-hero {
   position: relative;
-  height: 96px;
+  height: 108px;
   overflow: hidden;
   background: linear-gradient(180deg, var(--bc-hero1), var(--bc-hero2));
   color: var(--bc-hero-ink);
@@ -2907,6 +2907,9 @@ dialog p {
 .end-grid {
   max-width: 1200px;
   margin: 0 auto;
+}
+.end-top .eyebrow {
+  text-wrap: balance;
 }
 .end-top {
   display: flex;
@@ -3535,7 +3538,7 @@ dialog p {
     border-radius: 14px;
   }
   .break-hero {
-    height: 92px;
+    height: 104px;
   }
   .break-hero-copy {
     left: 16px;
@@ -3543,6 +3546,10 @@ dialog p {
   }
   #breakTitle {
     font-size: 23px;
+  }
+  /* The subtitle runs where the sleigh's trail would cross it */
+  .break-hero .scene-trail {
+    display: none;
   }
   .break-sleigh {
     left: auto;
@@ -3592,6 +3599,10 @@ dialog p {
   }
   .goal-figure {
     font-size: 16px;
+  }
+  .goal-unit {
+    display: block;
+    font-size: 12px;
   }
   #breakDialog .break-line {
     padding: 5px 8px;

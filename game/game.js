@@ -1021,10 +1021,12 @@
     return node;
   };
   const goalIcons = { full: "gift", right: "wrong-gift", cost: "budget" };
-  const goalFigure = (goal) =>
+  const goalNumbers = (goal) =>
     goal.id === "cost"
       ? `${money(goal.now)} / ${money(goal.need)}`
-      : `${goal.now} / ${goal.need}${goal.id === "right" ? " wrong gifts" : ""}`;
+      : `${goal.now} / ${goal.need}`;
+  const goalUnit = (goal) => (goal.id === "right" ? " wrong gifts" : "");
+  const goalFigure = (goal) => goalNumbers(goal) + goalUnit(goal);
   const causeIcons = {
     picked: "gift-unclear",
     big: "gift-big",
@@ -1090,11 +1092,11 @@
       iconNode(goalIcons[goal.id] || "star", "goal-icon"),
     );
     // The figure carries the goal; its longer wording stays in the label and the hover text.
-    slot.append(
-      marks,
-      make("b", "goal-name", goal.name),
-      make("strong", "goal-figure", goalFigure(goal)),
-    );
+    // The unit sits in its own span, so a narrow tile can put it on a line of its own.
+    const figure = make("strong", "goal-figure", goalNumbers(goal));
+    if (goalUnit(goal))
+      figure.append(make("span", "goal-unit", goalUnit(goal)));
+    slot.append(marks, make("b", "goal-name", goal.name), figure);
     // Inside its limit but not counted: the sleigh holds fewer gifts than the goal counts from.
     if (goal.waiting && countsFrom && withNote)
       slot.append(

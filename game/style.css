@@ -1527,7 +1527,7 @@ progress {
 }
 footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   font-size: 9px;
   color: #6a7464;
   padding: 7px 0 4px;
@@ -2521,6 +2521,11 @@ dialog p {
     400 28px/1.1 var(--bc-serif),
     serif;
   color: inherit;
+}
+.break-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--bc-hero-muted);
 }
 .break-paused {
   position: absolute;

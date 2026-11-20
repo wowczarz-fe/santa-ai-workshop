@@ -198,7 +198,7 @@
         const b = make("button", "switch-button");
         b.dataset.checking = level;
         b.dataset.info = `checking:${level}`;
-        b.innerHTML = `<span class="switch-art" aria-hidden="true">${PaperArt.icon(["ic-few", "ic-risky", "ic-all"][level])}</span><span class="switch-label">${["A few", "Risky", "All"][level]}</span>`;
+        b.innerHTML = `<span class="switch-art" aria-hidden="true">${PaperArt.icon(["ic-few", "ic-risky", "ic-all"][level])}</span><span class="switch-label">${["Random", "Riskiest", "All"][level]}</span>`;
         position.append(b, infoButton(`checking:${level}`));
         sw.append(position);
       }
@@ -381,7 +381,7 @@
   }
   // "The goal is at most 2 wrong gifts." The budget goal's words start with a verb, so it takes "to".
   const goalSentence = (goal) =>
-    `The goal is ${/^keep\b/i.test(goal.text) ? "to " : ""}${stop(lowerFirst(goal.text))}`;
+    `The goal is ${/^spend\b/i.test(goal.text) ? "to " : ""}${stop(lowerFirst(goal.text))}`;
   // A wrong gift lights up, for a few seconds, the control its news line names, with the rules'
   // words for what to do as its tag.
   const hintTargets = {
@@ -799,7 +799,7 @@
     for (let station = 0; station < 2; station++) {
       // A station the machine runs with no elf left says so on its empty floor.
       $(`elves${station}`).dataset.alone =
-        view.ai[station] === 2 && !crews[station] ? "The AI works alone" : "";
+        view.ai[station] === 2 && !crews[station] ? "Fully AI automated" : "";
     }
     document
       .querySelectorAll("[data-destination]")
@@ -978,7 +978,7 @@
       "visualStatus",
       [
         wrongCount
-          ? `${wrongCount} wrong ${wrongCount === 1 ? "gift" : "gifts"} aboard`
+          ? `${wrongCount} wrong ${wrongCount === 1 ? "gift" : "gifts"} aboard the sleigh`
           : "",
         actionNotice?.until > performance.now() ? actionNotice.text : "",
       ]
@@ -1024,7 +1024,7 @@
   const goalFigure = (goal) =>
     goal.id === "cost"
       ? `${money(goal.now)} / ${money(goal.need)}`
-      : `${goal.now} / ${goal.need}${goal.id === "right" ? " wrong" : ""}`;
+      : `${goal.now} / ${goal.need}${goal.id === "right" ? " wrong gifts" : ""}`;
   const causeIcons = {
     picked: "gift-unclear",
     big: "gift-big",
@@ -1098,16 +1098,16 @@
     // Inside its limit but not counted: the sleigh holds fewer gifts than the goal counts from.
     if (goal.waiting && countsFrom && withNote)
       slot.append(
-        make("small", "goal-note", `Counts from ${countsFrom} right gifts`),
+        make("small", "goal-note", `Counts from ${countsFrom} correct gifts`),
       );
     // Within its limit but never counted: the sleigh stayed under the share where this goal starts.
     const uncounted = goal.waiting && countsFrom && withNote;
     slot.title =
       cap(goal.text.replace(/[.!?]$/, "")) +
-      (uncounted ? `, counts from ${countsFrom} right gifts` : "");
+      (uncounted ? `, counts from ${countsFrom} correct gifts` : "");
     slot.setAttribute(
       "aria-label",
-      `${goal.name}: ${goalFigure(goal)}. ${goalSentence(goal)} ${uncounted ? `It counts from ${countsFrom} right gifts. ` : ""}${goal.met ? "Star earned" : "No star"}.`,
+      `${goal.name}: ${goalFigure(goal)}. ${goalSentence(goal)} ${uncounted ? `It counts from ${countsFrom} correct gifts. ` : ""}${goal.met ? "Star earned" : "No star"}.`,
     );
     slot.setAttribute("role", "group");
     return slot;
@@ -1334,7 +1334,7 @@
     count.setAttribute("role", "img");
     count.setAttribute(
       "aria-label",
-      `${counted(aboard, "right gift", "right gifts")} aboard, out of ${view.run.target} needed. ${counted(view.lost, "letter was", "letters were")} lost from full piles.`,
+      `${counted(aboard, "correct gift", "correct gifts")} aboard, out of ${view.run.target} needed. ${counted(view.lost, "letter was", "letters were")} lost from full piles.`,
     );
     $("sleighTotal").style.setProperty("--fill", Math.min(1, aboard / target));
     const met = String(!!full?.met);
@@ -1570,21 +1570,21 @@
       target: () => $("elves0"),
     },
     {
-      title: "AI switch",
+      title: "Choose AI automation level",
       text: () =>
-        "The AI is fast and never tires. It is as accurate as a fresh elf on everyday gifts, but big gifts need a person.",
+        "More AI automation is quicker and doesn't need rest. An elf is needed to process bigger gifts.",
       target: () => actionGroups.get("ai0"),
     },
     {
-      title: "Checking",
+      title: "Tweak quality checking",
       text: () =>
-        "Checks catch most mistakes, but they cost time and money. Tired checkers miss more.",
+        "Let elves and AI decide or work together, but more checks cost time and money. Tired elves miss more mistakes!",
       target: () => actionGroups.get("checking"),
     },
     {
-      title: "Sleigh",
+      title: "Fill the sleigh!",
       text: () =>
-        `Get ${view.run.target} right gifts aboard to earn the first star. Keep mistakes and costs low to earn the other two.`,
+        `Load ${view.run.target} correct gifts to earn a star. Keep mistakes and costs low to earn the other two.`,
       target: () => $("sleighTotal"),
     },
   ];
@@ -1663,7 +1663,7 @@
     if (does) chips.push(["chip-does", "", does]);
     if (o.goal)
       for (const part of o.goal.split(/,\s*/)) {
-        // A star chip is red when the option gives the star up: "Loses the Few mistakes star".
+        // A star chip is red when the option gives the star up: "Loses the Minimal mistakes star".
         const star = /\bstar\b/i.test(part);
         const lost = /\b(lost|loses?|losing)\b/i.test(part);
         chips.push([
@@ -1713,7 +1713,7 @@
       cue.querySelector(".cue-icon").innerHTML = icon(art);
     }
     const left = resolving ? Math.ceil(c.resolving.remaining) : 0;
-    const verb = resolving ? `Done in ${left} s` : "Decide";
+    const verb = resolving ? `Done in ${left} s` : "Decision needed";
     const name = resolving ? "" : `: ${caseHeading(c)}`;
     if (cue.querySelector(".cue-verb").textContent !== verb)
       cue.querySelector(".cue-verb").textContent = verb;
@@ -1896,7 +1896,7 @@
         view.run.cargo.name,
         [
           view.run.cargo.text,
-          `The sleigh needs ${view.run.target} right gifts.`,
+          `The sleigh needs ${view.run.target} correct gifts.`,
         ],
       ];
     if (key === "caughtToy" && caughtSnapshot)
@@ -1935,7 +1935,7 @@
             : "",
           cost
             ? sentence(goal.text)
-            : `The sleigh may carry ${stop(lowerFirst(goal.text))}`,
+            : `The sleigh can carry ${stop(lowerFirst(goal.text))}`,
         ].filter(Boolean),
       ];
     }
@@ -1967,7 +1967,7 @@
         q.name,
         [
           parts[1] === "pass"
-            ? "These gifts were not sent for a check. They wait here for an elf to load them onto the sleigh."
+            ? "These gifts were not sent for checking. They need an elf to load them onto the sleigh."
             : `This pile holds ${q.parcels.length} of a possible ${q.limit}. ${counted(Math.round(q.rate), "moves", "move")} on each minute.`,
           q.held
             ? `${counted(q.held, "letter has been read and is", "letters have been read and are")} waiting for room in the toy pile.`
@@ -2001,13 +2001,13 @@
           [
             "Elves read the letters, with or without the AI's help.",
             "Elves or the toy machine make the toys.",
-            "Elves here check gifts, remake the caught ones and load the sleigh.",
+            "Elves check gifts, remake incorrect ones and load the sleigh.",
           ][s],
           `Now ${["reading", "making", "checking"][s]} ${counted(Math.round(v.rate), ["letter", "toy", "gift"][s], ["letters", "toys", "gifts"][s])} a minute.`,
           v.blocked
             ? sentence(v.blocked)
             : view.pace.slowest === s
-              ? "The pile here is growing and holding up the rest of the line."
+              ? "The pile is growing and holding up the rest of the line."
               : "",
         ].filter(Boolean),
       ];
@@ -2037,10 +2037,9 @@
     }
     const fixed = {
       clock: [
-        "The clock",
+        "Time until Santa departs",
         [
-          "It shows the time left before the sleigh leaves.",
-          "It stops while you pause, while a decision card is open and during the walkthrough.",
+          "Time stops while you pause, while a decision card is open and during the walkthrough.",
         ],
       ],
       movement: [
@@ -2051,20 +2050,18 @@
       ],
       cocoa: [
         "Cocoa break",
-        [
-          "Tired elves make more mistakes and miss more. A short break here makes them fresh again.",
-        ],
+        ["Tired elves make more mistakes. Drag them here for a short rest."],
       ],
       sleigh: [
         "The sleigh",
-        ["Right gifts count towards the target. Wrong ones cost money."],
+        ["Correct gifts count towards the target. Wrong ones cost money."],
       ],
       vigilance: [
         "Trusting the AI",
         [
           view.vigilance.swap
-            ? `${view.vigilance.swap.name} has seen a long run of right gifts from the AI and now lets some wrong ones through. Send ${view.vigilance.swap.name} for cocoa or swap in another elf.`
-            : "After a long run of right gifts from the AI, elves stop looking closely.",
+            ? `${view.vigilance.swap.name} has seen a long run of correct gifts from the AI, but is letting some wrong ones through. Send ${view.vigilance.swap.name} for cocoa or swap in another elf.`
+            : "After a long run of correct gifts from the AI, elves stop looking closely.",
           view.vigilance.skipped
             ? `${counted(view.vigilance.skipped, "check has", "checks have")} been skipped so far.`
             : "",
@@ -2224,7 +2221,7 @@
       if (view.ai[s] === l)
         sayResult(
           `You set the ${view.stations[s].name} station to ${["By hand", "Assist", "Automate"][l]}. It now handles ${Math.round(view.stations[s].rate)} a minute.`,
-          `${view.stations[s].name} switched to ${["By hand", "Assist", "Automate"][l]}`,
+          `${view.stations[s].name} switched to ${["by hand", "Assist", "Automate"][l]}`,
         );
       return;
     }
@@ -2233,7 +2230,11 @@
       const lever = view.levers.checking[view.checking];
       sayResult(
         `Checking now covers ${lever.per100} in 100 gifts.`,
-        `Checking ${["a few gifts", "risky gifts", "all gifts"][view.checking]}`,
+        [
+          "Spot checking random gifts",
+          "Checking the riskiest gifts",
+          "Checking all gifts",
+        ][view.checking],
       );
       return;
     }
@@ -2387,7 +2388,7 @@
     const link = new URL(location.href);
     link.searchParams.set("seed", seed);
     const verdict = end.assurance?.verdict;
-    const result = `Santa's AI Workshop: ${end.stars} of 3 stars. ${end.right} right gifts and ${end.wrong} wrong.${verdict ? ` Checking: ${verdict}.` : ""} ${link.href}`;
+    const result = `Santa's AI Workshop: ${end.stars} of 3 stars. ${end.right} correct gifts and ${end.wrong} wrong.${verdict ? ` Checking: ${verdict}.` : ""} ${link.href}`;
     try {
       await navigator.clipboard.writeText(result);
       text("copyStatus", "Result copied.");
@@ -2732,7 +2733,7 @@
     "A faulty update ran unchecked": "faulty",
     "The faulty update ran too long": "faulty",
     "Unclear wishes read wrongly": "picked",
-    "Big gifts need a person": "big",
+    "Big gifts need an elf": "big",
     "Checkers stopped looking": "waved",
     "Tired elves mixed gifts up": "tired",
   };

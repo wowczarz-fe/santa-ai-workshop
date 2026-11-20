@@ -9,7 +9,7 @@ window.TEXT_FEEDBACK = {
     "Stations",
     "Elves",
     "Info pop-ups",
-    "Decide cards",
+    "Decision cards",
     "Tips and news lines",
     "Half-time",
     "End screen",
@@ -28,7 +28,7 @@ window.TEXT_FEEDBACK = {
       "The elves who work at the stations, and what is shown about each one.",
     "Info pop-ups":
       "The small boxes that open from the round (i) buttons and the level buttons.",
-    "Decide cards":
+    "Decision cards":
       "The cards that stop the clock and ask the player to choose.",
     "Tips and news lines":
       "Short lines about what just happened. Most of them are read aloud by screen readers.",
@@ -373,13 +373,11 @@ window.TEXT_FEEDBACK = {
     {
       id: "cue.decide",
       screen: "Top bar",
-      where: "Top bar, gold button when a decision is waiting",
+      where:
+        "Top bar, gold button when a decision is waiting. A narrow phone shows the card title alone",
       kind: "button",
-      examples: [
-        "Decision needed: Unclear wish",
-        "Decision needed: Santa's reputation at risk",
-      ],
-      texts: ["Decision needed: {card title}"],
+      examples: ["Decision needed: Santa's reputation at risk", "Unclear wish"],
+      texts: ["Decision needed: {card title}", "{card title}"],
     },
     {
       id: "cue.inProgress",
@@ -442,7 +440,7 @@ window.TEXT_FEEDBACK = {
       examples: [],
       texts: [
         "{station} switched to {level}",
-        "{station} switched to by hand",
+        "{station} switched to By hand",
         "{station} switched to Assist",
         "{station} switched to Automate",
       ],
@@ -589,7 +587,7 @@ window.TEXT_FEEDBACK = {
       id: "focus.checkMore",
       screen: "Stations",
       where:
-        "Blue tag on the checking switch after two wrong gifts in 30 seconds on A few",
+        "Blue tag on the checking switch after two wrong gifts in 30 seconds on Random",
       kind: "chip",
       examples: [],
       texts: ["check more"],
@@ -962,7 +960,9 @@ window.TEXT_FEEDBACK = {
         "Cargo sentence for big gifts, in the cargo pop-up during the second part",
       kind: "sentence",
       examples: [],
-      texts: ["The AI gets many of these wrong. Each one costs \u00a3{n}."],
+      texts: [
+        "The AI gets many of these wrong. Each wrong one costs \u00a3{n}.",
+      ],
     },
     {
       id: "info.station",
@@ -974,7 +974,7 @@ window.TEXT_FEEDBACK = {
       texts: [
         "Elves read the letters, with or without the AI's help.",
         "Elves or the toy machine make the toys.",
-        "Elves check gifts, remake incorrect ones and load the sleigh.",
+        "Elves check gifts, remake wrong ones and load the sleigh.",
       ],
     },
     {
@@ -1305,16 +1305,16 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "case.title",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
-        "Card title, and the words after Decide: on the gold button. The unclear-wish card shows the child's line instead of this title",
+        "Card title, and the words after Decision needed: on the gold button. The unclear-wish card shows the child's line instead of this title",
       kind: "heading",
       examples: [],
       texts: ["Unclear wish", "Santa's reputation at risk", "Faulty update"],
     },
     {
       id: "case.clockStopped",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Small chip under the card title, and on the half-time card",
       kind: "chip",
       examples: [],
@@ -1322,7 +1322,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "unclear.heading",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Unclear-wish card, heading: the child's name and the wish in quotation marks",
       kind: "heading",
@@ -1331,7 +1331,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "unclear.or",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Unclear-wish card, word between the two pictures",
       kind: "label",
       examples: [],
@@ -1339,7 +1339,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "unclear.stake",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Unclear-wish card, chip under the pictures",
       kind: "chip",
       examples: [],
@@ -1347,7 +1347,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "unclear.readings",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Unclear-wish card, the name under each picture: the wanted toy and the wrong toy of that wish (see the Wishes table)",
       kind: "button",
@@ -1356,7 +1356,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "unclear.text",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Unclear-wish sentence. Not shown on the card (the pictures replace it). Read out by screen readers when the card is raised",
       kind: "sentence",
@@ -1367,7 +1367,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "recall.text.first",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Reputation card raised by the first wrong gift aboard: the sentence under the title",
       kind: "sentence",
@@ -1376,7 +1376,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "recall.text.limit",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Reputation card raised when wrong gifts pass the limit: the sentence under the title",
       kind: "sentence",
@@ -1389,7 +1389,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "case.primaryFact",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Reputation and faulty-update cards, the chip under the sentence: the card's main figure as label, colon, value",
       kind: "chip",
@@ -1398,7 +1398,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "case.fact.labels",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Labels of a card's figures. One shows as the chip above. All show behind the card's (i)",
       kind: "label",
@@ -1416,7 +1416,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "case.fact.values",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Values of those figures",
       kind: "label",
       examples: [],
@@ -1433,7 +1433,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "recall.option.bring",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Reputation card, first option",
       kind: "button",
       examples: ["Bring 2 wrong gifts back"],
@@ -1441,7 +1441,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "recall.option.leave",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Reputation card, second option",
       kind: "button",
       examples: [],
@@ -1449,7 +1449,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "recall.goal",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Reputation card, first chip on each option: what the choice does to the mistakes count or star",
       kind: "chip",
@@ -1463,7 +1463,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "option.extra",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Reputation card, money chip on each option",
       kind: "chip",
       examples: [],
@@ -1471,7 +1471,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "option.time",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Time chip on an option",
       kind: "chip",
       examples: [],
@@ -1483,7 +1483,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "option.why",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Chip on an option that cannot be chosen, saying why",
       kind: "chip",
       examples: [],
@@ -1496,7 +1496,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "recall.scope",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Reputation card options in words. Shown only behind the card's (i), after the option's name",
       kind: "tooltip",
@@ -1509,7 +1509,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "incident.text",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Faulty-update card, the sentence under the title",
       kind: "sentence",
       examples: [],
@@ -1517,7 +1517,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "incident.option.rollback",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Faulty-update card, first option",
       kind: "button",
       examples: [],
@@ -1525,7 +1525,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "incident.option.keep",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Faulty-update card, second option",
       kind: "button",
       examples: [],
@@ -1533,7 +1533,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "incident.scope.rollback",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Faulty-update card, chip on Roll it back, and behind the card's (i)",
       kind: "chip",
@@ -1542,7 +1542,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "incident.scope.keep",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Faulty-update card, chip on Keep it running, and behind the card's (i)",
       kind: "chip",
@@ -1551,7 +1551,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "option.money",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Faulty-update card, money chip on Roll it back",
       kind: "chip",
       examples: ["\u00a365"],
@@ -1559,7 +1559,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "option.risk",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Risk chip on an option (no option has a risk at present, see coverage)",
       kind: "chip",
@@ -1568,15 +1568,15 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "case.info.title",
-      screen: "Decide cards",
-      where: "Pop-up behind the (i) on any Decide card: title",
+      screen: "Decision cards",
+      where: "Pop-up behind the (i) on any decision card: title",
       kind: "tooltip",
       examples: [],
       texts: ["All evidence"],
     },
     {
       id: "case.info.fact",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where: "Same pop-up, one line per figure",
       kind: "tooltip",
       examples: ["Wrong gifts aboard: 1.", "In your cost now: \u00a312."],
@@ -1584,7 +1584,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "case.info.option",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Same pop-up, one line per option: its name, its words, and why it is shut if it is",
       kind: "tooltip",
@@ -1597,7 +1597,7 @@ window.TEXT_FEEDBACK = {
     },
     {
       id: "case.progress",
-      screen: "Decide cards",
+      screen: "Decision cards",
       where:
         "Line on a card while a chosen option is being carried out (may no longer occur, see coverage)",
       kind: "label",
@@ -1816,7 +1816,7 @@ window.TEXT_FEEDBACK = {
       id: "news.milestone",
       screen: "Tips and news lines",
       where:
-        "At 25, 50 and 75 right gifts, and at the target. Read out by screen readers (hidden live line under the top bar). Not shown on screen",
+        "At 25, 50 and 75 correct gifts, and at the target. Read out by screen readers (hidden live line under the top bar). Not shown on screen",
       kind: "sentence",
       examples: [],
       texts: [
@@ -2061,7 +2061,7 @@ window.TEXT_FEEDBACK = {
       where: "Half-time card, the line under the title",
       kind: "sentence",
       examples: [],
-      texts: ["Check your progress and pick an upgrade."],
+      texts: ["Check your progress."],
     },
     {
       id: "half.goalFigure",
@@ -2133,7 +2133,7 @@ window.TEXT_FEEDBACK = {
       kind: "sentence",
       examples: [],
       texts: [
-        "Big gifts come next. The AI gets many of them wrong, and each wrong one costs \u00a3{n}.",
+        "Big gifts come next. The AI gets many of them wrong. Each wrong one costs \u00a3{n}.",
       ],
     },
     {
@@ -2213,13 +2213,13 @@ window.TEXT_FEEDBACK = {
       where: "Text behind the (i) on Install a hot-fix update",
       kind: "tooltip",
       examples: [
-        "The AI makes toys 40% faster. It is a big change that was tested briefly.",
+        "The AI makes toys 40% faster. Its makers say it is a big change and tested it briefly.",
       ],
       texts: [
-        "The AI makes toys {n}% faster. It is a big change that was tested briefly.",
-        "The AI makes toys {n}% faster. It is a big change that was tested thoroughly.",
-        "The AI makes toys {n}% faster. It is a small change that was tested briefly.",
-        "The AI makes toys {n}% faster. It is a small change that was tested thoroughly.",
+        "The AI makes toys {n}% faster. Its makers say it is a big change and tested it briefly.",
+        "The AI makes toys {n}% faster. Its makers say it is a big change and tested it thoroughly.",
+        "The AI makes toys {n}% faster. Its makers say it is a small change and tested it briefly.",
+        "The AI makes toys {n}% faster. Its makers say it is a small change and tested it thoroughly.",
       ],
     },
     {
@@ -2354,7 +2354,7 @@ window.TEXT_FEEDBACK = {
         "{What} took \u00a3{n} of your \u00a3{limit} budget.",
         "Wrong big gifts took \u00a3{n} of your \u00a3{limit} budget.",
         "The faulty update's trains took \u00a3{n} of your \u00a3{limit} budget.",
-        "Making and fixing incorrect gifts took \u00a3{n} of your \u00a3{limit} budget.",
+        "Making and fixing wrong gifts took \u00a3{n} of your \u00a3{limit} budget.",
         "Checking took \u00a3{n} of your \u00a3{limit} budget.",
         "Running the AI took \u00a3{n} of your \u00a3{limit} budget.",
         "The half-time upgrade took \u00a3{n} of your \u00a3{limit} budget.",
@@ -2460,7 +2460,7 @@ window.TEXT_FEEDBACK = {
     {
       id: "lesson.big",
       screen: "End screen",
-      where: "Lesson line (title: Big gifts need a person)",
+      where: "Lesson line (title: Big gifts need an elf)",
       kind: "sentence",
       examples: [],
       texts: [
@@ -2670,11 +2670,11 @@ window.TEXT_FEEDBACK = {
       kind: "heading",
       examples: [],
       texts: [
-        "Human in the loop",
-        "Risk-based checking",
-        "Ask a person when unsure",
-        "Test before release and keep a way back",
-        "Keep human oversight sharp",
+        "Keep a human in the loop",
+        "Define the right risk approach",
+        "Maintain trust by checking sources",
+        "Always test, and have a rollback plan",
+        "Keep people in control of outputs",
       ],
     },
     {
@@ -2799,7 +2799,7 @@ window.TEXT_FEEDBACK = {
       id: "practices.note",
       screen: "End screen",
       where:
-        "Italic note at the foot of the Risk-based checking tile when wrong gifts reached children",
+        "Italic note at the foot of the Define the right risk approach tile when wrong gifts reached children",
       kind: "sentence",
       examples: [],
       texts: [
@@ -3815,7 +3815,8 @@ window.TEXT_FEEDBACK = {
     {
       id: "a11y.case",
       screen: "Accessibility only",
-      where: "Labels on a Decide card: the card, its (i) and its close button",
+      where:
+        "Labels on a decision card: the card, its (i) and its close button",
       kind: "accessibility-only",
       examples: [],
       texts: [
@@ -3827,14 +3828,14 @@ window.TEXT_FEEDBACK = {
     {
       id: "a11y.cue",
       screen: "Accessibility only",
-      where: "Label of the gold Decide button",
+      where: "Label of the gold decision button",
       kind: "accessibility-only",
       examples: [],
       texts: [
-        "Decision waiting: {card title}",
-        "Decision waiting: {card title}, {n} in all",
+        "Decision needed: {card title}",
+        "Decision needed: {card title}, {n} in all",
         "Decision in progress, {n} seconds left",
-        "Decision waiting",
+        "Decision needed",
       ],
     },
     {

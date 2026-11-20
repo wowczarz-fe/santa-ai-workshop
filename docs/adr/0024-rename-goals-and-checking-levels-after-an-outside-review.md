@@ -28,9 +28,13 @@ name changed in one place has to change everywhere.
   label. The budget goal reads "spend less than the £900 budget".
 - The checking levels are Random, Riskiest and All, with no quote marks.
 - The eighth elf is Candy.
-- No emoji, in line with ADR 0021.
+- A gift that does not match is still a wrong gift, never an incorrect one.
+- No emoji, as the copyedit's style sheet and the user ask.
+- "try using AI", "flagged by AI", "Let elves and AI decide" and "Fully AI automated" drop the
+  article ADR 0021 asks for before AI. The user chose these wordings.
 
-The half-time card gains a line under its title, and the toy machine loses its "AI" badge.
+The half-time card gains a line under its title, "Check your progress.", the end screen's
+practice tiles take the user's own names, and the toy machine loses its "AI" badge.
 
 ## Consequences
 

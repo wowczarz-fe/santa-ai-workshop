@@ -193,6 +193,12 @@ const OLD_WORDING = [
   /^Ask a person when unsure$/,
   /^Test before release and keep a way back$/,
   /^Keep human oversight sharp$/,
+  // Wordings the user settled after the round: "wrong", not "incorrect", and the hot-fix update's
+  // signs as its makers' word.
+  /\bincorrect\b/i,
+  /Each one costs/,
+  /of them wrong, and each wrong one/,
+  /change that was tested/,
 ];
 // Page texts the same round replaced. The page builds them in game.js and index.html, outside
 // view(), so the two files are read as they stand, with line breaks folded to single spaces.
@@ -227,6 +233,9 @@ const PAGE_OLD_WORDING = [
   /Few mistakes/,
   /\^keep\\b/,
   /<span class="eyebrow">Christmas morning</,
+  /\bincorrect\b/i,
+  /Check your progress and pick an upgrade/,
+  /\["by hand", "Assist", "Automate"\]/,
 ];
 // "4 s" for four seconds is a counter's shorthand. It stays on the end screen's practice figures,
 // which are counters, and nowhere else: a sentence says "seconds".

@@ -2670,7 +2670,7 @@ class Workshop {
     });
     const act = (id, label, used, figure) => ({ id, label, used, figure });
     return [
-      p("human-in-loop", "Human in the loop", [
+      p("human-in-loop", "Keep a human in the loop", [
         act(
           "assist",
           "Elves confirmed the AI's drafts",
@@ -2680,7 +2680,7 @@ class Workshop {
       ]),
       p(
         "risk-check",
-        "Risk-based checking",
+        "Define the right risk approach",
         [
           act(
             "risky",
@@ -2693,7 +2693,7 @@ class Workshop {
           ? `Wrong gifts hurt Santa's reputation. ${assurance.shipped} reached children, and ${this.recalled.count} more ${this.recalled.count === 1 ? "was" : "were"} brought back in time.`
           : `Wrong gifts hurt Santa's reputation. ${assurance.shipped} reached children.`,
       ),
-      p("escalate", "Ask a person when unsure", [
+      p("escalate", "Maintain trust by checking sources", [
         act(
           "decided",
           "Read the unclear wishes yourself",
@@ -2701,7 +2701,7 @@ class Workshop {
           `Answered ${u.picked} of ${letters}, ${u.pickedRight} of them right${this.undecided ? `, ${this.undecided} left unanswered` : ""}`,
         ),
       ]),
-      p("test-release", "Test before release and keep a way back", [
+      p("test-release", "Always test, and have a rollback plan", [
         act(
           "tested",
           "Tested the update first",
@@ -2735,7 +2735,7 @@ class Workshop {
               : "Not needed",
         ),
       ]),
-      p("oversight", "Keep human oversight sharp", [
+      p("oversight", "Keep people in control of outputs", [
         act(
           "trained",
           "Trained the checkers not to simply trust the AI",

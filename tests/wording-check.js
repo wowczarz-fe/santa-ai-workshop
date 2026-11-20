@@ -187,6 +187,12 @@ const OLD_WORDING = [
   /fresh elf on these gifts/,
   /of these wrong, and each wrong one/,
   /(checked and is|brought back was|checked gift was) right\b/,
+  // The practice names the same round replaced.
+  /^Human in the loop$/,
+  /^Risk-based checking$/,
+  /^Ask a person when unsure$/,
+  /^Test before release and keep a way back$/,
+  /^Keep human oversight sharp$/,
 ];
 // Page texts the same round replaced. The page builds them in game.js and index.html, outside
 // view(), so the two files are read as they stand, with line breaks folded to single spaces.

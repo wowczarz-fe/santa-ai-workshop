@@ -1741,6 +1741,9 @@ dialog p {
   font-size: 12px;
   margin: 12px 0;
 }
+#intro > h2 {
+  text-wrap: balance;
+}
 #intro > .primary {
   width: 100%;
 }
@@ -3361,6 +3364,7 @@ dialog p {
   margin: 4px 0 0;
   font-size: 16.5px;
   line-height: 1.2;
+  text-wrap: balance;
   color: var(--bc-ink);
 }
 #report .practice-tile[data-used="true"] .practice-name {

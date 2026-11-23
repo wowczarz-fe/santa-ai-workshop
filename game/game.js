@@ -1812,8 +1812,7 @@
       button.title = option?.why || "";
     }
     // The figure the decision turns on most: for an unclear wish what the gift costs if it comes
-    // out wrong (the rules' stake, in pounds), else the first primary fact. The rest are behind
-    // the info button.
+    // out wrong (the rules' stake, in pounds), else the first primary fact.
     const fact = c.facts?.find((f) => f.primary);
     const stake = Number.isFinite(c.stake)
       ? `Costs ${money(c.stake)} if wrong`
@@ -1907,17 +1906,6 @@
         "A checker caught this",
         [
           `"${caughtSnapshot.wish}" The child wanted ${withArticle(caughtSnapshot.wanted.name)}, but this was ${withArticle(caughtSnapshot.made.name)}.`,
-        ],
-      ];
-    if (key === "caseFacts")
-      return [
-        "All evidence",
-        [
-          ...(view.case?.facts || []).map((f) => `${f.label}: ${f.value}.`),
-          ...(view.case?.options || []).map(
-            (o) =>
-              `${o.scope ? `${o.label}: ${stop(lowerFirst(o.scope))}` : `${o.label}.`}${o.why ? ` ${sentence(o.why)}` : ""}`,
-          ),
         ],
       ];
     const parts = key.split(":"),

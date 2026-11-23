@@ -738,10 +738,6 @@ main {
   font-size: 17px;
   line-height: 1.25;
 }
-.case-panel .panel-head .info-button {
-  flex: none;
-  margin-top: 2px;
-}
 /* The decision card stops the clock while it is open, and says so */
 .case-panel .case-paused {
   display: inline-block;

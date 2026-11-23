@@ -57,8 +57,10 @@ earns 1.76 (expert) and 1.46 (first-timer) against 2.52 and 1.92, checking every
 
 Elves confirming the toys all game now beat the good plan by about a quarter of a star (2.77
 against 2.52): checkers on Random through the clean first half come to trust the AI and wave big
-gifts through later. The balance check reports this as a warning until the good plan is chosen
-again. Two of its limits were loosened to fit 40 seeds: no star in at most 15% of first-timer
+gifts through later. The same plan with the riskiest gifts checked from the start earns 2.68 for an
+expert and 2.00 for a first-timer, against 1.89 for a first-timer with elves on Assist all game, so
+automating the routine first half still pays. The balance check reports the gap as a warning until
+the good plan is chosen again. Two of its limits were loosened to fit 40 seeds: no star in at most 15% of first-timer
 games, and automation everywhere at three stars at most 60% as often as the good plan.
 
 `tests/balance-check.js` fails when a game that lost a star to checking reads "About right".

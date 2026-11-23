@@ -1581,7 +1581,7 @@
     {
       title: "Choose AI automation level",
       text: () =>
-        "More AI automation is quicker and doesn't need rest. On Automate, the elves at that station sit idle, so move them where they are needed. An elf is needed to process bigger gifts.",
+        "More AI automation is quicker and doesn't need rest. On Automate, the elves at that station sit idle, so move them where they are needed. Big, unusual gifts still need an elf's judgement.",
       target: () => actionGroups.get("ai0"),
     },
     {

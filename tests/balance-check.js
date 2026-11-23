@@ -613,7 +613,7 @@ function checkChoice(v, w) {
   );
   assert(ch.report.tired >= 0 && ch.report.tired <= 100);
   assert.strictEqual(ch.next.cargo.id, "big");
-  assert(ch.next.text.length < 100, "next is one short line");
+  assert(ch.next.text.length < 120, "next is one short line");
   assert.strictEqual(
     ch.options.map((o) => o.id).join(),
     "update,tested,train,rest,none",

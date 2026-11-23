@@ -1,9 +1,10 @@
 // Every text the page can show is complete, plain British English (ADR 0021): no semicolons, no
 // "s" standing for seconds inside a sentence, and none of the clipped fragments the copyedit of
 // November 2026 replaced. None says or implies that more AI means more mistakes in general
-// (ADR 0019): the AI is as reliable as a fresh elf on everyday gifts and poor on big ones, and the
-// words say where. Seeded games are played with different habits, through half-time and to the
-// end screen, and every string anywhere in view() is read at each step.
+// (ADR 0019, 0025): the AI is as reliable as the elves on everyday gifts, and big, unusual gifts
+// need an elf's judgement. The words say where, and never call the AI weak or poor. Seeded games
+// are played with different habits, through half-time and to the end screen, and every string
+// anywhere in view() is read at each step.
 const assert = require("assert");
 const fs = require("fs");
 const vm = require("vm");
@@ -21,7 +22,12 @@ const BANNED = [
   /more AI\b[^.]*\bmistakes/i,
   /the more the AI/i,
   /AI slips more/i,
-  /AI (is|was) (stupid|dumb|careless|sloppy)/i,
+  /AI (is|was) (stupid|dumb|careless|sloppy|weak|poor)/i,
+  /(weak|poor) on big/i,
+  /gets many of (these|them) wrong/i,
+  /as (reliable|accurate|rarely) as a fresh elf/i,
+  /best elves/i,
+  /\bjudgment\b/i,
   /check what it makes/i,
   /Drop to Assist/,
   /an elf confirms each\.$/,
@@ -241,6 +247,9 @@ const PAGE_OLD_WORDING = [
   /\bincorrect\b/i,
   /Check your progress and pick an upgrade/,
   /\["by hand", "Assist", "Automate"\]/,
+  /An elf is needed to process bigger gifts/,
+  /\bjudgment\b/i,
+  /AI (is|was) (weak|poor|stupid)/i,
 ];
 // "4 s" for four seconds is a counter's shorthand. It stays on the end screen's practice figures,
 // which are counters, and nowhere else: a sentence says "seconds".

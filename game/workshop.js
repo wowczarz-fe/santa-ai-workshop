@@ -218,7 +218,7 @@ const LOSSES = {
 // The lesson under the checking dial: what to do next time, so it never repeats the dial's figures.
 const CHECKING_ADVICE = {
   "too little":
-    "Check the big gifts, where the AI is weak and a mistake costs most.",
+    "Check the big gifts, where the AI has least experience and a mistake costs most.",
   "about right": "Checks went where mistakes were likeliest and dearest.",
   "too much":
     "Check where a mistake is likely or costly, and let the rest through.",
@@ -328,7 +328,7 @@ const groupOf = (w) => (w.big ? "big" : w.unclear ? "unclear" : "everyday");
 const ASSURANCE = { little: 0.1, much: 0.8, settle: 0.1, clear: 3, floor: 100 };
 
 // What each half of the game carries: everyday gifts only, where the AI is as reliable as a fresh
-// elf, then mostly big gifts, where the AI is poor and a mistake costs most. big is the share of
+// elf, then mostly big gifts, where the AI has least experience and a mistake costs most. big is the share of
 // letters drawn from the big wishes, the rest coming from plain wishes.
 const CARGO = [
   { id: "everyday", name: "Everyday gifts", icon: "🎁", big: 0 },
@@ -656,8 +656,8 @@ class Workshop {
   cargoView(half = this.half) {
     const c = CARGO[half - 1];
     const text = {
-      everyday: `The AI is as accurate as a fresh elf with these gifts. A wrong one costs ${money(WRONG_PRICE.everyday)}.`,
-      big: `The AI gets many of these wrong. Each wrong one costs ${money(WRONG_PRICE.big)}.`,
+      everyday: `The AI handles these as reliably as your elves, and much faster. A wrong one costs ${money(WRONG_PRICE.everyday)}.`,
+      big: `These are rare and unusual. The AI has seen few like them and can be wrong without noticing. Each wrong one costs ${money(WRONG_PRICE.big)}.`,
     }[c.id];
     return { id: c.id, name: c.name, icon: c.icon, text };
   }
@@ -1461,7 +1461,7 @@ class Workshop {
         return say(
           "checking",
           x.byAi
-            ? "Keep going. For everyday gifts, the AI slips as rarely as a fresh elf."
+            ? "Keep going. On everyday gifts, the AI is as reliable as your elves."
             : "Keep going. Even a fresh elf mixes up 1 gift in 200.",
           "Keep going",
         );
@@ -3093,7 +3093,7 @@ class Workshop {
       report,
       next: {
         cargo: this.cargoView(2),
-        text: `Big gifts come next. The AI gets many of them wrong. Each wrong one costs ${money(WRONG_PRICE.big)}.`,
+        text: `Big, unusual gifts come next. The AI has seen few like them and can be confidently wrong. Each wrong one costs ${money(WRONG_PRICE.big)}.`,
       },
       options: this.halfTimeOptions(),
     };
@@ -3268,7 +3268,7 @@ class Workshop {
     if (short && st.ai[0] / (2 * d) >= 0.6)
       return L(
         "By hand is too slow",
-        `Only ${right} correct gifts from ${this.lastId} letters. On everyday gifts the AI is as reliable as a fresh elf, and far faster.`,
+        `Only ${right} correct gifts from ${this.lastId} letters. On everyday gifts the AI is as reliable as your elves, and far faster.`,
       );
     // Their words come from the assurance verdict, which follows the same loss.
     if (short && biggest === "held")
@@ -3321,7 +3321,7 @@ class Workshop {
       ],
       "the AI on a big gift": [
         "Big gifts need an elf",
-        "Most of the cost of wrong gifts came from big gifts, where the AI is weak. Put an elf on them, either with Assist or by checking the riskiest gifts.",
+        "Most of the cost of wrong gifts came from big gifts, which are outside the AI's experience. Put an elf's judgement on them, with Assist or by checking the riskiest gifts.",
       ],
       "made by the faulty update": [
         "A faulty update ran unchecked",
@@ -3362,7 +3362,7 @@ class Workshop {
     )
       return L(
         "Too little checking",
-        `Wrong gifts cost ${money(costs.mistakes)}, far more than the ${money(costs.checking)} spent on checking. Wrong big gifts alone cost ${money(bigWrong)}. The AI is reliable on everyday gifts and weak on big ones, so check the big ones.`,
+        `Wrong gifts cost ${money(costs.mistakes)}, far more than the ${money(costs.checking)} spent on checking. Wrong big gifts alone cost ${money(bigWrong)}. The AI is reliable on everyday gifts. Big, unusual ones need an elf's judgement, so check them.`,
       );
     if ((wrongHurt || !missed) && st.faulty >= 15)
       return L(

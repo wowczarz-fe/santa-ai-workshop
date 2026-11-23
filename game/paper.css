@@ -1251,9 +1251,6 @@ body[data-look="paper"] .end-actions {
   background: #15332a;
   box-shadow: 0 -6px 18px #0000004d;
 }
-body[data-look="paper"] #report #copyStatus {
-  color: #f4ead3;
-}
 body[data-look="paper"] #report #replay {
   font-family: var(--font-body);
   font-size: 19px;

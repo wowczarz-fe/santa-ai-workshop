@@ -3433,29 +3433,6 @@ dialog p {
   width: 19px;
   height: 19px;
 }
-#report #copyResult {
-  height: 44px;
-  padding: 0 18px;
-  border: 1.5px solid var(--bc-press);
-  border-radius: 12px;
-  background: var(--bc-card);
-  color: var(--bc-ink);
-  font-weight: 600;
-}
-#report #copyStatus {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: 12.5px;
-  text-align: center;
-}
-#copyStatus:empty {
-  display: none;
-}
-#copyFallback {
-  flex-basis: 100%;
-  max-width: 640px;
-  min-height: 64px;
-}
 @media (max-width: 760px) {
   #breakDialog {
     width: calc(100vw - 16px);

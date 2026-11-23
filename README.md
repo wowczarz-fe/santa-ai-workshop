@@ -49,7 +49,6 @@ Hosting notes:
   also use `style` attributes) and `data:` fonts and images.
 - It keeps five small `localStorage` entries on the site's domain, all named `workshop-...`: best
   stars, blunders seen, walkthrough done, the reduce-motion choice, and an old one it deletes.
-- "Copy result" shares a link to the game file itself, not the article page around it.
 
 Why the website gets a packed copy:
 [ADR 0023](docs/adr/0023-package-a-single-file-for-the-frontier-website.md).

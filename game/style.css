@@ -3304,7 +3304,7 @@ dialog p {
   color: #2b2005;
 }
 #report .practice-name {
-  margin: 4px 0 0;
+  margin: 4px 0 8px;
   font-size: 16.5px;
   line-height: 1.2;
   text-wrap: balance;
@@ -3336,7 +3336,7 @@ dialog p {
 .practice-tile[data-used="true"] .practice-action[data-used="false"] {
   opacity: 0.7;
 }
-/* The firm's offer: the last card, with the article and the practice link together. */
+/* The firm's offer, under the practices, with the article and the practice link together. */
 .end-offer {
   display: flex;
   flex-wrap: wrap;

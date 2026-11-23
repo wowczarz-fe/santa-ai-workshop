@@ -1557,9 +1557,21 @@
     if (innerWidth < 1000)
       anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
-  // The tour before the clock: one step per control, each beside the real control. The clock
-  // starts when the last step or Skip ends it.
+  // The tour before the clock: the stations, then one step per control, each beside the real
+  // control. The clock starts when the last step or Skip ends it.
   const tourSteps = [
+    {
+      title: "Your workshop",
+      text: () =>
+        "Gifts move from left to right. Letters are read, toys are made, gifts are checked, then loaded on the sleigh.",
+      target: () => $("board"),
+    },
+    {
+      title: "What you can do",
+      text: () =>
+        "Move elves between stations, choose how much AI each station uses and how much to check.",
+      target: () => $("elves0").closest(".station"),
+    },
     {
       title: "Elves",
       text: () =>
@@ -1569,7 +1581,7 @@
     {
       title: "Choose AI automation level",
       text: () =>
-        "More AI automation is quicker and doesn't need rest. An elf is needed to process bigger gifts.",
+        "More AI automation is quicker and doesn't need rest. On Automate, the elves at that station sit idle, so move them where they are needed. An elf is needed to process bigger gifts.",
       target: () => actionGroups.get("ai0"),
     },
     {
@@ -1596,11 +1608,10 @@
     // On a phone the control may be a page or a scroll away: bring it into view first.
     const anchor = target(),
       column = anchor.closest(".station");
-    if (column)
-      $("board").scrollTo({
-        left: column.offsetLeft - $("board").offsetLeft,
-        behavior: "instant",
-      });
+    $("board").scrollTo({
+      left: column ? column.offsetLeft - $("board").offsetLeft : 0,
+      behavior: "instant",
+    });
     anchor.scrollIntoView({
       block: "center",
       inline: "nearest",
@@ -1634,6 +1645,13 @@
       panel.style.left = `${Math.max(board.left + 8, sleigh.left - panel.offsetWidth - 12)}px`;
       panel.style.top = `${Math.max(board.top + 8, Math.min(anchor.getBoundingClientRect().top, board.bottom - panel.offsetHeight - 8))}px`;
       drawPopupPointer(panel, anchor);
+    } else if (anchor === $("board") && innerWidth >= 1000) {
+      // The stations fill the screen, so the card sits in the empty foot of the sleigh column.
+      const panel = $("tour");
+      const board = anchor.getBoundingClientRect();
+      panel.style.left = `${board.right - panel.offsetWidth - 8}px`;
+      panel.style.top = `${board.bottom - panel.offsetHeight - 8}px`;
+      hidePopupPointer("tour");
     } else positionPanel($("tour"), anchor, [anchor]);
   }
   // How many wrong gifts an option brings off the sleigh, from its scope words.

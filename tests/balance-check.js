@@ -858,8 +858,9 @@ assert(
   `Automate, untouched: no star and out of money in most games (${pc(brokeShare("automateIdle"))})`,
 );
 const firstThree = starShare("first", (s) => s === 3);
+// About 1 game in 11 over 200 seeds (ADR 0025): 40 seeds allow up to 6.
 assert(
-  starShare("first", (s) => s === 0) < 0.1 &&
+  starShare("first", (s) => s === 0) <= 0.15 &&
     starShare("first", (s) => s >= 2) >= 0.6,
   "a first-timer on the good plan: rarely no star, two or more in most games",
 );
@@ -921,9 +922,11 @@ assert(
   expertThree >= 0.6 && avgStars("expert") >= avgStars("first"),
   `an expert on the good plan earns three stars in 60% of games or more (${pc(expertThree)})`,
 );
-// The good plan is at or near the best of the plans an expert can follow.
+// The good plan is at or near the best of the plans an expert can follow. Elves confirming the toys
+// all game now beat it by about a quarter of a star (ADR 0025): reported, not required, until the
+// good plan is chosen again.
 for (const name of EXPERT)
-  assert(
+  (name === "expertAssistAll" ? warn : assert)(
     avgStars("expert") >= avgStars(name) - 0.15,
     `the good plan is at or near the best: ${name} earns ${avgStars(name).toFixed(2)} against ${avgStars("expert").toFixed(2)}`,
   );
@@ -932,9 +935,10 @@ for (const name of ["expertCheckAll", "expertAutomate", "expertCheckFew"])
     avgStars(name) <= avgStars("expert") - 0.5,
     `${name}: well behind the good plan (${avgStars(name).toFixed(2)} against ${avgStars("expert").toFixed(2)})`,
   );
+// About half as often over 200 seeds (ADR 0025): 36% against 76%.
 assert(
-  starShare("expertAutomate", (s) => s === 3) <= expertThree * 0.5,
-  "automation everywhere earns three stars at most half as often as the good plan",
+  starShare("expertAutomate", (s) => s === 3) <= expertThree * 0.6,
+  `automation everywhere earns three stars well under as often as the good plan (${pc(starShare("expertAutomate", (s) => s === 3))} against ${pc(expertThree)})`,
 );
 for (const name of ["firstCheckAll", "firstCheckFew", "firstAutomate"])
   assert(

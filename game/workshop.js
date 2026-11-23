@@ -58,15 +58,16 @@ const AI_SECONDS = { read: 0.6, make: 0.75 };
 const ROLLBACK_SECONDS = 8;
 
 // What goes wrong. On everyday gifts the AI is as reliable as a fresh elf, at reading and at making,
-// and it never tires; elves get worse as they tire. On big gifts, which it has seen less of, the AI
-// is poor. A faulty update makes the same wrong toy again and again.
+// and it never tires; elves get worse as they tire. Big gifts are rare, unusual requests it has seen
+// few of, so it makes about 1 in 5 wrong (ADR 0025). A faulty update makes the same wrong toy again
+// and again.
 const RISK = {
   elfRead: 0.005,
   aiRead: 0.005,
   aiReadBig: 0.15,
   elfMake: 0.005,
   aiMake: 0.005,
-  aiMakeBig: 0.45,
+  aiMakeBig: 0.2,
   fault: 0.65,
   perStrain: 0.008, // per point of tiredness above SLIPS_FROM
 };
@@ -104,7 +105,7 @@ const WRONG_LINE_GAP = 20; // seconds before a wrong-gift line repeats the same 
 const HALF_SECONDS = 75;
 const DURATION = 2 * HALF_SECONDS;
 const CLOSE = DURATION - 15; // letters stop coming, so the last ones can still reach the sleigh
-const TARGET = 145;
+const TARGET = 146;
 // Three goals for the game, one star each (ADR 0014). full: the right gifts aboard reach the
 // target. right: at most WRONG_ALLOWED wrong gifts aboard. cost: the sleigh leaves with budget
 // left. The right and cost goals count only once the sleigh holds GOALS_FROM of its target, so a
@@ -113,7 +114,7 @@ const TARGET = 145;
 // included, counts down from it, and the game ends the moment nothing is left. A game that ends
 // that way has lost the cost star, so it earns two stars at most.
 const WRONG_ALLOWED = 2;
-const COST_LIMIT = 900;
+const COST_LIMIT = 1000;
 const GOALS_FROM = 0.7;
 const BUDGET_LOW = 0.25; // the share of the budget left at which it is said to be running low
 const NO_BUDGET = "Not enough budget left";
@@ -296,8 +297,9 @@ const PRICE = {
   check: 4, // each gift sent for a check
   remake: 3, // making an everyday gift again
   // Making a big gift again is dear: a mistake caught late costs far more than one prevented, which
-  // is what puts automation everywhere behind people on the big gifts even with every one checked.
-  remakeBig: 15,
+  // is what puts automation everywhere behind people on the big gifts even with every one checked
+  // (ADR 0025).
+  remakeBig: 40,
   rollback: 65,
 };
 // What making these gifts again costs.

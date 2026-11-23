@@ -2568,7 +2568,7 @@ dialog p {
   height: 24px;
 }
 #breakDialog #breakText {
-  font-size: 16px;
+  font-size: 24px;
 }
 #breakDialog #breakText:focus {
   outline: none;
@@ -3613,7 +3613,7 @@ dialog p {
     font-size: 12.5px;
   }
   #breakDialog #breakText {
-    font-size: 15px;
+    font-size: 22.5px;
   }
   #nextCargoText {
     font-size: 12.5px;

@@ -104,25 +104,6 @@
     isIdle(elf) && elf.station < 2 && view.ai[elf.station] === 2;
   const trendArrow =
     '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.5V2M2.5 5.5 6 2l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  // A small "i" button that shows or hides longer words in place: works with touch and keyboard.
-  // buttonHost gets the button, textHost the words (hidden until asked for).
-  function addMore(buttonHost, words, label, textHost = buttonHost) {
-    if (!words) return;
-    const more = make("p", "more-text", words);
-    more.hidden = true;
-    const button = make("button", "info-button more-toggle", "i");
-    button.type = "button";
-    button.setAttribute("aria-label", label);
-    button.setAttribute("aria-expanded", "false");
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      more.hidden = !more.hidden;
-      button.setAttribute("aria-expanded", String(!more.hidden));
-    });
-    buttonHost.classList.add("more-host");
-    buttonHost.append(button);
-    textHost.append(more);
-  }
   const infoButton = (key, label = "More information") => {
     const b = make("button", "info-button", "i");
     b.dataset.help = key;
@@ -1198,8 +1179,7 @@
       );
     $("breakLines").replaceChildren(...lines);
   }
-  // A fact behind an option's (i) that has no chip of its own: a finished sentence as it stands,
-  // else its label and value.
+  // A fact with no chip of its own: a finished sentence as it stands, else its label and value.
   const factSentence = (f) =>
     /[.!?]$/.test(String(f.value))
       ? cap(String(f.value))
@@ -1220,12 +1200,24 @@
       const others = option.facts.filter(
         (f) => f !== gives && f !== costs && f !== risk && f !== stops,
       );
-      const more = [option.text, ...others.map(factSentence)].join(" ");
+      // The card's small print: the option's sentences the gives line does not already say, and
+      // any fact without a chip.
+      const said = (gives?.value ?? "").toLowerCase();
+      const more = [
+        ...(gives ? (option.text.match(/[^.!?]+[.!?]?/g) ?? []) : []),
+        ...others.map(factSentence),
+      ]
+        .map((part) => part.trim())
+        .filter(
+          (part) => part && part.replace(/[.!?]$/, "").toLowerCase() !== said,
+        )
+        .join(" ");
       card.append(
         iconNode(optionIcons[option.id] || "gift", "upgrade-icon"),
         make("strong", "", option.label),
         make("span", "upgrade-gives", gives?.value ?? option.text),
       );
+      if (more) card.append(make("span", "upgrade-more", more));
       const chips = make("span", "upgrade-chips");
       // The install risk is how likely the update is faulty; testing is what stops a bad one.
       if (risk) {
@@ -1242,7 +1234,11 @@
         chips.append(make("span", "upgrade-stops", `Stops ${stops.value}`));
       if (costs) {
         const chip = make("span", "upgrade-cost");
-        chip.append(iconNode("budget", ""), costs.value);
+        chip.append(
+          iconNode("budget", ""),
+          make("span", "screen-reader-only", "Costs "),
+          costs.value,
+        );
         chips.append(chip);
       }
       if (option.available === false && option.why)
@@ -1250,10 +1246,6 @@
       card.append(chips);
       const wrap = make("div", "upgrade-wrap");
       wrap.append(card);
-      if (gives) {
-        card.title = more;
-        addMore(wrap, more, `More about ${option.label}`);
-      }
       $("breakOptions").append(wrap);
     }
   }

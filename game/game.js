@@ -2367,12 +2367,12 @@
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && breakAside) queueMicrotask(paint);
   });
+  // The article the copied result points to; it is added to the result once it is set.
+  const ARTICLE_LINK = "";
   $("copyResult").onclick = async () => {
     const end = view.end;
-    const link = new URL(location.href);
-    link.searchParams.set("seed", seed);
     const verdict = end.assurance?.verdict;
-    const result = `Santa's AI Workshop: ${end.stars} of 3 stars. ${end.right} correct gifts and ${end.wrong} wrong.${verdict ? ` Checking: ${verdict}.` : ""} ${link.href}`;
+    const result = `Santa's AI Workshop: ${end.stars} of 3 stars. ${end.right} correct gifts and ${end.wrong} wrong.${verdict ? ` Checking: ${verdict}.` : ""}${ARTICLE_LINK ? ` ${ARTICLE_LINK}` : ""}`;
     try {
       await navigator.clipboard.writeText(result);
       text("copyStatus", "Result copied.");

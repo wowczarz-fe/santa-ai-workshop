@@ -1581,6 +1581,38 @@ body[data-look="paper"] .crew-hint {
 body[data-look="paper"] .crew-hint:empty {
   display: none;
 }
+/* How elves move, small at the top left of each floor: "drag" with a mouse, "tap" on narrow
+   screens, where elves move by tapping */
+body[data-look="paper"] .move-cue {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  opacity: 0.6;
+  pointer-events: none;
+}
+body[data-look="paper"] .move-cue svg {
+  width: 5px;
+  height: 8px;
+}
+body[data-look="paper"] .move-cue-tap {
+  display: none;
+}
+@media (max-width: 999px) {
+  body[data-look="paper"] .move-cue-drag {
+    display: none;
+  }
+  body[data-look="paper"] .move-cue-tap {
+    display: inline;
+  }
+}
 /* A tired elf: its card outlined with a cup, no extra words */
 body[data-look="paper"] .elf-card .rest-cue {
   display: none;
@@ -1954,9 +1986,6 @@ body[data-look="paper"] .wrong-delivery > span:last-child {
     white-space: normal;
     font-size: 11px;
     line-height: 14px;
-  }
-  body[data-look="paper"] #helpMove {
-    display: none;
   }
   body[data-look="paper"] #stationPicker {
     height: 40px;

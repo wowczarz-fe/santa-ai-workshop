@@ -158,12 +158,6 @@ main {
   font-size: 11px;
   flex-shrink: 0;
 }
-#helpMove {
-  width: 25px;
-  min-height: 25px;
-  padding: 0;
-  border-radius: 50%;
-}
 .board {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3804,12 +3798,6 @@ dialog p {
   overflow: hidden !important;
   clip-path: inset(50%) !important;
   white-space: nowrap !important;
-}
-
-body[data-look] .header-actions #helpMove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 @media (max-width: 600px) {

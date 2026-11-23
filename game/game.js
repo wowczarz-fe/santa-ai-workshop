@@ -203,7 +203,14 @@
     const belt = make("div", "paper-belt");
     belt.setAttribute("aria-hidden", "true");
     const floor = make("div", "paper-floor");
+    // How elves move, said once on each floor: drag with a mouse, tap on a phone or tablet.
+    const moveCue = make("span", "move-cue");
+    moveCue.setAttribute("aria-hidden", "true");
+    const chevron = (d) =>
+      `<svg viewBox="0 0 6 10"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    moveCue.innerHTML = `${chevron("M5 1 1 5l4 4")}<span class="move-cue-drag">drag</span><span class="move-cue-tap">tap</span>${chevron("M1 1l4 4-4 4")}`;
     floor.append(
+      moveCue,
       station.querySelector(".crew-heading"),
       $(`elves${s}`),
       $(`spare${s}`),
@@ -2023,12 +2030,6 @@
         "Time until Santa departs",
         [
           "Time stops while you pause, while a decision card is open and during the walkthrough.",
-        ],
-      ],
-      movement: [
-        "Moving elves",
-        [
-          "Drag an elf to a station or to the cocoa break. You can also tap the elf, then tap where it should go.",
         ],
       ],
       cocoa: [

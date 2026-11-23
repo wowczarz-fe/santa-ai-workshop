@@ -440,27 +440,18 @@ main {
   color: inherit;
   opacity: 0.75;
 }
-/* Top bar: the mistakes and cost goals, one star each */
+/* Top bar: the three goals, one star each */
 .dashboard .goals {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 430px;
+  max-width: 640px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-content: center;
   gap: 3px 8px;
 }
-/* On a desktop the sleigh shows its own count, so the gifts slot is for phones and tablets, where
-   the slots carry a short word each */
-@media (min-width: 1000px) {
-  .dashboard .hud-slot[data-goal="full"] {
-    display: none;
-  }
-}
+/* On phones and tablets the slots carry a short word each */
 @media (max-width: 999px) {
-  .dashboard .goals {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
   .dashboard .hud-slot .hud-name > span[data-short] {
     display: inline;
     font-size: 0;
@@ -1349,19 +1340,6 @@ progress {
   justify-content: center;
   gap: 3px;
   margin: 0;
-}
-.sleigh-total .sleigh-star {
-  align-self: center;
-  margin: 0;
-  color: #b88a1e;
-}
-.sleigh-total .sleigh-star .ui-icon {
-  display: block;
-  width: 20px;
-  height: 20px;
-}
-.sleigh-total[data-met="false"] .sleigh-star {
-  color: #8a9a8e;
 }
 .sleigh-total #sleighTarget {
   margin: 0;

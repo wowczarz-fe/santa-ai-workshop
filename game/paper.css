@@ -146,7 +146,7 @@ main {
     0 0/24px 12px repeat-x;
 }
 .column-heading h2 {
-  font-size: 19px;
+  font-size: 25px;
   letter-spacing: 0;
   text-transform: capitalize;
   color: var(--teal);
@@ -2905,5 +2905,30 @@ body[data-look="paper"] .status-row {
   20%,
   80% {
     opacity: 1;
+  }
+}
+
+/* The small heading above each switch, and one gentle glow on the switches as the game starts */
+body[data-look="paper"] .control-heading {
+  display: block;
+  margin: 0 0 3px 2px;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+@media (prefers-reduced-motion: no-preference) {
+  body[data-look="paper"] .switch.intro-glow {
+    animation: switch-intro-glow 1.6s ease-in-out 0.4s 1;
+  }
+}
+@keyframes switch-intro-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--gold);
   }
 }

@@ -144,7 +144,13 @@
         $(`minis${s}`).append(q);
       }
     }
-    const addGroup = (key, node) => {
+    // Each switch has a small heading above it, which also names it for screen readers.
+    const addGroup = (key, node, heading) => {
+      const title = make("span", "control-heading", heading);
+      title.id = `heading-${key}`;
+      node.setAttribute("role", "group");
+      node.setAttribute("aria-labelledby", title.id);
+      $(`controls${s}`).append(title);
       const wrap = make("div", "control-row");
       wrap.dataset.control = key;
       wrap.append(node, infoButton(`action:${key}`));
@@ -170,7 +176,7 @@
         sw.append(position);
       }
       sw.dataset.kind = "ai";
-      addGroup(`ai${s}`, sw);
+      addGroup(`ai${s}`, sw, "AI level");
     }
     if (s === 2) {
       const sw = make("div", "switch");
@@ -184,7 +190,7 @@
         sw.append(position);
       }
       sw.dataset.kind = "checking";
-      addGroup("checking", sw);
+      addGroup("checking", sw, "How much to check");
       const vigilance = make("button", "vigilance");
       vigilance.id = "vigilance";
       vigilance.dataset.help = "vigilance";
@@ -277,10 +283,8 @@
     },
     { passive: true },
   );
-  // The mistakes and cost goals, one star each; on a desktop the full-sleigh goal is on the sleigh
-  // itself, and a phone or tablet shows it here too, as the sleigh is a tab away. The cost goal is
-  // the game's remaining budget. Each has a short word for
-  // narrow screens.
+  // The three goals, one star each, side by side in the top bar; the sleigh shows only its count.
+  // The cost goal is the game's remaining budget. Each has a short word for narrow screens.
   const goalSlots = {};
   for (const [id, art, short] of [
     ["full", "gift", "Gifts"],
@@ -1338,14 +1342,6 @@
       `${counted(aboard, "correct gift", "correct gifts")} aboard, out of ${view.run.target} needed. ${counted(view.lost, "letter was", "letters were")} lost from full piles.`,
     );
     $("sleighTotal").style.setProperty("--fill", Math.min(1, aboard / target));
-    const met = String(!!full?.met);
-    if ($("sleighTotal").dataset.met !== met) {
-      $("sleighTotal").dataset.met = met;
-      $("sleighStar").innerHTML = icon(full?.met ? "star" : "star-empty");
-    }
-    $("sleighTotal").title = full
-      ? `${full.name}: ${full.met ? "star earned" : "no star yet"}`
-      : "";
   }
   let giftBubble = null,
     giftBubbleCount = 0,
@@ -2388,6 +2384,15 @@
   $("start").onclick = () => {
     showTour = $("walkthrough").checked;
     started = true;
+    // One gentle glow on the switches as the game starts, so the player sees them.
+    for (const sw of document.querySelectorAll(".controls .switch")) {
+      sw.classList.add("intro-glow");
+      sw.addEventListener(
+        "animationend",
+        () => sw.classList.remove("intro-glow"),
+        { once: true },
+      );
+    }
     $("intro").close();
     $("board").scrollLeft = 0;
     if (showTour) showTourStep(0);

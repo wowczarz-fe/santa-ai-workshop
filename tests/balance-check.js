@@ -1056,7 +1056,7 @@ console.log(
 // the headline praises care only without too many wrong gifts or too few checks. The headline
 // names the lesson's loss, and a lesson about a loss shows only when that loss cost a goal.
 const ANSWERS = {
-  "too much": /cost more than they saved|Fewer checks would have done/,
+  "too much": /cost more than they saved|Fewer checks would have done|^No: /,
   "about right": /^(Yes|Mostly|Nothing|Not as run)/,
   "too little": /[Mm]ore checks|^Too few: nothing was checked/,
   bottleneck: /^Not as run/,
@@ -1145,10 +1145,20 @@ for (const [name, rs] of Object.entries(results))
     if (a.verdict === "too much")
       for (const c of e.causes)
         assert(!/(^|or )check\b/i.test(c.fix), `${why}; cause fix: ${c.fix}`);
-    // A game that lost the mistakes star never reads too much checking or advises fewer checks.
+    // A game that lost a star to checking never reads about right (ADR 0025): checks that did not
+    // pay cost £100 or more in a game that lost the budget star, or wrong gifts nobody checked cost
+    // £100 or more beyond checking them in a game that lost the mistakes star. A game that lost
+    // every star for other reasons, such as a slow sleigh, may still read about right.
+    const overLost = !r.met.cost && a.overCost >= ASSURANCE.floor;
+    const underLost = !r.met.right && a.underCost >= ASSURANCE.floor;
+    if (a.verdict === "about right")
+      assert(!overLost && !underLost, `${why}: a star lost to checking`);
+    // A game that lost the mistakes star reads too much checking only when checks also cost the
+    // budget star, and is never told to check less.
     if (e.wrong > WRONG_ALLOWED)
       assert(
-        a.verdict !== "too much" && !/fewer checks/.test(e.checkingAnswer),
+        (a.verdict !== "too much" || overLost) &&
+          !/fewer checks/i.test(e.checkingAnswer),
         why,
       );
     const loss = losses.find((l) => HEADLINES[l].includes(e.headline));

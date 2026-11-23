@@ -323,7 +323,7 @@ const GROUPS = [
 ];
 const groupOf = (w) => (w.big ? "big" : w.unclear ? "unclear" : "everyday");
 // The end summary dial: below little it reads too little checking, above much too much. settle is the
-// share of all money spent that the two losses must reach before the dial moves far from the middle.
+// share of the budget that the two losses must reach before the dial moves far from the middle.
 // When one loss is clear times the other and at least floor pounds, the dial reads its side.
 const ASSURANCE = { little: 0.1, much: 0.8, settle: 0.1, clear: 3, floor: 100 };
 
@@ -2782,8 +2782,10 @@ class Workshop {
       (x) => x.wrong && x.exit === "skipped",
     ).length;
     const missed = this.aboard.filter((x) => x.wrong && x.slippedTired).length;
-    if (wrong > WRONG_ALLOWED && waved + missed > 0) {
-      const how = [
+    const how =
+      wrong > WRONG_ALLOWED &&
+      waved + missed > 0 &&
+      [
         waved &&
           `trusting checkers waved ${plural(waved, "wrong gift")} through`,
         missed && `tired ones missed ${plural(missed, "wrong gift")}`,
@@ -2791,12 +2793,16 @@ class Workshop {
         .filter(Boolean)
         .join(" and ")
         .replace(/^tired ones/, "tired checkers");
-      return `Not as run: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts, because ${how}.`;
-    }
+    // Checks that cost the budget star read too much even when wrong gifts got past them (ADR 0025),
+    // but a game that lost the mistakes star is never told to check less.
     if (a.verdict === "too much")
       return paid
-        ? `Mostly: ${stopped}, but the checks${on(wasted) || " on the rest"} cost more than they saved.`
-        : `No: ${stopped}. Fewer checks would have done.`;
+        ? `Mostly: ${stopped}, but the checks${on(wasted) || " on the rest"} cost more than they saved${how ? `, and ${how}` : ""}.`
+        : wrong > WRONG_ALLOWED
+          ? `No: ${stopped}${how ? `, and ${how}` : ""}.`
+          : `No: ${stopped}. Fewer checks would have done.`;
+    if (how)
+      return `Not as run: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts, because ${how}.`;
     if (!checked)
       return "Nothing was checked, and no wrong gift went out unchecked.";
     return paid
@@ -2816,11 +2822,11 @@ class Workshop {
   //   overCost: what over-checking lost: the checking money spent on kinds of parcel where the checks
   //     cost more than the mistakes they stopped.
   //   position = 0.5 + (overCost / (underCost + overCost) - 0.5) * weight, where
-  //     weight = lost / (lost + ASSURANCE.settle * all money spent) and lost = underCost + overCost.
-  //   So 0 is all under-checking, 1 all over-checking, and losses that are small against the whole
-  //   bill keep the dial near the middle. Below ASSURANCE.little it reads "too little", above
-  //   ASSURANCE.much "too much", and "about right" between, all read from the rounded position the
-  //   page draws, so the needle and the verdict agree.
+  //     weight = lost / (lost + ASSURANCE.settle * the budget) and lost = underCost + overCost.
+  //   So 0 is all under-checking, 1 all over-checking, and losses that are small against the budget
+  //   keep the dial near the middle, however little the game spent. Below ASSURANCE.little it reads
+  //   "too little", above ASSURANCE.much "too much", and "about right" between, all read from the
+  //   rounded position the page draws, so the needle and the verdict agree.
   //   Gifts that missed a sleigh while they waited for a check are not over-checking: too few or
   //   too tired checkers held them up. When they were the game's largest loss (biggestLoss) the
   //   verdict is "bottleneck" instead, whatever the position.
@@ -2894,9 +2900,7 @@ class Workshop {
     const overHeld = a.heldBy.all * LATE_PRICE;
     const overCost = overChecks + overHeld;
     const lost = underCost + overCost;
-    const weight =
-      lost /
-      Math.max(1, lost + ASSURANCE.settle * sum(Object.values(this.spent)));
+    const weight = lost / Math.max(1, lost + ASSURANCE.settle * COST_LIMIT);
     const at = lost ? 0.5 + (overCost / lost - 0.5) * weight : 0.5;
     // When gifts held back by checking every parcel were the game's largest loss the verdict is too
     // much, and the needle moves into that zone if the money alone left it short of it.
@@ -2912,6 +2916,16 @@ class Workshop {
     // A game that lost the mistakes star did not check too much, whatever the checks cost.
     if (this.aboard.filter((x) => x.wrong).length > WRONG_ALLOWED)
       to = Math.min(to, ASSURANCE.much);
+    // A game that lost a star to checking never reads about right (ADR 0025). Checking cost the
+    // budget star when that star was lost and checks that did not pay cost floor pounds or more. It
+    // cost the mistakes star when that star was lost and wrong gifts nobody checked cost floor pounds
+    // or more beyond checking them. When both hold, the larger figure picks the side.
+    const met = Object.fromEntries(this.goals().map((g) => [g.id, g.met]));
+    const overLost = !met.cost && overCost >= ASSURANCE.floor;
+    const underLost = !met.right && underCost >= ASSURANCE.floor;
+    if (overLost && (!underLost || overCost >= underCost))
+      to = Math.max(to, ASSURANCE.much + 0.05);
+    else if (underLost) to = Math.min(to, ASSURANCE.little - 0.05);
     if (stars === 3)
       to = Math.min(Math.max(to, ASSURANCE.little), ASSURANCE.much);
     const position = Math.round(to * 100) / 100;

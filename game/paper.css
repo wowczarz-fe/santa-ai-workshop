@@ -2930,16 +2930,10 @@ body[data-look="paper"] .control-heading {
   }
 }
 
-/* Intro card: a phone held upright gets a hint to turn it sideways. Keyed on the viewport, so
-   the website's iframe shows it only when its column is phone-narrow. */
-.device-tip {
-  display: none;
-}
-@media (orientation: portrait) and (max-width: 700px) {
-  body[data-look="paper"] #intro .device-tip {
-    display: block;
-    font-size: 11px;
-    line-height: 14px;
-    color: var(--muted);
-  }
+/* Intro card: a small muted hint, on every screen, that the game plays best on a computer or a
+   phone turned sideways. */
+body[data-look="paper"] #intro .device-tip {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--muted);
 }

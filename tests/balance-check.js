@@ -40,7 +40,8 @@ vm.runInThisContext(
   };
 }
 
-const SEEDS = Array.from({ length: 40 }, (_, i) => i + 1);
+// 100 seeds: with 40 the averages moved by 0.2 of a star between seed ranges (ADR 0025).
+const SEEDS = Array.from({ length: 100 }, (_, i) => i + 1);
 // Orderings that guide tuning but do not block: printed at the end as warnings.
 const warnings = [];
 const warn = (ok, message) => ok || warnings.push(message);
@@ -166,10 +167,11 @@ function balance(w, v, m, keep) {
 }
 
 // A plan is the AI levels and the checking level for each part of the game. The good plan lets the
-// AI work alone on the everyday gifts of the first part, where it is as reliable as a fresh elf, and
-// puts people on the big gifts of the second: elves confirm the toys, and the risky ones are checked.
+// AI work alone on the everyday gifts of the first part, where it is as reliable as the elves, and
+// puts people on the big gifts of the second: elves confirm the toys. The riskiest gifts are checked
+// all game, which also keeps the checkers from trusting the AI on the clean first half (ADR 0025).
 const part = (ai, checking) => ({ ai, checking });
-const GOOD = { first: part([2, 2], 0), second: part([2, 1], 1) };
+const GOOD = { first: part([2, 2], 1), second: part([2, 1], 1) };
 const allGame = (ai, checking) => ({
   first: part(ai, checking),
   second: part(ai, checking),
@@ -387,7 +389,7 @@ const players = {
   expertAssistBoth: active({
     plan: { first: GOOD.first, second: part([1, 1], 1) },
   }),
-  // The plan that was best before the AI matched a fresh elf on everyday gifts: elves confirm the
+  // The plan that was best before the AI matched the elves on everyday gifts: elves confirm the
   // toys all game.
   expertAssistAll: active({ plan: allGame([2, 1], 1) }),
   expertCheckAll: active({ plan: goodWithChecking(2) }),
@@ -403,6 +405,7 @@ const players = {
   firstCheckAll: firstTimer({ plan: goodWithChecking(2) }),
   firstCheckFew: firstTimer({ plan: goodWithChecking(0) }),
   firstAutomate: firstTimer({ plan: allGame([2, 2], 1) }),
+  firstAssistAll: firstTimer({ plan: allGame([2, 1], 1) }),
   firstNeverRests: firstTimer({ rest: false }),
   firstFollows: firstTimer({ follows: true }),
   // A careless first-timer: automation everywhere, checking left on a few, every decision answered
@@ -922,11 +925,9 @@ assert(
   expertThree >= 0.6 && avgStars("expert") >= avgStars("first"),
   `an expert on the good plan earns three stars in 60% of games or more (${pc(expertThree)})`,
 );
-// The good plan is at or near the best of the plans an expert can follow. Elves confirming the toys
-// all game now beat it by about a quarter of a star (ADR 0025): reported, not required, until the
-// good plan is chosen again.
+// The good plan is at or near the best of the plans an expert can follow.
 for (const name of EXPERT)
-  (name === "expertAssistAll" ? warn : assert)(
+  assert(
     avgStars("expert") >= avgStars(name) - 0.15,
     `the good plan is at or near the best: ${name} earns ${avgStars(name).toFixed(2)} against ${avgStars("expert").toFixed(2)}`,
   );
@@ -940,6 +941,13 @@ assert(
   starShare("expertAutomate", (s) => s === 3) <= expertThree * 0.6,
   `automation everywhere earns three stars well under as often as the good plan (${pc(starShare("expertAutomate", (s) => s === 3))} against ${pc(expertThree)})`,
 );
+// Elves confirming the toys all game, everyday gifts included, stay behind automating the routine
+// first half (ADR 0025).
+for (const who of ["expert", "first"])
+  assert(
+    avgStars(who) >= avgStars(`${who}AssistAll`),
+    `${who}: the good plan beats Assist all game (${avgStars(who).toFixed(2)} against ${avgStars(`${who}AssistAll`).toFixed(2)})`,
+  );
 for (const name of ["firstCheckAll", "firstCheckFew", "firstAutomate"])
   assert(
     avgStars(name) <= avgStars("first") - 0.4,

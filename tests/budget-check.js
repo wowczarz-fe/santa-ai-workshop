@@ -116,7 +116,7 @@ for (let seed = 1; seed <= 12; seed++)
       );
       assert(!e.goals.find((g) => g.id === "cost").met);
       assert.strictEqual(e.headline, "Out of money.");
-      assert.match(e.lesson.text, / took £[\d,]+ of your £1,000 budget\.$/);
+      assert.match(e.lesson.text, / took £[\d,]+ of your £1,100 budget\.$/);
       assert.strictEqual(e.leftAt, Math.round(w.duration - w.t));
       assert(e.leftAt > 0 || w.t >= w.duration - 0.2);
       assert.strictEqual(w.view().cost.left, 0);

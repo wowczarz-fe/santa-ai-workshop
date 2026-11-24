@@ -29,15 +29,21 @@ spot, because the needle weighed losses against the game's own small spending.
 - Every player text follows the story and never calls the AI weak or poor: for example "The AI
   handles these as reliably as your elves, and much faster." and "Big, unusual gifts still need an
   elf's judgement." `tests/wording-check.js` bans the old framing.
-- Three numbers move so the strategies keep their order:
-  - Making a big gift again costs £40 (was £15). With fewer AI mistakes, automation everywhere with
+- Four numbers move so the strategies keep their order:
+  - Making a big gift again costs £45 (was £15). With fewer AI mistakes, automation everywhere with
     the riskiest gifts checked came within 0.2 of a star of the good plan. A mistake caught late is
     what should cost, so the remake price carries the difference.
-  - The budget is £1,000 (was £900). The dearer remakes also hit the good plan through misread big
-    letters caught at checking, and without the extra £100 the budget ended 13 to 15% of a
-    first-timer's games.
-  - The Full sleigh target is 146 (was 145). Fewer wrong big gifts means more correct ones, and the
-    first-timer's three-star share rose to about 29%.
+  - Assist costs £1.50 a second per station (was £0.22), against £0.72 for Automate. On Assist the
+    AI still drafts every gift and an elf spends its time confirming each one, so it costs more
+    than the AI alone. Before, Assist was the cheaper and equally fast choice on everyday gifts, so
+    keeping elves on Assist all game beat automating the routine first half, which taught players
+    not to trust the AI even where it is as reliable as the elves.
+  - The budget is £1,100 (was £900), because the dearer remakes and Assist on the big gifts also
+    cost the good plan.
+  - The Full sleigh target is 146 (was 145). Fewer wrong big gifts means more correct ones.
+- The scripted good plan in `tests/balance-check.js` checks the riskiest gifts from the start (it
+  checked a few in the first half). That is what a careful player does, and on Random the checkers
+  come to trust the AI on the clean everyday gifts and wave big ones through after half-time.
 - A game that lost a star to checking never reads "About right". Checking cost the budget star
   when that star was lost and checks that did not pay cost £100 or more: the dial reads "Too much".
   It cost the mistakes star when that star was lost and unchecked wrong gifts cost £100 or more
@@ -49,18 +55,18 @@ spot, because the needle weighed losses against the game's own small spending.
 
 ## Consequences
 
-Over 200 seeded games each: a first-timer on the good plan earns 1.92 stars, three in 24%, none in
-9%, and the budget ends 11% of games. An expert earns three stars in 76%. Automation everywhere
-earns 1.76 (expert) and 1.46 (first-timer) against 2.52 and 1.92, checking everything 1.10 and
-1.18, checking a few 0.77 and 0.79. By hand untouched earns nothing, Automate untouched nothing in
-89% of games.
+Over 200 seeded games each: a first-timer on the good plan earns 2.00 stars, three in 28%, none in
+9%, and the budget ends 12% of games. An expert earns three stars in 82%. Elves on Assist all game
+earn 2.53 (expert) and 1.77 (first-timer) against 2.64 and 2.00. Automation everywhere earns 1.94
+and 1.62, checking everything 1.03 and 1.19, checking a few 0.76 and 0.81. By hand untouched earns
+nothing, Automate untouched nothing in 83% of games.
 
-Elves confirming the toys all game now beat the good plan by about a quarter of a star (2.77
-against 2.52): checkers on Random through the clean first half come to trust the AI and wave big
-gifts through later. The same plan with the riskiest gifts checked from the start earns 2.68 for an
-expert and 2.00 for a first-timer, against 1.89 for a first-timer with elves on Assist all game, so
-automating the routine first half still pays. The balance check reports the gap as a warning until
-the good plan is chosen again. Two of its limits were loosened to fit 40 seeds: no star in at most 15% of first-timer
-games, and automation everywhere at three stars at most 60% as often as the good plan.
+Assist all game stays only about 0.1 of a star behind for an expert, who moves elves well and
+rarely runs short of money. A wider gap would need Assist to cost more again, which would also tax
+the big gifts where Assist belongs.
 
-`tests/balance-check.js` fails when a game that lost a star to checking reads "About right".
+The balance check plays 100 seeds (it played 40, whose averages moved by about 0.2 of a star
+between seed ranges). It fails when the good plan falls behind Assist all game at either skill, and
+when a game that lost a star to checking reads "About right". No star in at most 15% of
+first-timer games and automation everywhere at three stars at most 60% as often as the good plan
+stay loosened from 10% and 50%.

@@ -114,7 +114,7 @@ const TARGET = 146;
 // included, counts down from it, and the game ends the moment nothing is left. A game that ends
 // that way has lost the cost star, so it earns two stars at most.
 const WRONG_ALLOWED = 2;
-const COST_LIMIT = 1000;
+const COST_LIMIT = 1100;
 const GOALS_FROM = 0.7;
 const BUDGET_LOW = 0.25; // the share of the budget left at which it is said to be running low
 const NO_BUDGET = "Not enough budget left";
@@ -292,14 +292,16 @@ const mood = (e) =>
         ? "tiring"
         : "fresh";
 
-const AI_PRICE = [0, 0.22, 0.72]; // per station, per second
+// Per station, per second. Assist pays for the AI and for the elf confirming its drafts, so it costs
+// more than Automate: on everyday gifts the AI alone is the sensible choice (ADR 0025).
+const AI_PRICE = [0, 1.5, 0.72];
 const PRICE = {
   check: 4, // each gift sent for a check
   remake: 3, // making an everyday gift again
   // Making a big gift again is dear: a mistake caught late costs far more than one prevented, which
   // is what puts automation everywhere behind people on the big gifts even with every one checked
   // (ADR 0025).
-  remakeBig: 40,
+  remakeBig: 45,
   rollback: 65,
 };
 // What making these gifts again costs.

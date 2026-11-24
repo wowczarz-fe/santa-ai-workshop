@@ -54,9 +54,9 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
   (below). All other letters are clear.
 - Three goals, one star each, for the whole game: `full` (Full sleigh, 146 correct gifts aboard),
   `right` (Minimal mistakes, at most 2 wrong gifts aboard) and `cost` (Within budget, less than the
-  £1,000 budget spent when the sleigh leaves). `right` and `cost` count only once the sleigh holds
+  £1,100 budget spent when the sleigh leaves). `right` and `cost` count only once the sleigh holds
   103 correct gifts (`goalsCountFrom`), so a slow sleigh earns nothing for being cheap and clean.
-- There is one money figure, the cost so far (`cost.spent`), counted against a budget of £1,000
+- There is one money figure, the cost so far (`cost.spent`), counted against a budget of £1,100
   (`cost.limit`). It counts up: the AI's running cost, checks, the half-time purchase, fixes
   (remakes, recalls, a rollback) and what the wrong gifts aboard will cost. The moment it reaches
   the budget the game ends: the sleigh leaves with what is aboard, the Within budget star is lost
@@ -68,7 +68,7 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
 
 ## What `view()` returns
 
-The target (146), the budget (£1,000) and `goalsCountFrom` (103) here are examples from the current
+The target (146), the budget (£1,100) and `goalsCountFrom` (103) here are examples from the current
 balance; the page reads them from `view()`.
 
 The page reads only `view()`. Whether an unrevealed parcel is wrong is left out of it. Money is in
@@ -213,7 +213,7 @@ example
   | ------- | ------------------ | ----------------------------- | ------ | ----------------------------------- |
   | `full`  | `Full sleigh`      | correct gifts aboard          | 146    | `146 correct gifts`                 |
   | `right` | `Minimal mistakes` | wrong gifts aboard            | 2      | `at most 2 wrong gifts`             |
-  | `cost`  | `Within budget`    | cost so far (as `cost.spent`) | 1000   | `spend less than the £1,000 budget` |
+  | `cost`  | `Within budget`    | cost so far (as `cost.spent`) | 1100   | `spend less than the £1,100 budget` |
 
   `met` is whether the star would be earned if the sleigh left now. `waiting` is `true` for a
   `right` or `cost` goal whose figures are within its limit while the sleigh holds fewer than
@@ -238,10 +238,10 @@ game runs `left` is at least 1. What was paid stays paid; work not finished is n
 gifts still in the workshop miss the sleigh, those being remade after a recall among them. One
 `budgetLow` news item is said when `low` first turns `true`.
 
-What costs what: the AI £0.22 a second per station on Assist and £0.72 on Automate; each gift
+What costs what: the AI £1.50 a second per station on Assist (the AI and the elf's time) and £0.72 on Automate; each gift
 sent for a check £4, paid as it joins the checking pile whether or not a checker then looks at it
 properly; a
-remake £3, or £15 for a big gift; a rollback £65; a recall half as much again as its gifts count aboard and at least £40 more than that, remakes
+remake £3, or £45 for a big gift; a rollback £65; a recall half as much again as its gifts count aboard and at least £40 more than that, remakes
 included (£150 for one big gift, £52 for one everyday gift); a wrong everyday gift aboard £12 and a big one £100; the half-time option its
 price (update £40, test £50, training £100, cocoa for everyone £50, carry on £0). Reading an
 unclear wish costs nothing.
@@ -263,7 +263,7 @@ left out. The `behind` news line and a rested elf's walk follow the same rule.
 
 `actions` has a key for each of `ai0`, `ai1` and `checking`, each
 `{ available, why, cost }`, for example
-`{ available: true, why: null, cost: "Assist costs £13 a minute here, and Automate costs £43 a minute." }`. `available` is
+`{ available: true, why: null, cost: "Assist costs £90 a minute here, and Automate costs £43 a minute." }`. `available` is
 `false` only after the end; `why` then says why in a few words (`"The sleigh has left"`). `cost` is what using it
 costs, in the player's words.
 

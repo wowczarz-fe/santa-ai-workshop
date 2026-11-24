@@ -2929,3 +2929,17 @@ body[data-look="paper"] .control-heading {
     box-shadow: 0 0 0 4px var(--gold);
   }
 }
+
+/* Intro card: a phone held upright gets a hint to turn it sideways. Keyed on the viewport, so
+   the website's iframe shows it only when its column is phone-narrow. */
+.device-tip {
+  display: none;
+}
+@media (orientation: portrait) and (max-width: 700px) {
+  body[data-look="paper"] #intro .device-tip {
+    display: block;
+    font-size: 11px;
+    line-height: 14px;
+    color: var(--muted);
+  }
+}

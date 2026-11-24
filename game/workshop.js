@@ -59,8 +59,8 @@ const ROLLBACK_SECONDS = 8;
 
 // What goes wrong. On everyday gifts the AI is as reliable as a fresh elf, at reading and at making,
 // and it never tires; elves get worse as they tire. Big gifts are rare, unusual requests it has seen
-// few of, so it makes about 1 in 5 wrong (ADR 0025). A faulty update makes the same wrong toy again
-// and again.
+// few of: it misreads about 1 in 7 big letters and makes about 1 in 5 big toys wrong (ADR 0025). A
+// faulty update makes the same wrong toy again and again.
 const RISK = {
   elfRead: 0.005,
   aiRead: 0.005,
@@ -114,7 +114,7 @@ const TARGET = 146;
 // included, counts down from it, and the game ends the moment nothing is left. A game that ends
 // that way has lost the cost star, so it earns two stars at most.
 const WRONG_ALLOWED = 2;
-const COST_LIMIT = 1100;
+const COST_LIMIT = 1000;
 const GOALS_FROM = 0.7;
 const BUDGET_LOW = 0.25; // the share of the budget left at which it is said to be running low
 const NO_BUDGET = "Not enough budget left";
@@ -292,16 +292,16 @@ const mood = (e) =>
         ? "tiring"
         : "fresh";
 
-// Per station, per second. Assist pays for the AI and for the elf confirming its drafts, so it costs
-// more than Automate: on everyday gifts the AI alone is the sensible choice (ADR 0025).
-const AI_PRICE = [0, 1.5, 0.72];
+// Per station, per second. On Assist the AI still drafts every gift, so it costs as much as
+// Automate (ADR 0025).
+const AI_PRICE = [0, 0.72, 0.72];
 const PRICE = {
   check: 4, // each gift sent for a check
   remake: 3, // making an everyday gift again
   // Making a big gift again is dear: a mistake caught late costs far more than one prevented, which
   // is what puts automation everywhere behind people on the big gifts even with every one checked
   // (ADR 0025).
-  remakeBig: 45,
+  remakeBig: 40,
   rollback: 65,
 };
 // What making these gifts again costs.
@@ -2756,6 +2756,16 @@ class Workshop {
     ];
   }
 
+  // Wrong gifts aboard that went past checkers who did not look properly: waved through by trusting
+  // ones, or missed by tired ones.
+  notLooked() {
+    const wrong = this.aboard.filter((x) => x.wrong);
+    return {
+      waved: wrong.filter((x) => x.exit === "skipped").length,
+      missed: wrong.filter((x) => x.slippedTired).length,
+    };
+  }
+
   // One sentence answering "Was checking worth it?" from the assurance figures. Its second half
   // follows the dial's verdict, so the two never disagree: only "too little" asks for more checks,
   // only "too much" names checks that did not pay, and a bottleneck names the gifts the pile held back.
@@ -2775,38 +2785,39 @@ class Workshop {
     const stopped = `${money(checkCost)} of checks stopped ${paid ? "" : "only "}about ${money(a.prevented)} of wrong gifts`;
     if (a.verdict === "bottleneck")
       return `Not as run: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts, but the pile held back ${plural(a.held, "gift")}.`;
+    // Wrong gifts that went past trusting or tired checkers in a game that lost the mistakes star:
+    // the checks were not done properly.
+    const { waved, missed } = this.notLooked();
+    const how =
+      wrong > WRONG_ALLOWED
+        ? [
+            waved &&
+              `Trusting checkers waved ${plural(waved, "wrong gift")} through.`,
+            missed && `Tired checkers missed ${plural(missed, "wrong gift")}.`,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        : "";
+    // Checks paid for but not done properly are too few real checks.
+    if (a.verdict === "too little" && how && !exposed)
+      return `Too few real checks: ${stopped}. ${how}`;
     if (a.verdict === "too little")
       return !checked
         ? `Too few: nothing was checked, and the wrong gifts that went out unchecked cost ${money(unchecked)}.`
-        : paid
-          ? `Yes, but too few: ${stopped}, and more checks${on(exposed)} would have paid too.`
-          : `Too few: ${stopped}. More checks${on(exposed)} would have paid.`;
-    // Wrong gifts that went past trusting or tired checkers: the checks were not done properly.
-    const waved = this.aboard.filter(
-      (x) => x.wrong && x.exit === "skipped",
-    ).length;
-    const missed = this.aboard.filter((x) => x.wrong && x.slippedTired).length;
-    const how =
-      wrong > WRONG_ALLOWED &&
-      waved + missed > 0 &&
-      [
-        waved &&
-          `trusting checkers waved ${plural(waved, "wrong gift")} through`,
-        missed && `tired ones missed ${plural(missed, "wrong gift")}`,
-      ]
-        .filter(Boolean)
-        .join(" and ")
-        .replace(/^tired ones/, "tired checkers");
+        : (paid
+            ? `Yes, but too few: ${stopped}, and more checks${on(exposed)} would have paid too.`
+            : `Too few: ${stopped}. More checks${on(exposed)} would have paid.`) +
+            (how ? ` ${how}` : "");
     // Checks that cost the budget star read too much even when wrong gifts got past them (ADR 0025),
     // but a game that lost the mistakes star is never told to check less.
     if (a.verdict === "too much")
       return paid
-        ? `Mostly: ${stopped}, but the checks${on(wasted) || " on the rest"} cost more than they saved${how ? `, and ${how}` : ""}.`
+        ? `Mostly: ${stopped}, but the checks${on(wasted) || " on the rest"} cost more than they saved.${how ? ` ${how}` : ""}`
         : wrong > WRONG_ALLOWED
-          ? `No: ${stopped}${how ? `, and ${how}` : ""}.`
+          ? `No: ${stopped}.${how ? ` ${how}` : ""}`
           : `No: ${stopped}. Fewer checks would have done.`;
     if (how)
-      return `Not as run: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts, because ${how}.`;
+      return `Not as run: ${money(checkCost)} of checks stopped about ${money(a.prevented)} of wrong gifts. ${how}`;
     if (!checked)
       return "Nothing was checked, and no wrong gift went out unchecked.";
     return paid
@@ -2882,6 +2893,20 @@ class Workshop {
     const total = (field) => sum(Object.values(a.groups).map((t) => t[field]));
     // Only the avoidable part of an unchecked mistake counts: what the wrong gifts of a kind cost
     // beyond what checking every unchecked parcel of that kind would have cost.
+    // In a game that lost the mistakes star, wrong gifts that trusting checkers waved through or
+    // tired ones missed count too: checks paid for but not done properly are too few real checks
+    // (ADR 0025).
+    const wrongAboard = this.aboard.filter((x) => x.wrong).length;
+    const notLookedCost =
+      wrongAboard > WRONG_ALLOWED
+        ? sum(
+            this.aboard
+              .filter(
+                (x) => x.wrong && (x.exit === "skipped" || x.slippedTired),
+              )
+              .map((x) => this.price(x)),
+          )
+        : 0;
     const underCost =
       sum(
         Object.values(a.groups).map((t) =>
@@ -2890,7 +2915,9 @@ class Workshop {
             t.shippedUncheckedCost - (t.parcels - t.checked) * PRICE.check,
           ),
         ),
-      ) + a.recallCost;
+      ) +
+      a.recallCost +
+      notLookedCost;
     // Checks waved through by trusting checkers were paid for but not done: checking not done
     // properly, not too much of it.
     const doneCost = (id) => a.groups[id].checkCost - a.wavedCost[id];
@@ -2914,25 +2941,33 @@ class Workshop {
     const clear = (x, y) => x >= ASSURANCE.clear * y && x >= ASSURANCE.floor;
     if (clear(underCost, overCost)) to = Math.min(to, ASSURANCE.little - 0.05);
     if (clear(overCost, underCost)) to = Math.max(to, ASSURANCE.much + 0.05);
-    // On Random checks all game the player checked as little as the game allows; on three stars
-    // neither too much nor too little checking cost a star.
-    if (lowest) to = Math.min(to, ASSURANCE.much);
+    // A needle held inside "about right" stays clear of its edges, so it never reads as nearly
+    // another verdict. On Random checks all game the player checked as little as the game allows;
+    // on three stars neither too much nor too little checking cost a star.
+    const inside = ASSURANCE.much - 0.05;
+    if (lowest) to = Math.min(to, inside);
     // A game that lost the mistakes star did not check too much, whatever the checks cost.
-    if (this.aboard.filter((x) => x.wrong).length > WRONG_ALLOWED)
-      to = Math.min(to, ASSURANCE.much);
-    // A game that lost a star to checking never reads about right (ADR 0025). Checking cost the
-    // budget star when that star was lost and checks that did not pay cost floor pounds or more. It
-    // cost the mistakes star when that star was lost and wrong gifts nobody checked cost floor pounds
-    // or more beyond checking them. When both hold, the larger figure picks the side.
-    const met = Object.fromEntries(this.goals().map((g) => [g.id, g.met]));
-    const overLost = !met.cost && overCost >= ASSURANCE.floor;
-    const underLost = !met.right && underCost >= ASSURANCE.floor;
+    if (wrongAboard > WRONG_ALLOWED) to = Math.min(to, inside);
+    // A game that lost a star to checking never reads about right (ADR 0025), judged by the raw
+    // figures, as the goals count only once the sleigh is nearly full. Checking cost the budget star
+    // when the budget ran out and checks that did not pay cost floor pounds or more. It cost the
+    // mistakes star when too many wrong gifts went aboard and under-checking cost floor pounds or
+    // more. When both hold, the larger figure picks the side.
+    const overLost =
+      this.budget().spent >= COST_LIMIT && overCost >= ASSURANCE.floor;
+    const underLost =
+      wrongAboard > WRONG_ALLOWED && underCost >= ASSURANCE.floor;
     if (overLost && (!underLost || overCost >= underCost))
       to = Math.max(to, ASSURANCE.much + 0.05);
     else if (underLost) to = Math.min(to, ASSURANCE.little - 0.05);
-    if (stars === 3)
-      to = Math.min(Math.max(to, ASSURANCE.little), ASSURANCE.much);
-    const position = Math.round(to * 100) / 100;
+    if (stars === 3) to = Math.min(Math.max(to, ASSURANCE.little), inside);
+    // A needle that reads about right sits clear of both edges.
+    let position = Math.round(to * 100) / 100;
+    if (position >= ASSURANCE.little && position <= ASSURANCE.much)
+      position =
+        Math.round(
+          Math.min(Math.max(position, ASSURANCE.little + 0.05), inside) * 100,
+        ) / 100;
     const verdict =
       biggest === "held"
         ? "bottleneck"
@@ -3482,9 +3517,13 @@ class Workshop {
 
   costText(name) {
     const perMinute = (level) => money(AI_PRICE[level] * 60);
+    const aiCost =
+      AI_PRICE[1] === AI_PRICE[2]
+        ? `Assist and Automate each cost ${perMinute(2)} a minute here.`
+        : `Assist costs ${perMinute(1)} a minute here, and Automate costs ${perMinute(2)} a minute.`;
     return {
-      ai0: `Assist costs ${perMinute(1)} a minute here, and Automate costs ${perMinute(2)} a minute.`,
-      ai1: `Assist costs ${perMinute(1)} a minute here, and Automate costs ${perMinute(2)} a minute.`,
+      ai0: aiCost,
+      ai1: aiCost,
       checking: `each check takes a checker about ${Math.round(this.secondsPerCheck())} seconds and costs ${money(PRICE.check)}`,
     }[name];
   }

@@ -116,7 +116,7 @@ const TARGET = 89;
 // included, counts down from it, and the game ends the moment nothing is left. A game that ends
 // that way has lost the cost star, so it earns two stars at most.
 const WRONG_ALLOWED = 1;
-const COST_LIMIT = 610;
+const COST_LIMIT = 660;
 const GOALS_FROM = 0.7;
 const BUDGET_LOW = 0.25; // the share of the budget left at which it is said to be running low
 const NO_BUDGET = "Not enough budget left";
@@ -302,8 +302,8 @@ const PRICE = {
   remake: 3, // making an everyday gift again
   // Making a big gift again is dear: a mistake caught late costs far more than one prevented, which
   // is what puts automation everywhere behind people on the big gifts even with every one checked
-  // (ADR 0025).
-  remakeBig: 40,
+  // (ADRs 0025 and 0026).
+  remakeBig: 50,
   rollback: 40,
 };
 // What making these gifts again costs.

@@ -892,10 +892,8 @@ warn(
   brokeShare("first") <= 0.1,
   `the budget ends a first-timer's game on the good plan in at most 1 game in 10 (${pc(brokeShare("first"))})`,
 );
-// In a 1:30 game a few wrong big gifts take a larger share of the smaller budget: about 1 game in
-// 7 over 200 seeds, 16% on seeds 1 to 100 (ADR 0026), so the limit is 17%.
 assert(
-  brokeShare("first") <= 0.17,
+  brokeShare("first") <= 0.15,
   `the budget ends a first-timer's game on the good plan in about 1 game in 10 at most (${pc(brokeShare("first"))})`,
 );
 // Checking everything runs an expert out of budget. A first-timer's checkers, rested now and then,

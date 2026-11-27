@@ -54,9 +54,9 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
   (below). All other letters are clear.
 - Three goals, one star each, for the whole game: `full` (Full sleigh, 89 correct gifts aboard),
   `right` (Minimal mistakes, at most 1 wrong gift aboard) and `cost` (Within budget, less than the
-  £610 budget spent when the sleigh leaves). `right` and `cost` count only once the sleigh holds
+  £660 budget spent when the sleigh leaves). `right` and `cost` count only once the sleigh holds
   63 correct gifts (`goalsCountFrom`), so a slow sleigh earns nothing for being cheap and clean.
-- There is one money figure, the cost so far (`cost.spent`), counted against a budget of £610
+- There is one money figure, the cost so far (`cost.spent`), counted against a budget of £660
   (`cost.limit`). It counts up: the AI's running cost, checks, the half-time purchase, fixes
   (remakes, recalls, a rollback) and what the wrong gifts aboard will cost. The moment it reaches
   the budget the game ends: the sleigh leaves with what is aboard, the Within budget star is lost
@@ -68,7 +68,7 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
 
 ## What `view()` returns
 
-The target (89), the budget (£610) and `goalsCountFrom` (63) here are examples from the current
+The target (89), the budget (£660) and `goalsCountFrom` (63) here are examples from the current
 balance; the page reads them from `view()`.
 
 The page reads only `view()`. Whether an unrevealed parcel is wrong is left out of it. Money is in
@@ -89,7 +89,7 @@ pounds, rounded to whole pounds unless said otherwise. Times are seconds.
 | `casesWaiting` | number                           | `1`                                                | Decisions waiting behind the open one                                                                              |
 | `choice`       | half-time or `null`              | see Half-time                                      | Set only while half-time is open                                                                                   |
 | `run`          | object                           | see below                                          | The one sleigh: half, clock, gifts aboard, goals                                                                   |
-| `cost`         | `{ spent, limit, left, low }`    | `{ spent: 79, limit: 610, left: 531, low: false }` | The budget: cost so far, wrong gifts aboard included, what is left, and whether it runs low                        |
+| `cost`         | `{ spent, limit, left, low }`    | `{ spent: 79, limit: 660, left: 581, low: false }` | The budget: cost so far, wrong gifts aboard included, what is left, and whether it runs low                        |
 | `focus`        | object or `null`                 | see below                                          | The one thing that most needs the player now                                                                       |
 | `sleigh`       | `{ right, wrong, parcels }`      | `{ right: 36, wrong: 1, parcels: [...] }`          | Gifts aboard; `parcels` is every parcel aboard, each with `result`                                                 |
 | `lost`         | number                           | `0`                                                | Letters lost: to a full letter pile, or unclear letters undecided at the end                                       |
@@ -213,7 +213,7 @@ example
   | ------- | ------------------ | ----------------------------- | ------ | --------------------------------- |
   | `full`  | `Full sleigh`      | correct gifts aboard          | 89     | `89 correct gifts`                |
   | `right` | `Minimal mistakes` | wrong gifts aboard            | 1      | `at most 1 wrong gift`            |
-  | `cost`  | `Within budget`    | cost so far (as `cost.spent`) | 610    | `spend less than the £610 budget` |
+  | `cost`  | `Within budget`    | cost so far (as `cost.spent`) | 660    | `spend less than the £660 budget` |
 
   `met` is whether the star would be earned if the sleigh left now. `waiting` is `true` for a
   `right` or `cost` goal whose figures are within its limit while the sleigh holds fewer than
@@ -224,7 +224,7 @@ example
 ### Cost
 
 `cost` is `{ spent, limit, left, low }`, for example
-`{ spent: 79, limit: 610, left: 531, low: false }`. `spent` is the one money figure of the game:
+`{ spent: 79, limit: 660, left: 581, low: false }`. `spent` is the one money figure of the game:
 everything spent so far plus what the wrong gifts aboard will cost, in whole pounds rounded down.
 It only grows, except when a recall brings wrong gifts back (their price leaves, the recall's is
 added). `limit` is the budget, `left` what remains of it (`limit - spent`, never below 0) and
@@ -241,7 +241,7 @@ gifts still in the workshop miss the sleigh, those being remade after a recall a
 What costs what: the AI £0.72 a second per station on Assist or Automate (on Assist the AI still drafts every gift); each gift
 sent for a check £4, paid as it joins the checking pile whether or not a checker then looks at it
 properly; a
-remake £3, or £40 for a big gift; a rollback £40; a recall half as much again as its gifts count aboard and at least £25 more than that, remakes
+remake £3, or £50 for a big gift; a rollback £40; a recall half as much again as its gifts count aboard and at least £25 more than that, remakes
 included (£150 for one big gift, £37 for one everyday gift); a wrong everyday gift aboard £12 and a big one £100; the half-time option its
 price (update £25, test £30, training £60, cocoa for everyone £30, carry on £0). Reading an
 unclear wish costs nothing.
@@ -435,7 +435,7 @@ count and price. Its cause and cost also remain in the account.
 
 ```
 { title: "Half-time", text: "Pick one change before you carry on, or none.",
-  report: { aboard: 46, wrong: 0, target: 89, cost: 85, limit: 610, tired: 2, burnouts: 0,
+  report: { aboard: 46, wrong: 0, target: 89, cost: 85, limit: 660, tired: 2, burnouts: 0,
             goals: [ ...three goals as in run.goals... ], causes: [ ...up to three causes... ] },
   next: { cargo: { id: "big", name: "Big gifts", icon: "📦", text: "These are rare and unusual. The AI has seen few like them and can be wrong without noticing. Each wrong one costs £100." },
           text: "Big, unusual gifts come next. The AI has seen few like them and can be confidently wrong. Each wrong one costs £100." },
@@ -567,7 +567,7 @@ for example `"Amir wrote back: a cuddly bat."` or
 ```
 { stars: 2, goals: [ ...three goals with their final figures... ],
   right: 89, wrong: 2, lost: 0,
-  costs: { ai: 85, checking: 76, halfTime: 60, fixing: 46, mistakes: 129, prevented: 540, total: 396, limit: 610 },
+  costs: { ai: 85, checking: 76, halfTime: 60, fixing: 46, mistakes: 129, prevented: 540, total: 396, limit: 660 },
   headline: "Careful, but slow.",
   lesson: { title: "Checking in the right places", text: "Checks went where mistakes were likeliest and dearest." },
   assurance: { ... }, checkingAnswer: "Yes: £76 of checks stopped about £540 of wrong gifts.",
@@ -583,7 +583,7 @@ for example `"Amir wrote back: a cuddly bat."` or
   `leftAt` is the whole seconds that were left on the clock then (0 for `"time"`). A game the
   budget ended earns two stars at most, reads `headline: "Out of money."` and its `lesson` is
   `{ title: "Out of money", text }` with `text` one sentence naming where most of the budget went:
-  `"Wrong big gifts took £300 of your £610 budget."`, `"The faulty update's trains took £N..."`,
+  `"Wrong big gifts took £300 of your £660 budget."`, `"The faulty update's trains took £N..."`,
   `"Making and fixing wrong gifts took £N..."`, `"Checks took £N..."`,
   `"Running the AI took £N..."` or `"The half-time change took £N..."`. Wrong gifts and fixing them
   (recalls, remakes, a rollback) are weighed together. Gifts such a game did not reach are not
@@ -786,7 +786,7 @@ A few are clauses in lower case that the page builds a sentence around:
 | ----------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------ |
 | lever `sends`                       | "checkers look at every gift"                                    | "{Sends}. That is {per100} in 100 gifts."        |
 | recall `scope`                      | "costs £50 more and keeps the checkers busy for about 4 seconds" | "{label}: {scope}."                              |
-| goal `text`                         | "spend less than the £610 budget"                                | a sentence, or a clause after a comma            |
+| goal `text`                         | "spend less than the £660 budget"                                | a sentence, or a clause after a comma            |
 | checking `cost` under `actions`     | "each check takes a checker about 5 seconds and costs £4"        | a sentence, with a capital and a full stop       |
 | fact `value`                        | "takes 5 seconds and costs £40"                                  | "{label}: {value}."                              |
 | half-time `Stops` and `Risk` values | "a faulty update", "may be faulty, about 1 in 5"                 | "Stops a faulty update", "May be faulty: 1 in 5" |

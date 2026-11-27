@@ -34,14 +34,14 @@ open). Every control works from t = 0. Page code must cope with a field being ab
 
 ## The game
 
-One sleigh is filled over two halves of 75 seconds (`duration` 150). At t = 75 the rules stop and
-`choice` holds the half-time card until `choose(optionId)` is called. The sleigh leaves at t = 150,
+One sleigh is filled over two halves of 45 seconds (`duration` 90). At t = 45 the rules stop and
+`choice` holds the half-time card until `choose(optionId)` is called. The sleigh leaves at t = 90,
 or the moment the budget runs out: `end` is set and nothing moves after that.
 
-- Letters arrive at 0.6 a second for the first 15 seconds, then 1.1 a second, and stop 15 seconds
+- Letters arrive at 0.6 a second for the first 9 seconds, then 1.1 a second, and stop 8 seconds
   before the end so the last ones can still reach the sleigh.
 - The first half carries everyday gifts only. The second half carries mostly big gifts (6 in 10),
-  the first of them 8 seconds in, so there is time to act on the half-time card.
+  the first of them 5 seconds in, so there is time to act on the half-time card.
 - On everyday gifts the AI is as reliable as the elves, at reading and at making (1 job in 200
   wrong), and it never tires. Big gifts are rare, unusual requests it has seen few of: it misreads
   about 1 in 7 and makes about 1 in 5 wrong, without noticing. An elf confirming a draft on
@@ -49,14 +49,14 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
   second half needs an elf's judgement on the big gifts
   (`docs/adr/0019-make-the-ai-reliable-on-everyday-gifts.md`,
   `docs/adr/0025-make-the-ai-wrong-on-1-in-5-big-gifts-and-keep-the-dial-honest.md`).
-- One unclear letter arrives in each half, at a seeded time 12 to 40 seconds into the half, from
+- One unclear letter arrives in each half, at a seeded time 7 to 24 seconds into the half, from
   a pool of ten children and wishes (Timmy's little train among them). It raises a decision at once
   (below). All other letters are clear.
-- Three goals, one star each, for the whole game: `full` (Full sleigh, 146 correct gifts aboard),
-  `right` (Minimal mistakes, at most 2 wrong gifts aboard) and `cost` (Within budget, less than the
-  £1,000 budget spent when the sleigh leaves). `right` and `cost` count only once the sleigh holds
-  103 correct gifts (`goalsCountFrom`), so a slow sleigh earns nothing for being cheap and clean.
-- There is one money figure, the cost so far (`cost.spent`), counted against a budget of £1,000
+- Three goals, one star each, for the whole game: `full` (Full sleigh, 89 correct gifts aboard),
+  `right` (Minimal mistakes, at most 1 wrong gift aboard) and `cost` (Within budget, less than the
+  £610 budget spent when the sleigh leaves). `right` and `cost` count only once the sleigh holds
+  63 correct gifts (`goalsCountFrom`), so a slow sleigh earns nothing for being cheap and clean.
+- There is one money figure, the cost so far (`cost.spent`), counted against a budget of £610
   (`cost.limit`). It counts up: the AI's running cost, checks, the half-time purchase, fixes
   (remakes, recalls, a rollback) and what the wrong gifts aboard will cost. The moment it reaches
   the budget the game ends: the sleigh leaves with what is aboard, the Within budget star is lost
@@ -68,37 +68,37 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
 
 ## What `view()` returns
 
-The target (146), the budget (£1,000) and `goalsCountFrom` (103) here are examples from the current
+The target (89), the budget (£610) and `goalsCountFrom` (63) here are examples from the current
 balance; the page reads them from `view()`.
 
 The page reads only `view()`. Whether an unrevealed parcel is wrong is left out of it. Money is in
 pounds, rounded to whole pounds unless said otherwise. Times are seconds.
 
-| Field          | Type                             | Example                                             | Meaning                                                                                                            |
-| -------------- | -------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `t`            | number                           | `40.0000000001`                                     | Seconds played, unrounded                                                                                          |
-| `duration`     | number                           | `150`                                               | Seconds in the whole game                                                                                          |
-| `elves`        | array of elf                     | see below                                           | The eight elves, always in the same order                                                                          |
-| `ai`           | `[number, number]`               | `[2, 1]`                                            | AI level at reading and at toy making: 0 by hand, 1 Assist, 2 Automate                                             |
-| `checking`     | number                           | `1`                                                 | 0 Random, 1 Riskiest, 2 All                                                                                        |
-| `levers`       | object                           | see below                                           | What each lever position does now                                                                                  |
-| `stations`     | array of 3 station               | see below                                           | Reading, toy making, checking                                                                                      |
-| `queues`       | object of queue                  | see below                                           | `letters`, `orders`, `check`, `pass`, `rework`                                                                     |
-| `vigilance`    | object                           | see below                                           | How far the elves have come to trust the AI                                                                        |
-| `case`         | decision or `null`               | see Decisions                                       | The open decision                                                                                                  |
-| `casesWaiting` | number                           | `1`                                                 | Decisions waiting behind the open one                                                                              |
-| `choice`       | half-time or `null`              | see Half-time                                       | Set only while half-time is open                                                                                   |
-| `run`          | object                           | see below                                           | The one sleigh: half, clock, gifts aboard, goals                                                                   |
-| `cost`         | `{ spent, limit, left, low }`    | `{ spent: 79, limit: 1000, left: 921, low: false }` | The budget: cost so far, wrong gifts aboard included, what is left, and whether it runs low                        |
-| `focus`        | object or `null`                 | see below                                           | The one thing that most needs the player now                                                                       |
-| `sleigh`       | `{ right, wrong, parcels }`      | `{ right: 36, wrong: 1, parcels: [...] }`           | Gifts aboard; `parcels` is every parcel aboard, each with `result`                                                 |
-| `lost`         | number                           | `0`                                                 | Letters lost: to a full letter pile, or unclear letters undecided at the end                                       |
-| `prices`       | `{ wrongEveryday, wrongBig }`    | `{ wrongEveryday: 12, wrongBig: 100 }`              | What a wrong everyday and a wrong big gift cost                                                                    |
-| `pace`         | `{ projected, behind, slowest }` | `{ projected: 137, behind: true, slowest: null }`   | Correct gifts expected at departure, whether short of the target, the station holding things up (0 to 2) or `null` |
-| `incident`     | object or `null`                 | `{ known: true, rollingBack: 0 }`                   | Set once a faulty update is installed (below)                                                                      |
-| `actions`      | object                           | see below                                           | For `ai0`, `ai1`, `checking`: whether it works now and what it costs                                               |
-| `news`         | array of news                    | see News                                            | Up to 30 items, newest first                                                                                       |
-| `end`          | end or `null`                    | see The end                                         | Set when the sleigh has left                                                                                       |
+| Field          | Type                             | Example                                            | Meaning                                                                                                            |
+| -------------- | -------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `t`            | number                           | `40.0000000001`                                    | Seconds played, unrounded                                                                                          |
+| `duration`     | number                           | `90`                                               | Seconds in the whole game                                                                                          |
+| `elves`        | array of elf                     | see below                                          | The eight elves, always in the same order                                                                          |
+| `ai`           | `[number, number]`               | `[2, 1]`                                           | AI level at reading and at toy making: 0 by hand, 1 Assist, 2 Automate                                             |
+| `checking`     | number                           | `1`                                                | 0 Random, 1 Riskiest, 2 All                                                                                        |
+| `levers`       | object                           | see below                                          | What each lever position does now                                                                                  |
+| `stations`     | array of 3 station               | see below                                          | Reading, toy making, checking                                                                                      |
+| `queues`       | object of queue                  | see below                                          | `letters`, `orders`, `check`, `pass`, `rework`                                                                     |
+| `vigilance`    | object                           | see below                                          | How far the elves have come to trust the AI                                                                        |
+| `case`         | decision or `null`               | see Decisions                                      | The open decision                                                                                                  |
+| `casesWaiting` | number                           | `1`                                                | Decisions waiting behind the open one                                                                              |
+| `choice`       | half-time or `null`              | see Half-time                                      | Set only while half-time is open                                                                                   |
+| `run`          | object                           | see below                                          | The one sleigh: half, clock, gifts aboard, goals                                                                   |
+| `cost`         | `{ spent, limit, left, low }`    | `{ spent: 79, limit: 610, left: 531, low: false }` | The budget: cost so far, wrong gifts aboard included, what is left, and whether it runs low                        |
+| `focus`        | object or `null`                 | see below                                          | The one thing that most needs the player now                                                                       |
+| `sleigh`       | `{ right, wrong, parcels }`      | `{ right: 36, wrong: 1, parcels: [...] }`          | Gifts aboard; `parcels` is every parcel aboard, each with `result`                                                 |
+| `lost`         | number                           | `0`                                                | Letters lost: to a full letter pile, or unclear letters undecided at the end                                       |
+| `prices`       | `{ wrongEveryday, wrongBig }`    | `{ wrongEveryday: 12, wrongBig: 100 }`             | What a wrong everyday and a wrong big gift cost                                                                    |
+| `pace`         | `{ projected, behind, slowest }` | `{ projected: 137, behind: true, slowest: null }`  | Correct gifts expected at departure, whether short of the target, the station holding things up (0 to 2) or `null` |
+| `incident`     | object or `null`                 | `{ known: true, rollingBack: 0 }`                  | Set once a faulty update is installed (below)                                                                      |
+| `actions`      | object                           | see below                                          | For `ai0`, `ai1`, `checking`: whether it works now and what it costs                                               |
+| `news`         | array of news                    | see News                                           | Up to 30 items, newest first                                                                                       |
+| `end`          | end or `null`                    | see The end                                        | Set when the sleigh has left                                                                                       |
 
 ### Elves
 
@@ -112,7 +112,7 @@ An elf is `{ name, station, energy, mood, resting, doing }`, for example
   `"tired"` (energy 42 or less: slower and slipping) or `"spent"` (burnt out, on a long break).
   Use it for the bar's colour (green, amber, red, empty) and the face.
 - `resting`: `true` while a burnt-out elf is on its long break, which cannot be cut short. It comes
-  back to its station by itself after 15 seconds.
+  back to its station by itself after 9 seconds.
 - `doing`: a short phrase: `"reading letters"`, `"confirming the AI's understanding"`, `"making toys"`,
   `"confirming the AI's toys"`, `"checking gifts"`, `"loading the sleigh"` (checkers loading waiting
   gifts onto the sleigh), `"remaking caught gifts"` (checkers remaking a caught or recalled gift),
@@ -190,14 +190,14 @@ A parcel is `{ id, wish, big, unclear, wanted, made, suspect, result }`, for exa
   at the checkers if they drift, else at the Assist station that trusts the AI most, and it keeps
   naming that elf while the elf stays there and the station still drifts. It turns `null` the
   moment that elf leaves or the station looks properly again, empties, or is trained, and in the
-  first 20 seconds; a new prompt may follow on the next step. Read it on every view to show the
+  first 12 seconds; a new prompt may follow on the next step. Read it on every view to show the
   drift banner, the outline and the card tag on that one elf.
 
 ### Run
 
 `run` is `{ half, halves, halfLeft, leavesIn, aboard, target, cargo, goals, goalsCountFrom }`, for
 example
-`{ half: 1, halves: 2, halfLeft: 35, leavesIn: 110, aboard: 36, target: 146, cargo: { id: "everyday", name: "Everyday gifts", icon: "🎁", text: "The AI handles these as reliably as your elves, and much faster. A wrong one costs £12." }, goals: [...], goalsCountFrom: 103 }`.
+`{ half: 1, halves: 2, halfLeft: 21, leavesIn: 66, aboard: 22, target: 89, cargo: { id: "everyday", name: "Everyday gifts", icon: "🎁", text: "The AI handles these as reliably as your elves, and much faster. A wrong one costs £12." }, goals: [...], goalsCountFrom: 63 }`.
 
 - `half`: 1 or 2. `halves`: 2. `halfLeft`: whole seconds left in the half under way. While the
   half-time card is up (`choice` set) the first half is over and the second has not begun: `half`
@@ -209,22 +209,22 @@ example
   second.
 - `goals`: always three, in this order, each `{ id, name, now, need, text, met, waiting }`:
 
-  | `id`    | `name`             | `now`                         | `need` | `text`                              |
-  | ------- | ------------------ | ----------------------------- | ------ | ----------------------------------- |
-  | `full`  | `Full sleigh`      | correct gifts aboard          | 146    | `146 correct gifts`                 |
-  | `right` | `Minimal mistakes` | wrong gifts aboard            | 2      | `at most 2 wrong gifts`             |
-  | `cost`  | `Within budget`    | cost so far (as `cost.spent`) | 1000   | `spend less than the £1,000 budget` |
+  | `id`    | `name`             | `now`                         | `need` | `text`                            |
+  | ------- | ------------------ | ----------------------------- | ------ | --------------------------------- |
+  | `full`  | `Full sleigh`      | correct gifts aboard          | 89     | `89 correct gifts`                |
+  | `right` | `Minimal mistakes` | wrong gifts aboard            | 1      | `at most 1 wrong gift`            |
+  | `cost`  | `Within budget`    | cost so far (as `cost.spent`) | 610    | `spend less than the £610 budget` |
 
   `met` is whether the star would be earned if the sleigh left now. `waiting` is `true` for a
   `right` or `cost` goal whose figures are within its limit while the sleigh holds fewer than
   `goalsCountFrom` correct gifts, so the star is not earned yet; `full` never waits.
 
-- `goalsCountFrom`: 103, the correct gifts aboard from which the `right` and `cost` goals count.
+- `goalsCountFrom`: 63, the correct gifts aboard from which the `right` and `cost` goals count.
 
 ### Cost
 
 `cost` is `{ spent, limit, left, low }`, for example
-`{ spent: 79, limit: 1000, left: 921, low: false }`. `spent` is the one money figure of the game:
+`{ spent: 79, limit: 610, left: 531, low: false }`. `spent` is the one money figure of the game:
 everything spent so far plus what the wrong gifts aboard will cost, in whole pounds rounded down.
 It only grows, except when a recall brings wrong gifts back (their price leaves, the recall's is
 added). `limit` is the budget, `left` what remains of it (`limit - spent`, never below 0) and
@@ -241,9 +241,9 @@ gifts still in the workshop miss the sleigh, those being remade after a recall a
 What costs what: the AI £0.72 a second per station on Assist or Automate (on Assist the AI still drafts every gift); each gift
 sent for a check £4, paid as it joins the checking pile whether or not a checker then looks at it
 properly; a
-remake £3, or £40 for a big gift; a rollback £65; a recall half as much again as its gifts count aboard and at least £40 more than that, remakes
-included (£150 for one big gift, £52 for one everyday gift); a wrong everyday gift aboard £12 and a big one £100; the half-time option its
-price (update £40, test £50, training £100, cocoa for everyone £50, carry on £0). Reading an
+remake £3, or £40 for a big gift; a rollback £40; a recall half as much again as its gifts count aboard and at least £25 more than that, remakes
+included (£150 for one big gift, £37 for one everyday gift); a wrong everyday gift aboard £12 and a big one £100; the half-time option its
+price (update £25, test £30, training £60, cocoa for everyone £30, carry on £0). Reading an
 unclear wish costs nothing.
 
 ### Focus and actions
@@ -318,7 +318,7 @@ two unclear letters, at most one faulty update and at most two recalls.
 { id: 1, kind: "unclear", step: null, title: "Unclear wish",
   text: "Amir writes: 'A bat, please! I love caves.' It could mean two things.",
   facts: [ { label: "Cost if wrong", value: "£12", primary: true },
-           { label: "Time left", value: "116 s", primary: false } ],
+           { label: "Time left", value: "66 s", primary: false } ],
   evidence: [ { parcelId: 36, child: "Amir", wish: "A bat, please! I love caves.", made: null } ],
   affected: { count: 1, ids: [36] },
   options: [ { id: "pick:0", label: "cuddly bat", seconds: 0, money: 0, risk: null,
@@ -353,9 +353,9 @@ two unclear letters, at most one faulty update and at most two recalls.
 
 Raised once, when a faulty update installed at half-time becomes known, which takes at least one
 full-sized train. Facts: `"Full-sized trains so far"` (every train it has made, caught or not),
-`"Rolling back"` (`"takes 8 seconds and costs £65"`), `"Toys a minute"`
-(`"112 now, 80 after rolling back"`), `"Time left"` (`"116 seconds"`).
-Options: `"rollback"` (the toy machine stops 8 seconds, £65, then the machine is back to its old speed)
+`"Rolling back"` (`"takes 5 seconds and costs £40"`), `"Toys a minute"`
+(`"112 now, 80 after rolling back"`), `"Time left"` (`"66 seconds"`).
+Options: `"rollback"` (the toy machine stops 5 seconds, £40, then the machine is back to its old speed)
 and `"keep"` (risk 0.65: the machine keeps making full-sized trains until the sleigh leaves). Both
 close at once; the rollback runs in `incident.rollingBack`. Known faulty parcels still in the
 workshop are marked `suspect: "batch"`, so Riskiest checking checks them.
@@ -386,7 +386,7 @@ those gifts: the one gift, or the gifts above the limit, big gifts first, and ne
 remake pile has room for. `gift` is `{ child, wanted: { name }, made: { name } }` when exactly one
 gift is affected, so the card can draw what the child got and what they wanted, and `null`
 otherwise. `"bringBack"` removes the gifts from
-the sleigh immediately and sends them to the checkers to remake, 4 seconds each and at most 20
+the sleigh immediately and sends them to the checkers to remake, 4 seconds each and at most 12
 in all. It needs a checker, and is unavailable with a reason when too little time remains.
 `"leave"` keeps them aboard.
 
@@ -430,12 +430,12 @@ count and price. Its cause and cost also remain in the account.
 
 ## Half-time
 
-`choice` is set at t = 75 and the rules stand still until `choose(optionId)`. It is
+`choice` is set at t = 45 and the rules stand still until `choose(optionId)`. It is
 `{ title, text, report, next, options, openCase }`:
 
 ```
 { title: "Half-time", text: "Pick one change before you carry on, or none.",
-  report: { aboard: 78, wrong: 0, target: 146, cost: 140, limit: 1000, tired: 2, burnouts: 0,
+  report: { aboard: 46, wrong: 0, target: 89, cost: 85, limit: 610, tired: 2, burnouts: 0,
             goals: [ ...three goals as in run.goals... ], causes: [ ...up to three causes... ] },
   next: { cargo: { id: "big", name: "Big gifts", icon: "📦", text: "These are rare and unusual. The AI has seen few like them and can be wrong without noticing. Each wrong one costs £100." },
           text: "Big, unusual gifts come next. The AI has seen few like them and can be confidently wrong. Each wrong one costs £100." },
@@ -459,15 +459,15 @@ count and price. Its cause and cost also remain in the account.
 
   | `id`     | `label`                    | `facts` labels            | Price |
   | -------- | -------------------------- | ------------------------- | ----- |
-  | `update` | `Install a hot-fix update` | `Gives`, `Risk`, `Costs`  | £40   |
-  | `tested` | `Install a tested update`  | `Gives`, `Stops`, `Costs` | £50   |
-  | `train`  | `Train the checkers`       | `Gives`, `Costs`          | £100  |
-  | `rest`   | `Cocoa for everyone`       | `Gives`, `Costs`          | £50   |
+  | `update` | `Install a hot-fix update` | `Gives`, `Risk`, `Costs`  | £25   |
+  | `tested` | `Install a tested update`  | `Gives`, `Stops`, `Costs` | £30   |
+  | `train`  | `Train the checkers`       | `Gives`, `Costs`          | £60   |
+  | `rest`   | `Cocoa for everyone`       | `Gives`, `Costs`          | £30   |
   | `none`   | `Carry on`                 | `Costs`                   | £0    |
 
   `update` speeds up the toy machine at once (30 to 60%) and is faulty on half of all games, with
   signs in its `text` that lean the right way; `Risk` gives the chance. `tested` runs four test
-  toys and installs the update 20 seconds into the second half only if they all pass. `train`
+  toys and installs the update 12 seconds into the second half only if they all pass. `train`
   keeps checkers and confirmers sharp for the rest of the game. `rest` halves every elf's
   tiredness and ends burnouts. `none` changes nothing. The price is added to the cost so far.
   Each `text` is everything the option's information button shows, in short plain sentences, for
@@ -476,7 +476,7 @@ count and price. Its cause and cost also remain in the account.
   `"Your checkers are starting to skip checks."` or `"Your checkers have stopped looking."`) and
   the `rest` text with the elves' energy (`"The elves' average energy is now 47."`), so neither
   is a fact of its own. `Gives` is the line under the option's name, written to be read cold:
-  `"The AI makes toys 50% faster"`, `"Installed after 20 seconds if it passes"`, `"Checkers stay
+  `"The AI makes toys 50% faster"`, `"Installed after 12 seconds if it passes"`, `"Checkers stay
 sharp all night"`, `"Every elf is half as tired"`. `Stops` is `"a faulty update"`, which the
   page puts after "Stops". `Risk` keeps the form `"may be faulty, about 1 in 5"`, from which the
   page takes the "1 in 5".
@@ -507,7 +507,7 @@ something only half-time sells.
 | `blocked`     | `station`                                                                                  | A station stopped because the next pile is full        |
 | `lost`        | `count`                                                                                    | Letters were lost to a full pile                       |
 | `behind`      | `station`                                                                                  | The pace falls short and elves at a station hold it up |
-| `milestone`   | `right`                                                                                    | The sleigh passed 25, 50, 75 or 146 correct gifts      |
+| `milestone`   | `right`                                                                                    | The sleigh passed 25, 50, 75 or 89 correct gifts       |
 | `cleared`     | `queue`                                                                                    | A pile that was more than half full has been emptied   |
 | `halftime`    | `right`, `wrong`                                                                           | Half-time began                                        |
 | `chose`       | `option`, `outcome: { money, seconds, gained }`                                            | The player picked a half-time option                   |
@@ -518,7 +518,7 @@ A `relaxed` item names the elf who trusts the AI most and what to do now, for ex
 `"Tinsel is trusting the AI and skipping checks. Send Tinsel for a cocoa break or swap in another elf."`
 (on Assist: "trusting the AI's drafts and missing mistakes"). `elf` and `station` say who and
 where. It always names the elf and station `vigilance.swap` names at that moment: it is said when
-the prompt first names an elf, at most one every 20 seconds, and never in the first 20 seconds.
+the prompt first names an elf, at most one every 12 seconds, and never in the first 12 seconds.
 `vigilance.swap` says whether the drift is still there.
 
 ### A wrong gift says what to do now
@@ -548,7 +548,7 @@ The first that applies is used. Tiredness is named only when an elf at that stat
 (red), and drift names the elf there who trusts the AI most. `decide` has no control to outline
 until the next unclear wish, so the page shows only the line.
 
-A wrong gift whose advice was given in the last 20 seconds goes aboard without a new line, so the
+A wrong gift whose advice was given in the last 12 seconds goes aboard without a new line, so the
 player is not asked twice for the same thing; it still shows on the sleigh.
 
 `cause` is the cause id (see Causes). `caseId` is set only when
@@ -556,7 +556,7 @@ the faulty update's decision was still waiting for an answer as the gift went ab
 
 A `resolved` item's `text` says what the answer did, with the time, money and parcels involved,
 for example `"Amir wrote back: a cuddly bat."` or
-`"Rolling back for £65: the toy machine stops 8 s."`. A `check` is a copy taken when the check finished.
+`"Rolling back for £40: the toy machine stops 5 s."`. A `check` is a copy taken when the check finished.
 `by` is `"elf"`. A `consequence` leaves out the facts that do not apply; `about` is `"checking"`,
 `"tested"` or `"case"`.
 
@@ -566,11 +566,11 @@ for example `"Amir wrote back: a cuddly bat."` or
 
 ```
 { stars: 2, goals: [ ...three goals with their final figures... ],
-  right: 146, wrong: 3, lost: 0,
-  costs: { ai: 141, checking: 126, halfTime: 100, fixing: 76, mistakes: 215, prevented: 900, total: 658, limit: 1000 },
+  right: 89, wrong: 2, lost: 0,
+  costs: { ai: 85, checking: 76, halfTime: 60, fixing: 46, mistakes: 129, prevented: 540, total: 396, limit: 610 },
   headline: "Careful, but slow.",
   lesson: { title: "Checking in the right places", text: "Checks went where mistakes were likeliest and dearest." },
-  assurance: { ... }, checkingAnswer: "Yes: £126 of checks stopped about £900 of wrong gifts.",
+  assurance: { ... }, checkingAnswer: "Yes: £76 of checks stopped about £540 of wrong gifts.",
   practices: [ ...five practices... ], causes: [ ...up to three... ],
   blunders: [ { id: "pet-mouse", name: "pet mouse", icon: "🐭" } ], blunderTotal: 27,
   blunderIds: [ "pet-mouse", "oil-drum", ... ],
@@ -583,7 +583,7 @@ for example `"Amir wrote back: a cuddly bat."` or
   `leftAt` is the whole seconds that were left on the clock then (0 for `"time"`). A game the
   budget ended earns two stars at most, reads `headline: "Out of money."` and its `lesson` is
   `{ title: "Out of money", text }` with `text` one sentence naming where most of the budget went:
-  `"Wrong big gifts took £400 of your £1,000 budget."`, `"The faulty update's trains took £N..."`,
+  `"Wrong big gifts took £300 of your £610 budget."`, `"The faulty update's trains took £N..."`,
   `"Making and fixing wrong gifts took £N..."`, `"Checks took £N..."`,
   `"Running the AI took £N..."` or `"The half-time change took £N..."`. Wrong gifts and fixing them
   (recalls, remakes, a rollback) are weighed together. Gifts such a game did not reach are not
@@ -628,7 +628,7 @@ for example `"Amir wrote back: a cuddly bat."` or
     checkers reads "Not as run: £172 of checks stopped about £0 of wrong gifts. Trusting checkers
     waved 3 wrong gifts through." with "Tired checkers missed 2 wrong gifts." as a sentence of its
     own when that happened too. Those wrong gifts count as lost to too few checks, so the dial
-    then reads "too little" when they cost £100 or more. When checks also cost the budget, the
+    then reads "too little" when they cost £60 or more. When checks also cost the budget, the
     larger figure decides, and "too much" reads "No: £460 of checks stopped only about £120 of
     wrong gifts. Tired checkers missed 3 wrong gifts." The answer never advises fewer checks on a
     game that lost the Minimal mistakes goal.
@@ -646,8 +646,8 @@ tile per practice and one line per action, with its figure.
 
 | `id`            | `name`                            | actions: `id`, `label`, example `figure`                                                                                                                                                                                                                                                                                                                                      | `note` example                                             |
 | --------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `human-in-loop` | `Augmentation not automation`     | `assist`, "Elves confirmed the AI's drafts", "75 of 150 s on Assist" (of the seconds played)                                                                                                                                                                                                                                                                                  | `null`                                                     |
-| `risk-check`    | `Proportionate inspections`       | `risky`, "Checked the riskiest gifts", "150 s on Riskiest, 3 of 7 mistakes caught"                                                                                                                                                                                                                                                                                            | "Wrong gifts hurt Santa's reputation. 2 reached children." |
+| `human-in-loop` | `Augmentation not automation`     | `assist`, "Elves confirmed the AI's drafts", "45 of 90 s on Assist" (of the seconds played)                                                                                                                                                                                                                                                                                   | `null`                                                     |
+| `risk-check`    | `Proportionate inspections`       | `risky`, "Checked the riskiest gifts", "90 s on Riskiest, 3 of 7 mistakes caught"                                                                                                                                                                                                                                                                                             | "Wrong gifts hurt Santa's reputation. 2 reached children." |
 | `escalate`      | `Human in the loop`               | `decided`, "Read the unclear wishes yourself", "Answered 2 of 2, 2 of them right" / "Answered 1 of 2, 0 of them right, 1 left unanswered"                                                                                                                                                                                                                                     | `null`                                                     |
 | `test-release`  | `Test, monitor and feedback`      | `tested`, "Tested the update first", "The test passed" / "The test was still running" / "Installed straight away, untested" / "No update installed"; `rolledBack`, "Rolled back a faulty update", "Rolled back after 9 wrong trains"; `recalled`, "Brought wrong gifts back off the sleigh", "2 wrong gifts brought back for £202" / "Wrong gifts left aboard" / "Not needed" | `null`                                                     |
 | `oversight`     | `Don't lose focus on your people` | `trained`, "Trained the checkers not to simply trust the AI", "4 checks skipped"; `rested`, "Gave the elves a cocoa break", "6 cocoa breaks, 1 burnout"                                                                                                                                                                                                                       | `null`                                                     |
@@ -656,7 +656,7 @@ The id `human-in-loop` stays on the Assist practice, while the name "Human in th
 `escalate`; `tests/wording-check.js` holds the two apart.
 
 A practice's `used` is `true` when any of its actions was used. `assist` and `risky` count once
-the setting ran for 10 seconds or more; `decided` once the player read an unclear wish; `tested` and `trained`
+the setting ran for 6 seconds or more; `decided` once the player read an unclear wish; `tested` and `trained`
 when bought at half-time; `rolledBack` when the faulty update was rolled back; `rested` when an
 elf was sent for cocoa or cocoa for everyone was bought.
 
@@ -717,7 +717,7 @@ beforehand: a risky batch can happen to come out clean.
   kind of gift, the avoidable part is what its unchecked wrong gifts cost beyond what checking
   every unchecked parcel of that kind would have cost. A mistake that slipped past a fresh checker who
   did look is not counted here. One that relaxed checkers waved through or tired ones missed counts
-  only in a game with more than 2 wrong gifts aboard.
+  only in a game with more than 1 wrong gift aboard.
 - A gift is held back by checking when it is in the checking pile as the sleigh leaves, or a toy
   order stuck behind a full checking pile then, or a letter lost to a full letter pile while
   checking was the station holding up the line (`pace.slowest` 2). Each is worth £6.
@@ -741,12 +741,12 @@ beforehand: a risky batch can happen to come out clean.
   over-checking is the largest, `verdict` is `"too much"`. When checking stayed on a few all
   game the verdict is never `"too much"`: the player checked as little as the game allows.
 - The dial measures checking by its own two figures and is never moved to fit the headline. When
-  one of `underCost` and `overCost` is three times the other and at least £100, the verdict is that
+  one of `underCost` and `overCost` is three times the other and at least £60, the verdict is that
   side ("too little" or "too much") whatever the rest of the bill. On three stars it reads "about
   right": neither too much nor too little checking cost a star. A game that lost a star to
   checking never reads "about right", judged by the raw figures: when the budget ran out and
-  `overCost` is £100 or more it reads "too much", and when more than 2 wrong gifts went aboard and
-  `underCost` is £100 or more it reads "too little" (the larger figure decides when both hold).
+  `overCost` is £60 or more it reads "too much", and when more than 1 wrong gift went aboard and
+  `underCost` is £60 or more it reads "too little" (the larger figure decides when both hold).
   In such a game `underCost` includes the wrong gifts that trusting checkers waved through or tired
   ones missed. A needle that reads "about right" sits at least 0.05 inside both thresholds. Otherwise a game that
   lost the Minimal mistakes goal never reads "too much". The words follow the dial instead.
@@ -786,9 +786,9 @@ A few are clauses in lower case that the page builds a sentence around:
 | ----------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------ |
 | lever `sends`                       | "checkers look at every gift"                                    | "{Sends}. That is {per100} in 100 gifts."        |
 | recall `scope`                      | "costs £50 more and keeps the checkers busy for about 4 seconds" | "{label}: {scope}."                              |
-| goal `text`                         | "spend less than the £1,000 budget"                              | a sentence, or a clause after a comma            |
+| goal `text`                         | "spend less than the £610 budget"                                | a sentence, or a clause after a comma            |
 | checking `cost` under `actions`     | "each check takes a checker about 5 seconds and costs £4"        | a sentence, with a capital and a full stop       |
-| fact `value`                        | "takes 8 seconds and costs £65"                                  | "{label}: {value}."                              |
+| fact `value`                        | "takes 5 seconds and costs £40"                                  | "{label}: {value}."                              |
 | half-time `Stops` and `Risk` values | "a faulty update", "may be faulty, about 1 in 5"                 | "Stops a faulty update", "May be faulty: 1 in 5" |
 
 The page reads words out of four texts, so these stay as they are: the "N in N" in the half-time
@@ -804,23 +804,23 @@ and on any of the clipped wordings the copyedit replaced.
 - When the checking pile is full the line waits; nothing lets gifts past it, and `focus` names
   what frees it: another elf at Checking, or checking fewer when every gift is checked by three
   elves or more. Relaxed checkers who wave a gift through are counted in `vigilance.skipped`.
-- A cocoa break from tired to fresh takes about 3 seconds. Once fully rested (at least 3 seconds
+- A cocoa break from tired to fresh takes about 2 seconds. Once fully rested (at least 2 seconds
   after it sat down) an elf on cocoa leaves by itself, with a `rested` news item saying where. It
   goes back to the station it came from unless that station clearly does not need it (it works on
   Automate, or keeps two elves or more with every pile under half full, and for Checking the To
   check pile is not growing) and another station needs an elf, as `focus` would name it. A need
-  one rested elf has gone to is left to it for 5 seconds, so two elves rested together do not both
+  one rested elf has gone to is left to it for 3 seconds, so two elves rested together do not both
   answer it. Nobody is left on a break. A `tired` news item means an elf burnt
-  out; it comes back by itself after 15 seconds, still tired. An elf working without rest burns out
-  for the first time about 110 seconds in; a player who rests elves when they turn red sees about
+  out; it comes back by itself after 9 seconds, still tired. An elf working without rest burns out
+  for the first time about 66 seconds in; a player who rests elves when they turn red sees about
   one burnout a game.
 - An elf confirming an AI draft on Assist catches 95 in 100 wrong ones while sharp and rested. A
-  checker catches 90 in 100. Both miss more as they tire. A caught mistake takes 10 clean gifts
+  checker catches 90 in 100. Both miss more as they tire. A caught mistake takes 6 clean gifts
   off the trust of the elves who caught it, so checkers who drifted on the clean everyday gifts
   of the first half sharpen again once the big gifts bring mistakes, unless they have stopped
   looking altogether.
 - An elf's slip by hand is a mix-up: the child gets another child's toy of the same kind, drawn
   per parcel from the seed. It is never one of the AI's blunders and never joins `end.blunders`.
-- `pace.projected` is smoothed over about fifteen seconds; a player action works it out afresh.
+- `pace.projected` is smoothed over about nine seconds; a player action works it out afresh.
 - Every option closes its decision at once: pick a reading, roll back, keep running, bring back,
   leave.

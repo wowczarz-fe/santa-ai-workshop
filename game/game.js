@@ -1018,7 +1018,9 @@
       ? `${money(goal.now)} / ${money(goal.need)}`
       : `${goal.now} / ${goal.need}`;
   const goalUnit = (goal) =>
-    goal.id === "right" ? ` wrong gift${goal.need === 1 ? "" : "s"}` : "";
+    goal.id === "right"
+      ? ` wrong gift${goal.now === 1 && goal.need === 1 ? "" : "s"}`
+      : "";
   const goalFigure = (goal) => goalNumbers(goal) + goalUnit(goal);
   const causeIcons = {
     picked: "gift-unclear",

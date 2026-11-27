@@ -349,8 +349,13 @@ const RAMP = [
   [0, 0.6],
   [9, 1.1],
 ];
-// One unclear letter in each half, at a time drawn from this window of seconds into the half.
-const UNCLEAR_WINDOW = [7, 24];
+// Three unclear letters a game, each at a time drawn from its window of seconds into the game: one
+// early and one late in the first half, and one in the second half once the big gifts have started.
+const UNCLEAR_WINDOWS = [
+  [6, 16],
+  [26, 37],
+  [HALF_SECONDS + 7, HALF_SECONDS + 24],
+];
 const CONSEQUENCE_GAP = 27;
 // Waiting decisions take their turn in this order; unclear letters come last.
 const CASE_ORDER = { source: 0, aboard: 1 };
@@ -501,15 +506,12 @@ class Workshop {
     this.driftSaid = null; // the prompt the last drift line named
     this.machineSpeed = 1;
     this.update = this.planUpdate();
-    // One unclear letter in each half: two different children, each at a time drawn in its half. The
-    // first half carries everyday gifts only, so its unclear letter is never a big gift.
+    // Three unclear letters from three different children. The first half carries everyday gifts
+    // only, so its unclear letters are never big gifts.
     const pool = [...UNCLEAR_WISHES];
-    this.unclear = [0, 1].map((half) => {
-      const at =
-        half * HALF_SECONDS +
-        UNCLEAR_WINDOW[0] +
-        this.rng() * (UNCLEAR_WINDOW[1] - UNCLEAR_WINDOW[0]);
-      const fits = pool.filter((w) => half === 1 || !w.big);
+    this.unclear = UNCLEAR_WINDOWS.map(([from, to]) => {
+      const at = from + this.rng() * (to - from);
+      const fits = pool.filter((w) => at >= HALF_SECONDS || !w.big);
       const w = fits[Math.floor(this.rng() * fits.length)];
       pool.splice(pool.indexOf(w), 1);
       return { at, w, sent: false };

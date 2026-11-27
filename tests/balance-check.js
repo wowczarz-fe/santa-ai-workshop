@@ -999,8 +999,8 @@ console.log(
 for (const name of ["expert", "expertCheckAll", "expertCheckFew"])
   for (const r of results[name])
     assert(
-      r.cards >= 2 && r.cards <= 5,
-      `${name} seed: ${r.cards} decisions, two to five in a game`,
+      r.cards >= 2 && r.cards <= 6,
+      `${name} seed: ${r.cards} decisions, two to six in a game`,
     );
 // An elf by hand, never rested, burns out once or twice a game; a first-timer who rests elves when
 // they turn red sees about one burnout a game.
@@ -1237,14 +1237,14 @@ for (const name of IDLE)
   for (const r of results[name])
     assert.match(
       r.end.practices.find((p) => p.id === "escalate").actions[0].figure,
-      /^Answered 0 of ([12]), 0 of them right, \1 left unanswered$/,
+      /^Answered 0 of ([1-3]), 0 of them right, \1 left unanswered$/,
       "an untouched player read no unclear wish",
     );
 for (const r of results.expert) {
   const escalate = r.end.practices.find((p) => p.id === "escalate");
   assert(
     escalate.used &&
-      /^Answered ([12]) of [12], \1 of them right/.test(
+      /^Answered ([1-3]) of [1-3], \1 of them right/.test(
         escalate.actions[0].figure,
       ),
     escalate.actions[0].figure,
@@ -1481,13 +1481,13 @@ for (const right of [true, false]) {
   const act = w.end.practices.find((p) => p.id === "escalate").actions[0];
   assert.match(
     act.figure,
-    /^Answered 1 of 2, 0 of them right, 1 left unanswered$/,
+    /^Answered 1 of 3, 0 of them right, 2 left unanswered$/,
   );
 }
 {
   const lazy = new Workshop({ seed: 5 });
   while (!lazy.end) (lazy.step(1), lazy.choice && lazy.choose("none"));
-  assert(lazy.view().end.lost >= 2, "unclear letters left undecided are lost");
+  assert(lazy.view().end.lost >= 3, "unclear letters left undecided are lost");
 }
 
 // A full checking pile makes the line wait and lets nothing through by itself.

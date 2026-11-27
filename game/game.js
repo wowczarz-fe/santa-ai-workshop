@@ -1307,6 +1307,9 @@
     if (!started) return;
     if (news.kind === "budgetLow")
       actionNotice = { text: news.text, until: performance.now() + 6000 };
+    // A big gift the AI got wrong shows its charge beside the budget while it is fresh.
+    if (news.kind === "bigCost")
+      actionNotice = { text: news.text, until: performance.now() + 5000 };
     if (news.kind === "loaded" && news.control) showMistakeHint(news);
     if (news.kind === "loaded" && news.caseId != null)
       openedCases.delete(news.caseId);

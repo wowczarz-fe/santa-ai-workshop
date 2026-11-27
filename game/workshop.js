@@ -96,6 +96,7 @@ const DRIFT_GAP = 12; // seconds at least between two lines about elves trusting
 const COCOA_LEAST = 2; // seconds a cocoa break lasts at least, however rested the elf
 const NEED_CLAIM = 3; // seconds a need answered by one rested elf is left to it
 const WRONG_LINE_GAP = 12; // seconds before a wrong-gift line repeats the same advice
+const BIG_COST_GAP = 5; // seconds between lines about the cost of a big gift the AI got wrong
 
 // One sleigh, filled over two halves with a pause between them. The target sits where a first-time
 // player on the good plan (the AI alone on the everyday gifts of the first half, then elves
@@ -538,6 +539,10 @@ class Workshop {
     this.news = [];
     this.lastNews = 0;
     this.newsAt = {};
+    // Big gifts the AI got wrong, caught for a remake or aboard the sleigh, not yet told to the player.
+    this.bigCosts = { remake: 0, aboard: 0 };
+    // What remakes and recalls of those big gifts cost, for the end lesson of a game the budget ended.
+    this.fixedBig = 0;
     this.lost = 0;
     this.flow = Object.fromEntries(
       Object.keys(QUEUES).map((id) => [
@@ -700,6 +705,40 @@ class Workshop {
       }),
     );
     this.news.length = Math.min(this.news.length, 30);
+  }
+
+  // A big gift the AI made or read wrongly costs money the moment it is caught for a remake or
+  // reaches the sleigh. The player hears the charge and its cause, at most one line every
+  // BIG_COST_GAP seconds, with the ones in between folded into the next line.
+  bigCost(x, kind) {
+    if (!this.aiBig(x)) return;
+    this.bigCosts[kind]++;
+    this.sayBigCosts();
+  }
+
+  // Whether a wrong gift is a big one the AI made or read wrongly: not the player's reading of an
+  // unclear wish, and not an elf's mix-up.
+  aiBig(x) {
+    return (
+      x.w.big &&
+      x.wrongLevel > 0 &&
+      x.cause !== PICKED_WRONG &&
+      !this.mixedUp(x)
+    );
+  }
+
+  sayBigCosts() {
+    const kind = ["remake", "aboard"].find((k) => this.bigCosts[k] > 0);
+    if (!kind || this.t - (this.newsAt.bigCost ?? -99) < BIG_COST_GAP) return;
+    const n = this.bigCosts[kind];
+    this.bigCosts[kind] = 0;
+    this.newsAt.bigCost = this.t;
+    const gifts = n === 1 ? "a big gift" : `${n} big gifts`;
+    const text =
+      kind === "remake"
+        ? `The AI got ${gifts} wrong. Remaking ${n === 1 ? "it" : "them"} costs ${money(n * PRICE.remakeBig)}.`
+        : `The AI got ${gifts} wrong and ${n === 1 ? "it is" : "they are"} on the sleigh. ${n === 1 ? "It counts" : "They count"} ${money(n * WRONG_PRICE.big)} against the budget.`;
+    this.say("bigCost", text, { count: n, cause: kind });
   }
 
   // Says it unless the same key went out in the last few seconds.
@@ -1197,6 +1236,7 @@ class Workshop {
       return this.load(x);
     }
     this.caught(x);
+    this.bigCost(x, "remake");
     this.sharpen();
     this.sighting(x, "checker");
     this.toRework(x, ELF_SECONDS.remake);
@@ -1318,6 +1358,7 @@ class Workshop {
 
   remade(x) {
     const job = x.job;
+    if (x.wrong && this.aiBig(x)) this.fixedBig += remakePrice([x]);
     if (job) {
       job.left--;
       if (x.wrong) {
@@ -1371,6 +1412,7 @@ class Workshop {
     this.aboard.push(x);
     if (!x.wrong) return;
     x.loadedAt = this.t;
+    this.bigCost(x, "aboard");
     const { control, text, action } = this.advice(x);
     const cause = this.causeId(x);
     const waiting = this.waitingCause(x);
@@ -1962,6 +2004,10 @@ class Workshop {
           this.toRework(x, recallSeconds(n), job);
         });
         this.pay("fixing", recallPrice(list) - remakePrice(list));
+        this.fixedBig +=
+          ((recallPrice(list) - remakePrice(list)) *
+            countedPrice(list.filter((x) => this.aiBig(x)))) /
+          countedPrice(list);
         this.recalled.count += n;
         this.recalled.cost += recallPrice(list);
         this.say(
@@ -2079,6 +2125,7 @@ class Workshop {
   }
 
   track(dt) {
+    this.sayBigCosts();
     this.pay("ai", dt * (AI_PRICE[this.ai[0]] + AI_PRICE[this.ai[1]]));
     this.stats.ai[this.ai[0]] += dt;
     this.stats.ai[this.ai[1]] += dt;
@@ -2489,7 +2536,7 @@ class Workshop {
     this.say(
       "departed",
       reason === "budget"
-        ? `The budget has run out, so the sleigh leaves now. It carries ${carried}. ${earned}`
+        ? `The budget has run out, so the sleigh leaves now. ${this.end.lesson.text} It carries ${carried}. ${earned}`
         : `The sleigh is away with ${carried}. ${earned}`,
       {
         right: this.end.right,
@@ -2501,29 +2548,34 @@ class Workshop {
     );
   }
 
-  // Where most of the budget went, in one sentence, for a game the budget ended. Wrong gifts and
-  // putting them right (recalls, remakes, a rollback) are weighed together against the checks and
-  // against running the AI and the half-time change. When wrong gifts win, the sentence names the
-  // part that made up half of them or more: the wrong big gifts aboard, or the faulty update's trains.
+  // Where most of the budget went, in one sentence, for a game the budget ended. The cost is split
+  // by cause: running the AI, checking, remakes and recalls, wrong gifts aboard, and the half-time
+  // change. Remakes and recalls, and wrong gifts aboard, are named as big gifts the AI got wrong when
+  // those make up half of them or more, and the wrong gifts aboard as the faulty update's trains when
+  // those do.
   whereMoneyWent(costs) {
     const wrong = this.aboard.filter((x) => x.wrong);
     const part = (test) => sum(wrong.filter(test).map((x) => this.price(x)));
     const trains = part((x) => x.made === LOCOMOTIVE);
-    const big = part((x) => x.made !== LOCOMOTIVE && x.w.big);
-    const mistakes = costs.mistakes + costs.fixing;
+    const big = part((x) => x.made !== LOCOMOTIVE && this.aiBig(x));
+    const aboard =
+      trains * 2 >= costs.mistakes
+        ? "The faulty update's trains on the sleigh"
+        : big * 2 >= costs.mistakes
+          ? "Big gifts the AI got wrong that reached the sleigh"
+          : "Wrong gifts on the sleigh";
+    const fixes = this.recalled.count ? "Remaking and recalling" : "Remaking";
+    const fixing =
+      this.fixedBig * 2 >= costs.fixing
+        ? `${fixes} big gifts the AI got wrong`
+        : `${fixes} wrong gifts${this.used.rolledBack ? " and rolling back the update" : ""}`;
     const [what, amount] = [
-      [
-        big * 2 >= mistakes
-          ? ["Wrong big gifts", big]
-          : trains * 2 >= mistakes
-            ? ["The faulty update's trains", trains]
-            : ["Making and fixing wrong gifts", mistakes],
-        mistakes,
-      ],
-      [["Checking", costs.checking], costs.checking],
-      [["Running the AI", costs.ai], costs.ai],
-      [["The half-time upgrade", costs.halfTime], costs.halfTime],
-    ].sort((p, q) => q[1] - p[1])[0][0];
+      [aboard, costs.mistakes],
+      [fixing, costs.fixing],
+      ["Checking gifts", costs.checking],
+      ["Running the AI", costs.ai],
+      ["The half-time upgrade", costs.halfTime],
+    ].sort((p, q) => q[1] - p[1])[0];
     return `${what} took ${money(amount)} of your ${money(COST_LIMIT)} budget.`;
   }
 

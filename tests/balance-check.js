@@ -47,7 +47,7 @@ const warnings = [];
 const warn = (ok, message) => ok || warnings.push(message);
 const PARCEL_KEYS = "id,wish,big,unclear,wanted,made,suspect,result";
 const NEWS_KINDS =
-  "checked loaded consequence case resolved update noticed rolledBack recalled relaxed trained tired rested blocked lost behind milestone cleared halftime chose departed budgetLow".split(
+  "checked loaded consequence case resolved update noticed rolledBack recalled relaxed trained tired rested blocked lost behind milestone cleared halftime chose departed budgetLow bigCost".split(
     " ",
   );
 const CONTROLS_NAMED = ["checking", "ai:0", "ai:1", "cocoa", "decide"];

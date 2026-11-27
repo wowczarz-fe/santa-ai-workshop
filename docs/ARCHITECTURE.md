@@ -49,9 +49,11 @@ or the moment the budget runs out: `end` is set and nothing moves after that.
   second half needs an elf's judgement on the big gifts
   (`docs/adr/0019-make-the-ai-reliable-on-everyday-gifts.md`,
   `docs/adr/0025-make-the-ai-wrong-on-1-in-5-big-gifts-and-keep-the-dial-honest.md`).
-- One unclear letter arrives in each half, at a seeded time 7 to 24 seconds into the half, from
-  a pool of ten children and wishes (Timmy's little train among them). It raises a decision at once
-  (below). All other letters are clear.
+- Three unclear letters arrive in a game, from three different children, at seeded times: one 6 to
+  16 seconds in, one 26 to 37 seconds in and one 7 to 24 seconds into the second half. They come
+  from a pool of ten children and wishes (Timmy's little train among them), and the two in the
+  first half are never big gifts. Each raises a decision at once (below). All other letters are
+  clear.
 - Three goals, one star each, for the whole game: `full` (Full sleigh, 89 correct gifts aboard),
   `right` (Minimal mistakes, at most 1 wrong gift aboard) and `cost` (Within budget, less than the
   £660 budget spent when the sleigh leaves). `right` and `cost` count only once the sleigh holds
@@ -162,7 +164,7 @@ A parcel is `{ id, wish, big, unclear, wanted, made, suspect, result }`, for exa
 `{ id: 38, wish: "A book about dinosaurs.", big: false, unclear: false, wanted: { name: "dinosaur book", icon: "📕" }, made: { name: "dinosaur book", icon: "📕" }, suspect: false, result: "right" }`.
 
 - `id` never changes. `wish` is the child's words. `big` marks a gift whose mistake costs £100.
-  `unclear` marks one of the two unclear letters.
+  `unclear` marks one of the three unclear letters.
 - `suspect` is `false`, `"unsure"` (the AI flagged it) or `"batch"` (made during the faulty update,
   once the update is known).
 - `wanted` and `made` are `{ name, icon }` and `result` is `"right"` or `"wrong"`. All three are
@@ -280,8 +282,8 @@ A decision ("case") is
 letter also has `stake` and `readings`, and a recall also has `gift`. At most one is
 open (`case`); the others wait (`casesWaiting`) in this order: the faulty update, the recall, the
 unclear letters. The page pauses the clock while a Decide card awaits an answer, preserving any
-manual pause. Every answer closes its decision at once. A game has two to five decisions:
-two unclear letters, at most one faulty update and at most two recalls.
+manual pause. Every answer closes its decision at once. A game has three to six decisions:
+three unclear letters, at most one faulty update and at most two recalls.
 
 - `kind` is `"unclear"` or `"incident"`. `step` is `null` for an unclear letter, and `"source"`
   (the faulty update) or `"aboard"` (wrong gifts on the sleigh) for an incident.
@@ -648,7 +650,7 @@ tile per practice and one line per action, with its figure.
 | --------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | `human-in-loop` | `Augmentation not automation`     | `assist`, "Elves confirmed the AI's drafts", "45 of 90 s on Assist" (of the seconds played)                                                                                                                                                                                                                                                                                   | `null`                                                     |
 | `risk-check`    | `Proportionate inspections`       | `risky`, "Checked the riskiest gifts", "90 s on Riskiest, 3 of 7 mistakes caught"                                                                                                                                                                                                                                                                                             | "Wrong gifts hurt Santa's reputation. 2 reached children." |
-| `escalate`      | `Human in the loop`               | `decided`, "Read the unclear wishes yourself", "Answered 2 of 2, 2 of them right" / "Answered 1 of 2, 0 of them right, 1 left unanswered"                                                                                                                                                                                                                                     | `null`                                                     |
+| `escalate`      | `Human in the loop`               | `decided`, "Read the unclear wishes yourself", "Answered 3 of 3, 3 of them right" / "Answered 1 of 3, 0 of them right, 2 left unanswered"                                                                                                                                                                                                                                     | `null`                                                     |
 | `test-release`  | `Test, monitor and feedback`      | `tested`, "Tested the update first", "The test passed" / "The test was still running" / "Installed straight away, untested" / "No update installed"; `rolledBack`, "Rolled back a faulty update", "Rolled back after 9 wrong trains"; `recalled`, "Brought wrong gifts back off the sleigh", "2 wrong gifts brought back for £202" / "Wrong gifts left aboard" / "Not needed" | `null`                                                     |
 | `oversight`     | `Don't lose focus on your people` | `trained`, "Trained the checkers not to simply trust the AI", "4 checks skipped"; `rested`, "Gave the elves a cocoa break", "6 cocoa breaks, 1 burnout"                                                                                                                                                                                                                       | `null`                                                     |
 
@@ -757,12 +759,12 @@ beforehand: a risky batch can happen to come out clean.
   against about £44 lost to too many checks." Under the too-many figure the page may show its parts,
   for example "£176 extra checks, £498 gifts held up", from `overChecks` and `overHeld`.
 - A group is `{ id, name, icon, parcels, wrongMade, checked, caught, shipped, checkCost, prevented, shippedCost, shippedUnchecked, shippedUncheckedCost, verdict, text }`
-  for `id` `"everyday"`, `"big"` or `"unclear"` (the two unclear letters; one that is also big
+  for `id` `"everyday"`, `"big"` or `"unclear"` (the three unclear letters; one that is also big
   counts as big), for example
   `{ id: "big", name: "Big gifts", icon: "📦", parcels: 7, wrongMade: 6, checked: 6, caught: 5, shipped: 0, checkCost: 12, prevented: 500, shippedCost: 0, shippedUnchecked: 0, shippedUncheckedCost: 0, verdict: "paid", text: "Checking 6 big gifts cost £12 and stopped about £500 of wrong gifts." }`.
   `verdict` is `"left exposed"`, `"cost more than it saved"` or `"paid"`. The unclear wishes'
-  `text` counts the player's readings: "2 of 2 decided; no wrong ones." or
-  "2 of 2 decided; 1 wrong one cost £12.".
+  `text` counts the player's readings: "3 of 3 decided; no wrong ones." or
+  "3 of 3 decided; 1 wrong one cost £12.".
 - `end.lesson` and the verdict agree: a "Too much checking" lesson shows only when the dial reads
   too much, "Too little checking" only when it reads too little, and "Checking in the right places"
   only with "about right".

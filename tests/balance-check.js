@@ -79,7 +79,7 @@ function conditional(c, v) {
     case "unclear":
       return reading(c);
     case "source":
-      return left < 20 ? "keep" : "rollback";
+      return left < 12 ? "keep" : "rollback";
     case "aboard": {
       // Read the stated star trade first; otherwise compare money saved with checker time at £1 a second.
       const bring = c.options.find((o) => o.id === "bringBack");
@@ -234,7 +234,7 @@ function restsWhenRed(w, v, m) {
 // waits for, else the one with the fullest pile; it takes the elf from where elves stand idle or the
 // pile is emptiest.
 function shuffle(w, v, m) {
-  m.shuffleAt ??= between(m, 15, 25);
+  m.shuffleAt ??= between(m, 9, 15);
   if (v.t < m.shuffleAt) return;
   const piles = [
     fill(v, "letters"),
@@ -254,7 +254,7 @@ function shuffle(w, v, m) {
   );
   const from = argmax(spare);
   if (spare[from] === -9 || piles[to] < 0.3) return;
-  m.shuffleAt = v.t + between(m, 15, 25);
+  m.shuffleAt = v.t + between(m, 9, 15);
   const elf = v.elves.findIndex((e) => e.station === from && !e.resting);
   if (v.stations[from].staff > 1 && elf >= 0) w.move(elf, to);
 }
@@ -277,7 +277,7 @@ function decideSlowly(w, v, m, policy) {
 }
 
 // Someone who did the tour and means well but is slow and imperfect: sets the AI and checking some
-// seconds in, looks at the screen only every 2 to 4 seconds, moves an elf about every 20 seconds,
+// seconds in, looks at the screen only every 2 to 4 seconds, moves an elf about every 12 seconds,
 // rests elves that show red but misses some, and answers decisions late: it reads an unclear wish
 // right nine times in ten, and mostly rolls back and fetches back. It follows a plan: the first
 // part's settings some seconds in, and the second part's some seconds after half-time, since the
@@ -320,7 +320,7 @@ const firstTimer =
     decideSlowly(w, v, m, policy);
   };
 
-// Does what each new wrong-gift line says: checks the risky ones, checks all for 20 seconds, puts a
+// Does what each new wrong-gift line says: checks the risky ones, checks all for 12 seconds, puts a
 // station on Assist, sends the named elf or the most tired elf (or checker) for cocoa, or reads
 // the child's clue next time. "Keep checking" asks for nothing new.
 function followAdvice(w, v, m) {
@@ -341,7 +341,7 @@ function followAdvice(w, v, m) {
       m.reads = true;
     } else if (n.control === "checking") {
       w.setChecking(2);
-      m.backAt = v.t + 20;
+      m.backAt = v.t + 12;
     } else if (n.control.startsWith("ai:")) {
       const s = Number(n.control.slice(3));
       m.dropped[s] = true;
@@ -356,7 +356,7 @@ function followAdvice(w, v, m) {
               .map((e, i) => ({ e, i }))
               .filter(({ e }) => at.includes(e.station) && !e.resting)
               .sort((x, y) => x.e.energy - y.e.energy)[0];
-      if (most && v.stations[most.e.station].staff > 1) {
+      if (most && most.e.station < 3 && v.stations[most.e.station].staff > 1) {
         (m.home ??= {})[most.i] = most.e.station;
         w.move(most.i, 3);
       }
@@ -585,7 +585,9 @@ function checkView(v) {
       assert(bring.goal === null || /^Keeps the .* star$/.test(bring.goal));
     }
     assert.strictEqual(bring.extra, bring.money - bring.instead);
-    assert(bring.extra >= 40 && bring.money >= bring.instead * 1.5 - 1);
+    assert(
+      bring.extra >= RECALL_MARGIN && bring.money >= bring.instead * 1.5 - 1,
+    );
     assert(
       bring.scope.startsWith(
         `costs ${money(bring.extra)} more and keeps the checkers busy for `,
@@ -1024,7 +1026,7 @@ assert(
   `a first-timer's line stood stopped ${unhinted} s with nothing pointed at`,
 );
 // What asks for a first-timer's attention in each half, the half-time card counted in both: at most
-// one thing every 15 seconds.
+// one thing every 9 seconds.
 for (const half of [0, 1]) {
   const calls = ["cards", "burnouts", "wrong"].map((k) =>
     mean(results.first.map((r) => r.calls[half][k])),
@@ -1034,7 +1036,7 @@ for (const half of [0, 1]) {
   console.log(
     `first-timer, half ${half + 1}: ${cards} decisions, ${burnouts} burnouts, ${wrong} wrong-gift lines and half-time, one every ${(HALF_SECONDS / all).toFixed(0)} s`,
   );
-  assert(all <= HALF_SECONDS / 15, `half ${half + 1} asks too often`);
+  assert(all <= HALF_SECONDS / 9, `half ${half + 1} asks too often`);
 }
 console.log(
   `half-time picks (expert): ${Object.entries(

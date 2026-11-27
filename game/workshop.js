@@ -35,7 +35,7 @@ const ELF_SECONDS = {
   recall: 4, // fetching a gift back off a loaded sleigh, then remaking it
 };
 // However many gifts come back, a recall takes the checkers at most this many seconds in all.
-const RECALL_MAX_SECONDS = 20;
+const RECALL_MAX_SECONDS = 12;
 // What these wrong gifts count in the cost while they stay aboard.
 const countedPrice = (list) =>
   sum(list.map((x) => (x.w.big ? WRONG_PRICE.big : WRONG_PRICE.everyday)));
@@ -43,7 +43,7 @@ const countedPrice = (list) =>
 // count in the cost aboard, and at least RECALL_MARGIN more. Fixing a mistake after it has shipped
 // costs more than living with it, so a recall buys Santa's good name with real money.
 const RECALL_FACTOR = 1.5;
-const RECALL_MARGIN = 40;
+const RECALL_MARGIN = 25;
 const recallPrice = (list) =>
   Math.round(
     Math.max(
@@ -55,7 +55,7 @@ const recallPrice = (list) =>
 const recallSeconds = (n) =>
   Math.min(ELF_SECONDS.recall, RECALL_MAX_SECONDS / Math.max(1, n));
 const AI_SECONDS = { read: 0.6, make: 0.75 };
-const ROLLBACK_SECONDS = 8;
+const ROLLBACK_SECONDS = 5;
 
 // What goes wrong. On everyday gifts the AI is as reliable as a fresh elf, at reading and at making,
 // and it never tires; elves get worse as they tire. Big gifts are rare, unusual requests it has seen
@@ -91,21 +91,23 @@ const SIGN_IF_FAULTY = 0.7;
 const SIGN_IF_GOOD = 0.3;
 const TEST_TOYS = 4;
 const RECALLS = 2;
-const DRIFT_QUIET = 20; // seconds at the start with no line about elves trusting the AI
-const DRIFT_GAP = 20; // seconds at least between two lines about elves trusting the AI
-const COCOA_LEAST = 3; // seconds a cocoa break lasts at least, however rested the elf
-const NEED_CLAIM = 5; // seconds a need answered by one rested elf is left to it
-const WRONG_LINE_GAP = 20; // seconds before a wrong-gift line repeats the same advice
+const DRIFT_QUIET = 12; // seconds at the start with no line about elves trusting the AI
+const DRIFT_GAP = 12; // seconds at least between two lines about elves trusting the AI
+const COCOA_LEAST = 2; // seconds a cocoa break lasts at least, however rested the elf
+const NEED_CLAIM = 3; // seconds a need answered by one rested elf is left to it
+const WRONG_LINE_GAP = 12; // seconds before a wrong-gift line repeats the same advice
 
 // One sleigh, filled over two halves with a pause between them. The target sits where a first-time
 // player on the good plan (the AI alone on the everyday gifts of the first half, then elves
 // confirming the toys and the risky ones checked once the big gifts come) fills it in about two
 // games in five. Nearly every letter has to become a right gift, so a slow start, a jam or a batch
 // of remakes costs the star. Checking everything is held back by the budget, not by this target.
-const HALF_SECONDS = 75;
+// Halves of 45 seconds (ADR 0026): work takes as long per gift as ever, and every timer that sets
+// how often something happens is cut to match, so a game holds the same events in less time.
+const HALF_SECONDS = 45;
 const DURATION = 2 * HALF_SECONDS;
-const CLOSE = DURATION - 15; // letters stop coming, so the last ones can still reach the sleigh
-const TARGET = 146;
+const CLOSE = DURATION - 9; // letters stop coming, so the last ones can still reach the sleigh
+const TARGET = 89;
 // Three goals for the game, one star each (ADR 0014). full: the right gifts aboard reach the
 // target. right: at most WRONG_ALLOWED wrong gifts aboard. cost: the sleigh leaves with budget
 // left. The right and cost goals count only once the sleigh holds GOALS_FROM of its target, so a
@@ -113,8 +115,8 @@ const TARGET = 146;
 // COST_LIMIT is the budget (ADR 0020): the cost so far, wrong gifts aboard at what they will cost
 // included, counts down from it, and the game ends the moment nothing is left. A game that ends
 // that way has lost the cost star, so it earns two stars at most.
-const WRONG_ALLOWED = 2;
-const COST_LIMIT = 1000;
+const WRONG_ALLOWED = 1;
+const COST_LIMIT = 600;
 const GOALS_FROM = 0.7;
 const BUDGET_LOW = 0.25; // the share of the budget left at which it is said to be running low
 const NO_BUDGET = "Not enough budget left";
@@ -187,7 +189,7 @@ const WRONG_CAUSES = {
 };
 // Seconds Assist or risky checking must run before the end summary counts it as used, so one click
 // does not earn the practice.
-const USED_FOR = 10;
+const USED_FOR = 6;
 // The loss each end lesson names: slow (the sleigh fell short), tired (tiredness held it up), wrong
 // (wrong gifts cost a goal), cost (the budget ran out) or none (a tip after three stars). The
 // headline is chosen from the same loss, so the two always agree.
@@ -228,13 +230,13 @@ const CHECKING_ADVICE = {
 };
 // What each half-time option costs, against the cost goal.
 const HALF_TIME_PRICE = {
-  update: 40,
-  tested: 50,
-  train: 100,
-  rest: 50,
+  update: 25,
+  tested: 30,
+  train: 60,
+  rest: 30,
   none: 0,
 };
-const TEST_DELAY = 20; // seconds into the second half a tested update goes in, when the test is clean
+const TEST_DELAY = 12; // seconds into the second half a tested update goes in, when the test is clean
 
 // Checkers relax after a run of clean AI-made parcels they checked: quicker checks, some skipped.
 const VIGILANCE = [
@@ -242,7 +244,7 @@ const VIGILANCE = [
   {
     state: "relaxing",
     name: "drifting",
-    from: 8,
+    from: 5,
     speed: 0.75,
     skip: 0.5,
     trust: 0.3,
@@ -250,18 +252,18 @@ const VIGILANCE = [
   {
     state: "waving through",
     name: "not looking",
-    from: 20,
+    from: 12,
     speed: 0.5,
     skip: 0.9,
     trust: 0.6,
   },
 ];
 
-// A cocoa break in time is short; a burnt-out elf is gone for 15 seconds and comes back still tired.
+// A cocoa break in time is short; a burnt-out elf is gone for 9 seconds and comes back still tired.
 const BURNOUT_AT = 88;
-const BURNOUT_SECONDS = 15;
-const BURNOUT_RECOVERY = 2.5; // back at about 50, so a burnt-out elf soon tires again
-const COCOA_RECOVERY = 13; // from 60 to fresh in about 4 seconds
+const BURNOUT_SECONDS = 9;
+const BURNOUT_RECOVERY = 4.2; // back at about 50, so a burnt-out elf soon tires again
+const COCOA_RECOVERY = 22; // from 60 to fresh in under 3 seconds
 // Tiredness 0 to 100. Above FRESH it slows an elf and makes it miss more.
 const FRESH = 30;
 const TIRED_SLOWS = 0.014;
@@ -272,9 +274,9 @@ const SLIPS_FROM = 50;
 const slipping = (tired) => Math.max(0, tired - SLIPS_FROM);
 // Tiredness a working elf gains a second: one never rested burns out late in the first half and
 // again in the second, so a player who rests elves when they turn red sees about one burnout a game.
-const WORK_STRAIN = 0.65;
-const CHECKER_STRAIN = 0.1; // checking tires a little more than reading or making
-const PRESSURE_STRAIN = 0.2; // and a station whose piles are filling up more again
+const WORK_STRAIN = 1.08;
+const CHECKER_STRAIN = 0.17; // checking tires a little more than reading or making
+const PRESSURE_STRAIN = 0.33; // and a station whose piles are filling up more again
 // Tiredness took this share of a station's working time or more: the end screen names it as the
 // reason that station held the line up. Elves rested at about 60 lose about a tenth; never rested,
 // about half.
@@ -302,7 +304,7 @@ const PRICE = {
   // is what puts automation everywhere behind people on the big gifts even with every one checked
   // (ADR 0025).
   remakeBig: 40,
-  rollback: 65,
+  rollback: 40,
 };
 // What making these gifts again costs.
 const remakePrice = (list) =>
@@ -329,7 +331,7 @@ const groupOf = (w) => (w.big ? "big" : w.unclear ? "unclear" : "everyday");
 // The end summary dial: below little it reads too little checking, above much too much. settle is the
 // share of the budget that the two losses must reach before the dial moves far from the middle.
 // When one loss is clear times the other and at least floor pounds, the dial reads its side.
-const ASSURANCE = { little: 0.1, much: 0.8, settle: 0.1, clear: 3, floor: 100 };
+const ASSURANCE = { little: 0.1, much: 0.8, settle: 0.1, clear: 3, floor: 60 };
 
 // What each half of the game carries: everyday gifts only, where the AI is as reliable as a fresh
 // elf, then mostly big gifts, where the AI has least experience and a mistake costs most. big is the share of
@@ -340,16 +342,16 @@ const CARGO = [
 ];
 // Seconds into the second half before the first big letter arrives: time to put people on the big
 // gifts after the half-time card has said they are coming.
-const BIG_FROM = 8;
+const BIG_FROM = 5;
 // Letters a second from each time on: a trickle three readers nearly manage, then faster than hand
 // reading can keep up with.
 const RAMP = [
   [0, 0.6],
-  [15, 1.1],
+  [9, 1.1],
 ];
 // One unclear letter in each half, at a time drawn from this window of seconds into the half.
-const UNCLEAR_WINDOW = [12, 40];
-const CONSEQUENCE_GAP = 45;
+const UNCLEAR_WINDOW = [7, 24];
+const CONSEQUENCE_GAP = 27;
 // Waiting decisions take their turn in this order; unclear letters come last.
 const CASE_ORDER = { source: 0, aboard: 1 };
 // A decision's name in a few words, by step for the incident and by kind for the others.
@@ -2053,8 +2055,8 @@ class Workshop {
       const effort =
         WORK_STRAIN +
         Math.max(0, pressure - 0.25) * PRESSURE_STRAIN +
-        (s === 2 ? CHECKER_STRAIN + 0.1 * this.checking : 0);
-      const gain = e.doing === "nothing to do" ? -0.12 : effort;
+        (s === 2 ? CHECKER_STRAIN * (1 + this.checking) : 0);
+      const gain = e.doing === "nothing to do" ? -0.2 : effort;
       e.tired = Math.min(100, Math.max(0, e.tired + dt * gain));
       if (e.tired < BURNOUT_AT) return;
       Object.assign(e, {
@@ -2121,16 +2123,16 @@ class Workshop {
       this.unreportedLost = 0;
     if (this.t - this.report.checking.since >= CONSEQUENCE_GAP)
       this.reportChecking();
-    // Averaged over about 15 seconds; too early to judge in the first seconds; re-armed once comfortably back.
+    // Averaged over about 9 seconds; too early to judge in the first seconds; re-armed once comfortably back.
     const now = this.estimate();
-    this.projected += (now.projected - this.projected) * Math.min(1, dt / 15);
+    this.projected += (now.projected - this.projected) * Math.min(1, dt / 9);
     this.slowest = now.slowest;
     if (this.slowest !== null) this.stats.holding[this.slowest] += dt;
     const pace = this.pace();
     // Said only when a station whose elves do the work is holding things up, so the line always
     // names a move to make: an elf adds nothing at a station on Automate.
     if (
-      this.t >= 20 &&
+      this.t >= 12 &&
       pace.behind &&
       pace.slowest !== null &&
       !(pace.slowest < 2 && this.ai[pace.slowest] === 2) &&
@@ -2322,7 +2324,7 @@ class Workshop {
     const growing = this.growingPile();
     if (growing) return growing;
     const recentWrong = this.aboard.filter(
-      (x) => x.wrong && this.t - x.loadedAt <= 30,
+      (x) => x.wrong && this.t - x.loadedAt <= 18,
     ).length;
     // Never "check more" while checking is the bottleneck: more checks would slow the line further.
     if (recentWrong >= 2 && this.checking === 0 && this.slowest !== 2)
@@ -2779,7 +2781,7 @@ class Workshop {
       .filter((g) => g.verdict === "left exposed")
       .sort((p, q) => q.shippedUncheckedCost - p.shippedUncheckedCost)[0];
     const wasted = a.groups.find(
-      (g) => g.verdict === "cost more than it saved" && g.checkCost >= 20,
+      (g) => g.verdict === "cost more than it saved" && g.checkCost >= 12,
     );
     const on = (g) => (g ? ` on ${g.name.toLowerCase()}` : "");
     const stopped = `${money(checkCost)} of checks stopped ${paid ? "" : "only "}about ${money(a.prevented)} of wrong gifts`;

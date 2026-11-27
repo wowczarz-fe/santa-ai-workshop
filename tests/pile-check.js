@@ -47,7 +47,8 @@ const reading = (c, right = true) =>
   assert.strictEqual(w.view().lost, lost, "and is not lost");
   for (const [elf, station] of [
     [1, 1],
-    [2, 2],
+    [2, 1],
+    [4, 1],
     [3, 2],
   ])
     w.move(elf, station);

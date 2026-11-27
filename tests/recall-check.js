@@ -217,7 +217,7 @@ for (const big of [false, true]) {
 // the remake pile means no card, and so no card slot is used.
 {
   const w = ready();
-  w.spent.fixing += w.budgetLeft() - 30;
+  w.spent.fixing += w.budgetLeft() - 20;
   gift(w, true);
   assert.strictEqual(w.view().case, null, "the budget cannot cover it");
   assert.strictEqual(w.recallsRaised, 0);

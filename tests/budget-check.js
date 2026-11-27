@@ -116,7 +116,8 @@ for (let seed = 1; seed <= 12; seed++)
       );
       assert(!e.goals.find((g) => g.id === "cost").met);
       assert.strictEqual(e.headline, "Out of money.");
-      assert.match(e.lesson.text, / took £[\d,]+ of your £1,000 budget\.$/);
+      assert.match(e.lesson.text, / took £[\d,]+ of your £[\d,]+ budget\.$/);
+      assert(e.lesson.text.endsWith(` of your ${money(COST_LIMIT)} budget.`));
       assert.strictEqual(e.leftAt, Math.round(w.duration - w.t));
       assert(e.leftAt > 0 || w.t >= w.duration - 0.2);
       assert.strictEqual(w.view().cost.left, 0);
@@ -134,7 +135,7 @@ for (let seed = 1; seed <= 12; seed++)
 {
   const w = new Workshop({ seed: 3 });
   w.step(HALF_SECONDS - 1);
-  w.spent.fixing += w.budgetLeft() - 60;
+  w.spent.fixing += w.budgetLeft() - 40;
   w.step(2);
   const ch = w.view().choice;
   assert(ch, "half-time is open");
@@ -171,13 +172,13 @@ for (let seed = 1; seed <= 12; seed++)
   };
   for (let i = 0; i < w.goalsCountFrom(); i++) gift(false);
   for (let i = 0; i <= WRONG_ALLOWED; i++) gift(true);
-  w.spent.fixing += w.budgetLeft() - 30;
+  w.spent.fixing += w.budgetLeft() - 20;
   w.track(0);
   const c = w.view().case;
   assert.strictEqual(c.step, "aboard");
   checkOffers(w, w.view(), "a recall with little budget");
   const [bring, leave] = c.options;
-  assert(bring.extra >= 30 && !bring.available);
+  assert(bring.extra >= 20 && !bring.available);
   assert.strictEqual(bring.why, "Not enough budget left");
   assert(leave.available && leave.why === null);
   assert(!w.resolve(c.id, "bringBack") && w.resolve(c.id, "leave") && !w.end);

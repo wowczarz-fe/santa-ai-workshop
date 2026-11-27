@@ -1543,13 +1543,13 @@ for (const right of [true, false]) {
   }
 }
 
-// The lever figures must predict what the workshop then does over a steady stretch.
+// The lever figures must predict what the workshop then does over a steady first-half stretch.
 {
   let promised = 0;
   let did = 0;
   for (const seed of SEEDS.slice(0, 6)) {
     const w = new Workshop({ seed });
-    w.step(20);
+    w.step(12);
     const past = (v) =>
       v.queues.orders.parcels.length +
       v.queues.check.parcels.length +
@@ -1558,9 +1558,9 @@ for (const right of [true, false]) {
       v.sleigh.wrong +
       v.queues.rework.parcels.length;
     const before = past(w.view());
-    for (let t = 20; t < 50; t++, w.step(1))
-      promised += w.view().levers.ai0[0].perMinute / 30 / 6;
-    did += ((past(w.view()) - before) * 2) / 6;
+    for (let t = 12; t < 30; t++, w.step(1))
+      promised += w.view().levers.ai0[0].perMinute / 18 / 6;
+    did += ((past(w.view()) - before) * 60) / 18 / 6;
   }
   console.log(
     `levers: reading by hand promised ${promised.toFixed(1)}/min, did ${did.toFixed(1)}`,

@@ -76,7 +76,7 @@ const CHECK_CATCH = 0.9;
 // The cause of a wrong gift the player made by picking the wrong reading of an unclear wish.
 const PICKED_WRONG = "you read an unclear wish wrongly";
 const UNSURE_IF_WRONG = 0.7;
-const CATCH_SHARPENS = 10; // clean parcels a caught mistake takes off the elves' run
+const CATCH_SHARPENS = 6; // clean parcels a caught mistake takes off the elves' run
 // A clean AI draft adds this much to the trust of each elf confirming drafts at that station, as a
 // clean checked gift does for a checker.
 const CONFIRM_TRUST = 1;
@@ -106,7 +106,7 @@ const WRONG_LINE_GAP = 12; // seconds before a wrong-gift line repeats the same 
 // how often something happens is cut to match, so a game holds the same events in less time.
 const HALF_SECONDS = 45;
 const DURATION = 2 * HALF_SECONDS;
-const CLOSE = DURATION - 9; // letters stop coming, so the last ones can still reach the sleigh
+const CLOSE = DURATION - 8; // letters stop coming, so the last ones can still reach the sleigh
 const TARGET = 89;
 // Three goals for the game, one star each (ADR 0014). full: the right gifts aboard reach the
 // target. right: at most WRONG_ALLOWED wrong gifts aboard. cost: the sleigh leaves with budget
@@ -116,7 +116,7 @@ const TARGET = 89;
 // included, counts down from it, and the game ends the moment nothing is left. A game that ends
 // that way has lost the cost star, so it earns two stars at most.
 const WRONG_ALLOWED = 1;
-const COST_LIMIT = 600;
+const COST_LIMIT = 610;
 const GOALS_FROM = 0.7;
 const BUDGET_LOW = 0.25; // the share of the budget left at which it is said to be running low
 const NO_BUDGET = "Not enough budget left";

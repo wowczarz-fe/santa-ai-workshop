@@ -177,8 +177,8 @@ A parcel is `{ id, wish, big, unclear, wanted, made, suspect, result }`, for exa
 
 - `state` is the checkers' state, `"careful"`, `"relaxing"` or `"waving through"`. Each elf keeps its own run of clean AI
   gifts seen at its station, and a station reads from the average of its elves. Checkers drift
-  after 8 (they check faster and skip half the AI gifts) and stop looking after 20 (they skip nine
-  in ten). A caught mistake takes 5 off each checker's run. A cocoa break, a burnout or a move to
+  after 5 (they check faster and skip half the AI gifts) and stop looking after 12 (they skip nine
+  in ten). A caught mistake takes 6 off each checker's run. A cocoa break, a burnout or a move to
   another station starts an elf's run afresh, so swapping in a rested elf pulls a drifting station
   back; training at half-time keeps every elf sharp for the rest of the game.
 - Elves who confirm AI drafts on Assist drift the same way: every clean draft counts as a clean

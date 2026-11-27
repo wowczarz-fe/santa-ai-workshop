@@ -2095,7 +2095,7 @@ class Workshop {
     }
     if (this.stationBlocked(0))
       this.sayEvery(
-        10,
+        6,
         "blocked0",
         "blocked",
         "The Letters station has stopped because the toy pile is full. Move an elf to Toys.",
@@ -2103,7 +2103,7 @@ class Workshop {
       );
     if (this.stationBlocked(1))
       this.sayEvery(
-        10,
+        6,
         "blocked1",
         "blocked",
         `The Toys station has stopped because the ${this.full("check") ? "checking" : "waiting-to-load"} pile is full. Move an elf to Checking.`,
@@ -2113,7 +2113,7 @@ class Workshop {
     if (
       count &&
       this.sayEvery(
-        5,
+        3,
         "lost",
         "lost",
         `The letter pile is full, so ${does(count, "letter", "was", "were")} lost.`,
@@ -3401,7 +3401,7 @@ class Workshop {
       return L(...byCause[top[0]]);
     if (
       short &&
-      st.jammed >= 30 &&
+      st.jammed >= 18 &&
       verdict === "too much" &&
       st.checking[2] / d >= 0.3
     )
@@ -3419,7 +3419,7 @@ class Workshop {
         "Too little checking",
         `Wrong gifts cost ${money(costs.mistakes)}, far more than the ${money(costs.checking)} spent on checking. Wrong big gifts alone cost ${money(bigWrong)}. The AI is reliable on everyday gifts. Big, unusual ones need an elf's judgement, so check them.`,
       );
-    if ((wrongHurt || !missed) && st.faulty >= 15)
+    if ((wrongHurt || !missed) && st.faulty >= 9)
       return L(
         "The faulty update ran too long",
         `The faulty update kept making full-sized trains for ${Math.round(st.faulty)} seconds after they were first spotted. Roll it back as soon as the fault shows.`,
@@ -3455,7 +3455,7 @@ class Workshop {
         "Burnouts slowed the line",
         `Elves burnt out ${times(st.burnouts)}, and each burnout kept an elf off for ${BURNOUT_SECONDS} seconds. Give elves a cocoa break when they turn red.`,
       );
-    if (short && this.lost >= 15)
+    if (short && this.lost >= 9)
       return L(
         "Piles grew where nobody was working",
         `${this.lost} letters were lost when the letter pile overflowed. Move elves and AI help to whichever station has the biggest pile.`,
